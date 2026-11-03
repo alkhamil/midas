@@ -97,3 +97,15 @@ export function claimSlot(slot) {
 export function slotKeepsContent(slot) {
     return !!slot?.slotOwned;
 }
+
+/**
+ * Gives a slot back to the main component: the instance stops owning it, so the next sync copies the main component's content into it again.
+ * The inverse of claimSlot. Changes the slot; says whether it did.
+ * @param {{ slotOwned?: boolean }} slot
+ * @returns {boolean}
+ */
+export function releaseSlot(slot) {
+    if (!slot.slotOwned) return false;
+    delete slot.slotOwned;
+    return true;
+}

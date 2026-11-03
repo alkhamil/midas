@@ -77,3 +77,15 @@ test('the instance owns a slot once it edits it, and an owned slot keeps exactly
     assert.equal(slotKeepsContent(null), false);
 });
 
+
+import { releaseSlot } from '../src/behavior-engine/content-slots.js';
+
+test('the instance gives a slot back: it stops owning it, so the next sync copies the main component\'s content in again', () => {
+    const slot = { propBind: { slot: 'p' }, sourceId: 's', slotOwned: true };
+    assert.equal(slotKeepsContent(slot), true);
+    assert.equal(releaseSlot(slot), true, 'the first release changes the slot');
+    assert.equal(slotKeepsContent(slot), false);
+    assert.equal('slotOwned' in slot, false, 'the flag is removed, not set to false');
+    assert.equal(releaseSlot(slot), false, 'a slot that is not owned has nothing to release');
+    assert.equal(claimSlot(slot), true, 'and can be claimed again');
+});

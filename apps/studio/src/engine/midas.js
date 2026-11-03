@@ -1,7 +1,8 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotCountLabel, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
+import { slotRowHtml } from './slotRow.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
@@ -15431,6 +15432,26 @@ async function addInstanceToSlot(slotId, compId, libId = null) {
         instantiate(main ? main.id : compId, null, slot);
     }
 }
+// Clear: the slot's layers go. The instance still owns the slot, so the main component's content is not copied back in (Reset does that).
+function clearSlot(slotId) {
+    const slot = doc.get(slotId), ids = isContentSlot(slot) ? doc.children(slot.id).map(c => c.id) : [];
+    if (ids.length)
+        transaction('Clear slot', () => doc.remove(ids));
+}
+// Reset: the instance gives the slot back. Its layers go and it stops owning the slot, so the same edit's sync copies the main component's
+// default content in again. One undo step.
+function resetSlot(slotId) {
+    const slot = doc.get(slotId);
+    if (!isContentSlot(slot) || !slotKeepsContent(slot))
+        return;
+    transaction('Reset slot', () => {
+        const ids = doc.children(slot.id).map(c => c.id);
+        if (ids.length)
+            doc.remove(ids); // removing a layer makes the instance the owner, so it is released after
+        releaseSlot(slot);
+        doc.touch(slot);
+    });
+}
 // An instance placed in a slot of another instance.
 function inSlot(n) { const p = n && doc.get(n.parentId); return isContentSlot(p) ? p : null; }
 // A frame inside a main component can become a slot: instances drop their own layers into it.
@@ -16624,7 +16645,7 @@ function instancePropsHtml(owner, holder) {
         if (p.type === 'instance')
             return swapButtonHtml(`data-swap-iprop="${p.id}" ${attrs}`, v);
         const page = pageOfNode(owner.id), slot = page && pageTree(page, owner.id).find(y => y.propBind?.slot === p.id);
-        return slot ? `<button class="cmp-slot add" data-slot-add="${slot.id}" title="Add instances to this slot">${CPROP_ICON.slot}<span>${slotCountLabel(doc.children(slot.id).length)}</span><i>${icon('plus', 12)}</i></button>` : `<span class="cmp-slot">${CPROP_ICON.slot}${esc('Slot')}</span>`;
+        return slot ? slotRowHtml({ slotId: slot.id, count: doc.children(slot.id).length, owned: slotKeepsContent(slot), esc, icons: { slot: CPROP_ICON.slot, plus: icon('plus', 12), clear: icon('close', 12), reset: icon('rotate', 12) } }) : `<span class="cmp-slot">${CPROP_ICON.slot}${esc('Slot')}</span>`;
     };
     const row = (o, p, attrs) => `<div class="cmp-prop2"><span title="${esc(p.name)}">${CPROP_ICON[p.type]} ${esc(p.name)}</span><div class="cmp-ctl">${ctl(o, p, attrs)}</div></div>`;
     const page = pageOfNode(owner.id), tree = page ? instanceTree(page, owner.id) : [];
@@ -16674,6 +16695,11 @@ document.addEventListener('click', e => {
     if (sa && doc.get(sa.dataset.slotAdd)) {
         select([sa.dataset.slotAdd]);
         openAddInstances(sa.dataset.slotAdd);
+        return;
+    }
+    const slotClear = e.target.closest('#inspector [data-slot-clear]'), slotReset = e.target.closest('#inspector [data-slot-reset]');
+    if (slotClear || slotReset) {
+        (slotClear ? clearSlot : resetSlot)((slotClear ?? slotReset).dataset[slotClear ? 'slotClear' : 'slotReset']);
         return;
     }
     const b = e.target.closest('#inspector [data-select-layer]');
