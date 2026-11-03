@@ -1,6 +1,7 @@
 import { validateTemplateSchema } from './validate-schema.js';
 import { BUTTON } from '../templates/button.js';
 import { INPUT } from '../templates/input.js';
+import { FORM_ITEM } from '../templates/form-item.js';
 
 /**
  * Validate every template and index it by id. An invalid schema throws: the registry never holds a broken template. A slot's `accepts` may
@@ -20,8 +21,8 @@ export function createTemplateRegistry(schemas) {
     return byId;
 }
 
-/** Every template the engine ships. Button is the only one until the pipeline works end to end. */
-export const TEMPLATES = createTemplateRegistry([BUTTON, INPUT]);
+/** Every template the engine ships. */
+export const TEMPLATES = createTemplateRegistry([BUTTON, INPUT, FORM_ITEM]);
 
 /**
  * Whether two mode lists name the same modes: same count, matched case-insensitively, in any order.

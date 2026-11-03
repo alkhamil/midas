@@ -9,12 +9,17 @@ import { canvasPartsOf } from '../src/behavior-engine/display.js';
 import { diagnoseDocument } from '../src/behavior-engine/diagnostics.js';
 import { buttonModel } from '../../../scripts/button-model.mjs';
 import { inputModel } from '../../../scripts/input-model.mjs';
+import { formItemModel } from '../../../scripts/form-item-model.mjs';
 
 /** The variable model and binding each registered template is checked with. */
 const MODELS = {
     button: () => {
         const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
         return { variables: { collections: model.collections, items: model.items }, binding: { variables: { variant: model.ids.variant, color: model.ids.color, size: model.ids.size } } };
+    },
+    formitem: () => {
+        const model = formItemModel({ ids: { size: 'c-formitem-size', semantic: 'c-formitem-semantic' }, prefix: 'fi-' });
+        return { variables: { collections: model.collections, items: model.items }, binding: { variables: { size: model.ids.size } } };
     },
     input: () => {
         const model = inputModel({ ids: { variant: 'c-input-variant', status: 'c-input-status', size: 'c-input-size', semantic: 'c-input-semantic' }, prefix: 'in-' });
@@ -76,7 +81,7 @@ for (const template of TEMPLATES.values()) {
         const { variables, binding } = MODELS[template.id]();
         const frame = { id: 'master', name: template.name, type: 'frame', parentId: null, fills: [] };
         const first = applyTemplateToFrame(template, { frame, children: [], binding, variables, idOf });
-        const user = { id: 'user-layer', name: 'Note', type: 'text', parentId: 'master', text: 'kept' };
+        const user = { id: 'user-layer', name: 'Note', type: 'frame', parentId: 'master', text: 'kept' };
         const children = [...first.created, user];
         const second = applyTemplateToFrame(template, { frame, children, binding, variables, idOf });
         assert.deepEqual(second.created, [], 'nothing is created the second time');
@@ -91,7 +96,7 @@ for (const template of TEMPLATES.values()) {
         const doc = nodes => ({ variables, pages: [{ name: 'p', nodes: [frame, ...nodes] }] });
         const missing = (nodes) => diagnoseDocument(doc(nodes)).filter(f => f.code === 'part-missing');
         assert.deepEqual(missing(first.created), [], 'a generated master is complete');
-        const user = { id: 'user-layer', name: 'Note', type: 'text', parentId: 'master', text: 'kept' };
+        const user = { id: 'user-layer', name: 'Note', type: 'frame', parentId: 'master', text: 'kept' };
         const required = requiredKeys(template)[requiredKeys(template).length - 1];
         const without = first.created.filter(n => n.name !== required && n.behavior?.part !== required);
         assert.ok(without.length < first.created.length, `${template.id} has a layer for ${required} to remove`);

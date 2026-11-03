@@ -133,7 +133,7 @@ export function instancePanel(instance, master, collections, modes) {
     // The props that drive the managed icon slots and the affix text slots (a text layer shown by its own condition): they are listed under Slots.
     const affixes = new Set(template.anatomy.filter(s => s.kind === 'text' && s.optional).map(s => s.id));
     const slotProps = [
-        ...template.icons.flatMap(def => [def.show, def.placement, def.component].filter(Boolean)),
+        ...iconDefsOf(template).flatMap(def => [def.show, def.placement, def.component].filter(Boolean)),
         ...Object.entries(template.props).filter(([, def]) => def.source === 'literal' && def.node && affixes.has(def.node.key)).map(([name]) => name),
     ];
     const rows = [];
