@@ -116,7 +116,9 @@ Move into `packages/builder-core` as pure functions with tests, then call them f
 
 Naming: "icon slot" and "content slot" in code and docs; they are never merged.
 
-Status: step 1 is done (the pure decisions are in `content-slots.js`, `slot-rules.js` and `slot-property.js`, with unit tests, and the studio calls them; behaviour unchanged). Step 2 is done: `diagnoseSlots` (slot-diagnostics.js) reports `slot-below-min`, `slot-above-max` and `slot-not-accepted` as warnings in `diagnoseDocument`; an instance with no template shows them in its Behavior tab; and `transaction()` shows a notice for what an edit newly broke (paste, drag, duplicate, import, delete). The picker still blocks `max` and `onlyPreferred`; every other path warns. `showEmpty`, `fillCounter` and reset are still stored-only (step 3). The rest waits for confirmation.
+Status: step 1 is done (the pure decisions are in `content-slots.js`, `slot-rules.js` and `slot-property.js`, with unit tests, and the studio calls them; behaviour unchanged). Step 2 is done: `diagnoseSlots` (slot-diagnostics.js) reports `slot-below-min`, `slot-above-max` and `slot-not-accepted` as warnings in `diagnoseDocument`; an instance with no template shows them in its Behavior tab; and `transaction()` shows a notice for what an edit newly broke (paste, drag, duplicate, import, delete). The picker still blocks `max` and `onlyPreferred`; every other path warns. A freshly placed component gets no notice for its own minimum (the Diagnostics still report it).
+
+Step 3 is done: `showEmpty` is effective (an empty slot that does not ask is hidden on the instance, so the canvas layout, Play and the export skip it; off by default, so existing empty slots collapse); `fillCounter` is effective as a one-time write when a component is put into a slot, and a horizontal slot fills its counter axis (the height) on its own; the slot row has Clear and Reset (Reset gives the slot back and the sync copies the main component's content in again). `min` is effective as a warning (step 2). The rest waits for confirmation.
 
 ## 4. Steps (small, each keeps the suites green)
 
