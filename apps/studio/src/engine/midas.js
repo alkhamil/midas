@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
+import { layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersOf, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
@@ -1660,8 +1660,9 @@ function clampMM(n, dim, v) {
     let lo = dim === 'w' ? n.minW : n.minH;
     const hi = dim === 'w' ? n.maxW : n.maxH;
     // An empty slot of an instance stays big enough to see and click (its "+" placeholder).
-    if (n.propBind?.slot && n.sourceId && sizingOf(n, dim === 'w' ? 'h' : 'v') === 'hug' && !doc.children(n.id).length)
-        lo = Math.max(lo ?? 0, dim === 'w' ? 120 : 56);
+    const slotFloor = isContentSlot(n) ? emptySlotFloor(n, dim, sizingOf(n, dim === 'w' ? 'h' : 'v'), doc.children(n.id).length) : null;
+    if (slotFloor !== null)
+        lo = Math.max(lo ?? 0, slotFloor);
     const imp = dim === 'w' ? n.implicitW : n.implicitH;
     if (imp && sizingOf(n, dim === 'w' ? 'h' : 'v') === 'hug')
         lo = Math.max(lo ?? 0, imp);
@@ -5138,7 +5139,7 @@ function insideNodeBox(node, w) {
 function closeToSlot(t) {
     while (t) {
         const chain = [t, ...doc.ancestors(t)], at = chain.findIndex(a => a.isInstance);
-        if (at < 0 || chain.slice(0, at).some(a => a.propBind?.slot))
+        if (selectableThroughSlot(chain, at))
             return t;
         t = doc.get(chain[at].parentId) || null;
         while (t && t.type !== 'frame')
@@ -6558,8 +6559,8 @@ class DocumentModel {
     remove(ids) {
         for (const id of ids) {
             const n = this.get(id), p = n && this.get(n.parentId);
-            if (p?.propBind?.slot && p.sourceId)
-                p.slotOwned = true; // the instance now decides what this slot holds
+            if (isContentSlot(p))
+                claimSlot(p); // the instance now decides what this slot holds
         }
         const all = new Set(ids);
         for (const id of ids)
@@ -10619,8 +10620,8 @@ function instantiate(id, at = null, parent = null, opts = {}) {
                 root.layoutPositioning = undefined;
             delete root.layoutPositioning;
             state.expanded.add(parent.id);
-            if (parent.propBind?.slot && parent.sourceId)
-                parent.slotOwned = true; // the instance now decides what this slot holds
+            if (isContentSlot(parent))
+                claimSlot(parent); // the instance now decides what this slot holds
         }
         else {
             root.parentId = null;
@@ -10929,7 +10930,7 @@ function drawSlots(c) {
     const selIds = [...state.selection], selNodes = selIds.map(id => doc.get(id)).filter(Boolean);
     for (const s of doc.scene()) {
         const n = s.node;
-        if (!n.propBind?.slot || !n.sourceId || n.visible === false)
+        if (!isContentSlot(n) || n.visible === false)
             continue;
         const empty = !doc.children(n.id).length;
         const active = state.selection.has(n.id) || state.hover === n.id || selNodes.some(x => doc.ancestors(x).some(a => a.id === n.id));
@@ -13674,10 +13675,7 @@ function syncInstanceStructure(activeOnly = true) {
                 pn = new Map(page.nodes.map(x => [x.id, x]));
                 pnLen = page.nodes.length;
             }
-            for (let p = pn.get(n.parentId), i = 0; p && p.id !== rootId && i < 200; p = pn.get(p.parentId), i++)
-                if (p.propBind?.slot && p.sourceId)
-                    return p;
-            return null;
+            return slotOwnerOf(n, rootId, id => pn.get(id));
         };
         for (const root of [...page.nodes]) {
             if (!root.isInstance || !root.sourceId)
@@ -13711,8 +13709,8 @@ function syncInstanceStructure(activeOnly = true) {
                 if (!parent || parent !== root && parent.swapOf)
                     continue;
                 // A slot the instance has edited keeps exactly what the instance put (or left) there.
-                const owner = parent.propBind?.slot && parent.sourceId ? parent : parent === root ? null : slotOf(parent, root.id);
-                if (owner?.slotOwned)
+                const owner = isContentSlot(parent) ? parent : parent === root ? null : slotOf(parent, root.id);
+                if (slotKeepsContent(owner))
                     continue;
                 const c = structuredClone(s);
                 c.id = uid();
@@ -15384,10 +15382,8 @@ async function addInstanceToSlot(slotId, compId, libId = null) {
     const slot = doc.get(slotId), prop = slot && cpropById(slot.propBind?.slot);
     if (!slot)
         return;
-    if (!slot.slotOwned) {
-        slot.slotOwned = true;
+    if (claimSlot(slot))
         doc.touch(slot);
-    }
     if (prop?.max && doc.children(slot.id).length >= prop.max)
         return toast(`This slot holds at most ${prop.max} layer${prop.max === 1 ? '' : 's'}.`);
     if (libId)
@@ -15400,11 +15396,11 @@ async function addInstanceToSlot(slotId, compId, libId = null) {
     }
 }
 // An instance placed in a slot of another instance.
-function inSlot(n) { const p = n && doc.get(n.parentId); return p?.propBind?.slot && p.sourceId ? p : null; }
+function inSlot(n) { const p = n && doc.get(n.parentId); return isContentSlot(p) ? p : null; }
 // A frame inside a main component can become a slot: instances drop their own layers into it.
 const SLOT_ICON = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M8 5.5v5M5.5 8h5"/></svg>';
 function canBeSlot(n) {
-    return !!n && n.type === 'frame' && !n.component && !n.componentSet && !n.isInstance && !n.isSection && !insideInstance(n) && !!holderForLayer(n);
+    return !!n && n.type === 'frame' && isSlotCandidate(n, { insideInstance: insideInstance(n), hasHolder: !!holderForLayer(n) });
 }
 function slotButtonHtml(n, multi) {
     if (multi || !canBeSlot(n))
