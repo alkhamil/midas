@@ -3,14 +3,16 @@ import { BUTTON } from '../templates/button.js';
 import { INPUT } from '../templates/input.js';
 
 /**
- * Validate every template and index it by id. An invalid schema throws: the registry never holds a broken template.
+ * Validate every template and index it by id. An invalid schema throws: the registry never holds a broken template. A slot's `accepts` may
+ * name any template of the registry, whatever the order, itself included. A registry is built the same way from the templates of a document.
  * @param {import('../templates/schema.js').TemplateSchema[]} schemas
  * @returns {Map<string, import('../templates/schema.js').TemplateSchema>}
  */
-function createTemplateRegistry(schemas) {
+export function createTemplateRegistry(schemas) {
     const byId = new Map();
+    const templateIds = new Set(schemas.map(s => s?.id));
     for (const schema of schemas) {
-        const problems = validateTemplateSchema(schema);
+        const problems = validateTemplateSchema(schema, { templateIds });
         if (problems.length) throw new Error(`Invalid template "${schema?.id ?? '?'}": ${problems.join('; ')}`);
         if (byId.has(schema.id)) throw new Error(`Duplicate template id "${schema.id}"`);
         byId.set(schema.id, schema);

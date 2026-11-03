@@ -110,9 +110,11 @@ export function dimensionOfGroup(group, props) {
 /**
  * Problems in a template schema, as messages. An empty list means the schema is valid. Pure: nothing is changed.
  * @param {import('../templates/schema.js').TemplateSchema} schema
+ * @param {{ templateIds?: Set<string> }} [context] the ids of the templates the schema lives among: a slot's `accepts` must name one of them.
+ *   Without it (a schema checked on its own) the ids are not checked.
  * @returns {string[]}
  */
-export function validateTemplateSchema(schema) {
+export function validateTemplateSchema(schema, { templateIds } = {}) {
     if (!isPlainObject(schema)) return ['schema must be an object'];
     const out = [];
     if (!isName(schema.id)) out.push('schema has no id');
@@ -154,7 +156,7 @@ export function validateTemplateSchema(schema) {
     if (schema.rootAlign !== undefined && !['start', 'center', 'end'].includes(schema.rootAlign)) out.push(`rootAlign "${schema.rootAlign}" must be start, center or end`);
     out.push(...iconProblems(schema, allTokens));
     out.push(...partTokenProblems(schema, allTokens));
-    out.push(...slotProblems(schema));
+    out.push(...slotProblems(schema, templateIds));
     out.push(...controlProblems(schema));
     out.push(...shownWhenProblems(schema, props || {}));
     out.push(...focusTargetProblems(schema));
@@ -319,9 +321,10 @@ const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'only
  * is its prop name in the generated code, so it is a lower camel case identifier that no prop, anatomy slot or part of the template already
  * uses (an icon slot is a different thing and keeps its own id space). Not the icon slots (`icons`).
  * @param {any} schema
+ * @param {Set<string>} [templateIds] the templates a slot may accept, when they are known
  * @returns {string[]}
  */
-function slotProblems(schema) {
+function slotProblems(schema, templateIds) {
     if (schema.slots === undefined) return [];
     if (!Array.isArray(schema.slots)) return ['slots must be a list'];
     const out = [];
@@ -355,7 +358,10 @@ function slotProblems(schema) {
         if (slot.layout !== 'horizontal' && slot.layout !== 'vertical') out.push(`${tag} layout must be horizontal or vertical`);
         const acceptsOk = slot.accepts === undefined || (Array.isArray(slot.accepts) && slot.accepts.every(isName));
         if (!acceptsOk) out.push(`${tag} accepts must be a list of template ids`);
-        else for (const id of new Set((slot.accepts ?? []).filter((/** @type {string} */ a, /** @type {number} */ k, /** @type {string[]} */ all) => all.indexOf(a) !== k))) out.push(`${tag} accepts names "${id}" twice`);
+        else {
+            for (const id of new Set((slot.accepts ?? []).filter((/** @type {string} */ a, /** @type {number} */ k, /** @type {string[]} */ all) => all.indexOf(a) !== k))) out.push(`${tag} accepts names "${id}" twice`);
+            if (templateIds) for (const id of new Set(slot.accepts ?? [])) if (!templateIds.has(id)) out.push(`${tag} accepts "${id}", which is not a registered template`);
+        }
         if (slot.onlyAccepts !== undefined && typeof slot.onlyAccepts !== 'boolean') out.push(`${tag} onlyAccepts must be a boolean`);
         else if (slot.onlyAccepts === true && !(acceptsOk && slot.accepts?.length)) out.push(`${tag} onlyAccepts needs accepts: it restricts to the templates accepts names`);
         for (const flag of ['showEmpty', 'fillCounter']) {

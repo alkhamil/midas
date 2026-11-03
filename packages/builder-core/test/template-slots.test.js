@@ -101,3 +101,30 @@ test('every problem of a slot is reported, so a pasted schema is fixed in one go
     const all = problems({ id: 'Bad Id', min: -1, max: 0, layout: 'grid', showEmpty: 'x' });
     for (const part of [/must be a lower camel case identifier/, /has no name/, /min must be/, /max must be/, /layout must be/, /showEmpty must be a boolean/]) assert.match(all, part);
 });
+
+import { createTemplateRegistry } from '../src/behavior-engine/registry.js';
+
+const IDS = new Set(['button', 'input', 'select']);
+const check = (accepts, templateIds = IDS) => validateTemplateSchema({ ...structuredClone(BUTTON), slots: [{ ...SLOT, accepts }] }, { templateIds }).join('\n');
+
+test('accepts names templates that are registered, when the validator knows which are', () => {
+    assert.equal(check(['input', 'select']), '');
+    assert.match(check(['input', 'ghost']), /slot "content" accepts "ghost", which is not a registered template/);
+    assert.match(check(['ghost', 'phantom']), /accepts "ghost".*accepts "phantom"/s, 'each unknown id is named');
+});
+
+test('a template may accept itself, and with no registry in view the ids are not checked', () => {
+    assert.equal(check(['button']), '', 'a Button slot that takes Buttons');
+    assert.deepEqual(validateTemplateSchema({ ...structuredClone(BUTTON), slots: [{ ...SLOT, accepts: ['ghost'] }] }), [], 'a schema checked on its own');
+    assert.deepEqual(validateTemplateSchema({ ...structuredClone(BUTTON), slots: [{ ...SLOT, accepts: ['ghost'] }] }, {}), []);
+});
+
+test('a registry holds a schema only if the templates its slots accept are in the registry, whatever the order', () => {
+    const card = { ...structuredClone(BUTTON), id: 'card', name: 'Card', slots: [{ ...SLOT, accepts: ['button'] }] };
+    const button = structuredClone(BUTTON);
+    assert.deepEqual([...createTemplateRegistry([card, button]).keys()], ['card', 'button'], 'the accepted template comes after');
+    assert.deepEqual([...createTemplateRegistry([button, card]).keys()], ['button', 'card']);
+    assert.throws(() => createTemplateRegistry([card]), /Invalid template "card": .*slot "content" accepts "button", which is not a registered template/);
+    const self = { ...card, slots: [{ ...SLOT, accepts: ['card'] }] };
+    assert.deepEqual([...createTemplateRegistry([self]).keys()], ['card'], 'a template accepting itself');
+});
