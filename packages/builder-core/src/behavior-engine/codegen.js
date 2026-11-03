@@ -142,7 +142,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             if (!template.props[slot.id] && !isControl) problems.push({ slot: slot.id, reason: 'no-prop' });
             // A control slot is an input holding the value prop (and the placeholder beside it), not a span.
             const label = control && control.slot === slot.id
-                ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderPartOf(template) !== undefined ? `String(${control.value} ?? "") === "" ? ${control.placeholder} : undefined` : control.placeholder}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''} disabled={${disabledProp}} />`
+                ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderPartOf(template) !== undefined ? `String(${control.value} ?? "") === ""${control.readonly ? ` && ${control.readonly} !== true` : ''} ? ${control.placeholder} : undefined` : control.placeholder}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''} disabled={${disabledProp}} />`
                 : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
             out.push(slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
             if (!sidedAfterPlaced && !slot.parent) { out.push(...sidedAfter); sidedAfterPlaced = true; }

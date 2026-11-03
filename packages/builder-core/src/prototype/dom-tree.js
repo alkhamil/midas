@@ -263,7 +263,8 @@ function renderTemplate(n, template, parent, scope) {
                 // The input is a transparent text layer over the label node: the placeholder shown is the placeholder part's node text.
                 const placeholder = partLayerOf(n, 'placeholder', scope);
                 // The value wins: with a value the placeholder is not shown, whatever its layer says (control.hidePlaceholderWhenFilled).
-                const outranked = placeholderPartOf(template) !== undefined && String(props[control.value] ?? '') !== '';
+                // A read-only input shows its value, never the placeholder, even while the value is empty.
+                const outranked = placeholderPartOf(template) !== undefined && (String(props[control.value] ?? '') !== '' || (control.readonly && props[control.readonly] === true));
                 const showsPlaceholder = !!placeholder && placeholder.visible !== false && !outranked;
                 // The input is the one box of the value or the placeholder that shows: while the value is empty and the placeholder shows, the
                 // input is the placeholder's box (its node id is the placeholder's), otherwise the value layer's. Its size is the canvas's.

@@ -69,7 +69,7 @@ test('codegen writes a span root with data modes, an input with its props, and a
     assert.match(jsx, /data-variant=\{variant\}/);
     assert.match(jsx, /data-status=\{status\}/);
     assert.match(jsx, /data-size=\{size\}/);
-    assert.match(jsx, /<input className="input-label" value=\{value\} placeholder=\{String\(value \?\? ""\) === "" \? placeholder : undefined\} readOnly=\{readOnly\} maxLength=\{maxLength\} minLength=\{minLength\} disabled=\{disabled \|\| readOnly\} \/>/);
+    assert.match(jsx, /<input className="input-label" value=\{value\} placeholder=\{String\(value \?\? ""\) === "" && readOnly !== true \? placeholder : undefined\} readOnly=\{readOnly\} maxLength=\{maxLength\} minLength=\{minLength\} disabled=\{disabled \|\| readOnly\} \/>/);
     assert.ok(jsx.includes('{((hasPrefix === true) && (prefixKind === "text") && (String(prefixText ?? "") !== "")) && <span className="input-prefixText">{prefixText}</span>}'), 'the prefix text is shown with its switch, the Text kind and a non-empty text');
     assert.ok(jsx.includes('{((hasSuffix === true) && (suffixKind === "text") && (String(suffixText ?? "") !== "")) && <span className="input-suffixText">{suffixText}</span>}'), 'the suffix text is shown with its switch, the Text kind and a non-empty text');
     assert.match(jsx, /\{allowClear && value !== '' && <span className="input-clear">\{clearIcon\}<\/span>\}/);
@@ -162,6 +162,21 @@ test('a new, a matched and a rebound master carry identical placeholder and coun
     assert.deepEqual(planned.problems, []);
     applyBindTokens(layers, planned.ops);
     assert.deepEqual(varsByName(nodes.filter(x => x !== frame3)), createdVars);
+});
+
+test('binding an auto-layout frame to Input takes the fixed 343px width; rebinding keeps the designer width', () => {
+    let n = 0;
+    const blankFrame = () => ({ id: `f-${++n}`, name: 'Input', type: 'frame', parentId: null, component: true, layout: 'horizontal', gap: 0, padding: 0, x: 0, y: 0, w: 200, h: 40, fills: [], layoutSizingH: 'hug', layoutSizingV: 'hug' });
+    const frame = blankFrame();
+    const first = applyTemplateToFrame(INPUT, { frame, children: [], binding: model.binding, variables, idOf: k => `n-${k}-${++n}` });
+    assert.equal(frame.w, 343, 'a fresh bind takes the template width even when the frame already lays out');
+    assert.equal(frame.layoutSizingH, 'fixed');
+    assert.equal(frame.layout, 'horizontal', 'the frame keeps its own layout');
+    frame.w = 500;
+    frame.layoutSizingH = 'hug';
+    applyTemplateToFrame(INPUT, { frame, children: first.created, binding: model.binding, variables, idOf: k => `n-${k}-${++n}` });
+    assert.equal(frame.w, 500, 'regenerate keeps the designer width');
+    assert.equal(frame.layoutSizingH, 'hug');
 });
 
 test('binding covers collections, stroke and state modes; the border follows the Status mode through the Variant alias', () => {

@@ -4,6 +4,7 @@ import { masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetColl
 import { createBinding } from '../src/behavior-engine/binding.js';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
 import { buttonModel } from '../../../scripts/button-model.mjs';
+import { inputModel } from '../../../scripts/input-model.mjs';
 import { assertBehaviorData } from '../src/behavior-engine/document-check.js';
 
 const button = TEMPLATES.get('button');
@@ -127,6 +128,28 @@ test('the icon is a swap row, shown while hasIcon is on, with the id of the icon
     assert.equal(rowOf(chosen, 'icon').value, 'ic-check');
 });
 
+test('disabled and readOnly are mutually exclusive: turning one on turns the other off', () => {
+    const inputMaster = { id: 'in', name: 'Input', isInstance: false, behavior: { version: 2, templateId: 'input' } };
+    const ro = setInstanceValue(instanceOf(), inputMaster, 'readOnly', true);
+    assert.equal(ro.props.readOnly, true);
+    assert.equal(ro.props.disabled, false);
+    const dis = setInstanceValue(instanceOf(ro), inputMaster, 'disabled', true);
+    assert.equal(dis.props.disabled, true);
+    assert.equal(dis.props.readOnly, false);
+});
+
+test('turning readOnly or disabled on fills an empty text, and never overwrites or removes', () => {
+    const inputMaster = { id: 'in', name: 'Input', isInstance: false, behavior: { version: 2, templateId: 'input' } };
+    assert.equal(setInstanceValue(instanceOf(), inputMaster, 'readOnly', true).props.value, 'Text input');
+    assert.equal(setInstanceValue(instanceOf(), inputMaster, 'disabled', true).props.placeholder, 'Enter text input');
+    const kept = setInstanceValue(instanceOf({ version: 2, props: { value: 'Max' } }), inputMaster, 'readOnly', true);
+    assert.equal(kept.props.value, 'Max', 'an existing value is kept');
+    const keptHolder = setInstanceValue(instanceOf({ version: 2, props: { placeholder: 'Search' } }), inputMaster, 'disabled', true);
+    assert.equal(keptHolder.props.placeholder, 'Search', 'an existing placeholder is kept');
+    const off = setInstanceValue(instanceOf({ version: 2, props: { readOnly: true, value: 'Text input' } }), inputMaster, 'readOnly', false);
+    assert.equal(off.props.value, 'Text input', 'turning off removes nothing');
+});
+
 test('turning on a clearsPreview prop clears the panel preview; other props do not', () => {
     const button = TEMPLATES.get('button');
     assert.equal(clearsPreview(button, 'loading'), true);
@@ -202,6 +225,19 @@ test('choosing the template the master already has plans nothing', () => {
     const master = { id: 'btn', component: true, behavior: createBinding(button, [variant]) };
     const inst = { id: 'i1', isInstance: true, sourceId: 'btn', behavior: { version: 2, props: { variant: 'outlined' } } };
     assert.deepEqual(planTemplateChange(master, [inst], 'button', [variant]), { changed: false, binding: undefined, updates: [] });
+});
+
+test('binding a component to Input plans the fixed width once; anything else plans no width', () => {
+    const model = inputModel({});
+    const master = { id: 'm', component: true, w: 200, layoutSizingH: 'hug' };
+    const plan = planTemplateChange(master, [], 'input', model.collections);
+    assert.deepEqual(plan.size, { w: 343, layoutSizingH: 'fixed' });
+    applyPlan(master, plan);
+    assert.equal(master.w, 343);
+    assert.equal(master.layoutSizingH, 'fixed');
+    master.w = 500;
+    assert.equal(planTemplateChange(master, [], 'input', model.collections).changed, false);
+    assert.deepEqual(planTemplateChange({ id: 'm', component: true, w: 200 }, [], 'button', [variant, size, theme]).size ?? null, null);
 });
 
 test('a collection change plans only the binding: instance literal values and Appearance modes are untouched', () => {

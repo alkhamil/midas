@@ -77,8 +77,8 @@ function sourceOf(template) {
     return generateComponent(template, model.binding, variables, 'Input', frame, id => made.created.filter(c => c.parentId === id)).files['Input.jsx'];
 }
 
-test('the export passes the placeholder only while the value is empty', () => {
-    assert.match(sourceOf(input), /<input className="input-label" value=\{value\} placeholder=\{String\(value \?\? ""\) === "" \? placeholder : undefined\}/);
+test('the export passes the placeholder only while the value is empty and not readOnly', () => {
+    assert.match(sourceOf(input), /<input className="input-label" value=\{value\} placeholder=\{String\(value \?\? ""\) === "" && readOnly !== true \? placeholder : undefined\}/);
 });
 
 test('without the rule the export passes the placeholder plainly: the rule is the schema\'s, not the engine\'s', () => {

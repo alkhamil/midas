@@ -22,11 +22,13 @@ test('on the canvas the placeholder part is visible and holds the typed text in 
         const props = resolveProps(input, { ...state, placeholder: 'Enter your name' });
         const shown = partWrites(input, props).find(w => w.key === 'placeholder' && w.field === 'visible');
         const text = literalFields(input, props).find(w => w.key === 'placeholder' && w.field === 'text');
-        assert.equal(shown.value, true, JSON.stringify(state));
+        assert.equal(shown.value, !state.readOnly, JSON.stringify(state));
         assert.equal(text.value, 'Enter your name', JSON.stringify(state));
     }
     const withValue = resolveProps(input, { placeholder: 'Enter your name', value: 'Ana' });
     assert.equal(partWrites(input, withValue).find(w => w.key === 'placeholder' && w.field === 'visible').value, false, 'a value beats it');
+    const readOnlyEmpty = resolveProps(input, { placeholder: 'Enter your name', readOnly: true });
+    assert.equal(partWrites(input, readOnlyEmpty).find(w => w.key === 'placeholder' && w.field === 'visible').value, false, 'read only shows the value, not the placeholder');
 });
 
 function playInput(props, modes) {
@@ -43,13 +45,13 @@ function playInput(props, modes) {
 test('in Play the input carries the placeholder in every state, status and variant, and drops it once there is a value', () => {
     for (const variant of ['outlined', 'filled', 'borderless']) for (const status of ['default', 'error', 'warning']) for (const state of STATES) {
         const control = playInput({ ...state, placeholder: 'Enter your name' }, { [model.ids.variant]: variant, [model.ids.status]: status, [model.ids.size]: 'md' });
-        assert.equal(control.attrs.placeholder, 'Enter your name', `${variant} ${status} ${JSON.stringify(state)}`);
+        assert.equal(control.attrs.placeholder, state.readOnly ? undefined : 'Enter your name', `${variant} ${status} ${JSON.stringify(state)}`);
     }
     assert.equal(playInput({ placeholder: 'Enter your name', value: 'Ana' }, {}).attrs.placeholder, undefined);
 });
 
 test('the export puts the placeholder on the input while the value is empty, and colours it with the placeholder token', () => {
     const { files } = generateComponent(input, model.binding, variables, 'Input', { id: 'm', type: 'frame', layout: 'horizontal' }, () => []);
-    assert.match(files['Input.jsx'], /placeholder=\{String\(value \?\? ""\) === "" \? placeholder : undefined\}/);
+    assert.match(files['Input.jsx'], /placeholder=\{String\(value \?\? ""\) === "" && readOnly !== true \? placeholder : undefined\}/);
     assert.match(files['Input.css'], /\.input-label::placeholder \{\n  color: var\(--input-placeholder\);/);
 });

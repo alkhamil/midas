@@ -1,6 +1,7 @@
 // What a master starts with when it is created from a template or a plain frame is bound to it: the alignment (Button: center and center; Input: left and
 // center) and, for the Input only, a fixed width of 343px. All of it is a default the node owns: the designer changes it in the Design panel, and neither Auto
-// Fix, a sync nor a second run of the generator puts it back (it is written once, when the frame has no auto layout yet). The width is not a variable, so it is
+// Fix, a sync nor a second run of the generator puts it back (the alignment is written once, when the frame has no auto layout yet; the width is
+// written once at bind time, even when the frame already lays out). The width is not a variable, so it is
 // not the bound-axes rule's business. The Button has no width default.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -53,10 +54,13 @@ test('a designer\'s change survives regeneration: alignment, width and sizing ar
     assert.deepEqual([frame.primaryAlign, frame.counterAlign], [undefined, undefined], 'a designer who set the defaults back is not overruled either');
 });
 
-test('a frame that already has its own auto layout keeps its alignment and width when it is bound', () => {
+test('a frame that already has its own auto layout keeps its alignment but takes the fixed width when it is bound', () => {
     const frame = { ...plainFrame(), layout: 'vertical', primaryAlign: 'end', counterAlign: 'end', w: 90, layoutSizingH: 'fill' };
-    run(input, imodel, frame);
-    assert.deepEqual([frame.layout, frame.primaryAlign, frame.counterAlign, frame.w, frame.layoutSizingH], ['vertical', 'end', 'end', 90, 'fill']);
+    const first = run(input, imodel, frame);
+    assert.deepEqual([frame.layout, frame.primaryAlign, frame.counterAlign, frame.w, frame.layoutSizingH], ['vertical', 'end', 'end', 343, 'fixed']);
+    frame.w = 500; frame.layoutSizingH = 'hug';
+    run(input, imodel, frame, first.created);
+    assert.deepEqual([frame.w, frame.layoutSizingH], [500, 'hug'], 'a rebind never resets the designer width');
 });
 
 test('an instance starts with the master\'s alignment and width, and the export lays out the way the master does', () => {

@@ -34,6 +34,12 @@ test('exclusiveWith must name a boolean literal prop', () => {
     assert.match(validateTemplateSchema(bad).join('\n'), /prop "loading" exclusiveWith must name a boolean literal prop/);
 });
 
+test('fillEmpty must name a literal string prop and its fallback text', () => {
+    const bad = clone(INPUT);
+    bad.props.readOnly.fillEmpty = { prop: 'disabled', text: 'x' };
+    assert.match(validateTemplateSchema(bad).join('\n'), /prop "readOnly" fillEmpty must name a literal string prop/);
+});
+
 test('a variable prop must name its collection', () => {
     const bad = clone(BUTTON);
     bad.props.variant.collection = '';

@@ -123,9 +123,11 @@ export function partWrites(template, props) {
     if (template.control?.hideWhenEmpty) out.push({ key: template.control.slot, field: 'visible', value: String(props[template.control.value] ?? '') !== '' });
     const placeholderPart = placeholderPartOf(template);
     const valueFilled = template.control ? String(props[template.control.value] ?? '') !== '' : false;
+    // A read-only input shows its value, never the placeholder: readOnly outranks it like a value does.
+    const readOnly = template.control?.readonly ? props[template.control.readonly] === true : false;
     for (const part of canvasPartsOf(template)) {
         // The value wins: a placeholder part is hidden while the value is not empty (control.hidePlaceholderWhenFilled).
-        const outranked = part.id === placeholderPart && valueFilled;
+        const outranked = part.id === placeholderPart && (valueFilled || readOnly);
         out.push({ key: part.id, field: 'visible', value: conditionHolds(part.shownWhen, props) && !outranked });
         if (part.text?.counter) out.push({ key: part.id, field: 'text', value: counterLabel(props[part.text.counter.value], props[part.text.counter.max]) });
     }

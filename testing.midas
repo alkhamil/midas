@@ -145,7 +145,7 @@
           "parentId": null,
           "x": 420,
           "y": 40,
-          "w": 200,
+          "w": 343,
           "h": 40,
           "rotation": 0,
           "fills": [
@@ -171,7 +171,7 @@
           "gap": 8,
           "padding": 12,
           "strokeAlign": "inside",
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fixed",
           "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
@@ -2261,7 +2261,7 @@
           "parentId": "t-frame",
           "x": 520,
           "y": 40,
-          "w": 200,
+          "w": 343,
           "h": 40,
           "rotation": 0,
           "fills": [
@@ -2287,7 +2287,7 @@
           "gap": 8,
           "padding": 12,
           "strokeAlign": "inside",
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fixed",
           "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
@@ -2580,7 +2580,7 @@
           "parentId": "t-frame",
           "x": 520,
           "y": 120,
-          "w": 200,
+          "w": 343,
           "h": 40,
           "rotation": 0,
           "fills": [
@@ -2606,7 +2606,7 @@
           "gap": 8,
           "padding": 12,
           "strokeAlign": "inside",
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fixed",
           "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
@@ -3022,7 +3022,7 @@
           "parentId": "t-frame",
           "x": 520,
           "y": 200,
-          "w": 200,
+          "w": 343,
           "h": 40,
           "rotation": 0,
           "fills": [
@@ -3048,7 +3048,7 @@
           "gap": 8,
           "padding": 12,
           "strokeAlign": "inside",
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fixed",
           "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
@@ -3464,7 +3464,7 @@
           "parentId": "t-frame",
           "x": 520,
           "y": 280,
-          "w": 200,
+          "w": 343,
           "h": 40,
           "rotation": 0,
           "fills": [
@@ -3490,7 +3490,7 @@
           "gap": 8,
           "padding": 12,
           "strokeAlign": "inside",
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fixed",
           "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
@@ -3783,7 +3783,7 @@
           "parentId": "t-frame",
           "x": 520,
           "y": 360,
-          "w": 200,
+          "w": 343,
           "h": 40,
           "rotation": 0,
           "fills": [
@@ -3809,7 +3809,7 @@
           "gap": 8,
           "padding": 12,
           "strokeAlign": "inside",
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fixed",
           "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
@@ -4105,7 +4105,7 @@
           "parentId": "t-frame",
           "x": 760,
           "y": 40,
-          "w": 200,
+          "w": 343,
           "h": 40,
           "rotation": 0,
           "fills": [
@@ -4131,7 +4131,7 @@
           "gap": 8,
           "padding": 12,
           "strokeAlign": "inside",
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fixed",
           "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
@@ -4546,7 +4546,7 @@
           "parentId": "t-frame",
           "x": 760,
           "y": 120,
-          "w": 200,
+          "w": 343,
           "h": 40,
           "rotation": 0,
           "fills": [
@@ -4572,7 +4572,7 @@
           "gap": 8,
           "padding": 12,
           "strokeAlign": "inside",
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fixed",
           "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
@@ -4987,7 +4987,7 @@
           "parentId": "t-frame",
           "x": 760,
           "y": 200,
-          "w": 200,
+          "w": 343,
           "h": 40,
           "rotation": 0,
           "fills": [
@@ -5013,7 +5013,7 @@
           "gap": 8,
           "padding": 12,
           "strokeAlign": "inside",
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fixed",
           "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
@@ -5428,7 +5428,7 @@
           "parentId": "t-frame",
           "x": 760,
           "y": 280,
-          "w": 200,
+          "w": 343,
           "h": 40,
           "rotation": 0,
           "fills": [
@@ -5454,7 +5454,7 @@
           "gap": 8,
           "padding": 12,
           "strokeAlign": "inside",
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fixed",
           "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
@@ -5747,7 +5747,7 @@
           "parentId": "t-frame",
           "x": 760,
           "y": 360,
-          "w": 200,
+          "w": 343,
           "h": 40,
           "rotation": 0,
           "fills": [
@@ -5773,7 +5773,7 @@
           "gap": 8,
           "padding": 12,
           "strokeAlign": "inside",
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fixed",
           "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
@@ -6067,7 +6067,7 @@
           "parentId": "t-frame",
           "x": 520,
           "y": 440,
-          "w": 200,
+          "w": 343,
           "h": 40,
           "rotation": 0,
           "fills": [
@@ -6093,7 +6093,7 @@
           "gap": 8,
           "padding": 12,
           "strokeAlign": "inside",
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fixed",
           "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,
@@ -6619,7 +6619,7 @@
           "parentId": "t-frame",
           "x": 760,
           "y": 440,
-          "w": 200,
+          "w": 343,
           "h": 40,
           "rotation": 0,
           "fills": [
@@ -6645,7 +6645,7 @@
           "gap": 8,
           "padding": 12,
           "strokeAlign": "inside",
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fixed",
           "layoutSizingV": "fixed",
           "behavior": {
             "version": 2,

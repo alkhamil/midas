@@ -30,6 +30,7 @@ function propProblems(name, def, props) {
         }
         if (def.type === 'boolean' && typeof def.default !== 'boolean') out.push(`prop "${name}" is boolean but its default is not`);
         if (def.exclusiveWith !== undefined && (def.type !== 'boolean' || !isPlainObject(props[def.exclusiveWith]) || props[def.exclusiveWith].type !== 'boolean' || props[def.exclusiveWith].source !== 'literal')) out.push(`prop "${name}" exclusiveWith must name a boolean literal prop`);
+        if (def.fillEmpty !== undefined && (def.type !== 'boolean' || !isPlainObject(def.fillEmpty) || !isPlainObject(props[def.fillEmpty.prop]) || props[def.fillEmpty.prop].source !== 'literal' || props[def.fillEmpty.prop].type !== 'string' || typeof def.fillEmpty.text !== 'string')) out.push(`prop "${name}" fillEmpty must name a literal string prop and its fallback text`);
         if (def.type === 'string' && typeof def.default !== 'string') out.push(`prop "${name}" is string but its default is not`);
         if (def.type === 'number' && !(def.default === null || (Number.isInteger(def.default) && def.default >= 0))) out.push(`prop "${name}" is a number but its default is not a whole number, 0 or more, or null`);
         if (def.defaultMode !== undefined && !(Array.isArray(def.modes) && def.modes.includes(def.defaultMode))) out.push(`prop "${name}" defaultMode "${def.defaultMode}" is not one of its modes`);

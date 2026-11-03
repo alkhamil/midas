@@ -146,7 +146,7 @@
      "parentId": null,
      "x": 420,
      "y": 40,
-     "w": 200,
+     "w": 343,
      "h": 40,
      "rotation": 0,
      "fills": [
@@ -172,7 +172,7 @@
      "gap": 8,
      "padding": 12,
      "strokeAlign": "inside",
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fixed",
      "layoutSizingV": "fixed",
      "behavior": {
       "version": 2,
@@ -1217,7 +1217,7 @@
      "parentId": "m-frame",
      "x": 320,
      "y": 40,
-     "w": 200,
+     "w": 343,
      "h": 40,
      "rotation": 0,
      "fills": [
@@ -1243,7 +1243,7 @@
      "gap": 8,
      "padding": 12,
      "strokeAlign": "inside",
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fixed",
      "layoutSizingV": "fixed",
      "behavior": {
       "version": 2,
@@ -1536,7 +1536,7 @@
      "parentId": "m-frame",
      "x": 320,
      "y": 140,
-     "w": 200,
+     "w": 343,
      "h": 40,
      "rotation": 0,
      "fills": [
@@ -1562,7 +1562,7 @@
      "gap": 8,
      "padding": 12,
      "strokeAlign": "inside",
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fixed",
      "layoutSizingV": "fixed",
      "behavior": {
       "version": 2,
@@ -1855,7 +1855,7 @@
      "parentId": "m-frame",
      "x": 320,
      "y": 240,
-     "w": 200,
+     "w": 343,
      "h": 40,
      "rotation": 0,
      "fills": [
@@ -1881,7 +1881,7 @@
      "gap": 8,
      "padding": 12,
      "strokeAlign": "inside",
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fixed",
      "layoutSizingV": "fixed",
      "behavior": {
       "version": 2,
@@ -2174,7 +2174,7 @@
      "parentId": "m-frame",
      "x": 320,
      "y": 340,
-     "w": 200,
+     "w": 343,
      "h": 40,
      "rotation": 0,
      "fills": [
@@ -2200,7 +2200,7 @@
      "gap": 8,
      "padding": 12,
      "strokeAlign": "inside",
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fixed",
      "layoutSizingV": "fixed",
      "behavior": {
       "version": 2,
@@ -2493,7 +2493,7 @@
      "parentId": "m-frame",
      "x": 320,
      "y": 440,
-     "w": 200,
+     "w": 343,
      "h": 40,
      "rotation": 0,
      "fills": [
@@ -2519,7 +2519,7 @@
      "gap": 8,
      "padding": 12,
      "strokeAlign": "inside",
-     "layoutSizingH": "hug",
+     "layoutSizingH": "fixed",
      "layoutSizingV": "fixed",
      "behavior": {
       "version": 2,

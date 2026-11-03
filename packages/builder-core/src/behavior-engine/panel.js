@@ -5,6 +5,7 @@ import { autoMatchCollection, createBinding, setVariableBinding } from './bindin
 import { iconNeedsOf } from './icon-slot.js';
 import { carryPlacementIcons, iconDefsOf, slotsOfValue } from './anatomy.js';
 import { isPropVisible, resolveProps, setInstanceProp } from './instance-props.js';
+import { bindSizePatch } from './template-master.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
 
 /** @typedef {import('../templates/schema.js').TemplateSchema} TemplateSchema */
@@ -216,8 +217,10 @@ export function setInstanceValue(instance, master, prop, value) {
     const prev = resolveProps(template, instance?.behavior?.props ?? {});
     let props = setInstanceProp(template, instance?.behavior?.props ?? {}, prop, value);
     const def = template.props[prop];
-    // Mutually exclusive booleans (a Button's loading and disabled): turning one on turns the other off in the same write, so one undo step covers it.
+    // Mutually exclusive booleans (see exclusiveWith): turning one on turns the other off in the same write, so one undo step covers it.
     if (def.type === 'boolean' && value === true && typeof def.exclusiveWith === 'string' && def.exclusiveWith) props = setInstanceProp(template, props, def.exclusiveWith, false);
+    // Turning a toggle on fills its empty text (see fillEmpty): only when empty, never overwritten, and never removed when turned off.
+    if (def.type === 'boolean' && value === true && def.fillEmpty && template.props[def.fillEmpty.prop]?.source === 'literal' && (prev[def.fillEmpty.prop] ?? '') === '') props = setInstanceProp(template, props, def.fillEmpty.prop, def.fillEmpty.text);
     if (def.type === 'enum' && def.slots) {
         // One placement change carries the live icon across slots in the same write, so one undo step covers it.
         for (const [name, carried] of Object.entries(carryPlacementIcons(template, prop, prev, value))) props = setInstanceProp(template, props, name, carried);
@@ -248,7 +251,8 @@ function afterClearing(template, props, names) {
 
 /**
  * Plans a master changing its template. The instances clear their values through the store, using the old template. Choosing
- * the template the master already has plans nothing. `binding` is undefined when the master becomes unbound.
+ * the template the master already has plans nothing. `binding` is undefined when the master becomes unbound. `size` is the
+ * template's fixed width (see bindSizePatch): written once at bind time, never on a rebind.
  * @param {{ behavior?: any }} master
  * @param {{ behavior?: any }[]} instances every instance of the master, on every page
  * @param {string | null} templateId
@@ -258,12 +262,13 @@ export function planTemplateChange(master, instances, templateId, collections) {
     const current = boundTemplate(master);
     if ((current?.template.id ?? null) === templateId) return { changed: false, binding: undefined, updates: [] };
     const binding = setMasterTemplate(templateId, collections);
+    const size = templateId === null ? null : bindSizePatch(TEMPLATES.get(templateId), current?.template.id ?? null);
     const updates = [];
     for (const inst of instances) {
         if (!inst.behavior?.props) continue;
         updates.push({ node: inst, behavior: afterClearing(current?.template ?? null, inst.behavior.props, Object.keys(inst.behavior.props)) });
     }
-    return { changed: true, binding, updates };
+    return { changed: true, binding, size, updates };
 }
 
 /**
@@ -280,7 +285,8 @@ export function planCollectionChange(master, prop, collectionId, collections) {
 }
 
 /**
- * Writes a plan onto the master and the instances it names. The only place a plan is written, so the editor and tests share it.
+ * Writes a plan onto the master and the instances it names. The only place a plan is written, so the editor and tests share it
+ * (the bind-time size goes onto the master with the binding, in the same step).
  * @param {{ behavior?: any }} master
  * @param {{ changed: boolean, binding: any, updates: { node: any, behavior: any }[] }} plan
  */
@@ -288,6 +294,7 @@ export function applyPlan(master, plan) {
     if (!plan.changed) return;
     if (plan.binding === undefined) delete master.behavior;
     else master.behavior = plan.binding;
+    if (plan.size) Object.assign(master, plan.size);
     for (const u of plan.updates) {
         if (u.behavior === undefined) delete u.node.behavior;
         else u.node.behavior = u.behavior;

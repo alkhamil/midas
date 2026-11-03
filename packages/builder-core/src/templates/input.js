@@ -69,8 +69,8 @@ export const INPUT = {
         suffixKind: { source: 'literal', type: 'enum', options: ['text', 'icon'], default: 'text', slots: { icon: 'suffixIcon' }, control: 'segmented', visibleIf: { prop: 'hasSuffix', is: true }, remembered: true },
         suffixText: { source: 'literal', type: 'string', default: '', node: { key: 'suffixText', field: 'text' }, visibleIf: sideShown('Suffix', 'text'), remembered: true },
         suffixIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: sideShown('Suffix', 'icon'), remembered: true },
-        disabled: { source: 'literal', type: 'boolean', default: false },
-        readOnly: { source: 'literal', type: 'boolean', default: false },
+        disabled: { source: 'literal', type: 'boolean', default: false, exclusiveWith: 'readOnly', fillEmpty: { prop: 'placeholder', text: 'Enter text input' } },
+        readOnly: { source: 'literal', type: 'boolean', default: false, exclusiveWith: 'disabled', fillEmpty: { prop: 'value', text: 'Text input' } },
     },
     tokens: {
         fromSize: ['height', 'valueTypography', 'addonTypography', 'placeholderTypography', 'countTypography', 'paddingX', 'paddingY', 'gap', 'radius', 'iconSize', 'clearIconSize'],
