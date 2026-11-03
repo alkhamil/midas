@@ -11,6 +11,7 @@ export * from './behavior-engine/anatomy.js';
 export * from './behavior-engine/managed-layers.js';
 export * from './behavior-engine/content-slots.js';
 export * from './behavior-engine/slot-rules.js';
+export * from './behavior-engine/slot-property.js';
 export * from './behavior-engine/child-order.js';
 export * from './behavior-engine/preview.js';
 export * from './behavior-engine/codegen.js';
