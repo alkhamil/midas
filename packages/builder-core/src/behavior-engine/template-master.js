@@ -4,7 +4,7 @@
 // creates only what is missing; user layers are never deleted or restyled. Bindings go through the existing planner (planBindTokens),
 // so a generated master is bound the same way a hand-bound one is. An instance is a copy of its master's subtree with the part
 // visibility and text its props say (partWrites, literalFields), which is what the canvas and Play draw.
-import { canvasPartsOf, literalFields, partWrites } from './display.js';
+import { canvasPartsOf, literalFields, nodeFieldPatch, partWrites } from './display.js';
 import { planBindTokens, applyBindTokens } from './bind-tokens.js';
 import { resolveProps } from './instance-props.js';
 import { controlOf, indexAmongLaterSlots, placementsOfDef, replacedSlotsOf, slotDefsOf } from './anatomy.js';
@@ -222,6 +222,9 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
     const ids = new Map([[master.id, id(master.id)], ...subtree.map(n => [n.id, id(n.id)])]);
     const copy = (n, parentId) => ({ ...structuredClone(n), id: ids.get(n.id), parentId, sourceId: n.id, component: false, isInstance: n.id === master.id, overrides: {}, version: 0 });
     const root = { ...copy(master, null), behavior: { version: BEHAVIOR_DATA_VERSION, props: { ...props } }, varModes: { ...varModes } };
+    // The fields a prop writes beyond visible and text (a layout, a gap, a width) are the instance's own from the start.
+    const fieldWrites = writes.filter(w => !['visible', 'text'].includes(w.field));
+    for (const w of fieldWrites.filter(w => w.key === 'root')) Object.assign(root, nodeFieldPatch(w.field, w.value, root.type));
     const out = [root];
     for (const n of subtree) {
         // A part copy takes its visibility and text from the writes for its key; a text layer takes the text its prop writes.
@@ -230,6 +233,7 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
         const visible = writes.find(w => w.key === key && w.field === 'visible');
         if (visible) next.visible = visible.value;
         if (n.behavior?.slot !== undefined) next.visible = slotShown(template, n.behavior.slot, resolved);
+        for (const w of fieldWrites.filter(w => w.key === key)) Object.assign(next, nodeFieldPatch(w.field, w.value, next.type));
         const text = writes.find(w => w.key === key && w.field === 'text');
         if (text && 'text' in next) next.text = text.value;
         out.push(next);

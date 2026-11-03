@@ -39,8 +39,8 @@ export const NODE_PROPERTIES = {
  * @type {Record<'frame' | 'text', Record<string, { kind: 'boolean' | 'string', values?: Record<string, string> }>>}
  */
 export const NODE_FIELDS = {
-    frame: { visible: { kind: 'boolean' } },
-    text: { text: { kind: 'string' }, visible: { kind: 'boolean' } },
+    frame: { visible: { kind: 'boolean' }, layout: { kind: 'enum', options: ['horizontal', 'vertical'] }, gap: { kind: 'number' }, width: { kind: 'number' } },
+    text: { text: { kind: 'string' }, visible: { kind: 'boolean' }, width: { kind: 'number' } },
     arc: { visible: { kind: 'boolean' } },
 };
 
@@ -195,6 +195,7 @@ export function literalFields(template, props) {
         const spec = NODE_FIELDS[targetKindOf(template, key)][field];
         const raw = props[prop];
         if (spec.kind === 'boolean') out.push({ key, field, value: spec.values[String(raw === true)] });
+        else if (spec.kind === 'number') out.push({ key, field, value: raw == null ? null : Number(raw) });
         else out.push({ key, field, value: String(raw) });
     }
     return out;
@@ -207,5 +208,50 @@ export function literalFields(template, props) {
  * @returns {{ key: string, field: string }[]}
  */
 export function literalFieldNames(template) {
-    return nodeWritersOf(template).map(({ key, field }) => ({ key, field }));
+    return nodeWritersOf(template).flatMap(({ key, field }) => (OWNED_NODE_FIELDS[field] ?? [field]).map(name => ({ key, field: name })));
+}
+
+/** The node fields a prop's field writes: `width` is a fixed width (or hug), so it owns the width, its sizing and, for a text, whether it measures itself. */
+const OWNED_NODE_FIELDS = { width: ['w', 'layoutSizingH', 'autoW'] };
+
+/**
+ * What a field write puts on a node: the field itself, except `width`, which is a fixed width (its sizing fixed, and a text no longer measures itself) or, with
+ * no number, hug (and a text measures itself again); and `gap`, where no number is none.
+ * @param {string} field
+ * @param {unknown} value
+ * @param {string} type the node's type (`text` or a frame)
+ * @returns {Record<string, unknown>}
+ */
+export function nodeFieldPatch(field, value, type) {
+    if (field === 'width') {
+        if (value == null) return type === 'text' ? { layoutSizingH: 'hug', autoW: true } : { layoutSizingH: 'hug' };
+        return type === 'text' ? { w: value, layoutSizingH: 'fixed', autoW: false } : { w: value, layoutSizingH: 'fixed' };
+    }
+    if (field === 'gap') return { gap: value == null ? 0 : value };
+    return { [field]: value };
+}
+
+/**
+ * The data attributes and custom properties the props that write layout, gap and width put on the root of Play and of the export, so the stylesheet's rules
+ * (fieldRules in the codegen) draw them: a layout is `data-<prop>`, a gap or a width `--<template>-<prop>` in px (none for no width).
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ * @param {Record<string, unknown>} props the resolved props
+ * @returns {{ attrs: Record<string, string>, vars: Record<string, string> }}
+ */
+export function fieldStyleOf(template, props) {
+    /** @type {Record<string, string>} */
+    const attrs = {}, vars = {};
+    for (const { prop, field } of nodeWritersOf(template)) {
+        if (field === 'layout') attrs[`data-${prop}`] = String(props[prop]);
+        else if ((field === 'gap' || field === 'width') && props[prop] != null) vars[`--${template.id}-${prop}`] = `${props[prop]}px`;
+    }
+    return { attrs, vars };
+}
+
+/**
+ * The prop writers whose fields the export draws with data attributes and custom properties, as { prop, key, field }.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ */
+export function fieldWritersOf(template) {
+    return nodeWritersOf(template).filter(({ field }) => ['layout', 'gap', 'width'].includes(field));
 }

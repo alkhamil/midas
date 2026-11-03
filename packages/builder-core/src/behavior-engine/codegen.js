@@ -4,7 +4,7 @@
 import { previewOf } from './preview.js';
 import { variableProps } from './registry.js';
 import { resolveProps } from './instance-props.js';
-import { NODE_PROPERTIES, canvasPartsOf, placeholderPartOf, targetKindOf } from './display.js';
+import { NODE_PROPERTIES, canvasPartsOf, fieldWritersOf, placeholderPartOf, targetKindOf } from './display.js';
 import { pathCommands, svgPathD } from '../geometry/shapes.js';
 import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js';
 import { cssVarOf } from './tokens.js';
@@ -90,6 +90,12 @@ function componentSource(template, name, problems) {
         params.push(event.name);
     }
     const slotted = (template.slots ?? []).length > 0;
+    // The props that write a gap or a width reach the stylesheet as custom properties on the root (a width of none is not set); a layout is a data attribute.
+    const varPairs = fieldWritersOf(template).filter(w => w.field !== 'layout').map(w => {
+        const none = template.props[w.prop].default === null ? `${w.prop} == null ? undefined : ` : '';
+        return `'--${template.id}-${w.prop}': ${none}\`\${${w.prop}}px\``;
+    });
+    const varsExpr = varPairs.length ? `{ ${varPairs.join(', ')} }` : null;
     // Whatever turns the disabled state on: its own prop, and the prop of each state that is an alias of it (the Input's Read only).
     const disabledProp = Object.values(template.persistentStates).filter(def => def.prop === template.persistentStates[template.element.disabledState].prop || def.as === template.element.disabledState).map(def => def.prop).join(' || ');
     const children = [];
@@ -164,11 +170,12 @@ function componentSource(template, name, problems) {
     const attrs = [
         ...Object.entries(tagAttrs).map(([key, value]) => `${key}="${value}"`),
         slotted ? `className={['${template.id}', className].filter(Boolean).join(' ')}` : `className="${template.id}"`,
-        ...(slotted ? ['ref={ref}', 'style={style}'] : []),
+        ...(slotted ? ['ref={ref}', varsExpr ? `style={{ ...${varsExpr}, ...style } as CSSProperties}` : 'style={style}'] : varsExpr ? [`style={${varsExpr}}`] : []),
         ...(template.interaction?.wave ? ['data-wave'] : []),
         ...(template.interaction?.wave && !template.events.some(event => event.name === 'onClick') ? ['onClick={(e) => { if (blocked) return; waveDown(e.currentTarget); }}'] : []),
         ...(template.interaction?.wave ? [`onAnimationEnd={(e) => { if (e.animationName === '${WAVE_KEYFRAMES}') e.currentTarget.removeAttribute('data-wave-on'); }}`] : []),
         ...dims.map(dim => `data-${dim}={${dim}}`),
+        ...fieldWritersOf(template).filter(w => w.field === 'layout').map(w => `data-${w.prop}={${w.prop}}`),
         // Only some elements have a `disabled` attribute; any other root says it with aria-disabled (and the schema's state pseudo selects on it).
         ...(ctl ? [] : [DISABLEABLE.has(tag) ? `disabled={${disabledProp}}` : `aria-disabled={${disabledProp} || undefined}`]),
         ...template.events.map(event => `${DOM_EVENT[event.name]}={${event.name === 'onClick' ? (template.interaction?.wave ? 'blocked ? undefined : (e) => { if (onClick) onClick(e); waveDown(e.currentTarget); }' : 'blocked ? undefined : onClick') : event.name}}`),
@@ -366,6 +373,27 @@ function reducedMotion(template) {
 }
 
 /**
+ * The rules that read what the layout, gap and width props put on the root (see fieldStyleOf): a layout is one rule per option on the data attribute, a gap
+ * and a width read their custom property (a width falls back to auto, the hugging layer).
+ * @param {any} template
+ * @returns {string[]}
+ */
+function fieldRules(template) {
+    return fieldWritersOf(template).flatMap(({ prop, key, field }) => {
+        const target = key === 'root' ? '' : ` .${template.id}-${key}`;
+        if (field === 'layout') return template.props[prop].options.map(option => `.${template.id}[data-${prop}="${option}"]${target} {
+  flex-direction: ${option === 'horizontal' ? 'row' : 'column'};
+}
+`);
+        const own = key === 'root' ? `.${template.id}` : `.${template.id}-${key}`;
+        return [`${own} {
+  ${field === 'gap' ? `gap: var(--${template.id}-${prop})` : `width: var(--${template.id}-${prop}, auto)`};
+}
+`];
+    });
+}
+
+/**
  * The rule of each container of the anatomy: the box frame's own auto layout and flow sizing, as the canvas lays it out (a missing frame is laid out as its
  * schema says). Its children are styled by their own rules.
  * @param {any} template
@@ -458,7 +486,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     blocks.push(...iconHoverRules(template));
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
-    blocks.push(...groupRules(template, master, childrenOf), ...slotRules(template, master, childrenOf));
+    blocks.push(...fieldRules(template), ...groupRules(template, master, childrenOf), ...slotRules(template, master, childrenOf));
     const stroke = strokeRules(template, master);
     if (stroke) blocks.push(stroke);
     if (template.interaction) blocks.push(reducedMotion(template));

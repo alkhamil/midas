@@ -526,6 +526,7 @@ function nodeProblems(schema) {
         const field = NODE_FIELDS[kind]?.[def.node.field];
         if (!field) { out.push(`prop "${name}" writes "${def.node.field}", which a ${kind} does not take`); continue; }
         if (def.type !== field.kind) out.push(`prop "${name}" is ${def.type} but writes "${def.node.field}", which takes ${field.kind}`);
+        else if (field.kind === 'enum') for (const option of def.options ?? []) if (!field.options.includes(option)) out.push(`prop "${name}" offers "${option}", which "${def.node.field}" does not take`);
     }
     const states = [...Object.keys(isPlainObject(schema.persistentStates) ? schema.persistentStates : {}), ...Object.keys(isPlainObject(schema.previewStates) ? schema.previewStates : {})];
     const pseudo = isPlainObject(schema.statePseudo) ? schema.statePseudo : {};

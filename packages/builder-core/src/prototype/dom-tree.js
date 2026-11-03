@@ -18,7 +18,7 @@ import { controlOf, placementsOfDef, slotDefsOf } from '../behavior-engine/anato
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { repeatCount } from '../behavior-engine/slot-rules.js';
-import { canvasPartsOf, counterLabel, placeholderPartOf, stateOn } from '../behavior-engine/display.js';
+import { canvasPartsOf, counterLabel, fieldStyleOf, placeholderPartOf, stateOn } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
@@ -243,6 +243,9 @@ function renderTemplate(n, template, parent, scope) {
         attrs[`data-${dim}`] = collection ? resolveMode(collection, n, scope.byId, scope.pageVarModes) ?? '' : '';
     }
     const props = resolveProps(template, n.behavior?.props ?? {});
+    // The layout, gap and width props reach the stylesheet's rules as the export gives them: a data attribute and custom properties on the root.
+    const fields = fieldStyleOf(template, props);
+    Object.assign(attrs, fields.attrs);
     if (!control && stateOn(template, template.element.disabledState, props)) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true', tabindex: '-1' });
     // A layer that blocks its click (a loading Button) stays enabled, but its clicks fire nothing (see isDisabledTarget).
     if (template.element.blockClickProps.some(prop => props[prop] === true)) attrs['data-blocked'] = true;
@@ -364,7 +367,7 @@ function renderTemplate(n, template, parent, scope) {
     // The fill and stroke layers are absolutely positioned, so they are not laid-out children.
     // A top-level component that hugs its content is inline-flex, so it keeps its natural width in the frame (as the export's root does).
     const flowCount = children.length - (strokeEl ? 1 : 0) - (fillEl ? 1 : 0);
-    const style = { display: ownSizingOf(n, 'h') === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...placement(n, parent, scope.responsive), ...rootLayoutOf(instanceLayoutOf(master, n), flowCount) };
+    const style = { display: ownSizingOf(n, 'h') === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...fields.vars, ...placement(n, parent, scope.responsive), ...rootLayoutOf(instanceLayoutOf(master, n), flowCount) };
     // The host draws no border of its own: the overlay is the stroke, and the box is positioned for it.
     if (hasStroke) {
         Object.assign(style, { borderWidth: '0px' });
