@@ -8,7 +8,7 @@
 // → ConflictError (409).
 
 import { boot } from './boot.js';
-import { activateDocumentTemplates, assertBehaviorData, assertBehaviorShape } from '@midas/builder-core';
+import { withDocumentTemplates, assertBehaviorData, assertBehaviorShape } from '@midas/builder-core';
 export { settings } from './legacyStorage.js';
 
 export class ApiError extends Error {
@@ -392,11 +392,9 @@ export const projectStorage = {
             created: meta.created ?? file.created,
             assets
         };
-        // The document's Custom templates are the registry before any node is checked against it.
-        activateDocumentTemplates(doc.behavior);
         // A lazy open holds only the first page; the masters of its instances may be on the pages still queued.
-        if (lazyQueues.get(fileId)?.length) assertBehaviorShape(doc);
-        else assertBehaviorData(doc);
+        // The nodes are checked against this file's Custom templates; the registry is the open document's again afterwards (the file is adopted when it opens).
+        withDocumentTemplates(doc.behavior, () => (lazyQueues.get(fileId)?.length ? assertBehaviorShape(doc) : assertBehaviorData(doc)));
         return doc;
     },
 
