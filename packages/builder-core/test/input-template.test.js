@@ -4,7 +4,8 @@ import { validateTemplateSchema } from '../src/behavior-engine/validate-schema.j
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
 import { generateComponent } from '../src/behavior-engine/codegen.js';
 import { previewOf } from '../src/behavior-engine/preview.js';
-import { planBindTokens } from '../src/behavior-engine/bind-tokens.js';
+import { planBindTokens, applyBindTokens } from '../src/behavior-engine/bind-tokens.js';
+import { applyTemplateToFrame, masterLayersByKey } from '../src/behavior-engine/template-master.js';
 import { toDomTree } from '../src/prototype/dom-tree.js';
 import { INPUT } from '../src/templates/input.js';
 import { setInstanceProp } from '../src/behavior-engine/instance-props.js';
@@ -123,6 +124,44 @@ test('Play draws the clear icon from its managed slot, kept and hidden while the
     const off = toDomTree(doc([master(), instance({}, { disabled: true })]), 'i1').root;
     assert.equal(off.children.find(c => c.tag === 'input').attrs.disabled, true);
     assert.equal(off.children.some(c => c.attrs?.['data-role'] === 'clear'), false, 'no clear icon without Allow Clear');
+});
+
+test('a new, a matched and a rebound master carry identical placeholder and count bindings', () => {
+    let n = 0;
+    const idOf = key => `n-${key}-${++n}`;
+    const blankFrame = () => ({ id: `f-${++n}`, name: 'Input', type: 'frame', parentId: null, component: true, layout: 'horizontal', gap: 0, padding: 0, x: 0, y: 0, w: 200, h: 40, fills: [], layoutSizingH: 'hug', layoutSizingV: 'hug' });
+    const textLayer = frame => ({ id: `t-${++n}`, name: 'Value', type: 'text', parentId: frame.id, text: 'hello', x: 0, y: 0, w: 60, h: 20, fills: [], fontFamily: 'Inter', fontSize: 14, fontWeight: 400, fontStyle: 'normal', lineHeight: 1.4, letterSpacing: 0, textAlign: 'left', textDecoration: 'none', textCase: 'none', direction: 'auto', autoW: true, layoutSizingH: 'hug', layoutSizingV: 'hug' });
+    const varsByName = nodes => Object.fromEntries(nodes.filter(l => l.vars).map(l => [l.name, l.vars]));
+    // Create: the generator on an empty frame.
+    const created = applyTemplateToFrame(INPUT, { frame: blankFrame(), children: [], binding: model.binding, variables, idOf });
+    const createdVars = varsByName(created.created);
+    assert.deepEqual(createdVars.placeholder, { 'fills.0': 'v-placeholder', typography: 's-placeholderTypography' });
+    assert.deepEqual(createdVars.count, { 'fills.0': 'v-placeholder', typography: 's-countTypography' });
+    // The typography lives in the Size collection, the color in the Variant collection.
+    const collectionOf = id => variables.collections.find(c => c.id === variables.items.find(i => i.id === id).collectionId).name;
+    assert.equal(collectionOf('s-placeholderTypography'), 'Input Size');
+    assert.equal(collectionOf('s-countTypography'), 'Input Size');
+    assert.equal(collectionOf('v-placeholder'), 'Input Variant');
+    // Bind-frame: the generator on a frame that already holds a text layer.
+    const frame2 = blankFrame(), existing = [textLayer(frame2)];
+    const bound = applyTemplateToFrame(INPUT, { frame: frame2, children: existing, binding: model.binding, variables, idOf });
+    const createdVars2 = varsByName(bound.created);
+    assert.deepEqual(createdVars2.placeholder, createdVars.placeholder);
+    assert.deepEqual(createdVars2.count, createdVars.count);
+    // The pre-existing text layer is matched as the label and bound the same way.
+    const labelHit = bound.matched.find(m => m.key === 'label');
+    assert.deepEqual(existing.find(e => e.id === labelHit.nodeId).vars, createdVars.label);
+    // Bind-component: the generator's layer list over an unbound master, then the bind plan.
+    const frame3 = blankFrame();
+    const made = applyTemplateToFrame(INPUT, { frame: frame3, children: [], binding: model.binding, variables, idOf });
+    const nodes = [frame3, ...made.created];
+    for (const node of nodes) delete node.vars;
+    const layers = masterLayersByKey(INPUT, frame3, nodes);
+    assert.deepEqual(layers.map(l => l.key).sort(), ['count', 'label', 'placeholder', 'prefixText', 'root', 'suffixText']);
+    const planned = planBindTokens({ template: INPUT, binding: model.binding, layers, variables });
+    assert.deepEqual(planned.problems, []);
+    applyBindTokens(layers, planned.ops);
+    assert.deepEqual(varsByName(nodes.filter(x => x !== frame3)), createdVars);
 });
 
 test('binding covers collections, stroke and state modes; the border follows the Status mode through the Variant alias', () => {
