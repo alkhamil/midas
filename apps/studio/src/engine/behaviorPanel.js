@@ -15,10 +15,10 @@ const labelOfState = state => PREVIEW_STATES.find(([id]) => id === state)?.[1] ?
  * `findings` are the diagnostics of the node, or null while pages are still loading. `preview` (instance) is the resolved
  * preview with the tokens its state overrides. `code` (bound master) is the generator's problems, if any.
  */
-export function behaviorPanelHtml({ kind, panel, esc, findings = [], preview, code, autoFix = null, expanded = false, templates = [] }) {
+export function behaviorPanelHtml({ kind, panel, esc, findings = [], preview, code, autoFix = null, expanded = false, templates = [], custom }) {
     if (kind === 'none') return empty('Select a component or one of its instances to set its behavior.');
-    if (kind === 'frame') return frameHtml(templates, esc);
-    if (kind === 'master') return masterHtml(panel, esc, findings, code, autoFix, expanded);
+    if (kind === 'frame') return frameHtml(templates, esc, custom);
+    if (kind === 'master') return masterHtml(panel, esc, findings, code, autoFix, expanded, custom);
     return instanceHtml(panel, esc, findings, preview, expanded);
 }
 
@@ -50,18 +50,29 @@ function note(text, esc) {
     return `<div class="small-label">${esc(text)}</div>`;
 }
 
+/**
+ * The Custom template box: the schema as JSON in a textarea and Apply. `custom` is the last attempt (its text, and the problems Apply found, one row
+ * each); without it there is no box.
+ */
+function customHtml(custom, esc) {
+    if (!custom) return '';
+    const box = `<textarea class="cmp-input" data-bp="custom-schema" rows="10" spellcheck="false" aria-label="Custom template schema">${esc(custom.text)}</textarea>`;
+    const apply = `<button class="wide-button full-width" data-bp-action="custom-apply">Apply</button>`;
+    return section('Custom template', row('Schema', box, esc) + apply + custom.problems.map(p => note(p, esc)).join(''), esc);
+}
+
 /** A plain frame: its Template dropdown. Choosing a template builds its parts on the frame; nothing it has is removed. */
-function frameHtml(templates, esc) {
+function frameHtml(templates, esc, custom) {
     const templateRow = row('Template', `<select data-bp="frame-template" aria-label="Template">
         <option value="">None</option>${templates.map(t => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('')}
     </select>`, esc);
-    return section('Template and binding', templateRow + note('Choosing a template builds its parts on this frame. Layers it already has are kept.', esc), esc);
+    return section('Template and binding', templateRow + note('Choosing a template builds its parts on this frame. Layers it already has are kept.', esc), esc) + customHtml(custom, esc);
 }
-function masterHtml(panel, esc, findings, code, autoFix = null, expanded = false) {
+function masterHtml(panel, esc, findings, code, autoFix = null, expanded = false, custom) {
     const templateRow = row('Template', `<select data-bp="template" aria-label="Template">
         <option value="">None</option>${panel.templates.map(t => `<option value="${esc(t.id)}" ${t.id === panel.templateId ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}
     </select>`, esc);
-    if (!panel.templateId) return section('Template and binding', templateRow + empty('Choose a template to bind this component.'), esc);
+    if (!panel.templateId) return section('Template and binding', templateRow + empty('Choose a template to bind this component.'), esc) + customHtml(custom, esc);
     // The collections the icon slots need, first: the same binding slots as the dimensions, so picking one picks the other.
     const needs = (panel.needs ?? []).map(r => {
         const badge = r.collectionId === null ? '' : `<span class="badge">${r.matched ? 'Auto-matched' : 'Picked manually'}</span>`;
@@ -90,7 +101,8 @@ function masterHtml(panel, esc, findings, code, autoFix = null, expanded = false
         + block('Collections', needs + collections + bindTokensRow(findings, esc), esc)
         + section('Contract (read-only)', contract, esc)
         + section('Code', generate, esc)
-        + diagnosticsSection(findings, code?.problems ?? [], esc, null, autoFix, expanded);
+        + diagnosticsSection(findings, code?.problems ?? [], esc, null, autoFix, expanded)
+        + (panel.templateId.startsWith('custom-') ? customHtml(custom, esc) : '');
 }
 
 function instanceHtml(panel, esc, findings, preview, expanded = false) {
