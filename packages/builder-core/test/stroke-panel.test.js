@@ -37,8 +37,9 @@ test('a dashed Variant writes dash only and deletes a stale gap; an explicit gap
 });
 
 test('a dotted Variant style falls back to solid: dots are removed', () => {
-    assert.deepEqual(variantStrokePatch({}, 'dotted'), { strokeStyle: 'solid' });
+    assert.equal(variantStrokePatch({}, 'dotted'), null, 'already solid: nothing to write');
     assert.deepEqual(variantStrokePatch({ strokeStyle: 'dot' }, 'dotted'), { strokeStyle: 'solid' });
+    assert.deepEqual(variantStrokePatch({ strokeStyle: 'dash', strokeDash: 4 }, 'dotted'), { strokeStyle: 'solid' });
 });
 
 function playRoot(extra, { bound = false } = {}) {
@@ -55,14 +56,16 @@ test('a dot stroke draws solid on the Play host', () => {
 });
 
 test('an unbound butt cap stays CSS: caps the host cannot draw force the SVG overlay, butt does not', () => {
-    const css = playRoot({ stroke: '#18181b', strokeWidth: 1, strokeStyle: 'dash', strokeDash: 6, strokeGap: 4, strokeCap: 'butt' });
+    const css = playRoot({ stroke: '#18181b', strokeWidth: 1, strokeStyle: 'dash', strokeCap: 'butt' });
     assert.equal(css.children.some(c => c.html), false, 'no SVG overlay for butt');
     assert.equal(css.style.borderStyle, 'dashed');
-    const svg = playRoot({ stroke: '#18181b', strokeWidth: 1, strokeStyle: 'dash', strokeDash: 6, strokeGap: 4, strokeCap: 'round' });
+    const svg = playRoot({ stroke: '#18181b', strokeWidth: 1, strokeStyle: 'dash', strokeAlign: 'inside', strokeCap: 'round' });
     assert.equal(svg.style.borderStyle, 'none', 'the host draws none while the overlay draws');
     const overlay = svg.children.find(c => c.html);
-    assert.ok(overlay, 'the SVG overlay draws the custom pattern');
+    assert.ok(overlay, 'the SVG overlay draws the round caps');
     assert.match(overlay.html, /stroke-linecap="round"/);
+    const lengths = playRoot({ stroke: '#18181b', strokeWidth: 1, strokeStyle: 'dash', strokeAlign: 'inside', strokeDash: 6, strokeGap: 4, strokeCap: 'butt' });
+    assert.ok(lengths.children.some(c => c.html), 'custom lengths still need the overlay, whatever the cap');
 });
 
 test('the export draws a dot master solid: no dotted anywhere', () => {

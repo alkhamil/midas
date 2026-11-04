@@ -280,7 +280,7 @@ function rootBorderWidthOf(master) {
     return typeof master.strokeWidth === 'number' && master.strokeWidth > 0 ? master.strokeWidth : 0;
 }
 function clipOf(master) {
-    if (master.strokeStyle === 'dash' || master.strokeStyle === 'dot') return 'border-box';
+    if (master.strokeStyle === 'dash') return 'border-box';
     if (master.strokeVisible === false) return 'border-box';
     const split = typeof master.stroke === 'string' ? splitColor(master.stroke) : null;
     const alpha = (split ? split.alpha / 100 : 1) * (master.strokeOpacity ?? 1);
@@ -358,10 +358,10 @@ function displayRules(template, master, childrenOf, geometry) {
  * The CSS line style of a master's stroke: its own Solid, Dash or Dots. A Variant that sets a style (dashed) overrides it by its
  * attribute rule, so the master's style is the default of every Variant that sets none.
  * @param {any} master
- * @returns {'solid' | 'dashed' | 'dotted'}
+ * @returns {'solid' | 'dashed'}
  */
 function lineStyleOf(master) {
-    return master.strokeStyle === 'dash' ? 'dashed' : master.strokeStyle === 'dot' ? 'dotted' : 'solid';
+    return master.strokeStyle === 'dash' ? 'dashed' : 'solid';
 }
 
 /**

@@ -345,14 +345,14 @@ function renderTemplate(n, template, parent, scope) {
     const shape = { ...n };
     if (shape.radius === undefined) shape.radius = master.radius;
     if (shape.radii === undefined) shape.radii = master.radii;
-    const customDash = shape.strokeDash !== undefined || shape.strokeGap !== undefined || shape.strokeCap !== undefined;
+    const customDash = shape.strokeDash !== undefined || shape.strokeGap !== undefined || (shape.strokeCap !== undefined && shape.strokeCap !== 'butt');
     const hasStroke = strokeIsOn(shape);
     const known = new Set((scope.variables.items || []).map(i => i.id));
     const bound = hasStroke && shape.vars?.stroke != null && known.has(shape.vars.stroke);
     // A bound uniform solid inside stroke takes the fill into a layer of its own, clipped inside the stroke, so the fill's anti-aliased
     // edge sits under the stroke and not outside it (a fill on the host shows a light ring just outside the stroke's corners). Any
     // other stroke leaves the host its own fill: a dash shows the fill through its gaps, as the canvas does.
-    const useSvg = hasStroke && customDash && !bound; const bw = typeof shape.strokeWidth === 'number' && shape.strokeWidth > 0 ? shape.strokeWidth : 0; const lineStyle = shape.strokeStyle === 'dash' ? 'dashed' : shape.strokeStyle === 'dot' ? 'dotted' : 'solid'; const clip = (shape.strokeStyle === 'dash' || shape.strokeStyle === 'dot' || (typeof shape.stroke === 'string' && shape.stroke.length > 7) || (shape.strokeOpacity ?? 1) < 1 || shape.strokeVisible === false) ? 'border-box' : 'padding-box'; const fillEl = null && bound && (shape.strokeStyle ?? 'solid') === 'solid' && strokeSidesUniform(shape) && (shape.strokeAlign ?? 'center') === 'inside'
+    const useSvg = hasStroke && customDash && !bound; const bw = typeof shape.strokeWidth === 'number' && shape.strokeWidth > 0 ? shape.strokeWidth : 0; const lineStyle = shape.strokeStyle === 'dash' ? 'dashed' : 'solid'; const clip = (shape.strokeStyle === 'dash' || (typeof shape.stroke === 'string' && shape.stroke.length > 7) || (shape.strokeOpacity ?? 1) < 1 || shape.strokeVisible === false) ? 'border-box' : 'padding-box'; const fillEl = null && bound && (shape.strokeStyle ?? 'solid') === 'solid' && strokeSidesUniform(shape) && (shape.strokeAlign ?? 'center') === 'inside'
         ? fillLayerEl(shape, `var(${cssVarOf(template.id, 'bg')})`)
         : null;
     // The fill layer is the first child and the content paints above it: each laid-out child is lifted to z 0, in tree order after
@@ -421,7 +421,7 @@ function borderOverlayEl(n, bound = false) {
     // A bound stroke inherits its colour from the host, which the class rules set per mode and state. The line style is the node's own
     // (Solid, Dash, Dots): the Variant only sets it when the Variant changes, so a style set by hand is what Play draws.
     const color = bound ? 'inherit' : colorWithAlpha(n.stroke, n.strokeOpacity);
-    const lineStyle = n.strokeStyle === 'dash' ? 'dashed' : n.strokeStyle === 'dot' ? 'dotted' : 'solid';
+    const lineStyle = n.strokeStyle === 'dash' ? 'dashed' : 'solid';
     /** @type {Record<string, string>} */
     const style = {
         position: 'absolute',

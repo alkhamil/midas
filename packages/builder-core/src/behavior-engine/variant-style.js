@@ -33,17 +33,17 @@ export function borderStyleOf(template, modes) {
 }
 
 /**
- * What to write on an instance's root so it draws a Variant's border style: the node's own stroke style (dashed is dash 4 4, dotted is dot, solid is solid).
+ * What to write on an instance's root so it draws a Variant's border style: the node's own stroke style (dashed is dash 4 with gap following, dotted falls back to solid).
  * Null when it already does, and when the template has no variant styles (the node keeps what it has). The Variant sets the style when it changes; the
  * node owns it after that.
  * @param {{ strokeStyle?: string, strokeDash?: number }} node
  * @param {'solid' | 'dashed' | 'dotted' | null} style
- * @returns {{ strokeStyle: string, strokeDash?: number, strokeGap?: number } | null}
+ * @returns {{ strokeStyle: string, strokeDash?: number } | null}
  */
 export function variantStrokePatch(node, style) {
     if (style === null) return null;
     const own = node.strokeStyle ?? 'solid';
-    if (style === 'dashed') return own === 'dash' && node.strokeDash === 4 ? null : { strokeStyle: 'dash', strokeDash: 4, strokeGap: 4 };
-    if (style === 'dotted') return own === 'dot' ? null : { strokeStyle: 'dot' };
+    if (style === 'dashed') return own === 'dash' && node.strokeDash === 4 ? null : { strokeStyle: 'dash', strokeDash: 4 };
+    if (style === 'dotted') return own === 'solid' ? null : { strokeStyle: 'solid' };
     return own === 'solid' ? null : { strokeStyle: 'solid' };
 }

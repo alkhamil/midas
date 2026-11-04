@@ -34,7 +34,7 @@ test('the node the canvas draws and Play reads gets the style the Variant says: 
     assert.deepEqual(variantStrokePatch({}, 'dashed'), { strokeStyle: 'dash', strokeDash: 4 });
     assert.deepEqual(variantStrokePatch({ strokeStyle: 'dash', strokeDash: 4 }, 'dashed'), null, 'already dashed');
     assert.deepEqual(variantStrokePatch({ strokeStyle: 'dash', strokeDash: 9 }, 'dashed'), { strokeStyle: 'dash', strokeDash: 4 }, 'the Variant sets its dash when the Variant changes');
-    assert.deepEqual(variantStrokePatch({}, 'dotted'), { strokeStyle: 'solid' });
+    assert.equal(variantStrokePatch({}, 'dotted'), null, 'already solid');
     assert.deepEqual(variantStrokePatch({ strokeStyle: 'dot' }, 'dotted'), { strokeStyle: 'solid' });
     assert.deepEqual(variantStrokePatch({ strokeStyle: 'dash', strokeDash: 4 }, 'solid'), { strokeStyle: 'solid' });
     assert.deepEqual(variantStrokePatch({}, 'solid'), null, 'a node with no style is solid');

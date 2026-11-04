@@ -267,9 +267,9 @@ export function strokeSidesUniform(n) {
 
 /** @param {any} n */
 export function strokeDashArray(n) {
-    const w = n.strokeWidth || 1;
-    if (n.strokeStyle === 'dash') return [n.strokeDash ?? 10, n.strokeGap ?? 10];
-    if (n.strokeStyle === 'dot') return [.01, Math.max(2, w * 2)];
+    
+    if (n.strokeStyle === 'dash') return [n.strokeDash ?? 10, n.strokeGap ?? n.strokeDash ?? 10];
+    
     return [];
 }
 
