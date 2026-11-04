@@ -290,6 +290,14 @@ function clipOf(master) {
 function displayRules(template, master, childrenOf, geometry) {
     const tokens = Object.values(template.tokens).flat();
     const entry = labelEntryOf(master.id, childrenOf, master);
+    // Every layer under the master with the frame that holds it, for the text part each display key draws from.
+    const at = (id, parent) => (childrenOf(id) ?? []).flatMap(c => [{ node: c, parent }, ...at(c.id, c)]);
+    const under = at(master.id, master);
+    // A text part lays out from its own layer: only the value/label fills the row, the rest hug, as on the canvas
+    // and in Play. A canvas part matches by marker, an affix text by name; a key with no layer keeps the label layout.
+    const entryFor = key => under.find(({ node: c }) => c.behavior?.part === key)
+        ?? under.find(({ node: c }) => c.type === 'text' && c.name === key && !c.behavior?.part && !c.behavior?.slot)
+        ?? entry;
     return Object.entries(template.display).map(([key, props]) => {
         const kind = targetKindOf(template, key);
         // The root lays its label and its icon slots out like the canvas auto layout frame. Play draws the same rules
@@ -297,7 +305,7 @@ function displayRules(template, master, childrenOf, geometry) {
         // natural width. The label keeps its own width and alignment from its layer.
         const decls = key === 'root'
             ? ['  display: inline-flex;\n', '  box-sizing: border-box;\n', ...cssDecls(rootLayoutOf(master, 0)), ...(master.layoutSizingH === 'fixed' && master.vars?.w === undefined && master.w > 0 ? [`  width: ${master.w}px;\n`] : [])]
-            : kind === 'text' ? cssDecls(labelLayoutOf(entry?.node, entry?.parent ?? master)) : [];
+            : kind === 'text' ? cssDecls(labelLayoutOf(entryFor(key)?.node, entryFor(key)?.parent ?? master)) : [];
         if (key === 'root' && template.outline) {
             // The outline width includes the border: the ring starts back at the border's inner edge (an inside stroke),
             // so the visible ring is the width minus the border with no gap. A border as wide as the outline leaves no ring.
