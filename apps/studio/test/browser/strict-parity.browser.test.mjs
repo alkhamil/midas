@@ -58,6 +58,7 @@ test('a created Button and Input measure the same on the canvas and in Play at e
                 const pair = `pair-${templateId}-${mode.name.toLowerCase()}-${state.name.toLowerCase()}`;
                 const m = await measurePair(page, browser, id, label, pair);
                 failures.push(...m.failures);
+            if (state.name === 'placeholder' && m.rows.length !== 1) failures.push(`${label}: the empty input draws ${m.rows.length} parts, not the root alone`);
                 if (m.rows) report.push({ label, rows: m.rows, unmapped: m.unmapped, diff: m.diff, edges: m.edges });
             }
             // Back to the rest state before the next Size mode, so each mode starts from the same props.

@@ -102,8 +102,8 @@ test('the exported Input renders its input, clear and counter where Play draws t
             const canvas = await canvasTree(page, id);
             const play = await playTree(page, id, `export-${mode.name.toLowerCase()}-${state.name}`);
             const ids = Object.fromEntries(canvas.map(n => [n.name, n]));
-            // Play draws the placeholder where the value is empty and the placeholder shows, and the value's box otherwise.
-            const controlId = state.name === 'empty' ? ids.placeholder.id : ids.label.id;
+            // Play's single input always carries the value layer's id, in every state: the placeholder is an HTML attribute on it, never an element of its own.
+            const controlId = ids.label.id;
             // The export's props: the variable props by mode id, the literal props as the state sets them.
             const props = {
                 ...resolveProps(template, { ...data.instanceProps, ...state.props }),
