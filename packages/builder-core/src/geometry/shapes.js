@@ -338,7 +338,7 @@ export function svgStrokeExtra(n, f, e, prefix) {
     let el;
     if (uniform) {
         const w = sides ? sides.t : n.strokeWidth, dash = strokeDashArray(n);
-        el = `<g${wrap}>${svgShapeEl(n, f, `fill="none" stroke="${e(n.stroke)}" stroke-opacity="${op}" stroke-width="${f(align === 'center' ? w : w * 2)}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`)}</g>`;
+        el = `<g${wrap}>${svgShapeEl(n, f, `fill="none" stroke="${e(n.stroke)}" stroke-opacity="${op}" stroke-width="${f(align === 'center' ? w : w * 2)}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-linecap="${n.strokeCap || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`)}</g>`;
     }
     else {
         const { t, r, b, l } = sides, W = n.w, H = n.h, off = v => align === 'inside' ? 0 : align === 'center' ? v / 2 : v, fl = `fill="${e(n.stroke)}" fill-opacity="${op}"`;

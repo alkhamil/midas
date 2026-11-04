@@ -605,7 +605,7 @@ function fluidStrokeOverlay(n) {
     const rx = Math.max(0, +((hasRadii(n) ? n.radii[0] : n.radius) || 0));
     const rect = attrs => `<rect x="0" y="0" width="100%" height="100%" rx="${f(rx)}" ${attrs}/>`;
     const dash = strokeDashArray(n);
-    const doubled = `fill="none" stroke="${e(n.stroke)}" stroke-opacity="${f(n.strokeOpacity ?? 1)}" stroke-width="${f(w * 2)}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`;
+    const doubled = `fill="none" stroke="${e(n.stroke)}" stroke-opacity="${f(n.strokeOpacity ?? 1)}" stroke-width="${f(w * 2)}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-linecap="${n.strokeCap || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`;
     if ((n.strokeAlign ?? 'center') === 'inside') {
         const stroked = rect(doubled);
         return `<svg width="100%" height="100%" overflow="visible" style="position:absolute;left:0;top:0;display:block;overflow:visible"><clipPath id="${prefix}k">${rect('')}</clipPath><g clip-path="url(#${prefix}k)">${stroked}</g></svg>`;
