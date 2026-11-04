@@ -67,7 +67,7 @@
 
 - The Behavior panel's Text|Icon segmented control and the Input prefix/suffix rows are covered by unit tests only; they have not been looked at in a browser. `affix.browser.test.mjs` was edited to the new rows and not run.
 
-- Strict parity (browser) fails 3 of ~100 Input xs pairs, on HEAD and since: `xs allowClear` and `xs showCount` "outline not found on both shots" and `xs suffix` outline 0.70px. The part boxes match within 0.01px, so it is the outline edge check on a 16px control, not layout. Part 2 (single border) could not re-verify without a browser; presumed unchanged.
+- Strict parity (browser) fails 3 of ~100 Input xs pairs, on HEAD and since: `xs allowClear` and `xs showCount` "outline not found on both shots" and `xs suffix` outline 0.70px. The part boxes match within 0.01px, so it is the outline edge check on a 16px control, not layout. Part 2 (single border) could not re-verify without a browser; presumed unchanged. 2026-11-04: two consecutive full browser runs (before and after the export text-part fill fix) show all 50 strict pairs green including every xs pair, so the 3 failures did not reproduce; kept for one more run before deleting.
 - The browser harness reuses any server already listening on 4000/5174, so a stale `test:browser` run (or its servers) shares the database with the next run and makes it flaky (timeouts, a "changed somewhere else" dialog). Stop stale runs before a baseline. Browser DevTools unchecking a declaration comments it out in the style attribute and is not a product bug.
 
 - Fase 0 browser verification (canvas, Play, codegen in a real React project) not done — no browser automation.
