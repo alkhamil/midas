@@ -111,7 +111,7 @@ test('codegen writes the border from the variable, the placeholder rule, and sta
     assert.match(css, /:has\(:disabled\) \{/);
 });
 
-test('Play draws a span root with the input, and a bound inside stroke emits no inline border', () => {
+test('Play draws a span root with the input, and a bound inside stroke draws on the host with no inline colour', () => {
     const { root, styles } = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [master(), instance()] }], variables }, 'i1');
     assert.equal(root.tag, 'span');
     assert.equal(root.attrs.class, 'input');
@@ -119,8 +119,8 @@ test('Play draws a span root with the input, and a bound inside stroke emits no 
     const input = root.children.find(c => c.tag === 'input');
     assert.equal(input.attrs.class, 'input-label');
     assert.equal(input.attrs.value, '');
-    assert.equal(root.style.borderWidth, '0px');
-    assert.equal(root.style.borderStyle, undefined);
+    assert.equal(root.style.borderWidth, '1px');
+    assert.equal(root.style.borderStyle, 'solid');
     assert.equal(root.style.borderColor, undefined);
     assert.match(styles, /\.input-label::placeholder \{\n  color: var\(--input-placeholder\);\n\}/);
 });

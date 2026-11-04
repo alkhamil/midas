@@ -339,20 +339,20 @@ function renderTemplate(n, template, parent, scope) {
         for (let i = 0; i < copies; i++) kids.push(...renderChildren(layer, scope));
         children.push({ tag: 'div', nodeId: layer.id, attrs: { class: `${template.id}-${slot.id}` }, style: {}, children: kids });
     }
-    // The stroke is the node's own, drawn as an overlay over the box. An overlay is not laid out, so the children sit where the padding
-    // puts them, as on the canvas (the stroke is inside the box). A CSS outline is not used for it: it would override the focus ring.
-    // The shape comes from the master, as on the canvas. A bound stroke takes its colour and style from the host (the class rules).
+    // The stroke is the host's own border, so the children sit where the compensated padding
+    // puts them, as on the canvas (the border is inside the box). A CSS outline is not used for it: it would override the focus ring.
+    // The shape comes from the instance, as on the canvas. A bound stroke takes its colour from the host (the class rules).
     const shape = { ...n };
     if (shape.radius === undefined) shape.radius = master.radius;
     if (shape.radii === undefined) shape.radii = master.radii;
-    const customDash = shape.strokeDash !== undefined || shape.strokeGap !== undefined || shape.strokeStyle === 'dot';
+    const customDash = shape.strokeDash !== undefined || shape.strokeGap !== undefined || shape.strokeCap !== undefined;
     const hasStroke = strokeIsOn(shape);
     const known = new Set((scope.variables.items || []).map(i => i.id));
     const bound = hasStroke && shape.vars?.stroke != null && known.has(shape.vars.stroke);
     // A bound uniform solid inside stroke takes the fill into a layer of its own, clipped inside the stroke, so the fill's anti-aliased
     // edge sits under the stroke and not outside it (a fill on the host shows a light ring just outside the stroke's corners). Any
     // other stroke leaves the host its own fill: a dash shows the fill through its gaps, as the canvas does.
-    const fillEl = bound && (shape.strokeStyle ?? 'solid') === 'solid' && strokeSidesUniform(shape) && (shape.strokeAlign ?? 'center') === 'inside'
+    const useSvg = hasStroke && customDash && !bound; const bw = typeof shape.strokeWidth === 'number' && shape.strokeWidth > 0 ? shape.strokeWidth : 0; const lineStyle = shape.strokeStyle === 'dash' ? 'dashed' : shape.strokeStyle === 'dot' ? 'dotted' : 'solid'; const clip = (shape.strokeStyle === 'dash' || shape.strokeStyle === 'dot' || (typeof shape.stroke === 'string' && shape.stroke.length > 7) || (shape.strokeOpacity ?? 1) < 1 || shape.strokeVisible === false) ? 'border-box' : 'padding-box'; const fillEl = null && bound && (shape.strokeStyle ?? 'solid') === 'solid' && strokeSidesUniform(shape) && (shape.strokeAlign ?? 'center') === 'inside'
         ? fillLayerEl(shape, `var(${cssVarOf(template.id, 'bg')})`)
         : null;
     // The fill layer is the first child and the content paints above it: each laid-out child is lifted to z 0, in tree order after
@@ -362,17 +362,17 @@ function renderTemplate(n, template, parent, scope) {
         children.unshift(fillEl);
     }
     // A bound stroke is always a CSS border (its colour follows the host's states); an unbound one with its own dash lengths is SVG.
-    const strokeEl = hasStroke ? (customDash && !bound ? strokeOverlayEl(shape) : borderOverlayEl(shape, bound)) : null;
+    const strokeEl = hasStroke ? (customDash && !bound ? strokeOverlayEl(shape) : null) : null;
     if (strokeEl) children.push(strokeEl);
     // The root is a flex row like the canvas auto layout frame (codegen emits the same rules as inline-flex; see displayRules).
-    // The fill and stroke layers are absolutely positioned, so they are not laid-out children.
+    // The stroke overlay is absolutely positioned, so it is not a laid-out child.
     // A top-level component that hugs its content is inline-flex, so it keeps its natural width in the frame (as the export's root does).
     const flowCount = children.length - (strokeEl ? 1 : 0) - (fillEl ? 1 : 0);
     const style = { display: ownSizingOf(n, 'h') === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...fields.vars, ...placement(n, parent, scope.responsive), ...rootLayoutOf(instanceLayoutOf(master, n), flowCount) };
-    // The host draws no border of its own: the overlay is the stroke, and the box is positioned for it.
+    // The host draws its own border, and the box is positioned for it.
     if (hasStroke) {
-        Object.assign(style, { borderWidth: '0px' });
-        if (!style.position) style.position = 'relative';
+        Object.assign(style, useSvg ? { borderWidth: '0px', borderStyle: 'none', paddingInline: `var(${cssVarOf(template.id, template.display.root.paddingX)})`, paddingBlock: `var(${cssVarOf(template.id, template.display.root.paddingY)})` } : (() => { const uniform = strokeSidesUniform(shape); if (!uniform) { const s = strokeSideWidths(shape); const per = {}; for (const [k, v] of [['Top', s.t], ['Right', s.r], ['Bottom', s.b], ['Left', s.l]]) { per[`border${k}Width`] = `${v}px`; per[`border${k}Style`] = v > 0 ? lineStyle : 'none'; if (!bound && v > 0) per[`border${k}Color`] = colorWithAlpha(shape.stroke, shape.strokeOpacity); } per.backgroundClip = 'border-box'; return per; } return bw > 0 ? { borderWidth: `${bw}px`, borderStyle: lineStyle, ...(bound ? {} : { borderColor: colorWithAlpha(shape.stroke, shape.strokeOpacity) }), backgroundClip: clip } : { borderWidth: '0px', borderStyle: 'none' }; })()); if (hasStroke && !style.position) style.position = 'relative';
+        ;
     }
     if (fillEl) style.background = 'transparent';
     return { tag: template.element.tag, nodeId: n.id, attrs, style, children };

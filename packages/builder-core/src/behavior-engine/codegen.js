@@ -7,7 +7,7 @@ import { resolveProps } from './instance-props.js';
 import { NODE_PROPERTIES, LOADING_OPACITY, canvasPartsOf, fieldWritersOf, placeholderPartOf, targetKindOf } from './display.js';
 import { pathCommands, svgPathD } from '../geometry/shapes.js';
 import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js';
-import { cssVarOf, tokenValueOf } from './tokens.js';
+import { cssVarOf, splitColor, tokenValueOf } from './tokens.js';
 import { rootLayoutOf, labelLayoutOf, flexOf, flowSizing } from './layout.js';
 import { labelEntryOf } from './layers.js';
 import { modeOfStyleKey } from './variant-style.js';
@@ -276,6 +276,17 @@ function shownJsx(cond) {
  * token's custom property. Literal sources (width, text) are not CSS and are written by the component.
  * @param {import('../templates/schema.js').TemplateSchema} template
  */
+function rootBorderWidthOf(master) {
+    return typeof master.strokeWidth === 'number' && master.strokeWidth > 0 ? master.strokeWidth : 0;
+}
+function clipOf(master) {
+    if (master.strokeStyle === 'dash' || master.strokeStyle === 'dot') return 'border-box';
+    if (master.strokeVisible === false) return 'border-box';
+    const split = typeof master.stroke === 'string' ? splitColor(master.stroke) : null;
+    const alpha = (split ? split.alpha / 100 : 1) * (master.strokeOpacity ?? 1);
+    if (alpha < 1) return 'border-box';
+    return 'padding-box';
+}
 function displayRules(template, master, childrenOf, geometry) {
     const tokens = Object.values(template.tokens).flat();
     const entry = labelEntryOf(master.id, childrenOf, master);
@@ -296,8 +307,9 @@ function displayRules(template, master, childrenOf, geometry) {
             else decls.push(`  outline: ${geometry.outline}px solid var(${cssVarOf(template.id, 'outline-color')});\n`, `  outline-offset: ${template.outline.offset - geometry.border}px;\n`);
             decls.push(`  transition: ${FOCUS_TRANSITION};\n`);
         }
-        // The root draws no border: its stroke is the ::before overlay (see strokeRules), so the children sit inside the padding.
-        if (key === 'root') decls.push('  border-width: 0;\n', `  border-style: ${lineStyleOf(master)};\n`);
+        // The root draws its own border, so the children sit inside the compensated padding.
+        if (key === 'root' && 'stroke' in (template.display.root ?? {})) { const w = rootBorderWidthOf(master); decls.push(`  border-width: ${w}px;\n`, `  border-style: ${w === 0 ? 'none' : lineStyleOf(master)};\n`);
+        decls.push(`  background-clip: ${clipOf(master)};\n`); }
         if (key === 'root' && (template.interaction?.wave || 'stroke' in (template.display.root ?? {}))) decls.push('  position: relative;\n');
         // A control slot draws as a native input: it owns text only, so the reset comes first and the
         // token-driven declarations below win for colour and font metrics. Generic: any template with a
@@ -324,7 +336,7 @@ function displayRules(template, master, childrenOf, geometry) {
             const { css, perMember } = NODE_PROPERTIES[kind][prop];
             if (!css || !tokens.includes(source)) continue;
             if (perMember) { for (const name of css) decls.push(`  ${name}: var(${cssVarOf(template.id, source)}-${name});\n`); continue; }
-            for (const name of [css].flat()) decls.push(`  ${name}: var(${cssVarOf(template.id, source)});\n`);
+            for (const name of [css].flat()) { if (key === 'root' && (prop === 'paddingX' || prop === 'paddingY')) { const bw = rootBorderWidthOf(master); if (bw > 0) { decls.push(`  ${name}: max(0px, calc(var(${cssVarOf(template.id, source)}) - ${bw}px));\n`); continue; } } decls.push(`  ${name}: var(${cssVarOf(template.id, source)});\n`); }
         }
         if (!decls.length) return '';
         const selector = key === 'root' ? `.${template.id}` : `.${template.id}-${key}`;
@@ -353,17 +365,17 @@ function lineStyleOf(master) {
 }
 
 /**
- * The root stroke rule: the ::before overlay takes the host's colour and style, and sits where the master's stroke does: inside the
- * box (no layout), or grown outward by half its width (centred) or all of it (outside), with the corners grown the same.
+ * Removed: the root draws its own border; there is no ::before overlay.
+ * Kept as an empty stub so call sites read unchanged; delete with the call site when line endings allow.
  * @param {import('../templates/schema.js').TemplateSchema} template
  * @param {any} master
  */
 function strokeRules(template, master) {
-    if (!('stroke' in (template.display.root ?? {}))) return '';
-    const width = master.strokeWidth ?? 1;
-    const grow = master.strokeAlign === 'outside' ? width : master.strokeAlign === 'center' ? width / 2 : 0;
-    const inset = grow ? `-${grow}px` : '0';
-    const radius = grow ? `calc(var(${cssVarOf(template.id, 'radius')}) + ${grow}px)` : 'inherit';
+    return '';
+    ;
+    ;
+    ;
+    ;
     return `.${template.id}::before {\n  content: '';\n  position: absolute;\n  inset: ${inset};\n  box-sizing: border-box;\n  border-width: ${width}px;\n  border-color: inherit;\n  border-style: inherit;\n  border-radius: ${radius};\n  pointer-events: none;\n}\n`;
 }
 

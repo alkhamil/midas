@@ -62,8 +62,8 @@ test('the root is border-box, centres its content on the cross axis and takes it
     assert.match(root, /\n {2}box-sizing: border-box;/);
     assert.match(root, /\n {2}height: var\(--button-height\);/);
     assert.match(root, /\n {2}align-items: center;/);
-    assert.match(root, /\n {2}padding-block: var\(--button-padding-y\);/);
-    assert.match(root, /\n {2}border-width: 0;/);
+    assert.match(root, /\n {2}padding-block: max\(0px, calc\(var\(--button-padding-y\) - 1px\)\);/);
+    assert.match(root, /\n {2}border-width: 1px;/);
 });
 
 test('each of the five sizes has its height token and a zero vertical padding; horizontal padding excludes the 1px border', () => {

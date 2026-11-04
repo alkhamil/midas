@@ -1,5 +1,5 @@
-// A Button's stroke style in Play and in the export. The canvas is the source: the node's stroke style (Solid, Dash, Dots), its
-// alignment and its radius. A bound stroke keeps the host's state colour.
+// A Button's stroke style in Play and in the export. The canvas is the source: the node's stroke style (Solid, Dash, Dots).
+// The host draws the border; a bound stroke leaves its colour to the class rule so states can recolour it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { toDomTree } from '../src/prototype/dom-tree.js';
@@ -19,47 +19,41 @@ function drawn(instanceExtra, { variant = 'outlined' } = {}) {
     return toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [master, instance] }], variables }, 'i1').root;
 }
 const boundStroke = extra => ({ stroke: '#d9d9d9', strokeWidth: 1, strokeAlign: 'inside', vars: { stroke: border }, ...extra });
-const strokeOf = el => el.children.at(-1);
 
 for (const [strokeStyle, css] of [['dash', 'dashed'], ['dot', 'dotted'], ['solid', 'solid'], [undefined, 'solid']]) {
-    test(`a bound ${strokeStyle ?? 'unset'} stroke draws ${css} in Play, with the host's state colour, whatever the Variant says`, () => {
+    test(`a bound ${strokeStyle ?? 'unset'} stroke draws ${css} on the host, whatever the Variant says`, () => {
         for (const variant of ['outlined', 'dashed']) {
-            const stroke = strokeOf(drawn(boundStroke({ strokeStyle }), { variant }));
-            assert.equal(stroke.html, undefined, 'a CSS border, not an SVG with a fixed colour');
-            assert.equal(stroke.style.borderStyle, css, `${variant}: the node's style`);
-            assert.equal(stroke.style.borderColor, 'inherit', `${variant}: the colour follows the host's states`);
+            const el = drawn(boundStroke({ strokeStyle }), { variant });
+            assert.equal(el.children.some(c => c.html), false, 'a CSS border, not an SVG with a fixed colour');
+            assert.equal(el.style.borderStyle, css, `${variant}: the node's style`);
+            assert.equal(el.style.borderColor, undefined, `${variant}: the colour follows the host states via the class rule`);
+            assert.equal(el.style.borderWidth, '1px');
         }
     });
 }
 
-test('the Dashed Variant\'s own dash (Dash 4, Gap 4 on the instance) stays a CSS border, so hover and press still recolour it', () => {
-    const stroke = strokeOf(drawn(boundStroke({ strokeStyle: 'dash', strokeDash: 4, strokeGap: 4 }), { variant: 'dashed' }));
-    assert.equal(stroke.html, undefined);
-    assert.equal(stroke.style.borderStyle, 'dashed');
-    assert.equal(stroke.style.borderColor, 'inherit');
+test('the Dashed Variant\'s own dash stays a CSS border, so hover and press still recolour it', () => {
+    const el = drawn(boundStroke({ strokeStyle: 'dash', strokeDash: 4, strokeGap: 4 }), { variant: 'dashed' });
+    assert.equal(el.children.some(c => c.html), false);
+    assert.equal(el.style.borderStyle, 'dashed');
+    assert.equal(el.style.borderColor, undefined);
 });
 
-for (const [strokeAlign, inset, radius] of [['inside', '0px', '6px'], ['center', '-1px', '7px'], ['outside', '-2px', '8px']]) {
-    test(`a bound ${strokeAlign} Dash and Dots stroke keeps its place and its corners: inset ${inset}, radius ${radius}`, () => {
-        for (const strokeStyle of ['dash', 'dot']) {
-            const stroke = strokeOf(drawn(boundStroke({ strokeStyle, strokeAlign, strokeWidth: 2 })));
-            assert.equal(stroke.style.inset, inset);
-            assert.equal(stroke.style.borderRadius, radius);
-            assert.equal(stroke.style.borderWidth, '2px');
-        }
-    });
-}
-
-test('an unbound stroke takes its own style, and one with its own dash pattern is still drawn exactly, as SVG', () => {
-    assert.equal(strokeOf(drawn({ stroke: '#d9d9d9', strokeWidth: 1, strokeStyle: 'dash' })).style.border, '1px dashed #d9d9d9');
-    assert.match(strokeOf(drawn({ stroke: '#d9d9d9', strokeWidth: 1, strokeStyle: 'dash', strokeDash: 6, strokeGap: 2 })).html, /stroke-dasharray="6 2"/);
+test('an unbound stroke takes its own style on the host, and one with its own dash pattern is still drawn exactly, as SVG', () => {
+    const plain = drawn({ stroke: '#d9d9d9', strokeWidth: 1, strokeStyle: 'dash' });
+    assert.equal(plain.style.borderWidth, '1px');
+    assert.equal(plain.style.borderStyle, 'dashed');
+    assert.equal(plain.style.borderColor, '#d9d9d9');
+    const custom = drawn({ stroke: '#d9d9d9', strokeWidth: 1, strokeStyle: 'dash', strokeDash: 6, strokeGap: 2 });
+    assert.equal(custom.style.borderWidth, '0px');
+    const svg = custom.children.find(c => c.html);
+    assert.ok(svg, 'the SVG overlay draws the custom pattern');
+    assert.match(svg.html, /stroke-dasharray="6 2"/);
 });
 
 /** The exported stylesheet for a master with the given stroke. */
 const exportCss = masterExtra => generateComponent(TEMPLATES.get('button'), model.binding, variables, 'Button', { id: 'm', type: 'frame', layout: 'horizontal', counterAlign: 'center', radius: 6, stroke: '#d9d9d9', strokeWidth: 1, strokeAlign: 'inside', ...masterExtra }, () => []).files['Button.css'];
 const rootRule = css => /\.button \{\n([\s\S]*?)\n\}/.exec(css)[1];
-const beforeRule = css => /\.button::before \{\n([\s\S]*?)\n\}/.exec(css)[1];
-const escape = s => s.replace(/[()+]/g, '\\$&');
 
 for (const [strokeStyle, css] of [['dash', 'dashed'], ['dot', 'dotted'], ['solid', 'solid'], [undefined, 'solid']]) {
     test(`the export's base border style is the master's ${strokeStyle ?? 'unset'} stroke (${css}); the Dashed Variant still sets its own`, () => {
@@ -69,21 +63,19 @@ for (const [strokeStyle, css] of [['dash', 'dashed'], ['dot', 'dotted'], ['solid
     });
 }
 
-test('the export keeps the fill on the root, and its stroke overlay draws no fill', () => {
+test('the export keeps the fill and the border on the root, with no overlay and no stacking patch', () => {
     const sheet = exportCss({});
     assert.match(rootRule(sheet), /\n {2}background-color: var\(--button-bg\);/);
-    assert.doesNotMatch(beforeRule(sheet), /background/);
+    assert.match(rootRule(sheet), /\n {2}border-width: 1px;/);
+    assert.doesNotMatch(sheet, /\.button::before/);
     assert.doesNotMatch(sheet, /z-index: -/);
     assert.doesNotMatch(sheet, /isolation/);
 });
 
-for (const [strokeAlign, width, inset, radius] of [['inside', 1, '0', 'inherit'], ['center', 2, '-1px', 'calc(var(--button-radius) + 1px)'], ['outside', 2, '-2px', 'calc(var(--button-radius) + 2px)']]) {
-    test(`the export's ${strokeAlign} stroke overlay: ${width}px wide, inset ${inset}, radius ${radius}`, () => {
-        const before = beforeRule(exportCss({ strokeAlign, strokeWidth: width }));
-        assert.match(before, new RegExp(`\\n {2}border-width: ${width}px;`));
-        assert.match(before, new RegExp(`\\n {2}inset: ${escape(inset)};`));
-        assert.match(before, new RegExp(`\\n {2}border-radius: ${escape(radius)};`));
-        assert.match(before, /\n {2}border-style: inherit;/);
-        assert.match(before, /\n {2}border-color: inherit;/);
-    });
-}
+test('the export draws every stroke align on the host inside the box', () => {
+    for (const strokeAlign of ['inside', 'center', 'outside']) {
+        const sheet = exportCss({ strokeAlign, strokeWidth: 2 });
+        assert.match(rootRule(sheet), /\n {2}border-width: 2px;/);
+        assert.doesNotMatch(sheet, /\.button::before/);
+    }
+});

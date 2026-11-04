@@ -74,7 +74,7 @@ test('Play draws the node\'s own stroke style on a bound stroke: dash is dashed,
     const overlayStyle = strokeStyle => {
         const instance = { ...mast, id: 'i1', component: false, isInstance: true, sourceId: 'btn', behavior: { version: 2, props: {} }, varModes: { [model.ids.variant]: 'uuid-dashed' }, strokeStyle };
         const { root } = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [mast, instance] }], variables: { collections, items } }, 'i1');
-        return root.children.find(c => c.style?.borderStyle)?.style.borderStyle;
+        return root.style.borderStyle;
     };
     assert.equal(overlayStyle('dash'), 'dashed');
     assert.equal(overlayStyle('dot'), 'dotted');

@@ -1,5 +1,6 @@
-// A Button's fill in Play: on any stage, behind its content and above the parent. No negative z-index and no stacking-context patch
-// on the host; the fill moves off the host only into a fill layer that is actually drawn.
+// A Button's fill in Play: on the host itself, behind its content and above the parent.
+// No negative z-index and no stacking-context patch on the host; no fill layer, no stroke overlay:
+// the host carries border, background and background-clip, so content never needs lifting.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { toDomTree } from '../src/prototype/dom-tree.js';
@@ -34,31 +35,27 @@ for (const stage of [white, dark]) {
     }
 }
 
-test('a bound uniform solid inside stroke: the fill is its own first layer, clipped inside the stroke; the content paints above it, the stroke above all', () => {
+test('a bound uniform solid inside stroke: the host carries border, background and clip; the content paints in place', () => {
     const el = drawn(boundStroke());
-    const [fill, stroke] = overlays(el);
-    assert.equal(el.children[0], fill, 'the fill layer is the first child');
-    assert.equal(el.children.at(-1), stroke, 'the stroke layer is the last child');
-    assert.equal(fill.style.background, 'var(--button-bg)');
-    assert.equal(fill.style.backgroundClip, 'padding-box');
-    assert.equal(fill.style.borderColor, 'transparent');
-    assert.equal(fill.style.borderWidth, '1px');
-    assert.equal(fill.style.borderRadius, '6px');
-    assert.equal(stroke.style.background, 'transparent');
-    assert.equal(el.style.background, 'transparent', 'the host fill moves to the fill layer');
-    for (const child of laidOut(el)) assert.equal(child.style.zIndex, '0', 'a laid-out child paints above the fill layer');
+    assert.deepEqual(overlays(el), [], 'no overlay layers');
+    assert.equal(el.style.borderWidth, '1px');
+    assert.equal(el.style.borderStyle, 'solid');
+    assert.equal(el.style.borderColor, undefined, 'the colour follows the host states via the class rule');
+    assert.equal(el.style.backgroundClip, 'padding-box');
+    assert.equal(el.style.background, undefined, 'the host fill comes from the class rule');
+    for (const child of laidOut(el)) assert.equal(child.style.zIndex, undefined, 'no child is lifted');
 });
 
 test('a stroke that draws no fill layer leaves the host its own fill', () => {
     for (const extra of [{ strokeStyle: 'dash' }, { strokeStyle: 'dot' }, { strokeAlign: 'center' }, { strokeAlign: 'outside' }, { vars: {} }]) {
         const el = drawn(boundStroke(extra));
-        assert.equal(overlays(el).length, 1, `one overlay, the stroke (${JSON.stringify(extra)})`);
+        assert.equal(overlays(el).length, extra.strokeDash !== undefined || extra.strokeGap !== undefined ? 1 : 0, `only a custom dash pattern keeps an overlay (${JSON.stringify(extra)})`);
         assert.equal(el.style.background, undefined, `the host keeps its class fill (${JSON.stringify(extra)})`);
         for (const child of laidOut(el)) assert.equal(child.style.zIndex, undefined);
     }
 });
 
-test('a solid Button whose border variable is transparent draws no stroke: the host keeps its fill', () => {
+test('a solid Button whose border variable is transparent draws no visible stroke: the host keeps its fill', () => {
     const el = drawn({ stroke: '#00000000', strokeWidth: 1, strokeOpacity: 0, strokeVisible: false, strokeAlign: 'inside', vars: { stroke: border } }, { variant: 'solid' });
     assert.equal(overlays(el).length, 0);
     assert.equal(el.style.background, undefined);
