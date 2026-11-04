@@ -95,10 +95,10 @@ for (const [templateId, sizeName] of [['button', 'sm'], ['button', 'lg'], ['inpu
         const r = await page.evaluate(id => {
             const el = document.querySelector(`.play-overlay [data-node-id="${id}"]`);
             const b = el.getBoundingClientRect();
-            // The stroke is the last absolute layer: a fill layer, when there is one, comes first.
-            const overlay = [...el.children].filter(c => getComputedStyle(c).position === "absolute").at(-1);
-            const rgb = getComputedStyle(overlay).borderTopColor.match(/\d+/g).slice(0, 3).map(Number);
-            return { x: b.x, y: b.y, w: b.width, h: b.height, radius: parseFloat(getComputedStyle(el).borderTopLeftRadius), stroke: rgb };
+            // One element draws the border: the stroke colour and the radius are read from the host itself.
+            const cs = getComputedStyle(el);
+            const rgb = cs.borderTopColor.match(/\d+/g).slice(0, 3).map(Number);
+            return { x: b.x, y: b.y, w: b.width, h: b.height, radius: parseFloat(cs.borderTopLeftRadius), stroke: rgb };
         }, id);
         const clip = { x: r.x - 12, y: r.y - 12, width: r.w + 24, height: r.h + 24 };
         const file = resolve(ARTIFACTS, `play-dark-corners-${templateId}-${sizeName.toLowerCase()}.png`);
