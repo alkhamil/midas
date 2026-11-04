@@ -19,7 +19,7 @@ function bodyOf(name) {
 
 test('the Style select offers Solid and Dashed, never Dots', () => {
     assert.ok(!src.includes(`['dot', 'Dots']`), 'no Dots option');
-    assert.ok(src.includes(`['dash', 'Dash']`), 'Dash stays');
+    assert.ok(src.includes(`['dash', 'Dashed']`), 'Dashed label');
     assert.ok(src.includes(`['solid', 'Solid']`), 'Solid stays');
 });
 
