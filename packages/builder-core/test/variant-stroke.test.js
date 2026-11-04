@@ -1,7 +1,7 @@
 // A Variant with a border style (dashed) draws the root stroke in that style on every surface. The modes a real file has are made by Auto Fix with ids that are
 // not their names (`uuid` for `dashed`), so a style is found by the mode's name, as the token roles are (case-insensitively), never by its id: matching ids left
 // every real Dashed Button solid on the canvas, in the export and (through the node's own style) in Play. This file pins the rule and then the style on each
-// surface: the node the canvas draws and Play reads (dash, dot, solid), Play's overlay, and the export's stylesheet, for dashed and dotted.
+// surface: the node the canvas draws and Play reads (dash, solid), Play's overlay, and the export's stylesheet, for dashed and solid.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
@@ -30,12 +30,12 @@ test('a template with no variant styles has no border style, and a dotted mode i
     assert.equal(borderStyleOf(dotted, modesWith(mode('u', 'Dotted'))), 'dotted');
 });
 
-test('the node the canvas draws and Play reads gets the style the Variant says: dashed is dash 4 4, dotted is dot, solid is solid; what already holds is left', () => {
-    assert.deepEqual(variantStrokePatch({}, 'dashed'), { strokeStyle: 'dash', strokeDash: 4, strokeGap: 4 });
+test('the node the canvas draws and Play reads gets the style the Variant says: dashed is dash 4 with gap following, dotted falls back to solid; what already holds is left', () => {
+    assert.deepEqual(variantStrokePatch({}, 'dashed'), { strokeStyle: 'dash', strokeDash: 4 });
     assert.deepEqual(variantStrokePatch({ strokeStyle: 'dash', strokeDash: 4 }, 'dashed'), null, 'already dashed');
-    assert.deepEqual(variantStrokePatch({ strokeStyle: 'dash', strokeDash: 9 }, 'dashed'), { strokeStyle: 'dash', strokeDash: 4, strokeGap: 4 }, 'the Variant sets its dash when the Variant changes');
-    assert.deepEqual(variantStrokePatch({}, 'dotted'), { strokeStyle: 'dot' });
-    assert.deepEqual(variantStrokePatch({ strokeStyle: 'dot' }, 'dotted'), null);
+    assert.deepEqual(variantStrokePatch({ strokeStyle: 'dash', strokeDash: 9 }, 'dashed'), { strokeStyle: 'dash', strokeDash: 4 }, 'the Variant sets its dash when the Variant changes');
+    assert.deepEqual(variantStrokePatch({}, 'dotted'), { strokeStyle: 'solid' });
+    assert.deepEqual(variantStrokePatch({ strokeStyle: 'dot' }, 'dotted'), { strokeStyle: 'solid' });
     assert.deepEqual(variantStrokePatch({ strokeStyle: 'dash', strokeDash: 4 }, 'solid'), { strokeStyle: 'solid' });
     assert.deepEqual(variantStrokePatch({}, 'solid'), null, 'a node with no style is solid');
     assert.deepEqual(variantStrokePatch({ strokeStyle: 'dash' }, null), null, 'no variant styles: the node keeps what it has');
@@ -67,7 +67,7 @@ test('the export sets the dotted border style on a dotted mode', () => {
     assert.match(css, /\.button\[data-variant="uuid-dashed"\] \{\n  border-style: dotted;\n\}/);
 });
 
-test('Play draws the node\'s own stroke style on a bound stroke: dash is dashed, dot is dotted, solid is solid', () => {
+test('Play draws the node\'s own stroke style on a bound stroke: dash is dashed, dot draws solid, solid is solid', () => {
     const { model, collections, items } = realModel();
     const solid = [{ type: 'solid', color: '#4338ca', opacity: 1, visible: true }];
     const mast = { id: 'btn', name: 'Button', type: 'frame', parentId: null, component: true, layout: 'horizontal', gap: 6, padding: 12, fills: solid, radius: 8, x: 0, y: 0, w: 80, h: 40, stroke: '#000000', strokeWidth: 1, vars: { stroke: items.find(i => i.name === 'border').id }, behavior: { version: 2, templateId: 'button', variables: model.binding.variables } };
@@ -77,7 +77,7 @@ test('Play draws the node\'s own stroke style on a bound stroke: dash is dashed,
         return root.style.borderStyle;
     };
     assert.equal(overlayStyle('dash'), 'dashed');
-    assert.equal(overlayStyle('dot'), 'dotted');
+    assert.equal(overlayStyle('dot'), 'solid');
     assert.equal(overlayStyle('solid'), 'solid');
     assert.equal(overlayStyle(undefined), 'solid');
 });

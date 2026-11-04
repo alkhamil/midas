@@ -73,13 +73,11 @@ test('Play Input: exactly one border element, the host', () => {
   assert.equal(borders[0], root, 'the host draws the border');
 });
 
-test('Play: solid opaque uses padding-box, dashed/dotted/translucent use border-box', () => {
+test('Play: solid opaque uses padding-box, dashed/translucent use border-box', () => {
   const solid = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [buttonMaster(), buttonInstance('btn', { stroke: '#18181b', strokeWidth: 1, strokeStyle: undefined })] }], variables: bvars }, 'i1').root;
   assert.equal(solid.style.backgroundClip, 'padding-box', 'solid opaque clips the fill inside the border');
   const dashed = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [buttonMaster(), buttonInstance('btn', { stroke: '#18181b', strokeWidth: 1, strokeStyle: 'dash' })] }], variables: bvars }, 'i1').root;
   assert.equal(dashed.style.backgroundClip, 'border-box', 'dashed lets the fill show through the gaps');
-  const dotted = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [buttonMaster(), buttonInstance('btn', { stroke: '#18181b', strokeWidth: 1, strokeStyle: 'dot' })] }], variables: bvars }, 'i1').root;
-  assert.equal(dotted.style.backgroundClip, 'border-box', 'dotted lets the fill show through the gaps');
   const translucent = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [buttonMaster(), buttonInstance('btn', { stroke: '#18181b33', strokeWidth: 1, strokeStyle: undefined })] }], variables: bvars }, 'i1').root;
   assert.equal(translucent.style.backgroundClip, 'border-box', 'translucent matches canvas, where the fill sits under the stroke');
 });

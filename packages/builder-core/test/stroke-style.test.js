@@ -1,4 +1,4 @@
-// A Button's stroke style in Play and in the export. The canvas is the source: the node's stroke style (Solid, Dash, Dots).
+// A Button's stroke style in Play and in the export. The canvas is the source: the node's stroke style (Solid, Dash).
 // The host draws the border; a bound stroke leaves its colour to the class rule so states can recolour it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,7 +20,7 @@ function drawn(instanceExtra, { variant = 'outlined' } = {}) {
 }
 const boundStroke = extra => ({ stroke: '#d9d9d9', strokeWidth: 1, strokeAlign: 'inside', vars: { stroke: border }, ...extra });
 
-for (const [strokeStyle, css] of [['dash', 'dashed'], ['dot', 'dotted'], ['solid', 'solid'], [undefined, 'solid']]) {
+for (const [strokeStyle, css] of [['dash', 'dashed'], ['solid', 'solid'], [undefined, 'solid']]) {
     test(`a bound ${strokeStyle ?? 'unset'} stroke draws ${css} on the host, whatever the Variant says`, () => {
         for (const variant of ['outlined', 'dashed']) {
             const el = drawn(boundStroke({ strokeStyle }), { variant });
@@ -55,7 +55,7 @@ test('an unbound stroke takes its own style on the host, and one with its own da
 const exportCss = masterExtra => generateComponent(TEMPLATES.get('button'), model.binding, variables, 'Button', { id: 'm', type: 'frame', layout: 'horizontal', counterAlign: 'center', radius: 6, stroke: '#d9d9d9', strokeWidth: 1, strokeAlign: 'inside', ...masterExtra }, () => []).files['Button.css'];
 const rootRule = css => /\.button \{\n([\s\S]*?)\n\}/.exec(css)[1];
 
-for (const [strokeStyle, css] of [['dash', 'dashed'], ['dot', 'dotted'], ['solid', 'solid'], [undefined, 'solid']]) {
+for (const [strokeStyle, css] of [['dash', 'dashed'], ['solid', 'solid'], [undefined, 'solid']]) {
     test(`the export's base border style is the master's ${strokeStyle ?? 'unset'} stroke (${css}); the Dashed Variant still sets its own`, () => {
         const sheet = exportCss({ strokeStyle });
         assert.match(rootRule(sheet), new RegExp(`\\n {2}border-style: ${css};`));

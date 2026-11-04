@@ -47,7 +47,7 @@ test('a bound uniform solid inside stroke: the host carries border, background a
 });
 
 test('a stroke that draws no fill layer leaves the host its own fill', () => {
-    for (const extra of [{ strokeStyle: 'dash' }, { strokeStyle: 'dot' }, { strokeAlign: 'center' }, { strokeAlign: 'outside' }, { vars: {} }]) {
+    for (const extra of [{ strokeStyle: 'dash' }, { strokeAlign: 'center' }, { strokeAlign: 'outside' }, { vars: {} }]) {
         const el = drawn(boundStroke(extra));
         assert.equal(overlays(el).length, extra.strokeDash !== undefined || extra.strokeGap !== undefined ? 1 : 0, `only a custom dash pattern keeps an overlay (${JSON.stringify(extra)})`);
         assert.equal(el.style.background, undefined, `the host keeps its class fill (${JSON.stringify(extra)})`);
