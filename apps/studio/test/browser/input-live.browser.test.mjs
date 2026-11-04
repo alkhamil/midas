@@ -60,6 +60,7 @@ test('the Input in Play follows typing and a click on its clear; the canvas stay
     const start = await playState(page);
     assert.equal(start.value, '');
     assert.equal(start.placeholderShown, true, 'the placeholder shows while the value is empty');
+    assert.equal(start.rootWidth, 343, `the Input root is the fixed 343px width before typing: ${start.rootWidth}`);
     assert.equal(start.clearHidden, true, 'the clear is hidden while the value is empty');
     assert.equal(start.count, '0', 'the counter starts at the length of the empty value');
     // On the screen: the placeholder is drawn in the input, and the hidden clear is not.
@@ -78,7 +79,7 @@ test('the Input in Play follows typing and a click on its clear; the canvas stay
     assert.equal(typed.placeholderShown, false, 'the placeholder hides once there is a value');
     assert.equal(typed.clearHidden, false, 'the clear shows while the value is not empty');
     assert.equal(typed.count, '5', 'the counter follows the typed length');
-    assert.ok(typed.rootWidth > start.rootWidth, `the box re-hugs the value: ${start.rootWidth} then ${typed.rootWidth}`);
+    assert.equal(typed.rootWidth, 343, `the fixed width stays 343 while typing, it does not re-hug: ${typed.rootWidth}`);
     // On the screen: the value is drawn, the clear and the counter are visible with ink, and the placeholder is gone.
     assert.ok(await inkOnScreen(browser, input, 'play-input-typed') > 0, 'the typed value is drawn on the screen');
     assert.ok(await page.locator('.play-overlay [data-role="clear"]').isVisible(), 'the clear is on the screen');
@@ -95,7 +96,7 @@ test('the Input in Play follows typing and a click on its clear; the canvas stay
     assert.equal(cleared.clearHidden, true, 'the clear hides itself');
     assert.equal(cleared.placeholderShown, true, 'the placeholder comes back');
     assert.equal(cleared.count, '0');
-    assert.ok(cleared.rootWidth <= start.rootWidth + 0.5, `the box returns to the placeholder width: ${cleared.rootWidth}`);
+    assert.equal(cleared.rootWidth, 343, `the fixed width stays 343 after clearing: ${cleared.rootWidth}`);
     // On the screen: the clear is gone again and the placeholder is drawn once more.
     assert.equal(await page.locator('.play-overlay [data-role="clear"]').isVisible(), false, 'the clear is off the screen once emptied');
     assert.ok(await inkOnScreen(browser, input, 'play-input-cleared') > 0, 'the placeholder is drawn again on the screen');
