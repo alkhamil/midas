@@ -1458,10 +1458,8 @@ function strokeSettingsHtml(n) {
     h += row('Style', `<select data-stp="strokeStyle" aria-label="Stroke style">${[['solid', 'Solid'], ['dash', 'Dash']].map(([v, l]) => `<option value="${v}" ${style === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`);
     if (style === 'dash')
         h += row('Dash', `<input type="number" min="0" step="1" data-stp="strokeDash" value="${fmt(n.strokeDash ?? 10)}" aria-label="Dash length">`) + row('Gap', `<input type="number" min="0" step="1" data-stp="strokeGap" value="${fmt(n.strokeGap ?? n.strokeDash ?? 10)}" aria-label="Dash gap">`);
-    if (n.type !== 'ellipse') {
         h += row('Join', `<div class="segmented stp-join">${['miter', 'bevel', 'round'].map(j => `<button data-stp-join="${j}" class="${join === j ? 'active' : ''}" title="${j[0].toUpperCase() + j.slice(1)} join" aria-label="${j} join">${STROKE_ICON[j]}</button>`).join('')}</div>`);
         h += row('Miter angle', `<input type="number" min="1" max="180" step="any" data-stp="strokeMiter" value="${fmt(n.strokeMiter ?? 28.96)}" ${join === 'miter' ? '' : 'disabled'} aria-label="Miter angle">`);
-    }
     if (open)
         if (style === 'dash') h += row('Cap', `<select data-stp="strokeCap" aria-label="Line cap">${[['butt', 'None'], ['round', 'Round'], ['square', 'Square']].map(([v, l]) => `<option value="${v}" ${(n.strokeCap || 'round') === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`);
     return h;
