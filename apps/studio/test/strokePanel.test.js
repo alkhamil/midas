@@ -17,18 +17,23 @@ function bodyOf(name) {
     return src.slice(at, src.indexOf('\n}\n', at));
 }
 
-test('the style segmented offers Solid and Dashed, never Dots', () => {
-    assert.ok(!src.includes('data-st-style="dot"'), 'no Dots option');
-    assert.ok(src.includes('data-st-style="dash"'), 'Dash stays');
-    assert.ok(src.includes('data-st-style="solid"'), 'Solid stays');
+test('the Style select offers Solid and Dashed, never Dots', () => {
+    assert.ok(!src.includes(`['dot', 'Dots']`), 'no Dots option');
+    assert.ok(src.includes(`['dash', 'Dash']`), 'Dash stays');
+    assert.ok(src.includes(`['solid', 'Solid']`), 'Solid stays');
 });
 
-test('the cap segmented offers None, Round and Square, wired to a click handler', () => {
-    for (const cap of ['none', 'round', 'square']) assert.ok(src.includes(`data-stp-cap="${cap}"`), `cap ${cap} is clickable`);
+test('the cap select offers None, Round and Square, and None is an explicit butt', () => {
+    assert.ok(src.includes(`[['butt', 'None'], ['round', 'Round'], ['square', 'Square']]`), 'cap options with butt as None');
+    assert.ok(src.includes('data-stp="strokeCap"'), 'the select writes through the generic path');
 });
 
 test('an absent cap is shown as Round, the canvas default', () => {
-    assert.ok(src.includes("strokeCap ?? 'round'"), 'the panel maps absent to Round');
+    assert.ok(src.includes("(n.strokeCap || 'round')"), 'the panel maps absent to Round');
+});
+
+test('Dash, Gap and Cap rows show only for a dashed stroke', () => {
+    assert.ok(src.includes("if (style === 'dash') h += row('Cap',"), 'the cap row is dashed-gated');
 });
 
 test('clearing Gap deletes the key so it follows Dash again', () => {

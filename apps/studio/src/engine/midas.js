@@ -1455,15 +1455,15 @@ function strokeSettingsHtml(n) {
     const style = n.strokeStyle || 'solid', join = n.strokeJoin || 'round', closed = strokeClosed(n), open = !closed;
     const row = (label, body) => `<div class="stp-row"><span>${label}</span>${body}</div>`;
     let h = `<div class="stp-head"><b>Stroke settings</b><button class="icon-button small" data-stp-close aria-label="Close">${icon('close', 14)}</button></div>`;
-    h += row('Style', `<select data-stp="strokeStyle" aria-label="Stroke style">${[['solid', 'Solid'], ['dash', 'Dash'], ['dot', 'Dots']].map(([v, l]) => `<option value="${v}" ${style === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`);
+    h += row('Style', `<select data-stp="strokeStyle" aria-label="Stroke style">${[['solid', 'Solid'], ['dash', 'Dash']].map(([v, l]) => `<option value="${v}" ${style === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`);
     if (style === 'dash')
-        h += row('Dash', `<input type="number" min="0" step="1" data-stp="strokeDash" value="${fmt(n.strokeDash ?? 10)}" aria-label="Dash length">`) + row('Gap', `<input type="number" min="0" step="1" data-stp="strokeGap" value="${fmt(n.strokeGap ?? 10)}" aria-label="Dash gap">`);
+        h += row('Dash', `<input type="number" min="0" step="1" data-stp="strokeDash" value="${fmt(n.strokeDash ?? 10)}" aria-label="Dash length">`) + row('Gap', `<input type="number" min="0" step="1" data-stp="strokeGap" value="${fmt(n.strokeGap ?? n.strokeDash ?? 10)}" aria-label="Dash gap">`);
     if (n.type !== 'ellipse') {
         h += row('Join', `<div class="segmented stp-join">${['miter', 'bevel', 'round'].map(j => `<button data-stp-join="${j}" class="${join === j ? 'active' : ''}" title="${j[0].toUpperCase() + j.slice(1)} join" aria-label="${j} join">${STROKE_ICON[j]}</button>`).join('')}</div>`);
         h += row('Miter angle', `<input type="number" min="1" max="180" step="any" data-stp="strokeMiter" value="${fmt(n.strokeMiter ?? 28.96)}" ${join === 'miter' ? '' : 'disabled'} aria-label="Miter angle">`);
     }
     if (open)
-        h += row('Cap', `<select data-stp="strokeCap" aria-label="Line cap">${[['butt', 'None'], ['round', 'Round'], ['square', 'Square']].map(([v, l]) => `<option value="${v}" ${(n.strokeCap || 'round') === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`);
+        if (style === 'dash') h += row('Cap', `<select data-stp="strokeCap" aria-label="Line cap">${[['butt', 'None'], ['round', 'Round'], ['square', 'Square']].map(([v, l]) => `<option value="${v}" ${(n.strokeCap || 'round') === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`);
     return h;
 }
 function strokeSidesHtml(n) {
@@ -1549,6 +1549,7 @@ document.addEventListener('change', e => {
     const el = e.target;
     if (strokePop && el.matches?.('[data-stp]')) {
         const prop = el.dataset.stp;
+        if (prop === 'strokeGap' && el.value === '') { transaction('Clear dash gap', () => { const n = activeNode(); if (n && 'strokeGap' in n) { delete n.strokeGap; if (n.overrides) delete n.overrides.strokeGap; doc.touch(n); } changed({ ui: true, commit: true }); }); refreshStrokePop(); return; }
         setProperty(prop, el.type === 'number' ? +el.value : el.value);
         refreshStrokePop();
     }
@@ -9640,6 +9641,7 @@ function applyVariantStroke(inst) {
     const patch = variantStrokePatch(inst, borderStyleOf(template, selected));
     if (!patch) return;
     Object.assign(inst, patch);
+    if (patch.strokeStyle === 'dash') delete inst.strokeGap;
     doc.touch(inst);
 }
 /** The instance's copy of each part of the master (a master child marked `behavior.part`), by part id. */
