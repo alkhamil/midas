@@ -364,20 +364,6 @@ function lineStyleOf(master) {
     return master.strokeStyle === 'dash' ? 'dashed' : 'solid';
 }
 
-/**
- * Removed: the root draws its own border; there is no ::before overlay.
- * Kept as an empty stub so call sites read unchanged; delete with the call site when line endings allow.
- * @param {import('../templates/schema.js').TemplateSchema} template
- * @param {any} master
- */
-function strokeRules(template, master) {
-    return '';
-    ;
-    ;
-    ;
-    ;
-    return `.${template.id}::before {\n  content: '';\n  position: absolute;\n  inset: ${inset};\n  box-sizing: border-box;\n  border-width: ${width}px;\n  border-color: inherit;\n  border-style: inherit;\n  border-radius: ${radius};\n  pointer-events: none;\n}\n`;
-}
 
 /**
  * The hover rule of each icon slot that declares a hover colour token (the Input's clear icon): the slot takes that colour while the pointer
@@ -552,8 +538,6 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
     blocks.push(...fieldRules(template), ...groupRules(template, master, childrenOf), ...slotRules(template, master, childrenOf));
-    const stroke = strokeRules(template, master);
-    if (stroke) blocks.push(stroke);
     if (template.interaction) blocks.push(reducedMotion(template));
     return blocks.join('\n');
 }

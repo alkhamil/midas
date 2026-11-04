@@ -349,103 +349,22 @@ function renderTemplate(n, template, parent, scope) {
     const hasStroke = strokeIsOn(shape);
     const known = new Set((scope.variables.items || []).map(i => i.id));
     const bound = hasStroke && shape.vars?.stroke != null && known.has(shape.vars.stroke);
-    // A bound uniform solid inside stroke takes the fill into a layer of its own, clipped inside the stroke, so the fill's anti-aliased
-    // edge sits under the stroke and not outside it (a fill on the host shows a light ring just outside the stroke's corners). Any
-    // other stroke leaves the host its own fill: a dash shows the fill through its gaps, as the canvas does.
-    const useSvg = hasStroke && customDash && !bound; const bw = typeof shape.strokeWidth === 'number' && shape.strokeWidth > 0 ? shape.strokeWidth : 0; const lineStyle = shape.strokeStyle === 'dash' ? 'dashed' : 'solid'; const clip = (shape.strokeStyle === 'dash' || (typeof shape.stroke === 'string' && shape.stroke.length > 7) || (shape.strokeOpacity ?? 1) < 1 || shape.strokeVisible === false) ? 'border-box' : 'padding-box'; const fillEl = null && bound && (shape.strokeStyle ?? 'solid') === 'solid' && strokeSidesUniform(shape) && (shape.strokeAlign ?? 'center') === 'inside'
-        ? fillLayerEl(shape, `var(${cssVarOf(template.id, 'bg')})`)
-        : null;
-    // The fill layer is the first child and the content paints above it: each laid-out child is lifted to z 0, in tree order after
-    // the fill. Nothing goes below the host, so the fill never falls behind the parent's own background.
-    if (fillEl) {
-        for (const child of children) child.style = { ...child.style, zIndex: '0' };
-        children.unshift(fillEl);
-    }
+    const useSvg = hasStroke && customDash && !bound; const bw = typeof shape.strokeWidth === 'number' && shape.strokeWidth > 0 ? shape.strokeWidth : 0; const lineStyle = shape.strokeStyle === 'dash' ? 'dashed' : 'solid'; const clip = (shape.strokeStyle === 'dash' || (typeof shape.stroke === 'string' && shape.stroke.length > 7) || (shape.strokeOpacity ?? 1) < 1 || shape.strokeVisible === false) ? 'border-box' : 'padding-box';
     // A bound stroke is always a CSS border (its colour follows the host's states); an unbound one with its own dash lengths is SVG.
     const strokeEl = hasStroke ? (customDash && !bound ? strokeOverlayEl(shape) : null) : null;
     if (strokeEl) children.push(strokeEl);
     // The root is a flex row like the canvas auto layout frame (codegen emits the same rules as inline-flex; see displayRules).
     // The stroke overlay is absolutely positioned, so it is not a laid-out child.
     // A top-level component that hugs its content is inline-flex, so it keeps its natural width in the frame (as the export's root does).
-    const flowCount = children.length - (strokeEl ? 1 : 0) - (fillEl ? 1 : 0);
+    const flowCount = children.length - (strokeEl ? 1 : 0);
     const style = { display: ownSizingOf(n, 'h') === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...fields.vars, ...placement(n, parent, scope.responsive), ...rootLayoutOf(instanceLayoutOf(master, n), flowCount) };
     // The host draws its own border, and the box is positioned for it.
     if (hasStroke) {
         Object.assign(style, useSvg ? { borderWidth: '0px', borderStyle: 'none', paddingInline: `var(${cssVarOf(template.id, template.display.root.paddingX)})`, paddingBlock: `var(${cssVarOf(template.id, template.display.root.paddingY)})` } : (() => { const uniform = strokeSidesUniform(shape); if (!uniform) { const s = strokeSideWidths(shape); const per = {}; for (const [k, v] of [['Top', s.t], ['Right', s.r], ['Bottom', s.b], ['Left', s.l]]) { per[`border${k}Width`] = `${v}px`; per[`border${k}Style`] = v > 0 ? lineStyle : 'none'; if (!bound && v > 0) per[`border${k}Color`] = colorWithAlpha(shape.stroke, shape.strokeOpacity); } per.backgroundClip = 'border-box'; return per; } return bw > 0 ? { borderWidth: `${bw}px`, borderStyle: lineStyle, ...(bound ? {} : { borderColor: colorWithAlpha(shape.stroke, shape.strokeOpacity) }), backgroundClip: clip } : { borderWidth: '0px', borderStyle: 'none' }; })()); if (hasStroke && !style.position) style.position = 'relative';
-        ;
     }
-    if (fillEl) style.background = 'transparent';
     return { tag: template.element.tag, nodeId: n.id, attrs, style, children };
 }
 
-/**
- * The fill of a box with a uniform inside stroke, as a layer of its own: the box's corners, with a transparent border the stroke's
- * width so the fill is clipped to the stroke's inner edge.
- * @param {any} n
- * @param {string} background
- * @returns {Element}
- */
-function fillLayerEl(n, background) {
-    const { t } = strokeSideWidths(n);
-    const radii = cornerRadii(n);
-    const borderRadius = (n.radius || hasRadii(n))
-        ? (radii.every(v => v === radii[0]) ? `${svgNumber(radii[0])}px` : radii.map(v => `${svgNumber(v)}px`).join(' '))
-        : 'inherit';
-    return {
-        tag: 'div',
-        attrs: {},
-        style: { position: 'absolute', inset: '0px', boxSizing: 'border-box', borderWidth: `${svgNumber(t)}px`, borderStyle: 'solid', borderColor: 'transparent', borderRadius, background, backgroundClip: 'padding-box', pointerEvents: 'none' },
-        children: [],
-    };
-}
-
-/**
- * A uniform solid stroke drawn over a box: a bordered layer that sits inside, centred on, or outside its edge, as the canvas draws
- * it. The corners are the box's own grown by the stroke, so they match in every mode; a dashed stroke has no border form (see strokeOverlayEl).
- * @param {any} n
- * @returns {Element}
- */
-function borderOverlayEl(n, bound = false) {
-    const { t, r, b, l } = strokeSideWidths(n);
-    const align = n.strokeAlign ?? 'center';
-    const growOf = w => align === 'inside' ? 0 : align === 'center' ? w / 2 : w;
-    const uniform = strokeSidesUniform(n);
-    const grow = uniform ? growOf(t) : Math.max(growOf(t), growOf(r), growOf(b), growOf(l));
-    const inset = uniform
-        ? `${svgNumber(-grow)}px`
-        : [t, r, b, l].map(w => `${svgNumber(-growOf(w))}px`).join(' ');
-    const radii = cornerRadii(n).map(rad => rad > 0 ? Math.max(0, rad + grow) : 0);
-    const borderRadius = (n.radius || hasRadii(n))
-        ? (radii.every(v => v === radii[0]) ? `${svgNumber(radii[0])}px` : radii.map(v => `${svgNumber(v)}px`).join(' '))
-        : 'inherit';
-    // A bound stroke inherits its colour from the host, which the class rules set per mode and state. The line style is the node's own
-    // (Solid, Dash, Dots): the Variant only sets it when the Variant changes, so a style set by hand is what Play draws.
-    const color = bound ? 'inherit' : colorWithAlpha(n.stroke, n.strokeOpacity);
-    const lineStyle = n.strokeStyle === 'dash' ? 'dashed' : 'solid';
-    /** @type {Record<string, string>} */
-    const style = {
-        position: 'absolute',
-        inset,
-        boxSizing: 'border-box',
-        background: 'transparent',
-        pointerEvents: 'none',
-        borderRadius,
-    };
-    if (uniform && bound) {
-        Object.assign(style, { borderWidth: `${svgNumber(t)}px`, borderStyle: lineStyle, borderColor: 'inherit' });
-    }
-    else if (uniform) {
-        style.border = `${svgNumber(t)}px ${lineStyle} ${color}`;
-    }
-    else {
-        for (const [side, w] of [['Top', t], ['Right', r], ['Bottom', b], ['Left', l]]) {
-            style[`border${side}Width`] = `${svgNumber(w)}px`;
-            style[`border${side}Style`] = w > 0 ? lineStyle : 'none';
-            style[`border${side}Color`] = color;
-        }
-    }
-    return { tag: 'div', attrs: {}, style, children: [] };
-}
 
 /**
  * The overlay drawing a box's stroke above its fill and its content, or null when it has no stroke. The overlay always spans the
