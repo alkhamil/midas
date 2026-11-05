@@ -24,6 +24,7 @@
 
 - Fase 0 triage (2026-10-31): Button stroke/label/icon-slot/disabled code is done and tested; triage changed no product code.
 - Baseline green: builder-core 842 tests, studio 53 tests, 0 failing. Button root owns a stroke bound to `border`; bound strokes never emit inline border props (`outline-color` is the focus ring only); testing.midas regenerates via `scripts/make-testing-file.js`.
+- Commit scope (`packages/builder-core/src/commit-scope.js`): a commit skips the component sync and its checks only when every change is a plain layer with whitelisted keys (`PLAIN_KEYS`); an edit whose keys are not known, undo/redo/paste/import, and any master, instance, boolean or flagged layer take the full path.
 - Input parity: the wrapper owns all box visuals and interaction states (`focusTarget: "wrapper"`, `:has()` selectors in codegen); the inner control owns text only. No per-component code in the engine.
 - Icon choices are remembered per managed slot (generic engine rule: placement carry, retained icon props); the instance Preview panel shows the state select only, no resolved-token list.
 - Fixtures are generator-built only: every template master and instance in scripts/fixtures and testing.midas comes from scripts/generated-part.mjs (applyTemplateToFrame, instanceOf). No script writes a template part (a layer marked `part` or `slot`) by hand; the Behavior fixture keeps one deliberate error (the legacy master's missing hover value) that its test asserts.

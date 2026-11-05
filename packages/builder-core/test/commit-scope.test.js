@@ -74,3 +74,56 @@ test('a layer with prototype interactions takes the full path: the prototype che
     assert.equal(commitAffectsComponents(change({ added: [layer('p', { flags: ['prototype'] })] })).affects, true);
     assert.deepEqual(layerFlagsOf({ type: 'rect', prototype: { interactions: [{ id: 'i' }] } }), ['prototype']);
 });
+
+// The change sets the editor records for the real entry points (probed on an editable file, see the step 2 table).
+const edited = (id, keys, extra = {}) => ({ id, type: 'path', parentId: null, flags: [], inComponent: false, keys, ...extra });
+const penFinish = () => change({ added: [layer('v', { type: 'path', parentId: null })], changed: [edited('v', ['x', 'y', 'w', 'h', 'points', 'pathW', 'pathH'])] });
+const inFrame = (parentExtra = {}) => change({
+    added: [layer('r', { type: 'rect', parentId: 'frame' })],
+    changed: [edited('frame', null, { type: 'frame', parentId: null, ...parentExtra })],
+});
+
+test('pen finish at page level: the new path is edited with geometry keys only, so the commit does not affect a component', () => {
+    assert.equal(commitAffectsComponents(penFinish()).affects, false);
+});
+
+test('a layer added to a plain frame, with the frame recorded as changed (its children list), does not affect a component', () => {
+    assert.equal(commitAffectsComponents(inFrame()).affects, false);
+});
+
+test('a layer added to an auto-layout frame, with the frame and its laid-out children recorded, does not affect a component', () => {
+    const autoLayout = change({
+        added: [layer('r', { type: 'rect', parentId: 'frame' })],
+        changed: [edited('frame', null, { type: 'frame', parentId: null }), edited('sibling', ['x', 'y'], { type: 'rect', parentId: 'frame' })],
+    });
+    assert.equal(commitAffectsComponents(autoLayout).affects, false);
+});
+
+test('deleting the pen path, or a layer from a plain frame with its frame recorded, does not affect a component', () => {
+    assert.equal(commitAffectsComponents(change({ removed: [layer('v', { type: 'path', parentId: null })] })).affects, false);
+    assert.equal(commitAffectsComponents(change({ removed: [layer('r', { type: 'rect', parentId: 'frame' })], changed: [edited('frame', null, { type: 'frame', parentId: null })] })).affects, false);
+});
+
+test('the same commits keep the full path when the parent is a master, an instance or a boolean group', () => {
+    for (const parent of [{ component: true, flags: ['component'] }, { isInstance: true, flags: ['instance'] }, { booleanOp: 'union', flags: ['booleanOp'] }]) {
+        const under = change({ added: [layer('r', { type: 'rect', parentId: 'p', inComponent: true })], changed: [edited('p', null, { type: 'frame', parentId: null, ...parent })] });
+        assert.equal(commitAffectsComponents(under).affects, true);
+        assert.equal(commitAffectsComponents(change({ added: [layer('r', { type: 'rect', parentId: 'p', inComponent: true })] })).affects, true);
+    }
+});
+
+test('an edit to an existing plain layer is allowed only when its keys are all whitelisted', () => {
+    assert.equal(commitAffectsComponents(change({ changed: [edited('p', ['x', 'y', 'name', 'fills'])] })).affects, false);
+    assert.equal(commitAffectsComponents(change({ changed: [edited('p', ['behavior'])] })).affects, true);
+    assert.equal(commitAffectsComponents(change({ changed: [edited('p', ['x', 'vars'])] })).affects, true);
+    assert.equal(commitAffectsComponents(change({ changed: [edited('p', null)] })).affects, true);
+});
+
+test('a whitelisted edit of a flagged or in-component layer still takes the full path', () => {
+    assert.equal(commitAffectsComponents(change({ changed: [edited('i', ['x'], { flags: ['instance'] })] })).affects, true);
+    assert.equal(commitAffectsComponents(change({ changed: [edited('m', ['x'], { inComponent: true })] })).affects, true);
+});
+
+test('undo and redo keep the full path, whatever the keys', () => {
+    assert.equal(commitAffectsComponents(change({ full: true, changed: [edited('p', ['x'])] })).affects, true);
+});
