@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
+import { nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { slotRowHtml } from './slotRow.js';
 import { openPlay } from './play.js';
@@ -19715,14 +19715,107 @@ function createTemplateComponent(templateId) {
     if (placed)
         select([placed.id]);
 }
-/** The Create actions of the Assets panel: one button per registered template. */
+/** The Assets panel's one template action: the Design System bundle builds every registered template. */
 function templateCreateRow() {
-    return `<div class="asset-create">${templateChoices().map(t => `<button class="cmp-btn" data-create-template="${esc(t.id)}">Create ${esc(t.name)}</button>`).join('')}</div>`;
+    return `<div class="asset-create"><button class="cmp-btn" data-generate-design-system>Generate Design System</button></div>`;
 }
 document.addEventListener('click', e => {
     const b = e.target.closest('[data-create-template]');
     if (b)
         createTemplateComponent(b.dataset.createTemplate);
+});
+
+// ===== Design System bundle =====
+/** A node made from a core spec ({ type, props }), under `parentId`. */
+function nodeFromSpec(spec, parentId) {
+    const made = doc.add(node(spec.type, { ...spec.props, parentId }));
+    doc.refresh();
+    return made;
+}
+/** The section of a template under the page's root, with its title and its row of masters: found when the designer has them, made when not. */
+function sectionFor(root, template) {
+    const specs = sectionSpecs(template);
+    const section = doc.children(root.id).find(c => c.type === 'frame' && !c.component && c.name === template.name) ?? (() => {
+        const made = nodeFromSpec(specs.section, root.id);
+        nodeFromSpec(specs.title, made.id);
+        return made;
+    })();
+    return doc.children(section.id).find(c => c.type === 'frame' && c.name === specs.row.props.name) ?? nodeFromSpec(specs.row, section.id);
+}
+/** Auto Fix for a master of the bundle: the variables it is missing, created and bound. Returns the variables added. */
+function fixMaster(master, template) {
+    const plan = planAutoFix({ template, binding: master.behavior, variables: varStore(), layers: pageMasterLayers(master, template) });
+    return plan.fixable ? applyAutoFixPlan(master, plan).items : 0;
+}
+/** The demo instance of a master the run created, in the master's row: the default icon in a slot that is on from the start, its layers synced. */
+function placeDemoInstance(master, template, row) {
+    const varModes = {};
+    for (const [prop, cid] of Object.entries(master.behavior.variables)) {
+        const modes = varColl(cid)?.modes ?? [];
+        const wanted = template.props[prop]?.defaultMode;
+        const mode = modes.find(mo => mo.id === wanted || mo.name === wanted) ?? modes[0];
+        if (mode) varModes[cid] = mode.id;
+    }
+    const copies = instanceOf(template, master, doc.descendants(master.id), createdIconDefaults(template, {}, defaultIconId()), { id: () => uid(), varModes });
+    copies[0].parentId = row.id;
+    for (const n of copies) doc.add(n);
+    doc.refresh();
+    doc.touch(copies[0]);
+    syncInstance(copies[0]);
+}
+/** Builds the page's content for every template of the registry, in dependency order. The page is the open one (see generateDesignSystem). */
+function buildDesignSystemPage(counts) {
+    const plan = planDesignSystem({ templates: [...BEHAVIOR_TEMPLATES.values()], nodes: doc.nodes });
+    counts.problems += plan.cycles.length;
+    if (plan.cycles.length) toast(`Templates that accept each other cannot be ordered: ${plan.cycles.map(c => c.join(', ')).join('; ')}.`);
+    const root = doc.nodes.find(n => !n.parentId && n.type === 'frame' && !n.component && n.name === DESIGN_SYSTEM_PAGE) ?? nodeFromSpec(rootSpec(), null);
+    for (const template of plan.order) {
+        let master = plan.masters.get(template.id);
+        if (master) {
+            // A master that is there is completed through the generator with its own binding (its missing parts) and Auto Fix; nothing of it is replaced.
+            counts.present++;
+            applyTemplateNodes(master, template, master.behavior);
+            counts.variables += fixMaster(master, template);
+            continue;
+        }
+        counts.created++;
+        const row = sectionFor(root, template);
+        master = doc.add(node('frame', { name: template.name, parentId: row.id, w: 160, h: 32, fills: paintOf('#ffffff'), clip: false, component: true }));
+        doc.refresh();
+        applyTemplateNodes(master, template);
+        counts.variables += fixMaster(master, template);
+        placeDemoInstance(master, template, row);
+    }
+    const ids = new Set(doc.nodes.map(n => n.id));
+    counts.problems += diagnoseDocument(doc.data).filter(f => ids.has(f.nodeId) && (f.severity === 'error' || f.severity === 'warning')).length;
+}
+/**
+ * Generate Design System: the base variables, then a master of every registered template on the "Design System" page (made when missing), each completed and
+ * bound by Auto Fix. Running it again adds only what is missing. One undo step.
+ */
+function generateDesignSystem() {
+    if (lazyPages.size) {
+        toast('Pages are still loading.');
+        return;
+    }
+    const counts = { variables: 0, created: 0, present: 0, problems: 0 };
+    let page = null;
+    transaction('Generate Design System', () => {
+        page = doc.data.pages.find(p => p.name === DESIGN_SYSTEM_PAGE) ?? null;
+        if (!page) {
+            page = { id: uid(), name: DESIGN_SYSTEM_PAGE, nodes: [], parentId: null };
+            doc.data.pages.push(page);
+        }
+        counts.variables += applyBasePlan(varStore(), planFromSnapshot(BASE_SNAPSHOT), uid).items;
+        onPage(page.id, () => buildDesignSystemPage(counts));
+    });
+    if (!page) return;
+    switchPage(page.id);
+    toast(designSystemSummary(counts));
+}
+document.addEventListener('click', e => {
+    if (e.target.closest('[data-generate-design-system]'))
+        generateDesignSystem();
 });
 
 // ===== plugins =====
