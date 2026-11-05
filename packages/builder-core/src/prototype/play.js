@@ -13,22 +13,38 @@ import { actionsOf, branchIndex, conditionPatch, defaultCondition, defaultVariab
 export function playContext({ pages, variables = {} }) {
     const nodes = pages.flatMap(p => p.nodes || []);
     const byId = new Map(nodes.map(n => [n.id, n]));
-    /** The top-level frame a layer sits in: the layer itself when it is one. */
+    const pageOf = new Map();
+    for (const p of pages) for (const n of p.nodes || []) pageOf.set(n.id, p);
+    // The top-level frame a layer sits in (the layer itself when it is one), worked out once per layer: a navigation asks for many.
+    const topById = new Map();
     const topOf = id => {
+        if (topById.has(id)) return topById.get(id);
         let n = byId.get(id);
         while (n?.parentId && byId.get(n.parentId) && !byId.get(n.parentId).isSection) n = byId.get(n.parentId);
-        return n?.id ?? null;
+        const top = n?.id ?? null;
+        topById.set(id, top);
+        return top;
     };
+    // The layers of each frame, indexed once.
+    const layersOf = new Map();
+    for (const n of nodes) {
+        const top = topOf(n.id);
+        if (top == null || top === n.id) continue;
+        const list = layersOf.get(top);
+        if (list) list.push(n);
+        else layersOf.set(top, [n]);
+    }
     const collections = variables.collections ?? [], items = variables.items ?? [];
+    const itemById = new Map(items.map(v => [v.id, v]));
     return {
         interactionsOf: id => byId.get(id)?.prototype?.interactions ?? [],
         frameOf: id => (byId.get(id)?.parentId ? topOf(id) : null),
-        nodesOf: frameId => nodes.filter(n => n.id !== frameId && topOf(n.id) === frameId).map(n => ({ id: n.id, interactions: n.prototype?.interactions ?? [] })),
+        nodesOf: frameId => (layersOf.get(frameId) ?? []).map(n => ({ id: n.id, interactions: n.prototype?.interactions ?? [] })),
         valueOf: (nodeId, variableId) => {
-            const node = byId.get(nodeId), item = items.find(v => v.id === variableId);
+            const node = byId.get(nodeId), item = itemById.get(variableId);
             const collection = item && collections.find(c => c.id === item.collectionId);
             if (!node || !collection) return undefined;
-            const page = pages.find(p => (p.nodes || []).includes(node));
+            const page = pageOf.get(nodeId);
             return item.values?.[resolveMode(collection, node, byId, page?.varModes)];
         },
     };
