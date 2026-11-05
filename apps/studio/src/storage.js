@@ -193,7 +193,8 @@ async function uploadNewAssets(fileId, docData) {
     await Promise.all(Array.from({ length: 8 }, worker));
 }
 
-const lazyQueues = new Map(); // file id → page ids left for the editor to stream in
+// A loaded document → the page ids a lazy load left out. Kept per document, so two loads of one file cannot take each other's pages.
+const pendingPagesOf = new WeakMap();
 async function saveMeta(fileId, docData) {
     const meta = metaFor(fileId, docData);
     try {
@@ -283,15 +284,10 @@ export const projectStorage = {
     },
 
     // Simpan satu page yang berubah + metadata dokumen.
-    /** Ids of the pages `loadProject(…, { lazy: true })` left out. Reading them does not take them: see handOverPendingPages. */
-    pendingPages(fileId) {
-        return [...(lazyQueues.get(fileId) || [])];
-    },
-
-    /** The pending page ids, handed to the editor to stream in; the queue is empty afterwards. */
-    handOverPendingPages(fileId) {
-        const ids = this.pendingPages(fileId);
-        lazyQueues.delete(fileId);
+    /** The page ids a `loadProject(…, { lazy: true })` document left out, taken once: the editor streams them in. */
+    takePendingPages(doc) {
+        const ids = pendingPagesOf.get(doc) ?? [];
+        pendingPagesOf.delete(doc);
         return ids;
     },
 
@@ -317,7 +313,7 @@ export const projectStorage = {
     },
 
     // `lazy`: only the first page (the one the editor opens on) is fetched here; the other page ids are queued for
-    // `pendingPages()` so the editor can show the file at once and stream the rest in (a big file is 90+ pages, 100s of MB).
+    // `takePendingPages()` so the editor can show the file at once and stream the rest in (a big file is 90+ pages, 100s of MB).
     async loadProject(fileId, { lazy = false, firstPage = null } = {}) {
         let file;
         try {
@@ -330,10 +326,10 @@ export const projectStorage = {
         // (38% → 70%), and no single huge response has to be parsed in one go.
         boot.set(38);
         let pageIds = (file.meta?.pageMeta || []).map(pm => pm.id);
-        lazyQueues.delete(fileId);
+        let pending = [];
         if (lazy && pageIds.length > 3) {
             const first = pageIds.includes(firstPage) ? firstPage : pageIds.includes(file.meta?.pageId) ? file.meta.pageId : pageIds[0];
-            lazyQueues.set(fileId, pageIds.filter(id => id !== first));
+            pending = pageIds.filter(id => id !== first);
             pageIds = [first];
         }
         let rows;
@@ -394,7 +390,8 @@ export const projectStorage = {
         };
         // A lazy open holds only the first page; the masters of its instances may be on the pages still queued.
         // The nodes are checked against this file's Custom templates; the registry is the open document's again afterwards (the file is adopted when it opens).
-        withDocumentTemplates(doc.behavior, () => (lazyQueues.get(fileId)?.length ? assertBehaviorShape(doc) : assertBehaviorData(doc)));
+        withDocumentTemplates(doc.behavior, () => (pending.length ? assertBehaviorShape(doc) : assertBehaviorData(doc)));
+        pendingPagesOf.set(doc, pending);
         return doc;
     },
 

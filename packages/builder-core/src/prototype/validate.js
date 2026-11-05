@@ -264,13 +264,14 @@ export function assertPrototypeData(doc, { complete = true } = {}) {
 }
 
 /**
- * The first prototype problem in the document, which blocks a save. Null when the save may run. The editor does not call this
- * while a page is still loading: a save waits for every page first.
+ * The first prototype problem in the document, which blocks a save. Null when the save may run. While pages are still loading
+ * the editor passes `complete: false`: a reference to a page that is not here yet is deferred, and checked when it arrives.
  * @param {{ pages?: any[] }} doc
+ * @param {{ complete?: boolean }} [options]
  * @returns {Problem | null}
  */
-export function saveBlockedBy(doc) {
-    const [problem] = validatePrototype(doc);
+export function saveBlockedBy(doc, { complete = true } = {}) {
+    const [problem] = validatePrototype(doc, { complete });
     return problem ?? null;
 }
 

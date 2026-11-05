@@ -3701,8 +3701,9 @@ async function libOpen(id) {
             toast('This file could not be found.');
             return;
         }
+        const pending = projectStorage.takePendingPages(data);
         try {
-            data = DocumentModel.parse(data, { partial: projectStorage.pendingPages(id).length > 0 });
+            data = DocumentModel.parse(data, { partial: pending.length > 0 });
         }
         catch (e) {
             toast('This file could not be opened: ' + e.message);
@@ -3710,9 +3711,7 @@ async function libOpen(id) {
         }
         lazyPages.clear();
         failedPages.clear();
-        if (getSignedInUser()?.role !== 'viewer')
-            document.body.classList.remove('view-only');
-        const lazyIds = claimLazyPages(id);
+        const lazyIds = claimLazyPages(pending);
         await loadIntoEditor(data, id);
         if (lazyIds.length)
             streamPages(id, lazyIds).catch(e => console.warn('Streaming pages failed', e));
@@ -8258,9 +8257,10 @@ await boot.step(30, 'Loading editor');
 const saved = await libBoot();
 await boot.step(74, 'Preparing document');
 let initial;
+const bootPending = saved ? projectStorage.takePendingPages(saved) : [];
 try {
     if (saved)
-        initial = await DocumentModel.parseAsync(saved, f => boot.set(74 + f * 6), { partial: projectStorage.pendingPages(lib.fileId).length > 0 });
+        initial = await DocumentModel.parseAsync(saved, f => boot.set(74 + f * 6), { partial: bootPending.length > 0 });
 }
 catch (e) {
     console.warn('Saved file could not be restored', e);
@@ -8273,7 +8273,7 @@ catch (e) {
 if (initial && deepLink?.used && deepLink.page && initial.pages?.some(p => p.id === deepLink.page))
     initial.pageId = deepLink.page;
 await boot.step(80, 'Preparing document');
-const bootLazyPages = initial ? claimLazyPages(lib.fileId) : [];
+const bootLazyPages = initial ? claimLazyPages(bootPending) : [];
 const doc = new DocumentModel(initial, { lazy: bootLazyPages.length > 0 }), history = new History(doc);
 document.body.classList.toggle('view-only', getSignedInUser()?.role === 'viewer');
 const state = { selection: new Set(), expanded: new Set(), expandedPages: new Set(), tool: 'select', camera: { x: 60, y: 70, zoom: .6 }, pageViews: new Map(), hover: null, gesture: null, space: false, pen: [], penHover: null, pathEdit: null, guides: [], marquee: null, inspectorTab: 'design', leftTab: 'layers', editing: null, clipboard: null, pointers: new Map(), pinch: null, selectionVersion: 0, dirty: false, lastLayerClick: null, pageDrop: null };
@@ -8303,7 +8303,7 @@ function markPagesSaved() {
         savedPageSigs.set(p.id, pageSig(p));
 }
 // ----- big files: the editor opens on one page and the other pages stream in -----
-// While pages are missing the file is view-only: saving, clean-ups and exports would otherwise see the empty stubs as the truth.
+// While pages are missing the file is editable: the loaded pages are the truth for saves (a stub is never written), and whole-file actions wait for the rest (waitForAllPages).
 const pageFills = new Map(); // page id → promise of the fill in progress
 function setLoadingIndicator(done, total) {
     const el = $('#save-indicator');
@@ -8331,15 +8331,16 @@ function fillPage(fileId, id) {
             Object.assign(stub, parsed);
             doc._pageSnapshots.delete(id);
             savedPageSigs.set(id, pageSig(stub));
+            doc.revision++;
+            doc.structure++;
         }
         lazyPages.delete(id);
     })().finally(() => pageFills.delete(id));
     pageFills.set(id, run);
     return run;
 }
-/** Takes the pages `loadProject({ lazy: true })` left out and marks them as stubs right away (before anything can run on them). */
-function claimLazyPages(fileId) {
-    const ids = projectStorage.handOverPendingPages(fileId);
+/** Marks the pages a lazy load left out as stubs right away (before anything can run on them). */
+function claimLazyPages(ids) {
     ids.forEach(id => lazyPages.add(id));
     return ids;
 }
@@ -8347,7 +8348,6 @@ function claimLazyPages(fileId) {
 async function streamPages(fileId, ids) {
     if (!ids.length)
         return;
-    document.body.classList.add('view-only');
     const total = ids.length, queue = [...ids];
     let done = 0;
     setLoadingIndicator(0, total);
@@ -8374,8 +8374,6 @@ async function streamPages(fileId, ids) {
     syncComponents(true);
     doc.revision++;
     doc.structure++;
-    if (getSignedInUser()?.role !== 'viewer')
-        document.body.classList.remove('view-only');
     setLoadingIndicator(0, 0);
     refreshUI();
     invalidate();
@@ -8395,11 +8393,7 @@ async function save() {
         state.dirty = false;
         return;
     }
-    if (lazyPages.size) {
-        retryTimer = setTimeout(save, 1500); // pages are still arriving: nothing is written until the whole file is here
-        return;
-    }
-    const blocked = saveBlockedBy(doc.data);
+    const blocked = saveBlockedBy(doc.data, { complete: lazyPages.size === 0 && failedPages.size === 0 });
     if (blocked) {
         toast(`Not saved: “${blocked.node}” on page “${blocked.page}”. ${blocked.message}`);
         return;
@@ -8420,7 +8414,7 @@ async function save() {
             unindexedFile = null;
             lib.index.unshift(m);
         }
-        const changedPages = doc.data.pages.filter(p => !failedPages.has(p.id) && (p === doc.page || savedPageSigs.get(p.id) !== pageSig(p)));
+        const changedPages = doc.data.pages.filter(p => !failedPages.has(p.id) && !lazyPages.has(p.id) && (p === doc.page || savedPageSigs.get(p.id) !== pageSig(p)));
         for (const p of changedPages)
             await projectStorage.saveActivePage(lib.fileId, doc.data, p);
         for (const p of changedPages)
@@ -8476,6 +8470,7 @@ async function resolveConflict() {
             toast('Reloaded the latest version.');
         }
         else {
+            if (!(await waitForAllPages())) return;
             const data = JSON.parse(doc.serialize()), id = uid(), now = Date.now();
             data.name = `${doc.data.name} (copy)`;
             await projectStorage.saveProject(id, data);
@@ -8749,12 +8744,12 @@ function normalizeSetChildren() {
     return moved;
 }
 // View-only accounts can look around (select, pan, zoom, inspect) but nothing they do is kept: every edit is rolled back.
-const viewOnly = () => getSignedInUser()?.role === 'viewer' || lazyPages.size > 0; // also while the pages of a big file are still arriving
+const viewOnly = () => getSignedInUser()?.role === 'viewer';
 let viewOnlyToastAt = 0;
 function viewOnlyNotice() {
     if (Date.now() - viewOnlyToastAt > 4000) {
         viewOnlyToastAt = Date.now();
-        toast(lazyPages.size ? 'Still loading the pages of this file: you can look around now and edit when it is done.' : 'View only: you can look around, but this account cannot change files.');
+        toast('View only: you can look around, but this account cannot change files.');
     }
 }
 function changed({ ui = true, commit = false } = {}) {
@@ -11055,6 +11050,7 @@ async function saveFile() {
     finishText();
     toast('Preparing .midas export…');
     try {
+        if (!(await waitForAllPages())) return;
         const json = await projectStorage.exportProject(lib.fileId, doc.data);
         download(await packMidas(json), safeName(doc.data.name) + '.midas');
         toast('Portable document exported. Includes all pages and images.');

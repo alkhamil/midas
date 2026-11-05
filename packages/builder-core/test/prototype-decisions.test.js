@@ -36,6 +36,12 @@ test('saving is blocked by the first prototype problem, naming its page and node
     assert.equal(blocked.node, 'A');
 });
 
+test('a save while pages are loading defers a reference to a page that is not here, and a complete save still refuses it', () => {
+    const d = doc([{ id: 'p', name: 'Screens', nodes: [frame('A', { prototype: proto([interaction('x', { type: 'on-click' }, { type: 'navigate-to', destinationId: 'Z', transition: instant })]) })] }]);
+    assert.equal(saveBlockedBy(d, { complete: false }), null);
+    assert.equal(saveBlockedBy(d).code, 'destination-missing');
+});
+
 test('assertPrototypeData with complete false still refuses a problem that is not a deferred reference', () => {
     const bad = doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: { version: 9, interactions: [] } })] }]);
     assert.throws(() => assertPrototypeData(bad, { complete: false }), /node prototype must be version/);

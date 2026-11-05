@@ -24,7 +24,7 @@ Source of truth for the Prototype feature (phase 1: Figma-style interactions and
 ## Decisions
 
 1. `navigate-to` and `back` cannot run on `while-hovering` or `while-pressing`. The validator reports `trigger-action-mismatch`. `open-link` can. Other actions come later.
-2. Save waits while any page is still loading (the editor's existing lazy-page wait), and is blocked by the first prototype problem in the document. The toast names the page and the node. `saveBlockedBy` decides the second part.
+2. Save does not wait for pages still loading: it writes the loaded changed pages, and is blocked by the first prototype problem among the document's pages, deferring a reference to a page that is not here (`saveBlockedBy(doc, { complete: false })`). The toast names the page and the node. `saveBlockedBy` decides the second part.
 3. Deleting a node removes the interactions that point at it and the flows whose start is that node. Both are reported in a toast. No flow is left dangling.
 4. Detaching an instance keeps the instance's own interactions. Interactions on master-owned inner layers and on managed layers are dropped and reported.
 5. Play never writes to the document or its history. It reads the document, and its state lives only in the overlay.
