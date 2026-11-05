@@ -18,7 +18,8 @@ test('the Assets tab has one Generate Design System button', () => {
 
 test('the action is one undo step on its own page, over the registry, and names no template', () => {
     assert.ok(bundle.length > 0, 'the bundle section exists');
-    assert.equal(bundle.split("transaction('Generate Design System'").length - 1, 1, 'one transaction is one undo step');
+    assert.equal(bundle.split("transaction(DESIGN_SYSTEM_LABEL").length - 1, 1, 'one transaction is one undo step');
+    assert.ok(bundle.includes("const DESIGN_SYSTEM_LABEL = 'Generate Design System'"), 'the undo step is named Generate Design System');
     assert.ok(bundle.includes('BEHAVIOR_TEMPLATES.values()'), 'the templates are the live registry (built-in and Custom)');
     assert.ok(bundle.includes('DESIGN_SYSTEM_PAGE') && bundle.includes('onPage('), 'the work is on its own page; other pages are not touched');
     assert.ok(!/['"`](button|input|formitem|list|icon-button)['"`]/.test(bundle), 'no template name in the bundle code');

@@ -8335,7 +8335,11 @@ function fillPage(fileId, id) {
             doc.structure++;
         }
         lazyPages.delete(id);
-    })().finally(() => pageFills.delete(id));
+    })().catch(e => {
+        lazyPages.delete(id);
+        failedPages.add(id);
+        throw e;
+    }).finally(() => pageFills.delete(id));
     pageFills.set(id, run);
     return run;
 }
@@ -8784,9 +8788,12 @@ function changed({ ui = true, commit = false } = {}) {
         }
         // Save only real edits: commit() is false when the document is unchanged (a click that just selects,
         // a gesture that didn't move anything, setting a value to what it already was).
-        const hadPending = !!history.pending;
-        if (history.commit() || !hadPending)
-            saveSoon();
+        // An edit inside a transaction belongs to its outermost one: one undo step, committed by the outermost changed().
+        if (transactionDepth <= 1) {
+            const hadPending = !!history.pending;
+            if (history.commit() || !hadPending)
+                saveSoon();
+        }
     }
     if (ui)
         refreshUI();
@@ -20029,14 +20036,38 @@ function buildDesignSystemPage(counts) {
  * Generate Design System: the base variables, then a master of every registered template on the "Design System" page (made when missing), each completed and
  * bound by Auto Fix. Running it again adds only what is missing. One undo step.
  */
-function generateDesignSystem() {
-    if (lazyPages.size) {
-        toast('Pages are still loading.');
+let designSystemRunning = false;
+async function generateDesignSystem() {
+    if (designSystemRunning)
         return;
+    designSystemRunning = true;
+    try {
+        // The bundle needs every page: a master or an instance on a page still streaming in would be built against a partial file.
+        // It waits for those pages (waitForAllPages, which shares the fills in progress) and then runs; nothing is polled.
+        if (lazyPages.size)
+            toast(`Loading the other ${lazyPages.size} page${lazyPages.size === 1 ? '' : 's'} first, then the Design System is generated.`);
+        if (!(await waitForAllPages()))
+            return;
+        // The run may touch layers without changing them (the version counters move): an undo step is kept only for a real change.
+        const before = designSystemContent();
+        runDesignSystem();
+        if (designSystemContent() === before && history.undoStack.at(-1)?.label === DESIGN_SYSTEM_LABEL)
+            history.undoStack.pop();
     }
+    finally {
+        designSystemRunning = false;
+    }
+}
+const DESIGN_SYSTEM_LABEL = 'Generate Design System';
+/** What a Design System run can change: the variables and the Design System page, without the layer version counters. */
+function designSystemContent() {
+    const page = doc.data.pages.find(p => p.name === DESIGN_SYSTEM_PAGE);
+    return JSON.stringify([doc.data.variables, page?.nodes ?? null], (key, value) => (key === 'version' ? undefined : value));
+}
+function runDesignSystem() {
     const counts = { variables: 0, icons: 0, iconsPresent: 0, created: 0, present: 0, problems: 0 };
     let page = null;
-    transaction('Generate Design System', () => {
+    transaction(DESIGN_SYSTEM_LABEL, () => {
         page = doc.data.pages.find(p => p.name === DESIGN_SYSTEM_PAGE) ?? null;
         if (!page) {
             page = { id: uid(), name: DESIGN_SYSTEM_PAGE, nodes: [], parentId: null };
