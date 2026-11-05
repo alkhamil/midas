@@ -16,12 +16,12 @@ test('the Add instances button says what the slot holds, as it always did', () =
 
 test('Clear is offered only while the slot holds layers', () => {
     assert.doesNotMatch(row(0, true), /data-slot-clear/);
-    assert.match(row(2, false), /<button class="icon-button small" data-slot-clear="s1" title="Clear slot" aria-label="Clear slot"><i-clear\/><\/button>/);
+    assert.match(row(2, false), /<button class="ui-icon-button small" data-slot-clear="s1" title="Clear slot" aria-label="Clear slot"><i-clear\/><\/button>/);
 });
 
 test('Reset is offered only while the instance owns the slot', () => {
     assert.doesNotMatch(row(2, false), /data-slot-reset/);
-    assert.match(row(0, true), /<button class="icon-button small" data-slot-reset="s1" title="Reset slot" aria-label="Reset slot"><i-reset\/><\/button>/);
+    assert.match(row(0, true), /<button class="ui-icon-button small" data-slot-reset="s1" title="Reset slot" aria-label="Reset slot"><i-reset\/><\/button>/);
 });
 
 test('both actions follow the Add button, Clear first, and nothing else is added to a slot that is empty and not owned', () => {

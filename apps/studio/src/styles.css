@@ -177,7 +177,7 @@ button svg {
   color: var(--muted)
 }
 
-.icon-button {
+.ui-icon-button {
   width: 30px;
   height: 30px;
   display: inline-flex;
@@ -188,17 +188,17 @@ button svg {
   flex-shrink: 0
 }
 
-.icon-button:hover {
+.ui-icon-button:hover {
   background: var(--hover);
   color: var(--text)
 }
 
-.icon-button.small {
+.ui-icon-button.small {
   width: 25px;
   height: 25px
 }
 
-.icon-button svg {
+.ui-icon-button svg {
   width: 16px;
   height: 16px
 }
@@ -410,7 +410,7 @@ button svg {
   border-bottom: 1px solid var(--border-soft)
 }
 
-.left-tabs>button:not(.icon-button) {
+.left-tabs>button:not(.ui-icon-button) {
   height: 39px;
   font-size: 11px;
   color: var(--muted);
@@ -433,7 +433,7 @@ button svg {
   border-radius: 2px
 }
 
-.left-tabs .icon-button {
+.left-tabs .ui-icon-button {
   margin-left: auto
 }
 
@@ -730,7 +730,7 @@ button svg {
   color: var(--muted)
 }
 
-.left-footer .icon-button {
+.left-footer .ui-icon-button {
   margin-left: auto
 }
 
@@ -899,7 +899,7 @@ button svg {
   font-variant-numeric: tabular-nums
 }
 
-.zoom-controls .icon-button {
+.zoom-controls .ui-icon-button {
   width: 20px;
   height: 24px
 }
@@ -953,7 +953,7 @@ button svg {
   margin: 5px 0 0
 }
 
-.welcome-tip .icon-button {
+.welcome-tip .ui-icon-button {
   align-self: flex-start;
   margin-left: 8px
 }
@@ -968,7 +968,7 @@ button svg {
   flex-shrink: 0
 }
 
-.inspector-tabs>button:not(.icon-button) {
+.inspector-tabs>button:not(.ui-icon-button) {
   height: 52px;
   color: var(--muted);
   font-size: 11px;
@@ -990,7 +990,7 @@ button svg {
   background: var(--accent)
 }
 
-.inspector-tabs>.icon-button {
+.inspector-tabs>.ui-icon-button {
   margin-left: auto
 }
 
@@ -1016,7 +1016,7 @@ button svg {
   font-size: 11px
 }
 
-.section-heading .icon-button {
+.section-heading .ui-icon-button {
   margin: -4px -4px -4px 0
 }
 
@@ -1477,7 +1477,7 @@ button svg {
 .vp-pill.on { outline: 1px solid var(--accent) }
 .vp-pill span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .vp-pill svg { flex: none }
-.vp-row2 .icon-button.active { background: var(--accent-bg); color: var(--accent) }
+.vp-row2 .ui-icon-button.active { background: var(--accent-bg); color: var(--accent) }
 .vp-cur { display: grid; gap: 6px; margin-top: 4px }
 .prop-pop { position: fixed; z-index: 460; width: 360px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border); box-shadow: var(--shadow); color: var(--text); font-size: 12.5px; overflow: hidden }
 .pp-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; font-weight: 600; border-bottom: 1px solid var(--border) }
@@ -1498,7 +1498,7 @@ button svg {
 .cmp-ctl select { flex: 1; min-width: 0; height: 28px; border: 0; border-radius: 6px; background: var(--field); color: var(--text); padding: 0 8px; font-size: 12px }
 .cmp-ctl .var-chip-row { flex: 1; margin: 0; min-width: 0 }
 .vsw-spacer { flex: 1 }
-.cmp-title .icon-button { margin-left: auto }
+.cmp-title .ui-icon-button { margin-left: auto }
 .variant-bool { appearance: none; -webkit-appearance: none; width: 34px; height: 20px; border-radius: 10px; background: var(--field); border: 1px solid var(--border); position: relative; cursor: pointer; margin: 0; transition: background .15s }
 .variant-bool::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--text-secondary, #aaa); transition: transform .15s }
 .variant-bool:checked { background: var(--accent); border-color: var(--accent) }
@@ -1739,7 +1739,7 @@ button svg {
   margin-bottom: 18px
 }
 
-.modal-header .icon-button {
+.modal-header .ui-icon-button {
   margin: -5px -5px 0 0
 }
 
@@ -2122,15 +2122,15 @@ body.left-hidden .left-panel {
 .ly-auto-btn { height: 26px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 11px; cursor: pointer }
 .ly-auto-btn.active { background: var(--accent-bg); color: var(--accent); border-color: var(--accent) }
 .kbd-hint { opacity: .6; margin-left: 6px }
-.icon-button.active { color: var(--accent) }
+.ui-icon-button.active { color: var(--accent) }
 
 /* ===== layout modes / lock ratio / variable collections ===== */
 .ly-modes { display: flex; gap: 6px; align-items: center; margin-bottom: 8px }
 .ly-modes .segmented { flex: 1 }
 .ly-modes .segmented button { display: grid; place-items: center }
-.ly-modes .icon-button { flex: none; width: 30px; height: 30px; border-radius: 6px; background: var(--field) }
-.ly-modes .icon-button.active { background: var(--accent-bg); color: var(--accent) }
-.ly-modes .icon-button:disabled { opacity: .4; cursor: default }
+.ly-modes .ui-icon-button { flex: none; width: 30px; height: 30px; border-radius: 6px; background: var(--field) }
+.ly-modes .ui-icon-button.active { background: var(--accent-bg); color: var(--accent) }
+.ly-modes .ui-icon-button:disabled { opacity: .4; cursor: default }
 .wh-row { display: grid; grid-template-columns: 1fr 1fr 30px; gap: 8px; align-items: center }
 .wh-lock { width: 30px; height: 30px; border: 0; border-radius: 6px; background: var(--field); color: var(--muted); cursor: pointer; display: grid; place-items: center; padding: 0 }
 .wh-lock:hover { background: var(--hover); color: var(--text) }
@@ -2238,7 +2238,7 @@ body.vw-reordering, body.vw-reordering * { cursor: grabbing !important; user-sel
 .vw-groups { flex: 1; min-height: 60px }
 .vd-pop { position: fixed; z-index: 420; width: 300px; max-height: 80vh; overflow: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); font-size: 12px }
 .vd-tabs { display: flex; gap: 4px; align-items: center; padding: 10px 10px 8px; border-bottom: 1px solid var(--border) }
-.vd-tabs button:not(.icon-button) { border: 0; background: transparent; color: var(--muted); border-radius: 6px; padding: 5px 9px; cursor: pointer; font-size: 12px }
+.vd-tabs button:not(.ui-icon-button) { border: 0; background: transparent; color: var(--muted); border-radius: 6px; padding: 5px 9px; cursor: pointer; font-size: 12px }
 .vd-tabs button.on { background: var(--field); color: var(--text) }
 .vd-x { margin-left: auto }
 .vd-body { padding: 12px }
@@ -2466,7 +2466,7 @@ select.vw-text { cursor: pointer }
 .fr-op-in:focus-within { border-color: var(--accent) }
 .fr-op-in input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--text); text-align: right; font-size: 12px; outline: none; padding: 0 2px 0 6px; height: 100% }
 .fr-op-in i { font-style: normal; color: var(--muted); font-size: 11px }
-.fr2 .icon-button.small { flex: none }
+.fr2 .ui-icon-button.small { flex: none }
 .fr.fr2:has(> select.full-width) { gap: 4px }
 .fr.fr2 > select.full-width { flex: 0 0 80px; width: 80px; min-width: 0 }
 .fr.fr2 > .field { flex: 1 1 0; min-width: 60px }
@@ -2897,8 +2897,8 @@ input[type=checkbox][role=switch]:checked::after { transform: translateX(14px) }
 #vars-window input, #vars-window textarea, #vars-window [contenteditable] { user-select: text; -webkit-user-select: text }
 .return-bar { position: fixed; left: 50%; bottom: 112px; transform: translateX(-50%); z-index: 400; display: flex; align-items: center; gap: 4px; padding: 4px 6px 4px 14px; background: var(--comp-strong); color: #fff; border-radius: 999px; box-shadow: var(--shadow) }
 .return-bar button { color: inherit; font-size: 12px; font-weight: 500 }
-.return-bar .icon-button { width: 22px; height: 22px; border-radius: 50%; color: #fff }
-.return-bar .icon-button:hover { background: rgba(255,255,255,.2) }
+.return-bar .ui-icon-button { width: 22px; height: 22px; border-radius: 50%; color: #fff }
+.return-bar .ui-icon-button:hover { background: rgba(255,255,255,.2) }
 
 /* Collections / groups: same row height and gap as the page list, with multi-select */
 .vw-side .vw-coll { height: 32px; margin-bottom: 4px; box-sizing: border-box }
@@ -2906,8 +2906,8 @@ input[type=checkbox][role=switch]:checked::after { transform: translateX(14px) }
 .vw-side .vw-coll.multi { box-shadow: inset 0 0 0 1px var(--accent) }
 
 .head-actions { display: inline-flex; align-items: center; gap: 0; flex: none }
-.head-actions .icon-button { margin: -4px 0 -4px 0 !important }
-.head-actions .icon-button:last-child { margin-right: -4px !important }
+.head-actions .ui-icon-button { margin: -4px 0 -4px 0 !important }
+.head-actions .ui-icon-button:last-child { margin-right: -4px !important }
 #context-menu { max-height: 80vh; overflow-y: auto }
 
 .busy-pill { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 900; display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 999px; background: var(--panel); color: var(--text); border: 1px solid var(--border); box-shadow: var(--shadow); font-size: 12px; max-width: 80vw }

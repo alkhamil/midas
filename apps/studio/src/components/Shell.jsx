@@ -20,10 +20,10 @@ export function Topbar({ user }) {
                     <span>midas</span><span className="brand-chevron"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg></span>
                 </button>
                 <div className="top-divider"></div>
-                <button className="icon-button" id="go-home" title="All files" aria-label="All files">
+                <button className="ui-icon-button" id="go-home" title="All files" aria-label="All files">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11l8-7 8 7" /><path d="M6 10v9h12v-9" /></svg>
                 </button>
-                <button className="icon-button" id="toggle-left" title="Toggle layers panel" aria-label="Toggle layers panel" data-icon="panel"></button>
+                <button className="ui-icon-button" id="toggle-left" title="Toggle layers panel" aria-label="Toggle layers panel" data-icon="panel"></button>
             </div>
             <div className="file-breadcrumb">
                 <button className="crumb-link" id="crumb-home" title="Back to all files">Workspace</button>
@@ -73,8 +73,8 @@ export function LeftPanel() {
                 <div className="layer-search" id="layer-search">
                     <span data-icon="search"></span>
                     <input id="search-layers" placeholder="Find…" aria-label="Find layers and text" autoComplete="off" spellCheck="false" />
-                    <button className="icon-button small" id="search-options" title="Search options" aria-label="Search options" data-icon="sliders"></button>
-                    <button className="icon-button small" id="search-close" title="Close search (Esc)" aria-label="Close search" data-icon="close"></button>
+                    <button className="ui-icon-button small" id="search-options" title="Search options" aria-label="Search options" data-icon="sliders"></button>
+                    <button className="ui-icon-button small" id="search-close" title="Close search (Esc)" aria-label="Close search" data-icon="close"></button>
                 </div>
                 <div className="search-replace hidden" id="search-replace">
                     <label className="replace-field"><span data-icon="arrowRight"></span><input id="replace-layers" placeholder="Replace with…" aria-label="Replace with" autoComplete="off" spellCheck="false" /></label>
@@ -85,7 +85,7 @@ export function LeftPanel() {
                 </div>
             </div>
             <div id="search-results" className="search-results hidden" role="listbox" aria-label="Search results"></div>
-            <div className="pages-heading" id="pages-heading"><span>Pages</span><span className="pages-actions"><button className="icon-button small" id="search-button" title="Find layers (Ctrl+F)" aria-label="Find layers" data-icon="search"></button><button className="icon-button small" id="add-page" title="Add page" aria-label="Add page" data-icon="plus"></button></span></div>
+            <div className="pages-heading" id="pages-heading"><span>Pages</span><span className="pages-actions"><button className="ui-icon-button small" id="search-button" title="Find layers (Ctrl+F)" aria-label="Find layers" data-icon="search"></button><button className="ui-icon-button small" id="add-page" title="Add page" aria-label="Add page" data-icon="plus"></button></span></div>
             <div id="page-list" className="page-list"></div>
             <div className="pages-split" id="pages-split" role="separator" aria-orientation="horizontal" aria-label="Resize pages panel" title="Drag to resize"></div>
             <div className="layers-heading" id="layers-heading"><span id="tree-heading">Layers</span><span className="muted" id="layer-count"></span></div>
@@ -95,7 +95,7 @@ export function LeftPanel() {
             <div className="left-footer">
                 <div className="engine-dot"></div>
                 <span id="engine-label">Starting renderer</span>
-                <button className="icon-button small" id="settings" title="Editor settings" aria-label="Editor settings" data-icon="sliders"></button>
+                <button className="ui-icon-button small" id="settings" title="Editor settings" aria-label="Editor settings" data-icon="sliders"></button>
             </div>
         </aside>
     );
@@ -142,9 +142,9 @@ export function CanvasArea() {
                 <button className="tool accent-tool" id="command-button" title="Commands (⌘K)" aria-label="Command palette" data-icon="sparkles"></button>
             </div>
             <div className="zoom-controls">
-                <button id="zoom-out" className="icon-button small" title="Zoom out" aria-label="Zoom out" data-icon="minus"></button>
+                <button id="zoom-out" className="ui-icon-button small" title="Zoom out" aria-label="Zoom out" data-icon="minus"></button>
                 <button id="zoom-value" title="Zoom options">100%</button>
-                <button id="zoom-in" className="icon-button small" title="Zoom in" aria-label="Zoom in" data-icon="plus"></button>
+                <button id="zoom-in" className="ui-icon-button small" title="Zoom in" aria-label="Zoom in" data-icon="plus"></button>
             </div>
         </section>
     );
@@ -157,12 +157,12 @@ export function RightPanel() {
                 <button className="active" data-inspector-tab="design">Design</button>
                 <button data-inspector-tab="behavior" id="inspector-tab-behavior">Behavior</button>
                 <button data-inspector-tab="prototype" id="inspector-tab-prototype">Prototype</button>
-                <button className="icon-button small" id="theme-toggle" title="Toggle light / dark theme" aria-label="Toggle theme" data-icon="sun"></button>
+                <button className="ui-icon-button small" id="theme-toggle" title="Toggle light / dark theme" aria-label="Toggle theme" data-icon="sun"></button>
             </div>
             <div className="inspector-scroll" id="inspector"></div>
             <div className="inspector-footer">
                 <span>Midas by Akar Inti Teknologi</span>
-                <button className="icon-button small" id="help" title="Keyboard shortcuts" aria-label="Keyboard shortcuts" data-icon="help"></button>
+                <button className="ui-icon-button small" id="help" title="Keyboard shortcuts" aria-label="Keyboard shortcuts" data-icon="help"></button>
             </div>
         </aside>
     );

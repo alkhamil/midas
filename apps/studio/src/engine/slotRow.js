@@ -11,7 +11,7 @@ import { slotCountLabel } from '@midas/builder-core';
 export function slotRowHtml({ slotId, count, owned, esc, icons }) {
     const id = esc(slotId);
     const add = `<button class="cmp-slot add" data-slot-add="${id}" title="Add instances to this slot">${icons.slot}<span>${esc(slotCountLabel(count))}</span><i>${icons.plus}</i></button>`;
-    const clear = count > 0 ? `<button class="icon-button small" data-slot-clear="${id}" title="Clear slot" aria-label="Clear slot">${icons.clear}</button>` : '';
-    const reset = owned ? `<button class="icon-button small" data-slot-reset="${id}" title="Reset slot" aria-label="Reset slot">${icons.reset}</button>` : '';
+    const clear = count > 0 ? `<button class="ui-icon-button small" data-slot-clear="${id}" title="Clear slot" aria-label="Clear slot">${icons.clear}</button>` : '';
+    const reset = owned ? `<button class="ui-icon-button small" data-slot-reset="${id}" title="Reset slot" aria-label="Reset slot">${icons.reset}</button>` : '';
     return add + clear + reset;
 }

@@ -464,9 +464,9 @@ function autoLayoutControls(n) {
     const gapChev = `<button class="sz-chev" data-gap-menu title="Gap options" aria-label="Gap options">${CHEV_SVG}</button>`;
     const gapBase = between ? `<div class="field ly-auto"><span>${horiz ? '↔' : '↕'}</span><input type="text" value="Auto" readonly aria-label="Auto gap"></div>` : (boundVar('gap') ? field(horiz ? '↔' : '↕', 'gap', n.gap ?? 16, { title: 'Gap between items (negative overlaps)' }) : fieldBase(horiz ? '↔' : '↕', 'gap', n.gap ?? 16, { title: 'Gap between items (negative overlaps)' }));
     const gapField = gapBase.replace(/<\/(label|div)>$/, gapChev + '</$1>').replace('class="field', 'class="field sz-field');
-    return `<div class="field-label"><span>Alignment &amp; gap</span><button class="icon-button small" data-ly-settings title="Auto layout settings" aria-label="Auto layout settings">${icon('sliders', 14)}</button></div>
+    return `<div class="field-label"><span>Alignment &amp; gap</span><button class="ui-icon-button small" data-ly-settings title="Auto layout settings" aria-label="Auto layout settings">${icon('sliders', 14)}</button></div>
 <div class="ly-row"><div class="ly-grid" role="group" aria-label="Alignment">${cells.join('')}</div><div class="ly-side">${gapField}${grid ? field('↕', 'gapCross', n.gapCross ?? n.gap ?? 16, { title: 'Row gap (negative overlaps)' }) + field('▥', 'gridCols', n.gridCols || 2, { min: 1, title: 'Columns' }) : `${wrap ? field('↕', 'gapCross', n.gapCross ?? n.gap ?? 16, { title: wrap && !horiz ? 'Gap between columns (negative overlaps)' : 'Gap between rows (negative overlaps)' }) : ''}`}</div></div>
-<div class="field-label"><span>Padding</span><button class="icon-button small ${individual ? 'active' : ''}" data-ly-pad-sides title="Individual padding" aria-label="Individual padding">${STROKE_ICON.sides}</button></div>${padFields}`;
+<div class="field-label"><span>Padding</span><button class="ui-icon-button small ${individual ? 'active' : ''}" data-ly-pad-sides title="Individual padding" aria-label="Individual padding">${STROKE_ICON.sides}</button></div>${padFields}`;
 }
 // ----- auto layout settings (strokes in layout, canvas stacking, text baseline, auto spacing) -----
 let lyPop = null;
@@ -485,7 +485,7 @@ function renderLayoutSettings() {
     }
     const horiz = n.layout === 'horizontal', auto = !!n.gapAuto && n.layout !== 'grid';
     const sel = (key, value, opts, disabled = false) => `<select data-ly-set="${key}" ${disabled ? 'disabled' : ''}>${opts.map(([v, l]) => `<option value="${v}" ${String(value) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
-    lyPop.el.innerHTML = `<div class="pp-head"><span>Auto layout settings</span><button class="icon-button small" data-ly-close aria-label="Close">${icon('close', 14)}</button></div>
+    lyPop.el.innerHTML = `<div class="pp-head"><span>Auto layout settings</span><button class="ui-icon-button small" data-ly-close aria-label="Close">${icon('close', 14)}</button></div>
 <div class="pp-row"><label>Strokes</label>${sel('strokesIncluded', !!n.strokesIncluded, [['false', 'Excluded'], ['true', 'Included']])}</div>
 <div class="pp-row"><label>Canvas stacking</label>${sel('layoutReverseZ', !!n.layoutReverseZ, [['false', 'Last on top'], ['true', 'First on top']])}</div>
 <div class="pp-row ${horiz ? '' : 'off'}"><label>Align text baseline</label><div class="ly-seg"><button data-ly-baseline="false" class="${!n.alignBaseline ? 'on' : ''}" ${horiz ? '' : 'disabled'} aria-label="Off">—</button><button data-ly-baseline="true" class="${n.alignBaseline ? 'on' : ''}" ${horiz ? '' : 'disabled'} aria-label="On">${icon('check', 13)}</button></div></div>
@@ -609,7 +609,7 @@ function layoutSectionHtml(n) {
     if (!inAuto || n.type === 'frame') {
         const btn = (m, title) => `<button data-ly-mode=\"${m}\" class=\"${mode === m ? 'active' : ''}\" title=\"${title}\" aria-label=\"${title}\">${LY_ICONS[m]}</button>`;
         const canWrap = mode === 'horizontal' || mode === 'vertical';
-        h += `<div class=\"ly-modes\"><div class=\"segmented ly-dir\">${btn('freeform', 'Freeform')}${btn('vertical', 'Vertical layout')}${btn('horizontal', 'Horizontal layout')}${btn('grid', 'Grid layout')}</div>${canWrap ? `<button class=\"icon-button ${n.layoutWrap ? 'active' : ''}\" data-ly-wrap title=\"Wrap\" aria-label=\"Wrap\">${LY_ICONS.wrap}</button>` : ''}</div>`;
+        h += `<div class=\"ly-modes\"><div class=\"segmented ly-dir\">${btn('freeform', 'Freeform')}${btn('vertical', 'Vertical layout')}${btn('horizontal', 'Horizontal layout')}${btn('grid', 'Grid layout')}</div>${canWrap ? `<button class=\"ui-icon-button ${n.layoutWrap ? 'active' : ''}\" data-ly-wrap title=\"Wrap\" aria-label=\"Wrap\">${LY_ICONS.wrap}</button>` : ''}</div>`;
     }
     h += `<div class=\"wh-row\">${sizeFieldHtml(n, 'h')}${sizeFieldHtml(n, 'v')}<button class=\"wh-lock ${n.lockRatio ? 'active' : ''}\" data-lock-ratio title=\"${n.lockRatio ? 'Unlock proportions' : 'Lock proportions'}\" aria-label=\"Lock aspect ratio\" aria-pressed=\"${!!n.lockRatio}\">${n.lockRatio ? LY_ICONS.lock : LY_ICONS.unlock}</button></div>`;
     h += minMaxHtml(n);
@@ -1032,7 +1032,7 @@ function varChip(prop, v, owner = null) {
     const val = varDisplayValue(v, (owner && allNodes().find(n => n.id === owner)) || activeNode());
     const sw = v.type === 'color' ? `<i class="vw-sw" style="background:${previewColor(val)}"></i>` : `<i class="vc-glyph">${varGlyph(v.type)}</i>`;
     const sum = v.type === 'effect' ? `<em class="vc-val">${esc(fxSummary(val))}</em>` : '';
-    return `<div class="var-chip-row"><button class="var-chip" data-var-bind="${prop}"${owner ? ` data-var-owner="${owner}"` : ''} title="${esc(v.name)}">${sw}<span>${esc(v.name)}</span>${sum}</button><button class="icon-button small" data-var-detach="${prop}"${owner ? ` data-var-owner="${owner}"` : ''} title="Detach variable" aria-label="Detach variable">${icon('minus', 14)}</button></div>`;
+    return `<div class="var-chip-row"><button class="var-chip" data-var-bind="${prop}"${owner ? ` data-var-owner="${owner}"` : ''} title="${esc(v.name)}">${sw}<span>${esc(v.name)}</span>${sum}</button><button class="ui-icon-button small" data-var-detach="${prop}"${owner ? ` data-var-owner="${owner}"` : ''} title="Detach variable" aria-label="Detach variable">${icon('minus', 14)}</button></div>`;
 }
 // Component property a layer is bound to (visibility ↔ boolean property, text ↔ text property).
 function holderForLayer(n) {
@@ -1051,7 +1051,7 @@ function varRow(label, prop) {
     const bp = pid && (props.find(p => p.id === pid) || (() => { for (const pg of doc.data.pages) for (const x of pg.nodes) { const p = x.cprops?.find(q => q.id === pid); if (p) return p; } return null; })());
     const v = boundVar(prop);
     // A layer can be bound to a component property and to a variable at the same time: both chips show.
-    return `<div class="field-label"><span>${label}</span>${v || bp ? '' : varBindButton(prop)}</div>${bp ? `<div class="var-chip-row"><button class="var-chip prop-chip" data-var-bind="${prop}" title="${esc(bp.name)}"><i class="vc-glyph">${CPROP_ICON[bp.type]}</i><span>${esc(bp.name)}</span></button><button class="icon-button small" data-prop-detach="${field}" title="Detach property" aria-label="Detach property">${icon('minus', 14)}</button></div>` : ''}${v ? varChip(prop, v) : ''}`;
+    return `<div class="field-label"><span>${label}</span>${v || bp ? '' : varBindButton(prop)}</div>${bp ? `<div class="var-chip-row"><button class="var-chip prop-chip" data-var-bind="${prop}" title="${esc(bp.name)}"><i class="vc-glyph">${CPROP_ICON[bp.type]}</i><span>${esc(bp.name)}</span></button><button class="ui-icon-button small" data-prop-detach="${field}" title="Detach property" aria-label="Detach property">${icon('minus', 14)}</button></div>` : ''}${v ? varChip(prop, v) : ''}`;
 }
 function varGlyph(type) { return type === 'color' ? '●' : type === 'number' ? '#' : type === 'string' ? 'T' : type === 'effect' ? 'fx' : type === 'typography' ? 'Aa' : '◐'; }
 function aliasReaches(item, targetId, depth = 0) {
@@ -1084,7 +1084,7 @@ function varListHead(q, searchAttrs = '', types = []) {
     const store = varStore(), grid = VPK.view === 'grid', canGrid = types.length && types.every(t => t === 'color');
     if (VPK.coll && !vpkValid(VPK.coll))
         VPK.coll = '';
-    return `<div class="vpk-head"><label class="vpk-search">${icon('search', 14)}<input data-vpk-search ${searchAttrs} placeholder="Search" value="${esc(q)}" spellcheck="false" autocomplete="off" aria-label="Search variables"></label><div class="vpk-bar"><label class="vpk-lib"><select data-vpk-coll aria-label="Library or collection">${vpkOptions(store)}</select>${icon('chevronDown', 10)}</label>${canGrid ? `<button class="icon-button small" data-vpk-view title="${grid ? 'List view' : 'Grid view'}" aria-label="Toggle grid view">${icon(grid ? 'layers' : 'grid', 14)}</button>` : ''}</div></div>`;
+    return `<div class="vpk-head"><label class="vpk-search">${icon('search', 14)}<input data-vpk-search ${searchAttrs} placeholder="Search" value="${esc(q)}" spellcheck="false" autocomplete="off" aria-label="Search variables"></label><div class="vpk-bar"><label class="vpk-lib"><select data-vpk-coll aria-label="Library or collection">${vpkOptions(store)}</select>${icon('chevronDown', 10)}</label>${canGrid ? `<button class="ui-icon-button small" data-vpk-view title="${grid ? 'List view' : 'Grid view'}" aria-label="Toggle grid view">${icon(grid ? 'layers' : 'grid', 14)}</button>` : ''}</div></div>`;
 }
 function varListHtml({ types, filter = () => true, q = '', current = null, attr = 'data-pick', limit = 400 }) {
     const store = varStore(), ql = q.trim().toLowerCase(), grid = VPK.view === 'grid' && types.every(t => t === 'color');
@@ -1402,8 +1402,8 @@ const STROKE_ICON = {
 };
 function strokeSectionHtml(n) {
     const on = n.strokeWidth > 0, rl = RECT_LIKE.includes(n.type), closed = strokeClosed(n);
-    const varBtn = n.type === 'group' ? '' : `<button class="icon-button small" data-var-bind="stroke" title="Apply variable" aria-label="Apply variable to stroke">${VAR_ICON}</button>`;
-    const head = on ? `<div style="display:flex;align-items:center;gap:8px;">${varBtn}<button class="icon-button small" data-action="toggleStroke" title="Remove stroke" aria-label="Remove stroke">${icon('minus', 14)}</button></div>` : `<div style="display:flex;align-items:center;gap:8px;">${varBtn}<button class="icon-button small" data-action="toggleStroke" title="Add stroke" aria-label="Add stroke">${icon('plus', 14)}</button></div>`;
+    const varBtn = n.type === 'group' ? '' : `<button class="ui-icon-button small" data-var-bind="stroke" title="Apply variable" aria-label="Apply variable to stroke">${VAR_ICON}</button>`;
+    const head = on ? `<div style="display:flex;align-items:center;gap:8px;">${varBtn}<button class="ui-icon-button small" data-action="toggleStroke" title="Remove stroke" aria-label="Remove stroke">${icon('minus', 14)}</button></div>` : `<div style="display:flex;align-items:center;gap:8px;">${varBtn}<button class="ui-icon-button small" data-action="toggleStroke" title="Add stroke" aria-label="Add stroke">${icon('plus', 14)}</button></div>`;
     if (!on)
         return section('Stroke', '', head);
     const col = n.stroke && n.stroke !== 'none' ? n.stroke : '#000000', bound = boundVar('stroke'), hidden = n.strokeVisible === false, so = n.strokeOpacity ?? 1;
@@ -1414,7 +1414,7 @@ function strokeSectionHtml(n) {
         ? `<div class="fr-field bound"><input class="fr-hex-in" data-fill-hex="stroke" value="${esc(bound.name)}" spellcheck="false" autocomplete="off" aria-label="Stroke color: hex or variable name"><button class="fr-detach" data-var-bind="stroke" title="Change variable" aria-label="Change variable">${VAR_ICON}</button></div>`
         : `<div class="fr-field"><input class="fr-hex-in" data-fill-hex="stroke" value="${esc(col.replace('#', '').toUpperCase())}" spellcheck="false" autocomplete="off" aria-label="Stroke color: hex or variable name"></div>`;
     const op = `<label class="fr-op-in"><input type="number" min="0" max="100" step="1" value="${fmt(so * 100)}" data-prop="strokeOpacity" aria-label="Stroke opacity"><i>%</i></label>`;
-    const ops = `<button class="icon-button small" data-st-visible title="${hidden ? 'Show stroke' : 'Hide stroke'}" aria-label="Toggle stroke visibility">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="icon-button small" data-action="toggleStroke" title="Remove stroke" aria-label="Remove stroke">${icon('minus', 14)}</button>`;
+    const ops = `<button class="ui-icon-button small" data-st-visible title="${hidden ? 'Show stroke' : 'Hide stroke'}" aria-label="Toggle stroke visibility">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="ui-icon-button small" data-action="toggleStroke" title="Remove stroke" aria-label="Remove stroke">${icon('minus', 14)}</button>`;
     const mode = rl ? (n.strokeSides || 'all') : 'all', align = n.strokeAlign || 'center';
     const alignSel = closed ? selectField('strokeAlign', align, [['inside', 'Inside'], ['center', 'Center'], ['outside', 'Outside']]) : '<span></span>';
     const widthPart = field('≡', 'strokeWidth', strokeWeightOf(n), { min: 0, max: 1000, title: 'Stroke width' });
@@ -1454,7 +1454,7 @@ function closeStrokePop() { strokePop?.el.remove(); strokePop = null; }
 function strokeSettingsHtml(n) {
     const style = n.strokeStyle || 'solid', join = n.strokeJoin || 'round', closed = strokeClosed(n);
     const row = (label, body) => `<div class="stp-row"><span>${label}</span>${body}</div>`;
-    let h = `<div class="stp-head"><b>Stroke settings</b><button class="icon-button small" data-stp-close aria-label="Close">${icon('close', 14)}</button></div>`;
+    let h = `<div class="stp-head"><b>Stroke settings</b><button class="ui-icon-button small" data-stp-close aria-label="Close">${icon('close', 14)}</button></div>`;
     h += row('Style', `<select data-stp="strokeStyle" aria-label="Stroke style">${[['solid', 'Solid'], ['dash', 'Dashed']].map(([v, l]) => `<option value="${v}" ${style === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`);
     if (style === 'dash')
         h += row('Dash', `<input type="number" min="0" step="1" data-stp="strokeDash" value="${fmt(n.strokeDash ?? 10)}" aria-label="Dash length">`) + row('Gap', `<input type="number" min="0" step="1" data-stp="strokeGap" value="${fmt(n.strokeGap ?? n.strokeDash ?? 10)}" aria-label="Dash gap">`);
@@ -1569,7 +1569,7 @@ function textSettingsHtml(n) {
     const row = (label, body) => `<div class="stp-row"><span>${label}</span>${body}</div>`;
     const sel = (prop, cur, opts) => `<select data-tp="${prop}" aria-label="${prop}">${opts.map(([v, l]) => `<option value="${v}" ${String(cur) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
     const list = n.textList || 'none', strike = n.textDecoration === 'line-through';
-    let h = `<div class="stp-head"><b>Text settings</b><button class="icon-button small" data-tp-close aria-label="Close">${icon('close', 14)}</button></div>`;
+    let h = `<div class="stp-head"><b>Text settings</b><button class="ui-icon-button small" data-tp-close aria-label="Close">${icon('close', 14)}</button></div>`;
     h += row('Case', sel('textCase', n.textCase || 'none', [['none', 'Original case'], ['upper', 'UPPERCASE'], ['lower', 'lowercase'], ['title', 'Title Case']]));
     h += row('Direction', sel('direction', n.direction || 'auto', [['auto', 'Automatic'], ['ltr', 'Left to right'], ['rtl', 'Right to left']]));
     h += row('List', `<div class="segmented">${[['none', 'None', icon('close', 14)], ['bullet', 'Bulleted list', '•'], ['number', 'Numbered list', '1.']].map(([v, t, g]) => `<button data-tp-list="${v}" class="${list === v ? 'active' : ''}" title="${t}" aria-label="${t}">${g}</button>`).join('')}</div>`);
@@ -1961,13 +1961,13 @@ function varCollectionsHtml(n) {
     const store = varStore(), linked = store.collections.filter(c => n.varModes && n.varModes[c.id] !== undefined);
     let h = '';
     if (linked.length)
-        h += `<div class=\"vm-list\">${linked.map(c => `<div class=\"vm-row\"><div class=\"vm-name\" title=\"${esc(c.name)}\">${VAR_ICON}<span>${esc(c.name)}</span></div><select class=\"full-width\" data-var-mode=\"${c.id}\" aria-label=\"Mode for ${esc(c.name)}\">${c.modes.map(m => `<option value=\"${m.id}\" ${n.varModes[c.id] === m.id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select><button class=\"icon-button small vm-del\" data-var-mode-del=\"${c.id}\" title=\"Remove\" aria-label=\"Remove ${esc(c.name)}\">${icon('minus', 12)}</button></div>`).join('')}</div>`;
+        h += `<div class=\"vm-list\">${linked.map(c => `<div class=\"vm-row\"><div class=\"vm-name\" title=\"${esc(c.name)}\">${VAR_ICON}<span>${esc(c.name)}</span></div><select class=\"full-width\" data-var-mode=\"${c.id}\" aria-label=\"Mode for ${esc(c.name)}\">${c.modes.map(m => `<option value=\"${m.id}\" ${n.varModes[c.id] === m.id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select><button class=\"ui-icon-button small vm-del\" data-var-mode-del=\"${c.id}\" title=\"Remove\" aria-label=\"Remove ${esc(c.name)}\">${icon('minus', 12)}</button></div>`).join('')}</div>`;
     return h;
 }
 function varCollectionsButton(n) {
     if (n && !relevantCollections(n).length)
         return '';
-    return `<button class=\"icon-button small ${state.varCollMenu ? 'active' : ''}\" data-var-coll-toggle title=\"Connect variable collection\" aria-label=\"Connect variable collection\">${VAR_ICON}</button>`;
+    return `<button class=\"ui-icon-button small ${state.varCollMenu ? 'active' : ''}\" data-var-coll-toggle title=\"Connect variable collection\" aria-label=\"Connect variable collection\">${VAR_ICON}</button>`;
 }
 document.addEventListener('click', e => {
     let el;
@@ -2773,7 +2773,7 @@ let vd = null;
 function closeVarDetails() { vd?.el.remove(); vd = null; }
 function vdHtml(item) {
     const coll = varColl(item.collectionId), all = scopeKeys(item.type), cur = Array.isArray(item.scope) ? item.scope : all;
-    let h = `<div class="vd-tabs"><button class="${vd.tab === 'details' ? 'on' : ''}" data-vd-tab="details">Details</button><button class="${vd.tab === 'scope' ? 'on' : ''}" data-vd-tab="scope">Scope</button><button class="icon-button small vd-x" data-vd-close aria-label="Close">${icon('close', 14)}</button></div>`;
+    let h = `<div class="vd-tabs"><button class="${vd.tab === 'details' ? 'on' : ''}" data-vd-tab="details">Details</button><button class="${vd.tab === 'scope' ? 'on' : ''}" data-vd-tab="scope">Scope</button><button class="ui-icon-button small vd-x" data-vd-close aria-label="Close">${icon('close', 14)}</button></div>`;
     if (vd.tab === 'details') {
         h += `<div class="vd-body"><label class="vd-row"><span>Name</span><input data-vd-name value="${esc(item.name)}" spellcheck="false"></label><label class="vd-row"><span>Description</span><input data-vd-desc value="${esc(item.description || '')}" placeholder="How to use this variable" spellcheck="false"></label><div class="vd-sep"></div><div class="vd-title">Value</div>`;
         for (const m of coll.modes) {
@@ -3133,8 +3133,8 @@ function bindVarFor(prop) { const id = varIdOf(activeNode(), prop); return id ? 
 function fillsSection(n) {
     const fills = getFills(n), simple = n.type === 'text';
     const rows = fills.length ? fills.map((f, i) => fillRow(n, f, i, simple)).join('') : '<span class="small-label">No fills</span>';
-    const varBtn = n.type === 'group' ? '' : `<button class="icon-button small" data-var-bind="fill" title="Apply variable" aria-label="Apply variable to fill">${VAR_ICON}</button>`;
-    return section('Fill', rows, simple ? varBtn : `<div style="display:flex;align-items:center;gap:8px;">${varBtn}<button class="icon-button small" data-action="addFill" title="Add fill" aria-label="Add fill">${icon('plus', 14)}</button></div>`);
+    const varBtn = n.type === 'group' ? '' : `<button class="ui-icon-button small" data-var-bind="fill" title="Apply variable" aria-label="Apply variable to fill">${VAR_ICON}</button>`;
+    return section('Fill', rows, simple ? varBtn : `<div style="display:flex;align-items:center;gap:8px;">${varBtn}<button class="ui-icon-button small" data-action="addFill" title="Add fill" aria-label="Add fill">${icon('plus', 14)}</button></div>`);
 }
 // Text color that reads on whatever sits behind it: black on light backgrounds, white on dark ones.
 function backdropColor(parentId) {
@@ -5363,7 +5363,7 @@ function fillRow(n, f, i, simple) {
         field = `<button class="fr-field static" data-fill-open="${i}">${({ linear: 'Linear gradient', radial: 'Radial gradient', angular: 'Angular gradient', diamond: 'Diamond gradient' })[f.type] || 'Image'}</button>`;
     // A fill bound to a variable takes its opacity from the variable, so there is no opacity field.
     const opacity = f.type === 'solid' && bindVarFor(`fills.${i}`) ? '' : `<label class="fr-op-in"><input type="number" min="0" max="100" step="1" value="${fmt((f.opacity ?? 1) * 100)}" data-fill-idx="${i}" data-fill-key="opacity" aria-label="Fill opacity"><i>%</i></label>`;
-    const ops = simple ? '' : `<button class="icon-button small" data-fill-toggle="${i}" title="${hidden ? 'Show fill' : 'Hide fill'}" aria-label="Toggle fill visibility">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="icon-button small" data-fill-remove="${i}" title="Remove fill" aria-label="Remove fill">${icon('minus', 14)}</button>`;
+    const ops = simple ? '' : `<button class="ui-icon-button small" data-fill-toggle="${i}" title="${hidden ? 'Show fill' : 'Hide fill'}" aria-label="Toggle fill visibility">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="ui-icon-button small" data-fill-remove="${i}" title="Remove fill" aria-label="Remove fill">${icon('minus', 14)}</button>`;
     const grip = simple ? '' : `<span class="fr-grip" data-fill-grip="${i}" title="Drag to reorder" aria-label="Drag to reorder">⋮⋮</span>`;
     return `<div class="fr fr2 ${hidden ? 'off' : ''}" data-fill-row="${i}">${grip}${sw}${field}${opacity}${ops}</div>`;
 }
@@ -5752,15 +5752,15 @@ const FX_ICON = {
 };
 function effectRow(n, e, i) {
     const hidden = e.visible === false, label = FX_TYPES.find(t => t[0] === e.type)?.[1] || e.type;
-    return `<div class="fx-row ${FXW.open && FXW.i === i ? 'on' : ''} ${hidden ? 'off' : ''}" data-fx-open="${i}" title="Edit effect"><span class="fx-ico">${FX_ICON[e.type] || ''}</span><span class="fx-name">${label}</span><button class="icon-button small" data-fx-toggle="${i}" title="${hidden ? 'Show effect' : 'Hide effect'}" aria-label="Toggle effect">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="icon-button small" data-fx-remove="${i}" title="Remove effect" aria-label="Remove effect">${icon('minus', 14)}</button></div>`;
+    return `<div class="fx-row ${FXW.open && FXW.i === i ? 'on' : ''} ${hidden ? 'off' : ''}" data-fx-open="${i}" title="Edit effect"><span class="fx-ico">${FX_ICON[e.type] || ''}</span><span class="fx-name">${label}</span><button class="ui-icon-button small" data-fx-toggle="${i}" title="${hidden ? 'Show effect' : 'Hide effect'}" aria-label="Toggle effect">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="ui-icon-button small" data-fx-remove="${i}" title="Remove effect" aria-label="Remove effect">${icon('minus', 14)}</button></div>`;
 }
 function effectsSection(n) {
     const v = boundVar('effects');
     if (v)
         return section('Effects', varChip('effects', v), '');
     const list = getEffects(n), rows = list.length ? list.map((e, i) => effectRow(n, e, i)).join('') : '';
-    const varBtn = n.type === 'group' ? '' : `<button class="icon-button small" data-var-bind="effects" title="Apply effect variable" aria-label="Apply effect variable">${VAR_ICON}</button>`;
-    return section('Effects', rows, `<div style="display:flex;align-items:center;gap:8px;">${varBtn}<button class="icon-button small" data-fx-add title="Add effect" aria-label="Add effect">${icon('plus', 14)}</button></div>`);
+    const varBtn = n.type === 'group' ? '' : `<button class="ui-icon-button small" data-var-bind="effects" title="Apply effect variable" aria-label="Apply effect variable">${VAR_ICON}</button>`;
+    return section('Effects', rows, `<div style="display:flex;align-items:center;gap:8px;">${varBtn}<button class="ui-icon-button small" data-fx-add title="Add effect" aria-label="Add effect">${icon('plus', 14)}</button></div>`);
 }
 function closeFxMenu() { document.getElementById('fx-menu')?.remove(); }
 function openEffectMenu(anchor) {
@@ -5937,13 +5937,13 @@ function selectionColorsHtml() {
     }
     const shown = state.scAll ? groups : groups.slice(0, 12);
     const rows = shown.map(g => {
-        const key = esc(g.key), n = g.usages.length, target = '<button class="icon-button small" data-sc-select title="Select ' + n + ' using this color" aria-label="Select layers using this color">' + SC_TARGET_ICON + '</button>';
+        const key = esc(g.key), n = g.usages.length, target = '<button class="ui-icon-button small" data-sc-select title="Select ' + n + ' using this color" aria-label="Select layers using this color">' + SC_TARGET_ICON + '</button>';
         const sw = '<span class="fr-sw locked" style="background:' + swatchBg({ type: 'solid', color: g.color, opacity: g.opacity / 100 }, false) + '"></span>';
         if (g.varId) {
             const it = varItem(g.varId);
-            return '<div class="fr fr2 sc-row" data-sc-key="' + key + '"><button class="sc-var" data-sc-var title="' + esc(it.name) + '"><i class="vw-sw" style="background:' + swatchBg({ type: 'solid', color: g.color, opacity: g.opacity / 100 }, false) + '"></i><span>' + esc(it.name) + '</span></button><span class="sc-acts"><button class="icon-button small" data-sc-detach title="Detach variable" aria-label="Detach variable">' + SC_UNLINK_ICON + '</button>' + target + '</span></div>';
+            return '<div class="fr fr2 sc-row" data-sc-key="' + key + '"><button class="sc-var" data-sc-var title="' + esc(it.name) + '"><i class="vw-sw" style="background:' + swatchBg({ type: 'solid', color: g.color, opacity: g.opacity / 100 }, false) + '"></i><span>' + esc(it.name) + '</span></button><span class="sc-acts"><button class="ui-icon-button small" data-sc-detach title="Detach variable" aria-label="Detach variable">' + SC_UNLINK_ICON + '</button>' + target + '</span></div>';
         }
-        return '<div class="fr fr2 sc-row" data-sc-key="' + key + '"><label class="fr-sw" style="background:' + swatchBg({ type: 'solid', color: g.color, opacity: g.opacity / 100 }, false) + '" title="Color"><input type="color" data-sc-color value="' + safeColor(g.color) + '" aria-label="Color"></label><div class="fr-field"><input class="fr-hex-in" data-sc-hex value="' + esc(g.color.replace('#', '').toUpperCase()) + '" spellcheck="false" autocomplete="off" aria-label="Hex"></div><label class="fr-op-in"><input type="number" min="0" max="100" step="1" data-sc-op value="' + g.opacity + '" aria-label="Opacity"><i>%</i></label><span class="sc-acts"><button class="icon-button small" data-sc-bind title="Apply variable" aria-label="Apply variable">' + VAR_ICON + '</button>' + target + '</span></div>';
+        return '<div class="fr fr2 sc-row" data-sc-key="' + key + '"><label class="fr-sw" style="background:' + swatchBg({ type: 'solid', color: g.color, opacity: g.opacity / 100 }, false) + '" title="Color"><input type="color" data-sc-color value="' + safeColor(g.color) + '" aria-label="Color"></label><div class="fr-field"><input class="fr-hex-in" data-sc-hex value="' + esc(g.color.replace('#', '').toUpperCase()) + '" spellcheck="false" autocomplete="off" aria-label="Hex"></div><label class="fr-op-in"><input type="number" min="0" max="100" step="1" data-sc-op value="' + g.opacity + '" aria-label="Opacity"><i>%</i></label><span class="sc-acts"><button class="ui-icon-button small" data-sc-bind title="Apply variable" aria-label="Apply variable">' + VAR_ICON + '</button>' + target + '</span></div>';
     }).join('');
     const more = !state.scAll && groups.length > shown.length ? '<button class="sc-all" data-sc-all><span>⋮⋮</span> See all ' + groups.length + ' colors</button>' : '';
     return '<section class="inspector-section sc-section"><div class="section-heading">' + chev + '</div><div class="sc-list">' + rows + more + '</div></section>';
@@ -6157,17 +6157,17 @@ function lgEdit(t, fn) {
     lgRenderPanels();
 }
 function lgRowHtml(g) {
-    return '<div class="lg-row" data-lg-gid="' + g.id + '"><button class="lg-ico" data-lg-edit title="Edit layout guide" aria-label="Edit layout guide">' + LG_ICONS[g.type] + '</button><button class="lg-sum" data-lg-type title="Change type"><span>' + esc(lgSummary(g)) + '</span>' + icon('chevronDown', 10) + '</button><button class="icon-button small" data-lg-vis title="' + (g.visible === false ? 'Show' : 'Hide') + ' guide" aria-label="Toggle guide">' + icon(g.visible === false ? 'eyeOff' : 'eye', 14) + '</button><button class="icon-button small" data-lg-del title="Remove guide" aria-label="Remove guide">' + icon('minus', 14) + '</button></div>';
+    return '<div class="lg-row" data-lg-gid="' + g.id + '"><button class="lg-ico" data-lg-edit title="Edit layout guide" aria-label="Edit layout guide">' + LG_ICONS[g.type] + '</button><button class="lg-sum" data-lg-type title="Change type"><span>' + esc(lgSummary(g)) + '</span>' + icon('chevronDown', 10) + '</button><button class="ui-icon-button small" data-lg-vis title="' + (g.visible === false ? 'Show' : 'Hide') + ' guide" aria-label="Toggle guide">' + icon(g.visible === false ? 'eyeOff' : 'eye', 14) + '</button><button class="ui-icon-button small" data-lg-del title="Remove guide" aria-label="Remove guide">' + icon('minus', 14) + '</button></div>';
 }
 function layoutGuideSectionHtml(n) {
     const st = n.guideStyleId && lgStyles().find(x => x.id === n.guideStyleId);
     let body = '';
     if (st)
-        body = '<div class="lg-row lg-styled"><button class="lg-ico" data-lg-style-edit="' + st.id + '" title="Edit style" aria-label="Edit style">' + LG_ICONS[st.grids?.[0]?.type || 'columns'] + '</button><span class="lg-stylename" title="' + esc(st.name) + '">' + esc(st.name) + '</span><button class="icon-button small" data-lg-detach title="Detach style" aria-label="Detach style">' + icon('minus', 14) + '</button></div>';
+        body = '<div class="lg-row lg-styled"><button class="lg-ico" data-lg-style-edit="' + st.id + '" title="Edit style" aria-label="Edit style">' + LG_ICONS[st.grids?.[0]?.type || 'columns'] + '</button><span class="lg-stylename" title="' + esc(st.name) + '">' + esc(st.name) + '</span><button class="ui-icon-button small" data-lg-detach title="Detach style" aria-label="Detach style">' + icon('minus', 14) + '</button></div>';
     else
         body = (n.layoutGrids || []).map(lgRowHtml).join('');
     // Same header pattern as Fill / Stroke / Effects: styles icon, then +, grouped on the right.
-    const actions = '<div style="display:flex;align-items:center;gap:8px;"><button class="icon-button small" data-lg-styles title="Layout guide styles" aria-label="Layout guide styles">' + VAR_ICON + '</button><button class="icon-button small" data-lg-add title="Add layout guide" aria-label="Add layout guide">' + icon('plus', 14) + '</button></div>';
+    const actions = '<div style="display:flex;align-items:center;gap:8px;"><button class="ui-icon-button small" data-lg-styles title="Layout guide styles" aria-label="Layout guide styles">' + VAR_ICON + '</button><button class="ui-icon-button small" data-lg-add title="Add layout guide" aria-label="Add layout guide">' + icon('plus', 14) + '</button></div>';
     return '<div data-lg-t="node" data-lg-tid="' + n.id + '" data-lg-ctl>' + section('Layout guide', body, actions) + '</div>';
 }
 const lgPanels = { pop: null, styles: null, edit: null };
@@ -6211,7 +6211,7 @@ function lgRenderPanels() {
             lgClose('pop');
         else {
             const st = Object.fromEntries(['scrollTop'].map(k => [k, pop.el[k]]));
-            pop.el.innerHTML = '<div class="pp-head"><select class="lgp-type" data-lgp="type" aria-label="Type">' + [['grid', 'Grid'], ['columns', 'Columns'], ['rows', 'Rows']].map(([v, l]) => '<option value="' + v + '"' + (g.type === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select><button class="icon-button small" data-lgp-close aria-label="Close">' + icon('close', 14) + '</button></div>' + lgPopRows(g);
+            pop.el.innerHTML = '<div class="pp-head"><select class="lgp-type" data-lgp="type" aria-label="Type">' + [['grid', 'Grid'], ['columns', 'Columns'], ['rows', 'Rows']].map(([v, l]) => '<option value="' + v + '"' + (g.type === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select><button class="ui-icon-button small" data-lgp-close aria-label="Close">' + icon('close', 14) + '</button></div>' + lgPopRows(g);
             pop.el.scrollTop = st.scrollTop;
         }
     }
@@ -6234,10 +6234,10 @@ function lgRenderStyles() {
     if (!p)
         return;
     const q = (p.q || '').toLowerCase(), list = lgStyles().filter(x => !q || x.name.toLowerCase().includes(q));
-    const rows = list.map(st => '<div class="lgs-row" data-lgs-id="' + st.id + '"><button class="lgs-name" data-lgs-apply>' + LG_ICONS[st.grids?.[0]?.type || 'columns'] + '<span>' + esc(st.name) + '</span></button><button class="icon-button small lgs-edit" data-lgs-edit title="Edit style" aria-label="Edit style">' + svgI('<path d="M3 5h10M3 11h10M6 3v4M10 9v4"/>') + '</button></div>').join('');
+    const rows = list.map(st => '<div class="lgs-row" data-lgs-id="' + st.id + '"><button class="lgs-name" data-lgs-apply>' + LG_ICONS[st.grids?.[0]?.type || 'columns'] + '<span>' + esc(st.name) + '</span></button><button class="ui-icon-button small lgs-edit" data-lgs-edit title="Edit style" aria-label="Edit style">' + svgI('<path d="M3 5h10M3 11h10M6 3v4M10 9v4"/>') + '</button></div>').join('');
     const keep = p.el.querySelector('[data-lgs-q]');
     const focused = keep && document.activeElement === keep;
-    p.el.innerHTML = '<div class="pp-head"><span>Layout guide styles</span><span class="lgs-actions"><button class="icon-button small" data-lgs-new title="Create style" aria-label="Create style">' + icon('plus', 14) + '</button><button class="icon-button small" data-lgp-close aria-label="Close">' + icon('close', 14) + '</button></span></div><label class="lgs-search">' + icon('search', 13) + '<input data-lgs-q placeholder="Search" value="' + esc(p.q || '') + '" spellcheck="false" autocomplete="off" aria-label="Search styles"></label><div class="lgs-list">' + (rows || '<div class="pp-note">' + (lgStyles().length ? 'No match.' : 'No layout guide styles yet. Add guides to a frame, then press + to save them as a style.') + '</div>') + '</div>';
+    p.el.innerHTML = '<div class="pp-head"><span>Layout guide styles</span><span class="lgs-actions"><button class="ui-icon-button small" data-lgs-new title="Create style" aria-label="Create style">' + icon('plus', 14) + '</button><button class="ui-icon-button small" data-lgp-close aria-label="Close">' + icon('close', 14) + '</button></span></div><label class="lgs-search">' + icon('search', 13) + '<input data-lgs-q placeholder="Search" value="' + esc(p.q || '') + '" spellcheck="false" autocomplete="off" aria-label="Search styles"></label><div class="lgs-list">' + (rows || '<div class="pp-note">' + (lgStyles().length ? 'No match.' : 'No layout guide styles yet. Add guides to a frame, then press + to save them as a style.') + '</div>') + '</div>';
     if (focused)
         p.el.querySelector('[data-lgs-q]').focus();
 }
@@ -6252,7 +6252,7 @@ function lgRenderStyleEdit() {
     if (!st)
         return lgClose('edit');
     const focus = document.activeElement?.dataset?.lgsf;
-    p.el.innerHTML = '<div class="pp-head"><span>Edit layout guide style</span><button class="icon-button small" data-lgp-close aria-label="Close">' + icon('close', 14) + '</button></div><div class="pp-row"><label>Name</label><input data-lgsf="name" value="' + esc(st.name) + '" maxlength="120" spellcheck="false" aria-label="Name"></div><div class="pp-row"><label>Description</label><input data-lgsf="description" value="' + esc(st.description || '') + '" placeholder="What\'s it for?" maxlength="300" spellcheck="false" aria-label="Description"></div><div class="lgs-props" data-lg-t="style" data-lg-tid="' + st.id + '"><div class="pp-vals-h"><span>Properties</span><button class="icon-button small" data-lg-add title="Add layout guide" aria-label="Add layout guide">' + icon('plus', 14) + '</button></div>' + (st.grids || []).map(lgRowHtml).join('') + '</div><div class="pp-foot"><button class="wide-button" data-lgs-delete>Delete style</button></div>';
+    p.el.innerHTML = '<div class="pp-head"><span>Edit layout guide style</span><button class="ui-icon-button small" data-lgp-close aria-label="Close">' + icon('close', 14) + '</button></div><div class="pp-row"><label>Name</label><input data-lgsf="name" value="' + esc(st.name) + '" maxlength="120" spellcheck="false" aria-label="Name"></div><div class="pp-row"><label>Description</label><input data-lgsf="description" value="' + esc(st.description || '') + '" placeholder="What\'s it for?" maxlength="300" spellcheck="false" aria-label="Description"></div><div class="lgs-props" data-lg-t="style" data-lg-tid="' + st.id + '"><div class="pp-vals-h"><span>Properties</span><button class="ui-icon-button small" data-lg-add title="Add layout guide" aria-label="Add layout guide">' + icon('plus', 14) + '</button></div>' + (st.grids || []).map(lgRowHtml).join('') + '</div><div class="pp-foot"><button class="wide-button" data-lgs-delete>Delete style</button></div>';
     if (focus)
         p.el.querySelector('[data-lgsf="' + focus + '"]')?.focus();
 }
@@ -9852,14 +9852,14 @@ function renderInspector() {
     }
     else {
         const multi = ns.length > 1;
-        html += section(`<span class="section-title">${icon(multi ? 'layers' : n.type === 'frame' && n.isSection ? 'section' : n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 14)}${selNameHtml(n, multi, ns)}</span>`, `<div class="selection-meta">${multi ? 'Edit shared properties' : n.isInstance ? 'Component instance' : n.component ? (parentSetOf(n) ? 'Variant' : `Main component · ${instancesOf(n.id).length} instance${instancesOf(n.id).length === 1 ? '' : 's'}`) : n.componentSet ? `Component set · ${setVariants(n).length} variant${setVariants(n).length === 1 ? '' : 's'}` : `${n.type === 'rect' && isImageLike(n) ? 'Image' : n.isSection ? 'Section' : n.type[0].toUpperCase() + n.type.slice(1)} · ${Math.round(n.w)} × ${Math.round(n.h)}`}</div>`, `<span class="head-actions">${compSplitHtml(ns)}${slotButtonHtml(n, multi)}${!multi && n.isInstance && n.sourceId ? `<button class="icon-button small" data-cmp="goto" title="Go to main component" aria-label="Go to main component">${icon('search', 13)}</button>` : ''}<button class="icon-button small" data-action="selectionMenu" title="Layer actions">···</button></span>`);
+        html += section(`<span class="section-title">${icon(multi ? 'layers' : n.type === 'frame' && n.isSection ? 'section' : n.isMask ? 'mask' : n.type === 'rect' && isImageLike(n) ? 'image' : n.component ? (doc.get(n.parentId)?.componentSet ? 'variant' : 'component') : n.componentSet ? 'component' : n.isInstance ? 'instance' : n.type, 14)}${selNameHtml(n, multi, ns)}</span>`, `<div class="selection-meta">${multi ? 'Edit shared properties' : n.isInstance ? 'Component instance' : n.component ? (parentSetOf(n) ? 'Variant' : `Main component · ${instancesOf(n.id).length} instance${instancesOf(n.id).length === 1 ? '' : 's'}`) : n.componentSet ? `Component set · ${setVariants(n).length} variant${setVariants(n).length === 1 ? '' : 's'}` : `${n.type === 'rect' && isImageLike(n) ? 'Image' : n.isSection ? 'Section' : n.type[0].toUpperCase() + n.type.slice(1)} · ${Math.round(n.w)} × ${Math.round(n.h)}`}</div>`, `<span class="head-actions">${compSplitHtml(ns)}${slotButtonHtml(n, multi)}${!multi && n.isInstance && n.sourceId ? `<button class="ui-icon-button small" data-cmp="goto" title="Go to main component" aria-label="Go to main component">${icon('search', 13)}</button>` : ''}<button class="ui-icon-button small" data-action="selectionMenu" title="Layer actions">···</button></span>`);
         if (!multi)
             html += componentBlockHtml(n);
 
         html += frameSection(ns);
         const align = [['alignLeft', 'left'], ['alignCenter', 'center'], ['alignRight', 'right'], ['alignTop', 'top'], ['alignMiddle', 'middle'], ['alignBottom', 'bottom']].map(([i, a]) => `<button data-align="${a}" title="Align ${a}">${icon(i, 15)}</button>`).join('');
         html += section('Position', positionSectionHtml(n));
-        html += section(n.type === 'frame' && isAutoLayout(n) ? 'Auto layout' : 'Layout', layoutSectionHtml(n), (!isAutoLayout(doc.get(n.parentId)) || n.type === 'frame') ? `<button class="icon-button small ${isAutoLayout(n) ? 'active' : ''}" data-action="toggleLayout" title="${isAutoLayout(n) ? 'Remove auto layout (⇧A)' : 'Add auto layout (⇧A)'}" aria-label="Auto layout" aria-pressed="${isAutoLayout(n)}">${LY_ICONS.autoLayout}</button>` : '');
+        html += section(n.type === 'frame' && isAutoLayout(n) ? 'Auto layout' : 'Layout', layoutSectionHtml(n), (!isAutoLayout(doc.get(n.parentId)) || n.type === 'frame') ? `<button class="ui-icon-button small ${isAutoLayout(n) ? 'active' : ''}" data-action="toggleLayout" title="${isAutoLayout(n) ? 'Remove auto layout (⇧A)' : 'Add auto layout (⇧A)'}" aria-label="Auto layout" aria-pressed="${isAutoLayout(n)}">${LY_ICONS.autoLayout}</button>` : '');
         html += section('Appearance', `${appearanceTopHtml(n)}${varRow('Visibility', 'visible')}${varCollectionsHtml(n)}`, varCollectionsButton(n));
         if (!multi && n.type === 'ellipse')
             html += section('Arc', `<div class="arc-row"><div class="arc-cell"><span class="small-label">Start</span>${field('', 'arcStart', n.arcStart || 0, { unit: '°', title: 'Arc start angle' })}</div><div class="arc-cell"><span class="small-label">Sweep</span>${field('', 'arcSweep', n.arcSweep ?? 100, { unit: '%', min: 0, max: 100, title: 'Arc sweep' })}</div><div class="arc-cell"><span class="small-label">Ratio</span>${field('', 'arcRatio', n.arcRatio || 0, { unit: '%', min: 0, max: 99, title: 'Arc ratio (inner radius)' })}</div></div>`);
@@ -12861,7 +12861,7 @@ function modalFixHeader() {
     m.appendChild(body);
 }
 function closeModal() { $('#modal-backdrop').classList.add('hidden'); $('#modal').innerHTML = ''; overlay.focus({ preventScroll: true }); }
-function modalHeader(title, subtitle = '') { return `<div class="modal-header"><div><h2>${title}</h2>${subtitle ? `<p style="margin:0">${subtitle}</p>` : ''}</div><button class="icon-button" data-close-modal title="Close dialog" aria-label="Close dialog">${icon('close')}</button></div>`; }
+function modalHeader(title, subtitle = '') { return `<div class="modal-header"><div><h2>${title}</h2>${subtitle ? `<p style="margin:0">${subtitle}</p>` : ''}</div><button class="ui-icon-button" data-close-modal title="Close dialog" aria-label="Close dialog">${icon('close')}</button></div>`; }
 function promptText(title, value, callback) {
     modal(`${modalHeader(esc(title))}<form id="prompt-form"><input class="form-input" id="prompt-value" value="${esc(value)}" required maxlength="200" autocomplete="off"><div class="modal-actions"><button type="button" class="wide-button" data-close-modal>Cancel</button><button class="wide-button primary" type="submit">Save</button></div></form>`);
     $('#prompt-form').onsubmit = e => {
@@ -13892,7 +13892,7 @@ function showReturnBar() {
         bar = document.createElement('div');
         bar.id = 'return-bar';
         bar.className = 'return-bar';
-        bar.innerHTML = '<button type="button" data-return-instance>Return to instance</button><button type="button" class="icon-button small" data-return-close aria-label="Close">' + icon('close', 12) + '</button>';
+        bar.innerHTML = '<button type="button" data-return-instance>Return to instance</button><button type="button" class="ui-icon-button small" data-return-close aria-label="Close">' + icon('close', 12) + '</button>';
         document.body.appendChild(bar);
         bar.addEventListener('click', ev => {
             if (ev.target.closest('[data-return-close]')) {
@@ -14855,7 +14855,7 @@ function renderAssets() {
     const card = en => {
         const n = en.comp, cached = thumbCache.get(n.id), page = pageOfNode(en.target), svg = svgThumbOf(n);
         const prev = svg ? `<img src="${esc(svg)}" alt="" class="asset-svg">` : cached?.url ? `<img src="${cached.url}" alt="">` : `<div class="asset-button" style="background:${safeColor(topColorOf(n))}">${esc(en.name)}</div>`;
-        return `<div class="asset-card" data-component="${n.id}" draggable="true"><div class="asset-preview" data-thumb="${n.id}">${prev}</div><div class="asset-caption"><span class="asset-name">${esc(en.name)}</span><span class="asset-count" title="${en.variants ? 'Variants · instances' : 'Instances'}">${en.variants ? en.variants + ' variants · ' : ''}${en.instances} ◆</span><button class="icon-button small" data-cmp-goto="${en.target}" title="Go to main component${page && page.id !== doc.page.id ? ' (' + esc(page.name) + ')' : ''}" aria-label="Go to main component">${icon('search', 12)}</button></div></div>`;
+        return `<div class="asset-card" data-component="${n.id}" draggable="true"><div class="asset-preview" data-thumb="${n.id}">${prev}</div><div class="asset-caption"><span class="asset-name">${esc(en.name)}</span><span class="asset-count" title="${en.variants ? 'Variants · instances' : 'Instances'}">${en.variants ? en.variants + ' variants · ' : ''}${en.instances} ◆</span><button class="ui-icon-button small" data-cmp-goto="${en.target}" title="Go to main component${page && page.id !== doc.page.id ? ' (' + esc(page.name) + ')' : ''}" aria-label="Go to main component">${icon('search', 12)}</button></div></div>`;
     };
     const iconsOpen = state.assetIconsOpen === true;
     const iconGroup = iconEntries.length ? `<div class="asset-group"><button class="lib-group-head" data-asset-icons>${icon(iconsOpen ? 'chevronDown' : 'chevronRight', 10)}<span>Icons</span><small>${iconEntries.length}</small></button>${iconsOpen ? `<div class="asset-icon-grid">${iconEntries.map(card).join('')}</div>` : ''}</div>` : '';
@@ -14997,9 +14997,9 @@ function selNameHtml(n, multi, ns) {
 // Chevrons that sit right next to the layer name: the "···" button: kind switcher for frames / groups, instance swap for instances.
 function headerChevronHtml(n) {
     if (n.isInstance && n.sourceId && (!insideInstance(n) || inSlot(n) || managedOwnerOf(n) !== n && managedOwnerOf(n)))
-        return `<button class="icon-button small" data-instance-swap title="Swap instance" aria-label="Swap instance">${icon('chevronDown', 12)}</button>`;
+        return `<button class="ui-icon-button small" data-instance-swap title="Swap instance" aria-label="Swap instance">${icon('chevronDown', 12)}</button>`;
     if (kindOf(n) && !n.component && !n.componentSet && !n.isInstance && !n.sourceId && !n.booleanOp && !insideInstance(n))
-        return `<button class="icon-button small kind-chevron" data-kind-menu title="Change type" aria-label="Change type (Section, Frame, Group)">${icon('chevronDown', 12)}</button>`;
+        return `<button class="ui-icon-button small kind-chevron" data-kind-menu title="Change type" aria-label="Change type (Section, Frame, Group)">${icon('chevronDown', 12)}</button>`;
     return '';
 }
 // Point an instance at another component, rebuilding its layers.
@@ -15376,8 +15376,8 @@ function renderAddInstances() {
     else
         body = groups.map(g => `<button class="ai-row folder" data-ai-folder="${esc(g)}"><span class="ai-ico">${icon('folder', 14)}</span><span class="ai-name">${esc(g)}</span><span class="ai-chev">${icon('chevronRight', 12)}</span></button>`).join('') || '<div class="ai-empty">No components yet.</div>';
     const keep = w.el.querySelector('[data-ai-search]'), had = keep && document.activeElement === keep;
-    w.el.innerHTML = `<div class="pp-head"><span>${w.pick ? 'Preferred instances' : 'Add instances'}</span><button class="icon-button small" data-ai-close aria-label="Close">${icon('close', 14)}</button></div>
-<div class="vpk-head"><label class="vpk-search">${icon('search', 14)}<input data-ai-search placeholder="Search in this library" value="${esc(w.q)}" spellcheck="false" autocomplete="off" aria-label="Search components"></label><div class="vpk-bar"><label class="vpk-lib"><select data-ai-src aria-label="Library">${sources.map(([id, l]) => `<option value="${esc(id)}" ${id === w.src ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>${icon('chevronDown', 10)}</label><button class="icon-button small ${w.kind ? 'active' : ''}" data-ai-filter title="Filter" aria-label="Filter">${icon('sliders', 14)}</button></div></div>
+    w.el.innerHTML = `<div class="pp-head"><span>${w.pick ? 'Preferred instances' : 'Add instances'}</span><button class="ui-icon-button small" data-ai-close aria-label="Close">${icon('close', 14)}</button></div>
+<div class="vpk-head"><label class="vpk-search">${icon('search', 14)}<input data-ai-search placeholder="Search in this library" value="${esc(w.q)}" spellcheck="false" autocomplete="off" aria-label="Search components"></label><div class="vpk-bar"><label class="vpk-lib"><select data-ai-src aria-label="Library">${sources.map(([id, l]) => `<option value="${esc(id)}" ${id === w.src ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>${icon('chevronDown', 10)}</label><button class="ui-icon-button small ${w.kind ? 'active' : ''}" data-ai-filter title="Filter" aria-label="Filter">${icon('sliders', 14)}</button></div></div>
 <div class="ai-list">${body}</div>`;
     if (had) {
         const i = w.el.querySelector('[data-ai-search]');
@@ -15511,7 +15511,7 @@ function slotButtonHtml(n, multi) {
     if (multi || !canBeSlot(n))
         return '';
     const on = !!n.propBind?.slot;
-    return `<button class="icon-button small ${on ? 'active' : ''}" data-action="convertSlot" title="${on ? 'Remove slot' : 'Convert to slot'} (Ctrl+Shift+S)" aria-label="${on ? 'Remove slot' : 'Convert to slot'}" aria-pressed="${on}">${SLOT_ICON}</button>`;
+    return `<button class="ui-icon-button small ${on ? 'active' : ''}" data-action="convertSlot" title="${on ? 'Remove slot' : 'Convert to slot'} (Ctrl+Shift+S)" aria-label="${on ? 'Remove slot' : 'Convert to slot'}" aria-pressed="${on}">${SLOT_ICON}</button>`;
 }
 function convertToSlot(n = activeNode()) {
     if (!canBeSlot(n))
@@ -15546,7 +15546,7 @@ function convertToSlot(n = activeNode()) {
 function compSplitHtml(ns) {
     if (ns.length < 2 || !ns.every(x => !x.isInstance && !x.sourceId && !x.componentSet))
         return '';
-    return `<span class="cmp-split"><button class="icon-button small" data-cs="component" title="Create component (⌥⌘K)" aria-label="Create component">${icon('component', 14)}</button><button class="icon-button small" data-cs-menu title="Component options" aria-label="Component options">${icon('chevronDown', 12)}</button></span>`;
+    return `<span class="cmp-split"><button class="ui-icon-button small" data-cs="component" title="Create component (⌥⌘K)" aria-label="Create component">${icon('component', 14)}</button><button class="ui-icon-button small" data-cs-menu title="Component options" aria-label="Component options">${icon('chevronDown', 12)}</button></span>`;
 }
 function createMultipleComponents() {
     const rs = selectedRoots().filter(n => !n.isInstance && !n.sourceId && !n.component && !n.componentSet);
@@ -15693,7 +15693,7 @@ function renderPropPop() {
         return;
     }
     const vals = variantValues(set, pp.prop);
-    pp.el.innerHTML = `<div class="pp-head"><span>Edit variant property</span><button class="icon-button small" data-pp-close aria-label="Close">${icon('close', 14)}</button></div><div class="pp-row"><label>Name</label><input data-pp-name value="${esc(pp.prop)}" spellcheck="false" aria-label="Property name"></div><div class="pp-vals-h"><span>Values</span><button class="icon-button small" data-pp-add title="Add value" aria-label="Add value">${icon('plus', 14)}</button></div>${vals.map((v, i) => `<div class="pp-val" data-pp-row="${i}"><span class="fr-grip" data-pp-grip="${i}" title="Drag to reorder" aria-label="Drag to reorder">⋮⋮</span><input data-pp-val data-old="${esc(v)}" value="${esc(v)}" spellcheck="false" aria-label="Value ${esc(v)}">${vals.length > 1 ? `<button class="icon-button small" data-pp-del="${esc(v)}" title="Remove value" aria-label="Remove value ${esc(v)}">${icon('minus', 12)}</button>` : ''}</div>`).join('')}${variantProps(set).length > 1 ? `<div class="pp-foot"><button class="cmp-btn wide" data-pp-delprop>Delete property</button></div>` : ''}`;
+    pp.el.innerHTML = `<div class="pp-head"><span>Edit variant property</span><button class="ui-icon-button small" data-pp-close aria-label="Close">${icon('close', 14)}</button></div><div class="pp-row"><label>Name</label><input data-pp-name value="${esc(pp.prop)}" spellcheck="false" aria-label="Property name"></div><div class="pp-vals-h"><span>Values</span><button class="ui-icon-button small" data-pp-add title="Add value" aria-label="Add value">${icon('plus', 14)}</button></div>${vals.map((v, i) => `<div class="pp-val" data-pp-row="${i}"><span class="fr-grip" data-pp-grip="${i}" title="Drag to reorder" aria-label="Drag to reorder">⋮⋮</span><input data-pp-val data-old="${esc(v)}" value="${esc(v)}" spellcheck="false" aria-label="Value ${esc(v)}">${vals.length > 1 ? `<button class="ui-icon-button small" data-pp-del="${esc(v)}" title="Remove value" aria-label="Remove value ${esc(v)}">${icon('minus', 12)}</button>` : ''}</div>`).join('')}${variantProps(set).length > 1 ? `<div class="pp-foot"><button class="cmp-btn wide" data-pp-delprop>Delete property</button></div>` : ''}`;
 }
 function openPropPop(anchor, set, prop) {
     if (!set)
@@ -16524,9 +16524,9 @@ function cpropRowsHtml(holder) {
 }
 // Settings + remove buttons revealed on hover of a property row (Figma style).
 function propRowActions(editAttrs, delAttrs) {
-    return `<span class="vp-acts"><button class="icon-button small" ${editAttrs} title="Edit property" aria-label="Edit property">${icon('sliders', 14)}</button>${delAttrs ? `<button class="icon-button small" ${delAttrs} title="Delete property" aria-label="Delete property">${icon('minus', 14)}</button>` : ''}</span>`;
+    return `<span class="vp-acts"><button class="ui-icon-button small" ${editAttrs} title="Edit property" aria-label="Edit property">${icon('sliders', 14)}</button>${delAttrs ? `<button class="ui-icon-button small" ${delAttrs} title="Delete property" aria-label="Delete property">${icon('minus', 14)}</button>` : ''}</span>`;
 }
-function propsAddButton() { return `<button class="icon-button small" data-cmp="add-prop" title="Create property" aria-label="Create property">${icon('plus', 14)}</button>`; }
+function propsAddButton() { return `<button class="ui-icon-button small" data-cmp="add-prop" title="Create property" aria-label="Create property">${icon('plus', 14)}</button>`; }
 function openCpropMenu(anchor, n) {
     const holder = propHolderOf(n);
     if (!holder)
@@ -16647,7 +16647,7 @@ function renderCpropPop() {
         closeCpropPop();
         return;
     }
-    const head = title => `<div class="pp-head"><span>${title}</span><button class="icon-button small" data-pp-close aria-label="Close">${icon('close', 14)}</button></div>`;
+    const head = title => `<div class="pp-head"><span>${title}</span><button class="ui-icon-button small" data-pp-close aria-label="Close">${icon('close', 14)}</button></div>`;
     if (pp.kind === 'nested') {
         const list = layerCandidates(holder, 'instance'), on = new Set(holder.exposedNested || []);
         pp.el.innerHTML = head('Expose properties from nested instances') + (list.length ? list.map(n => `<label class="pp-check"><input type="checkbox" data-cp-nested="${n.id}" ${on.has(n.id) ? 'checked' : ''}>${CPROP_ICON.instance}<span>${esc(n.name)}</span><small>${esc(chainComponent(n)?.name || '')}</small></label>`).join('') : '<p class="pp-note">This component has no nested instances.</p>') + '<p class="pp-note">Exposed properties appear on every instance of this component.</p>';
@@ -16672,7 +16672,7 @@ function renderCpropPop() {
         `<div class="pp-row"><label>Name</label><input data-cp-name value="${esc(p.name)}" spellcheck="false" aria-label="Property name"></div>` +
         (p.type === 'boolean' || p.type === 'slot' ? '' : `<div class="pp-row"><label>${layerLabel}</label>${layerSel}</div>`) +
         (def ? `<div class="pp-row"><label>${p.type === 'boolean' ? 'Value' : 'Default value'}</label>${def}</div>` : '') +
-        (p.type === 'slot' ? `<div class="pp-row col"><label>Description</label><textarea data-cp-desc rows="3" spellcheck="false" aria-label="Description" placeholder="Describe what belongs in this slot">${esc(p.desc || '')}</textarea></div><div class="pp-sec">Settings</div><div class="pp-row"><label>Minimum layers</label><input type="number" min="0" step="1" data-cp-min value="${p.min ?? ''}" placeholder="None" aria-label="Minimum layers"></div><div class="pp-row"><label>Maximum layers</label><input type="number" min="1" step="1" data-cp-max value="${p.max ?? ''}" placeholder="None" aria-label="Maximum layers"></div><label class="pp-check"><input type="checkbox" data-cp-opt="onlyPreferred" ${p.onlyPreferred ? 'checked' : ''}>Only allow preferred instances</label><label class="pp-check"><input type="checkbox" data-cp-opt="showEmpty" ${p.showEmpty ? 'checked' : ''}>By default, display empty slot</label><label class="pp-check"><input type="checkbox" data-cp-opt="fillCounter" ${p.fillCounter ? 'checked' : ''}>By default, fill items on slot's counter axis</label><div class="pp-sec row">Preferred instances<button class="icon-button small" data-cp-pref-add title="Add preferred instance" aria-label="Add preferred instance">${icon('plus', 14)}</button></div>${(p.preferred || []).map(id => `<div class="pp-pref"><span>${esc(allNodes().find(n => n.id === id)?.name || 'Missing component')}</span><button class="icon-button small" data-cp-pref-del="${id}" aria-label="Remove">${icon('minus', 14)}</button></div>`).join('')}` : '') +
+        (p.type === 'slot' ? `<div class="pp-row col"><label>Description</label><textarea data-cp-desc rows="3" spellcheck="false" aria-label="Description" placeholder="Describe what belongs in this slot">${esc(p.desc || '')}</textarea></div><div class="pp-sec">Settings</div><div class="pp-row"><label>Minimum layers</label><input type="number" min="0" step="1" data-cp-min value="${p.min ?? ''}" placeholder="None" aria-label="Minimum layers"></div><div class="pp-row"><label>Maximum layers</label><input type="number" min="1" step="1" data-cp-max value="${p.max ?? ''}" placeholder="None" aria-label="Maximum layers"></div><label class="pp-check"><input type="checkbox" data-cp-opt="onlyPreferred" ${p.onlyPreferred ? 'checked' : ''}>Only allow preferred instances</label><label class="pp-check"><input type="checkbox" data-cp-opt="showEmpty" ${p.showEmpty ? 'checked' : ''}>By default, display empty slot</label><label class="pp-check"><input type="checkbox" data-cp-opt="fillCounter" ${p.fillCounter ? 'checked' : ''}>By default, fill items on slot's counter axis</label><div class="pp-sec row">Preferred instances<button class="ui-icon-button small" data-cp-pref-add title="Add preferred instance" aria-label="Add preferred instance">${icon('plus', 14)}</button></div>${(p.preferred || []).map(id => `<div class="pp-pref"><span>${esc(allNodes().find(n => n.id === id)?.name || 'Missing component')}</span><button class="ui-icon-button small" data-cp-pref-del="${id}" aria-label="Remove">${icon('minus', 14)}</button></div>`).join('')}` : '') +
         `<div class="pp-foot"><button class="cmp-btn wide" data-cp-delete>Delete property</button></div>`;
 }
 // Controls on an instance for the component's own properties and for exposed nested instances.
@@ -16713,7 +16713,7 @@ function instancePropsHtml(owner, holder) {
             inner += variantProps(set).map(pr => { const key = 'vprop:' + pr, bv = x.vars?.[key] && varItem(x.vars[key]); return `<div class="cmp-prop2"><span title="${esc(pr)}">${CPROP_ICON.variant} ${esc(pr)}</span><div class="cmp-ctl">${bv ? varChip(key, bv, x.id) : variantSelect(`data-nested-variant="${esc(pr)}" data-owner="${x.id}"`, comp.variant?.[pr], variantValues(set, pr), pr) + varBindButton(key, x.id)}</div></div>`; }).join('');
         if (nh)
             inner += cpropsOf(nh).filter(p => p.type !== 'slot').map(p => row(x, p, `data-owner="${x.id}"`)).join('');
-        html += `<div class="cmp-nested"><div class="cmp-nested-title">${CPROP_ICON.instance}<b>${esc(x.name)}</b><button class="icon-button small" data-select-layer="${x.id}" title="Select layer" aria-label="Select nested instance">${icon('search', 12)}</button></div>${inner || '<span class="cmp-slot">No properties</span>'}</div>`;
+        html += `<div class="cmp-nested"><div class="cmp-nested-title">${CPROP_ICON.instance}<b>${esc(x.name)}</b><button class="ui-icon-button small" data-select-layer="${x.id}" title="Select layer" aria-label="Select nested instance">${icon('search', 12)}</button></div>${inner || '<span class="cmp-slot">No properties</span>'}</div>`;
     }
     return html;
 }
@@ -19279,9 +19279,9 @@ function veHtml(list) {
     const types = [['drop', 'Drop shadow'], ['inner', 'Inner shadow'], ['layerBlur', 'Layer blur'], ['bgBlur', 'Background blur']];
     const rows = list.map((e, i) => {
         const shadow = e.type === 'drop' || e.type === 'inner', blur = e.type === 'layerBlur' || e.type === 'bgBlur', opts = e.type === 'glass' ? [...types, ['glass', 'Glass']] : types;
-        return `<div class="ve-row ${e.visible === false ? 'off' : ''}"><div class="ve-head"><select data-ve="${i}|type" aria-label="Effect type">${opts.map(([t, l]) => `<option value="${t}" ${e.type === t ? 'selected' : ''}>${l}</option>`).join('')}</select><button class="icon-button small" data-ve-vis="${i}" title="${e.visible === false ? 'Show' : 'Hide'}" aria-label="Toggle effect">${icon(e.visible === false ? 'eyeOff' : 'eye', 14)}</button><button class="icon-button small" data-ve-del="${i}" title="Remove" aria-label="Remove effect">${icon('minus', 14)}</button></div>${shadow ? `<div class="ve-grid"><label class="ve-color"><input type="color" data-ve="${i}|color" value="${safeColor(e.color || '#000000').slice(0, 7)}"><span>${esc(String(e.color || '#000000').toUpperCase())}</span></label>${num(i, 'opacity', 'Opacity %', Math.round((e.opacity ?? 1) * 100))}${num(i, 'x', 'X', e.x)}${num(i, 'y', 'Y', e.y)}${num(i, 'blur', 'Blur', e.blur)}${num(i, 'spread', 'Spread', e.spread)}</div>` : blur ? `<div class="ve-grid">${num(i, 'radius', 'Radius', e.radius)}</div>` : '<div class="ve-note">Glass effects are edited on a layer.</div>'}</div>`;
+        return `<div class="ve-row ${e.visible === false ? 'off' : ''}"><div class="ve-head"><select data-ve="${i}|type" aria-label="Effect type">${opts.map(([t, l]) => `<option value="${t}" ${e.type === t ? 'selected' : ''}>${l}</option>`).join('')}</select><button class="ui-icon-button small" data-ve-vis="${i}" title="${e.visible === false ? 'Show' : 'Hide'}" aria-label="Toggle effect">${icon(e.visible === false ? 'eyeOff' : 'eye', 14)}</button><button class="ui-icon-button small" data-ve-del="${i}" title="Remove" aria-label="Remove effect">${icon('minus', 14)}</button></div>${shadow ? `<div class="ve-grid"><label class="ve-color"><input type="color" data-ve="${i}|color" value="${safeColor(e.color || '#000000').slice(0, 7)}"><span>${esc(String(e.color || '#000000').toUpperCase())}</span></label>${num(i, 'opacity', 'Opacity %', Math.round((e.opacity ?? 1) * 100))}${num(i, 'x', 'X', e.x)}${num(i, 'y', 'Y', e.y)}${num(i, 'blur', 'Blur', e.blur)}${num(i, 'spread', 'Spread', e.spread)}</div>` : blur ? `<div class="ve-grid">${num(i, 'radius', 'Radius', e.radius)}</div>` : '<div class="ve-note">Glass effects are edited on a layer.</div>'}</div>`;
     }).join('');
-    return `<div class="ve-title"><b>Effect value</b><button class="icon-button small" data-ve-close aria-label="Close">${icon('close', 14)}</button></div><div class="ve-body">${rows || '<div class="ve-note">No effects.</div>'}<button class="cmp-btn wide" data-ve-add>+ Add effect</button></div>`;
+    return `<div class="ve-title"><b>Effect value</b><button class="ui-icon-button small" data-ve-close aria-label="Close">${icon('close', 14)}</button></div><div class="ve-body">${rows || '<div class="ve-note">No effects.</div>'}<button class="cmp-btn wide" data-ve-add>+ Add effect</button></div>`;
 }
 function refreshEffectVarEditor() {
     const list = veList();
@@ -19534,7 +19534,7 @@ function teHtml() {
         ? `<div class="te-row"><span class="te-l">Style</span><div class="te-c"><span class="te-target">${esc(varItem(c.raw.alias)?.name ?? 'missing')}</span><button class="cmp-btn" data-te-unwhole>Use literal values</button></div></div>`
         : `<div class="te-row"><span class="te-l">Style</span><div class="te-c"><button class="cmp-btn" data-te-whole-pick>Alias a style</button></div></div>`;
     const members = c.whole ? '' : teBodyHtml(c);
-    return `<div class="ve-title"><b>${esc(c.item.name)}</b>${modeSel}<button class="icon-button small" data-te-close aria-label="Close">${icon('close', 14)}</button></div><div class="ve-body">${styleRow}${members}${TE.error ? `<div class="te-err">${esc(TE.error)}</div>` : ''}${TE.note ? `<div class="te-note">${esc(TE.note)}</div>` : ''}</div>`;
+    return `<div class="ve-title"><b>${esc(c.item.name)}</b>${modeSel}<button class="ui-icon-button small" data-te-close aria-label="Close">${icon('close', 14)}</button></div><div class="ve-body">${styleRow}${members}${TE.error ? `<div class="te-err">${esc(TE.error)}</div>` : ''}${TE.note ? `<div class="te-note">${esc(TE.note)}</div>` : ''}</div>`;
 }
 function teRender() {
     if (!TE.el)
@@ -19883,7 +19883,7 @@ function savePlugins() {
 }
 function renderPlugins() {
     const list = loadPlugins();
-    $('#plugins-panel').innerHTML = `<div class="pl-head"><button class="wide-button pl-new" data-pl="new">+ New plugin</button><button class="wide-button" data-pl="import">Import</button></div><p class="small-label">Plugins are small JavaScript programs that read and edit your design. Only run code you trust.</p>${list.length ? list.map(p => `<div class="pl-card"><div class="pl-info"><b>${esc(p.name)}</b><small>${esc(p.description || 'No description')}</small></div><div class="pl-actions"><button class="icon-button small" data-pl-run="${p.id}" title="Run plugin" aria-label="Run ${esc(p.name)}">▶</button><button class="icon-button small" data-pl-edit="${p.id}" title="Edit plugin" aria-label="Edit ${esc(p.name)}">${icon('sliders', 13)}</button></div></div>`).join('') : '<div class="empty-state">No plugins yet.<br>Create one to automate your design work.</div>'}`;
+    $('#plugins-panel').innerHTML = `<div class="pl-head"><button class="wide-button pl-new" data-pl="new">+ New plugin</button><button class="wide-button" data-pl="import">Import</button></div><p class="small-label">Plugins are small JavaScript programs that read and edit your design. Only run code you trust.</p>${list.length ? list.map(p => `<div class="pl-card"><div class="pl-info"><b>${esc(p.name)}</b><small>${esc(p.description || 'No description')}</small></div><div class="pl-actions"><button class="ui-icon-button small" data-pl-run="${p.id}" title="Run plugin" aria-label="Run ${esc(p.name)}">▶</button><button class="ui-icon-button small" data-pl-edit="${p.id}" title="Edit plugin" aria-label="Edit ${esc(p.name)}">${icon('sliders', 13)}</button></div></div>`).join('') : '<div class="empty-state">No plugins yet.<br>Create one to automate your design work.</div>'}`;
 }
 // --- plugin API ---
 const PL_TYPES = { rect: 'RECTANGLE', frame: 'FRAME', ellipse: 'ELLIPSE', text: 'TEXT', line: 'LINE', group: 'GROUP', path: 'VECTOR', image: 'IMAGE' };
@@ -21087,7 +21087,7 @@ function renderSearchResults() {
     }
     const LIMIT = 1000, scopeLabel = SR.scope === 'all' ? 'All pages' : 'This page';
     const countLabel = results.length ? `${results.length.toLocaleString()} result${results.length === 1 ? '' : 's'}` : SR.scope === 'all' ? 'No results' : 'No results on this page';
-    let html = `<div class="sr-head"><span>${countLabel} · </span><button class="sr-scope" data-sr-scope>${scopeLabel}${icon('chevronDown', 10)}</button><span class="sr-nav"><button class="icon-button small" data-sr-step="-1" title="Previous result (Shift+Enter)" aria-label="Previous result">${icon('chevronDown', 12)}</button><button class="icon-button small" data-sr-step="1" title="Next result (Enter)" aria-label="Next result">${icon('chevronDown', 12)}</button></span></div>`;
+    let html = `<div class="sr-head"><span>${countLabel} · </span><button class="sr-scope" data-sr-scope>${scopeLabel}${icon('chevronDown', 10)}</button><span class="sr-nav"><button class="ui-icon-button small" data-sr-step="-1" title="Previous result (Shift+Enter)" aria-label="Previous result">${icon('chevronDown', 12)}</button><button class="ui-icon-button small" data-sr-step="1" title="Next result (Enter)" aria-label="Next result">${icon('chevronDown', 12)}</button></span></div>`;
     if (pageHits.length) {
         const open = !SR.collapsed.has('__pages');
         html += `<div class="sr-group" data-sr-toggle="__pages">${icon(open ? 'chevronDown' : 'chevronRight', 10)}<b>Pages</b><span>${pageHits.length}</span></div>`;
