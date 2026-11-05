@@ -45,3 +45,19 @@ export class AtlasPacker {
         return null;
     }
 }
+
+/**
+ * The tiles a layer of `width` x `height` world units is rastered in, so that each tile's entry (its size plus `padding` on each side)
+ * fits the atlas side `size` at `res` texels per unit. A layer that fits is one tile. Tiles cover the layer in a grid.
+ * @returns {{ x: number, y: number, w: number, h: number }[]}
+ */
+export function tileGrid(width, height, res, size, padding) {
+    const room = Math.max(1, Math.floor((size - 4) / Math.max(res, 1e-9) - 2 * padding));
+    if (width <= room && height <= room)
+        return [{ x: 0, y: 0, w: width, h: height }];
+    const out = [];
+    for (let y = 0; y < height; y += room)
+        for (let x = 0; x < width; x += room)
+            out.push({ x, y, w: Math.min(room, width - x), h: Math.min(room, height - y) });
+    return out;
+}
