@@ -144,6 +144,11 @@ export function carryPlacementIcons(template, placement, prev, next) {
     return writes;
 }
 
+/** Whether a template's anatomy declares a required text or control slot (its label). A template without one has no label to order against. */
+export function hasTextSlot(template) {
+    return template.anatomy.some(s => (s.kind === 'text' || s.kind === 'control') && !s.optional);
+}
+
 /** The control of a template: the text slot drawn as an input, or undefined for plain labels. */
 export function controlOf(template) {
     return template.control;
@@ -243,9 +248,10 @@ export function planAnatomy(template, values, children, flip = false) {
 export function planInstanceAnatomy({ binding, masterRoot, masterTree, stored, children, flip = false }) {
     const template = binding && 'templateId' in binding ? TEMPLATES.get(binding.templateId) : undefined;
     if (!template) return { ops: children.filter(c => c.slot !== null).map(c => /** @type {AnatomyOp} */ ({ op: 'remove', id: c.id })) };
-    // The label slot: the master's first text layer inside its root auto layout (tree is depth first). Nothing is guessed.
+    // The label slot: the master's first text layer inside its root auto layout (tree is depth first). Nothing is guessed. A template that
+    // declares no text slot has no label to find: its managed slots are placed against the root.
     if (!masterRoot.isAutoLayout) return { ops: [], reason: 'the master is not an auto layout frame' };
-    if (!masterTree.some(n => n.type === 'text')) return { ops: [], reason: 'the master has no text layer' };
+    if (hasTextSlot(template) && !masterTree.some(n => n.type === 'text')) return { ops: [], reason: 'the master has no text layer' };
     const values = resolveProps(template, stored || {});
     return { ops: planAnatomy(template, values, children, flip) };
 }
