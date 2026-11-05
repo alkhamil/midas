@@ -558,6 +558,15 @@ function declarations(vars) {
 }
 
 /**
+ * The name a template's component is written under: its name as an identifier, each word capitalised and the separators dropped ("Icon Button" is `IconButton`).
+ * @param {{ name: string }} template
+ * @returns {string}
+ */
+export function componentNameOf(template) {
+    return template.name.split(/[^A-Za-z0-9]+/).filter(Boolean).map(word => word[0].toUpperCase() + word.slice(1)).join('');
+}
+
+/**
  * The component and its stylesheet for a bound master. Refused (no files) when anything is unresolved, with the reasons.
  * @param {import('../templates/schema.js').TemplateSchema} template
  * @param {{ variables: Record<string, string | null> }} binding the master's binding

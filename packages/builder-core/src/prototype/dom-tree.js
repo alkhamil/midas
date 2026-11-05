@@ -13,7 +13,7 @@ import { TEMPLATES, variableProps } from '../behavior-engine/registry.js';
 import { cssVarOf } from '../behavior-engine/tokens.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
-import { generateComponent, SPIN_ANIMATION } from '../behavior-engine/codegen.js';
+import { componentNameOf, generateComponent, SPIN_ANIMATION } from '../behavior-engine/codegen.js';
 import { controlOf, iconDefOn, placementsOfDef, slotDefsOf } from '../behavior-engine/anatomy.js';
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
@@ -212,12 +212,13 @@ function templateOf(n, scope) {
     const template = TEMPLATES.get(binding.templateId);
     if (!template) return null;
     if (!scope.styles.has(template.id)) {
-        const generated = generateComponent(template, binding, scope.variables, template.name, master, scope.childrenOf);
+        const name = componentNameOf(template);
+        const generated = generateComponent(template, binding, scope.variables, name, master, scope.childrenOf);
         if (!generated.files) {
             scope.problems.push(...generated.problems.map(p => ({ ...p, nodeId: n.id })));
             return undefined;
         }
-        scope.styles.set(template.id, generated.files[`${template.name}.css`]);
+        scope.styles.set(template.id, generated.files[`${name}.css`]);
     }
     return template;
 }
