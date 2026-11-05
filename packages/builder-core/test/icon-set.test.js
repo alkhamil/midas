@@ -118,3 +118,12 @@ test('the outline commands walk the same segments, so the closing curve is drawn
     assert.equal(curves.length, 4);
     assert.deepEqual(pathCommands(path).filter(c => c.op === 'L'), [], 'no straight segment');
 });
+
+test('the icon path fills its component frame, so it scales with the icon: an instance at the icon size draws the whole outline, not a corner of it', () => {
+    for (const entry of ICON_SET) {
+        const [root, path] = iconNodes(entry, key => key);
+        assert.equal(root.layout, 'horizontal', 'an auto layout frame lays the path out');
+        assert.deepEqual([path.layoutSizingH, path.layoutSizingV], ['fill', 'fill']);
+        assert.deepEqual([path.pathW, path.pathH], [root.w, root.h], 'the outline is drawn in the box it scales from');
+    }
+});

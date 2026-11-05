@@ -78,6 +78,8 @@ export function iconNodes(entry, idOf) {
     const root = { id, name: ICON_PREFIX + entry.name, type: 'frame', parentId: null, x: 0, y: 0, w: SIZE, h: SIZE, component: true, layout: 'horizontal', gap: 0, padding: 0, layoutSizingH: 'fixed', layoutSizingV: 'fixed', fills: [], clip: false, stroke: '#000000', strokeWidth: 0, radius: 0, opacity: 1, visible: true, locked: false, rotation: 0, version: 0 };
     const path = {
         id: pathId, name: entry.name, type: 'path', parentId: id, x: 0, y: 0, w: SIZE, h: SIZE, pathW: SIZE, pathH: SIZE, closed: entry.closed,
+        // The path fills its frame, so in an instance sized to a slot (the icon size) it scales with it; a fixed path would stay SIZE px and show a corner of the outline.
+        layoutSizingH: 'fill', layoutSizingV: 'fill',
         points: structuredClone(entry.points), fills: [{ type: 'solid', color: '#20202a', opacity: 1, visible: true }], stroke: '#20202a', strokeWidth: 0,
         rotation: 0, opacity: 1, visible: true, locked: false, clip: false, radius: 0, version: 0,
     };
