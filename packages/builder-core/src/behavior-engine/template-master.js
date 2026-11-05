@@ -7,19 +7,19 @@
 import { canvasPartsOf, literalFields, nodeFieldPatch, partWrites } from './display.js';
 import { planBindTokens, applyBindTokens } from './bind-tokens.js';
 import { resolveProps } from './instance-props.js';
-import { controlOf, indexAmongLaterSlots, placementsOfDef, replacedSlotsOf, slotDefsOf } from './anatomy.js';
+import { controlOf, iconDefOn, indexAmongLaterSlots, placementsOfDef, replacedSlotsOf, slotDefsOf } from './anatomy.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
 import { newSlotProp } from './slot-property.js';
 
 /** Whether a managed icon slot is shown: one of its definitions is switched on, and its placement (if any) is the one picked. */
 export function slotWanted(template, slotId, resolved) {
     if (replacedSlotsOf(template, resolved).includes(slotId)) return false;
-    return slotDefsOf(template, slotId).some(def => resolved[def.show] === true && (!def.placement || placementsOfDef(template, def, slotId).includes(String(resolved[def.placement]))));
+    return slotDefsOf(template, slotId).some(def => iconDefOn(def, resolved) && (!def.placement || placementsOfDef(template, def, slotId).includes(String(resolved[def.placement]))));
 }
 
 /** Whether a managed slot is drawn: wanted, and for a slot that hides while its value is empty, the value is not empty. */
 export function slotShown(template, slotId, resolved) {
-    return slotWanted(template, slotId, resolved) && slotDefsOf(template, slotId).some(def => resolved[def.show] === true && (def.hideWhenEmpty === undefined || String(resolved[def.hideWhenEmpty] ?? '') !== ''));
+    return slotWanted(template, slotId, resolved) && slotDefsOf(template, slotId).some(def => iconDefOn(def, resolved) && (def.hideWhenEmpty === undefined || String(resolved[def.hideWhenEmpty] ?? '') !== ''));
 }
 
 /** The vertical sizing of a root that binds a height token: fixed, so the Size height is the box; any other root hugs its content. */

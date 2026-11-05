@@ -14,7 +14,7 @@ import { cssVarOf } from '../behavior-engine/tokens.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { generateComponent, SPIN_ANIMATION } from '../behavior-engine/codegen.js';
-import { controlOf, placementsOfDef, slotDefsOf } from '../behavior-engine/anatomy.js';
+import { controlOf, iconDefOn, placementsOfDef, slotDefsOf } from '../behavior-engine/anatomy.js';
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { repeatCount } from '../behavior-engine/slot-rules.js';
@@ -306,7 +306,7 @@ function renderTemplate(n, template, parent, scope) {
             // The slot's own layer draws the icon its nested instance holds.
             const layer = scope.childrenOf(n.id).find(c => c.behavior?.slot === slot.id);
             for (const def of slotDefsOf(template, slot.id)) {
-                if (props[def.show] !== true) continue;
+                if (!iconDefOn(def, props)) continue;
                 if (def.placement && !placementsOfDef(template, def, slot.id).includes(String(props[def.placement]))) continue;
                 // A slot that hides while its value is empty (the clear icon) is kept and hidden, so Play shows it as the value is typed.
                 const hidden = def.hideWhenEmpty !== undefined && String(props[def.hideWhenEmpty] ?? '') === '';

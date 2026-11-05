@@ -74,9 +74,14 @@ export function placementsOfSlot(template, slot) {
     return slotDefsOf(template, slot).flatMap(def => placementsOfDef(template, def, slot));
 }
 
-/** Whether the managed slot of an icon def is shown for these resolved values: its switch is on and its placement (if any) picks the slot. */
+/** Whether an icon def is on for these resolved values: its switch is on, or it has none because its slot is `alwaysVisible`. */
+export function iconDefOn(def, values) {
+    return def.show === undefined || values[def.show] === true;
+}
+
+/** Whether the managed slot of an icon def is shown for these resolved values: the def is on and its placement (if any) picks the slot. */
 function iconDefShown(template, def, values) {
-    if (values[def.show] !== true) return false;
+    if (!iconDefOn(def, values)) return false;
     return def.placement === undefined || slotsOfValue(template, def.placement, values[def.placement]).includes(def.slot);
 }
 
@@ -97,7 +102,13 @@ export function newlyShownIconDefaults(template, prev, next, defaultIcon) {
     /** @type {Record<string, string>} */
     const writes = {};
     for (const def of iconDefsOf(template)) {
-        if (!def.component || iconDefShown(template, def, before) || !iconDefShown(template, def, after)) continue;
+        if (!def.component) continue;
+        // An always visible slot is never switched on: it takes the default icon while none was ever chosen (no stored value), and an icon cleared on purpose (stored null) stays cleared.
+        if (def.show === undefined) {
+            if (prev[def.component] === undefined && next[def.component] == null) writes[def.component] = defaultIcon;
+            continue;
+        }
+        if (iconDefShown(template, def, before) || !iconDefShown(template, def, after)) continue;
         if (after[def.component] == null) writes[def.component] = defaultIcon;
     }
     return writes;
@@ -188,8 +199,8 @@ export function planAnatomy(template, values, children, flip = false) {
     const replaced = new Set(replacedSlotsOf(template, values));
     for (const def of iconDefsOf(template)) {
         const slots = def.placement !== undefined
-            ? (values[def.show] === true ? slotsOfValue(template, def.placement, values[def.placement]).filter(s => def.slot === undefined || s === def.slot) : [])
-            : (values[def.show] === true && def.slot ? [def.slot] : []);
+            ? (iconDefOn(def, values) ? slotsOfValue(template, def.placement, values[def.placement]).filter(s => def.slot === undefined || s === def.slot) : [])
+            : (iconDefOn(def, values) && def.slot ? [def.slot] : []);
         for (const slot of slots) {
             if (replaced.has(slot) || wanted.some(w => w.slot === slot)) continue;
             if (!template.anatomy.some(s => s.id === slot && s.managed)) throw new Error(`${template.id} has no managed slot "${slot}"`);

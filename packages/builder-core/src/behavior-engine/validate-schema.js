@@ -145,10 +145,17 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
             else if (slot.kind === 'frame') out.push(`frame slot "${slot.id}" cannot sit inside another frame slot`);
         }
         if (slot.managed && slot.kind !== 'icon') out.push(`anatomy slot "${slot.id}" is managed but not an icon`);
-        if (slot.managed && !slot.optional) out.push(`managed anatomy slot "${slot.id}" must be optional`);
+        // An always visible icon slot is on every instance: it has no switch, so it is the one managed slot that is not optional.
+        if (slot.alwaysVisible !== undefined && typeof slot.alwaysVisible !== 'boolean') out.push(`anatomy slot "${slot.id}" alwaysVisible must be true or false`);
+        if (slot.alwaysVisible === true) {
+            if (!(slot.kind === 'icon' && slot.managed)) out.push(`anatomy slot "${slot.id}" alwaysVisible needs a managed icon slot`);
+            if (slot.optional) out.push(`alwaysVisible slot "${slot.id}" cannot be optional`);
+        }
+        else if (slot.managed && !slot.optional) out.push(`managed anatomy slot "${slot.id}" must be optional`);
     }
     const text = anatomy.filter(s => isPlainObject(s) && (s.kind === 'text' || s.kind === 'control') && !s.optional);
-    if (text.length === 0 && !(Array.isArray(schema.slots) && schema.slots.length > 0)) out.push('anatomy needs a required text or control slot, or a content slot');
+    const shown = anatomy.filter(s => isPlainObject(s) && s.alwaysVisible === true && s.kind === 'icon' && s.managed);
+    if (text.length === 0 && shown.length === 0 && !(Array.isArray(schema.slots) && schema.slots.length > 0)) out.push('anatomy needs a required text or control slot, an always visible icon slot, or a content slot');
 
     const props = isPlainObject(schema.props) ? schema.props : null;
     if (!props) out.push('props must be an object');
@@ -306,7 +313,9 @@ function iconProblems(schema, allTokens) {
         const tag = `icon def ${i}`;
         if (!isPlainObject(icon)) { out.push(`${tag} must be an object`); return; }
         const show = props[icon.show], component = props[icon.component];
-        if (!show || show.source !== 'literal' || show.type !== 'boolean') out.push(`${tag} show "${icon.show}" is not a boolean prop`);
+        const always = (Array.isArray(schema.anatomy) ? schema.anatomy : []).some(s => isPlainObject(s) && s.id === icon.slot && s.alwaysVisible === true);
+        if (always) { if (icon.show !== undefined) out.push(`${tag} shows an alwaysVisible slot, so it has no show switch`); }
+        else if (!show || show.source !== 'literal' || show.type !== 'boolean') out.push(`${tag} show "${icon.show}" is not a boolean prop`);
         if (!component || component.source !== 'literal' || component.type !== 'iconComponent') out.push(`${tag} component "${icon.component}" is not an icon prop`);
         if (icon.hideWhenEmpty !== undefined && (props[icon.hideWhenEmpty]?.source !== 'literal' || props[icon.hideWhenEmpty]?.type !== 'string')) out.push(`${tag} hideWhenEmpty "${icon.hideWhenEmpty}" is not a string prop`);
         if (icon.placement !== undefined) {

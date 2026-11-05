@@ -3,7 +3,7 @@
 import { TEMPLATES, variableProps } from './registry.js';
 import { autoMatchCollection, createBinding, setVariableBinding } from './binding.js';
 import { iconNeedsOf } from './icon-slot.js';
-import { carryPlacementIcons, iconDefsOf, slotsOfValue } from './anatomy.js';
+import { carryPlacementIcons, iconDefOn, iconDefsOf, slotsOfValue } from './anatomy.js';
 import { isPropVisible, resolveProps, setInstanceProp } from './instance-props.js';
 import { bindSizePatch } from './template-master.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
@@ -115,7 +115,7 @@ export function masterPanel(master, collections) {
 function iconRowsOf(template, values, name) {
     const rows = [];
     for (const def of iconDefsOf(template).filter(d => d.component === name)) {
-        if (values[def.show] !== true) continue;
+        if (!iconDefOn(def, values)) continue;
         if (def.slot === undefined) {
             rows.push({ prop: name, kind: 'icon', slot: true, value: values[name] ?? null, label: 'Icon' });
             continue;

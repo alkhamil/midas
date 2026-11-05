@@ -10,6 +10,8 @@ export interface AnatomySlot {
     optional?: boolean;
     /** Managed slots are inserted and removed by Behavior from the instance's props. */
     managed?: boolean;
+    /** A managed icon slot that is on every instance: its icon def has no `show` switch and the slot is not optional. */
+    alwaysVisible?: boolean;
 }
 
 /** A test on the resolved props: `prop` resolves to `is`, a string `prop` is or is not empty, or every test of `all` holds. */
