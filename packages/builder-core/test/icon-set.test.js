@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { BUILT_IN_TEMPLATES } from '../src/behavior-engine/registry.js';
 import { ICON_SET, ICON_PREFIX, defaultIconOf, iconNodes, iconRolesOf, planIcons } from '../src/behavior-engine/icon-set.js';
 import { iconDefsOf } from '../src/behavior-engine/anatomy.js';
-import { pathCommands } from '../src/geometry/shapes.js';
+import { pathCommands, pathSegments } from '../src/geometry/shapes.js';
 
 const component = (id, name, parentId = null) => ({ id, name, type: 'frame', parentId, component: true });
 
@@ -71,4 +71,50 @@ test('a file that already has a default icon gets no icon for the default role, 
     const plan = planIcons({ pages: [{ nodes: [component('theirs', 'Icon/arrow')] }] });
     assert.deepEqual(plan.create.filter(e => e.role === 'default'), []);
     assert.deepEqual(plan.present.filter(e => e.role === 'default').map(e => e.name), ICON_SET.filter(e => e.role === 'default').map(e => e.name));
+});
+
+/** The points of a cubic Bezier segment, sampled, as the outline the renderers draw. */
+function sampleSegment(a, b, steps = 24) {
+    const c1 = a.out ?? a, c2 = b.in ?? b, out = [];
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps, u = 1 - t;
+        out.push({ x: u ** 3 * a.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t ** 3 * b.x, y: u ** 3 * a.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t ** 3 * b.y });
+    }
+    return out;
+}
+
+test('the circle is round: every sample along all four segments, the closing one included, is within a hair of the radius', () => {
+    const circle = ICON_SET.find(e => e.name === 'circle');
+    const [cx, cy, r] = [12, 12, 10];
+    const segments = pathSegments(circle.points, circle.closed);
+    assert.equal(segments.length, 4, 'a closed path has as many segments as points');
+    for (const { from, to } of segments) {
+        for (const p of sampleSegment(from, to)) assert.ok(Math.abs(Math.hypot(p.x - cx, p.y - cy) - r) < 0.05, `(${p.x.toFixed(2)}, ${p.y.toFixed(2)}) is on the circle`);
+    }
+});
+
+test('the four quadrants are identical by symmetry: the same handle length on every anchor', () => {
+    const { points } = ICON_SET.find(e => e.name === 'circle');
+    const lengths = points.flatMap(p => [Math.hypot(p.in.x - p.x, p.in.y - p.y), Math.hypot(p.out.x - p.x, p.out.y - p.y)]);
+    for (const l of lengths) assert.ok(Math.abs(l - 10 * 0.5523) < 0.001, `handle ${l.toFixed(4)} is kappa times the radius`);
+});
+
+test('the segments of an outline: one per neighbouring pair, and for a closed one the closing segment from the last point back to the first, with its handles', () => {
+    const pts = [{ x: 0, y: 0, out: { x: 1, y: 0 } }, { x: 5, y: 0 }, { x: 5, y: 5, out: { x: 5, y: 6 } }];
+    assert.equal(pathSegments(pts, false).length, 2);
+    const closed = pathSegments(pts, true);
+    assert.equal(closed.length, 3);
+    assert.deepEqual([closed[2].from, closed[2].to], [pts[2], pts[0]]);
+    assert.equal(closed[2].curve, true, 'the closing segment has handles: it is drawn as a curve, not a chord');
+    assert.equal(closed[1].curve, false, 'a segment with no handle is a straight line');
+    assert.deepEqual(pathSegments([pts[0]], true), [], 'one point has no segment');
+    assert.deepEqual(pathSegments([], true), []);
+});
+
+test('the outline commands walk the same segments, so the closing curve is drawn on every surface that reads them', () => {
+    const circle = ICON_SET.find(e => e.name === 'circle');
+    const [, path] = iconNodes(circle, key => key);
+    const curves = pathCommands(path).filter(c => c.op === 'C');
+    assert.equal(curves.length, 4);
+    assert.deepEqual(pathCommands(path).filter(c => c.op === 'L'), [], 'no straight segment');
 });

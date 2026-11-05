@@ -92,6 +92,22 @@ function arcCommands(n) {
     return cmds;
 }
 
+/**
+ * The segments of a vector outline, in order: each neighbouring pair of points, and for a closed outline the closing segment from the last point back to the
+ * first. A segment is `curve` when either end has a handle. Every surface that draws or measures an outline walks these (the closing segment keeps its handles).
+ * @param {{ x: number, y: number, in?: { x: number, y: number }, out?: { x: number, y: number } }[]} points
+ * @param {boolean} closed
+ * @returns {{ from: any, to: any, curve: boolean }[]}
+ */
+export function pathSegments(points, closed) {
+    const n = points?.length ?? 0;
+    const segment = (from, to) => ({ from, to, curve: !!(from.out || to.in) });
+    const out = [];
+    for (let i = 1; i < n; i++) out.push(segment(points[i - 1], points[i]));
+    if (closed && n > 1) out.push(segment(points[n - 1], points[0]));
+    return out;
+}
+
 /** A vector path: its points scaled from its own size to the layer size. Several sub-paths (contours) each keep their own state. */
 function vectorCommands(n) {
     const pts = n.points || [];
@@ -100,18 +116,14 @@ function vectorCommands(n) {
     const trace = (list, closed) => {
         if (!list?.length) return;
         cmds.push({ op: 'M', x: list[0].x * sx, y: list[0].y * sy });
-        const seg = (a, b) => {
-            if (a.out || b.in)
+        for (const { from: a, to: b, curve } of pathSegments(list, closed)) {
+            if (curve)
                 cmds.push({ op: 'C', x1: (a.out?.x ?? a.x) * sx, y1: (a.out?.y ?? a.y) * sy, x2: (b.in?.x ?? b.x) * sx, y2: (b.in?.y ?? b.y) * sy, x: b.x * sx, y: b.y * sy });
             else
                 cmds.push({ op: 'L', x: b.x * sx, y: b.y * sy });
-        };
-        for (let i = 1; i < list.length; i++)
-            seg(list[i - 1], list[i]);
-        if (closed) {
-            seg(list.at(-1), list[0]);
-            cmds.push({ op: 'Z' });
         }
+        if (closed)
+            cmds.push({ op: 'Z' });
     };
     trace(pts, n.closed);
     for (const c of n.contours || [])
