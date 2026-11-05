@@ -99,7 +99,16 @@ function childrenByParent(all) {
  * @returns {any[]}
  */
 function descendantsOf(id, children) {
-    return (children.get(id) || []).flatMap(c => [c, ...descendantsOf(c.id, children)]);
+    // Depth first into one array: the nested spreads copied every level again.
+    const out = [];
+    const visit = parent => {
+        for (const c of children.get(parent) || []) {
+            out.push(c);
+            visit(c.id);
+        }
+    };
+    visit(id);
+    return out;
 }
 
 /**
