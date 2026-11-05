@@ -68,7 +68,7 @@ test('codegen emits the wave hooks on wave templates only', () => {
 
 test('the wave ring inherits radius and reads the wave colour', () => {
     assert.match(css, /\.button \{[^}]*position: relative;/);
-    assert.match(css, /\.button::after \{[^}]*border-radius: inherit;[^}]*box-shadow: 0 0 0 0 var\(--button-wave-color\);/);
-    assert.match(css, /@keyframes midas-wave \{[\s\S]*?box-shadow: 0 0 0 6px var\(--button-wave-color\);[\s\S]*?opacity: 0;/);
+    assert.match(css, /\.button::after \{[^}]*border-radius: inherit;[^}]*--midas-wave-color: var\(--button-wave-color\);[^}]*box-shadow: 0 0 0 0 var\(--midas-wave-color\);/);
+    assert.match(css, /@keyframes midas-wave \{[\s\S]*?box-shadow: 0 0 0 6px var\(--midas-wave-color\);[\s\S]*?opacity: 0;/);
     assert.match(css, /\.button\[data-wave-on\]::after \{\n\s*animation: midas-wave 2s cubic-bezier\(0\.08, 0\.82, 0\.17, 1\);\n\}/);
 });

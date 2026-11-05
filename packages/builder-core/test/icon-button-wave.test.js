@@ -60,7 +60,7 @@ test('the stylesheet carries the same ring rules and keyframes as Button, in the
         assert.ok(own && theirs, label);
         assert.equal(neutral(own, 'icon-button', 'IconButton').replaceAll('--T-wave-color', 'C'), neutral(theirs, 'button', 'Button').replaceAll('--T-wave-color', 'C'), label);
     }
-    assert.match(css, /\.icon-button::after \{[^}]*box-shadow: 0 0 0 0 var\(--icon-button-wave-color\)/);
+    assert.match(css, /\.icon-button::after \{[^}]*--midas-wave-color: var\(--icon-button-wave-color\);[^}]*box-shadow: 0 0 0 0 var\(--midas-wave-color\)/);
 });
 
 test('the ring follows the Shape: it inherits the host radius, and a circle host has the full radius at the same box', () => {
@@ -104,9 +104,22 @@ test('a disabled or loading host is blocked, which is what stops the wave (Play 
 test('Button and Input output is byte-identical to before the change', () => {
     const hash = text => createHash('sha256').update(text).digest('hex').slice(0, 16);
     assert.equal(hash(buttonFiles['Button.jsx']), '53b29f8cdc7c2916');
-    assert.equal(hash(buttonFiles['Button.css']), 'da43df2d82bb8b13');
+    assert.equal(hash(buttonFiles['Button.css']), '5d10105108ea07fd', 'the stylesheet changed only in the wave: the shared keyframes colour');
     const im = inputModel({ ids: { variant: 'c-input-variant', status: 'c-input-status', size: 'c-input-size', semantic: 'c-input-semantic' }, prefix: 'in-' });
     const input = generateComponent(BUILT_IN_TEMPLATES.get('input'), im.binding, { collections: im.collections, items: im.items }, 'Input', { id: 'm', name: 'Input', type: 'frame', layout: 'horizontal' }, () => []).files;
     assert.equal(hash(input['Input.jsx']), 'cfd0caab2bd739f8');
     assert.equal(hash(input['Input.css']), '5b6c7a7555db5859');
+});
+
+test('two wave templates on one page do not fight over the keyframes: one shared midas-wave in the colour the ring sets on its own element', () => {
+    // Play writes every template's stylesheet into one document, so a second @keyframes midas-wave overrides the first: it may name no template's variable.
+    const both = [buttonFiles['Button.css'], css].join('\n');
+    const blocks = both.match(/@keyframes midas-wave \{[\s\S]*?\n\}\n/g);
+    assert.equal(blocks.length, 2);
+    assert.equal(blocks[0], blocks[1], 'the same keyframes text from both templates');
+    assert.ok(!/--(button|icon-button)-/.test(blocks[0]), 'no template variable in the keyframes');
+    assert.match(blocks[0], /var\(--midas-wave-color\)/);
+    for (const [text, id] of [[buttonFiles['Button.css'], 'button'], [css, 'icon-button']]) {
+        assert.match(text, new RegExp(`\\.${id}::after \\{[^}]*--midas-wave-color: var\\(--${id}-wave-color\\);[^}]*box-shadow: 0 0 0 0 var\\(--midas-wave-color\\);`));
+    }
 });

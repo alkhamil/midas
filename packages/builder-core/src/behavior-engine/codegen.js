@@ -19,8 +19,10 @@ const FOCUS_TRANSITION = 'outline-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1
 // Wave spread lands at 20% of the 2s opacity leg (0.4s), motionEaseOutCirc; the colour comes from the wave-color token.
 const WAVE_KEYFRAMES = 'midas-wave';
 const WAVE_ANIMATION = 'midas-wave 2s cubic-bezier(0.08, 0.82, 0.17, 1)';
-const WAVE_SPREAD = '6px';
+export const WAVE_SPREAD = '6px';
 const WAVE_START_OPACITY = 0.2;
+/** The custom property the wave ring reads its colour from: set on each template's ring, read by the one shared keyframes. */
+const WAVE_COLOR_VAR = '--midas-wave-color';
 // A part declared `spin` turns about its centre; the arc it draws is what shows the turn.
 export const SPIN_KEYFRAMES = 'midas-spin';
 export const SPIN_ANIMATION = `${SPIN_KEYFRAMES} 1s linear infinite`;
@@ -405,10 +407,12 @@ function blockedRules(template) {
  * @param {import('../templates/schema.js').TemplateSchema} template
  */
 function waveRules(template) {
-    const color = `var(${cssVarOf(template.id, 'wave-color')})`;
+    // The keyframes are one text for every wave template (a page holds several stylesheets, and a second @keyframes of the same name replaces the first), so they
+    // read the colour from a custom property the ring sets on its own element, from its template's token.
+    const color = `var(${WAVE_COLOR_VAR})`;
     return [
         `.${template.id}[data-wave-on]::after {\n  animation: ${WAVE_ANIMATION};\n}\n`,
-        `.${template.id}::after {\n  content: '';\n  position: absolute;\n  inset: 0;\n  border-radius: inherit;\n  pointer-events: none;\n  box-shadow: 0 0 0 0 ${color};\n  opacity: 0;\n}\n`,
+        `.${template.id}::after {\n  content: '';\n  position: absolute;\n  inset: 0;\n  border-radius: inherit;\n  pointer-events: none;\n  ${WAVE_COLOR_VAR}: var(${cssVarOf(template.id, 'wave-color')});\n  box-shadow: 0 0 0 0 ${color};\n  opacity: 0;\n}\n`,
         `@keyframes ${WAVE_KEYFRAMES} {\n  0% { box-shadow: 0 0 0 0 ${color}; opacity: ${WAVE_START_OPACITY}; }\n  20% { box-shadow: 0 0 0 ${WAVE_SPREAD} ${color}; }\n  100% { box-shadow: 0 0 0 ${WAVE_SPREAD} ${color}; opacity: 0; }\n}\n`,
     ].join('\n');
 }
