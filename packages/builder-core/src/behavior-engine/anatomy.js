@@ -91,27 +91,39 @@ function iconDefShown(template, def, values) {
  * already shown, or already holds an icon (a remembered one included), is left as it is, so an icon cleared on purpose stays cleared.
  * Pure: the caller stores the returned writes.
  * @param {TemplateSchema} template
- * @param {Record<string, unknown>} prev the instance's stored props before the edit
+ * @param {Record<string, unknown> | null} prev the instance's stored props before the edit; null when the instance is being created (nothing was shown before)
  * @param {Record<string, unknown>} next the stored props after it
  * @param {string | null} defaultIcon the id of the default icon, or null when the document has none
  * @returns {Record<string, string>} prop name to icon id
  */
 export function newlyShownIconDefaults(template, prev, next, defaultIcon) {
     if (!defaultIcon) return {};
-    const before = resolveProps(template, /** @type {any} */ (prev)), after = resolveProps(template, /** @type {any} */ (next));
+    const before = prev === null ? null : resolveProps(template, /** @type {any} */ (prev)), after = resolveProps(template, /** @type {any} */ (next));
     /** @type {Record<string, string>} */
     const writes = {};
     for (const def of iconDefsOf(template)) {
         if (!def.component) continue;
         // An always visible slot is never switched on: it takes the default icon while none was ever chosen (no stored value), and an icon cleared on purpose (stored null) stays cleared.
         if (def.show === undefined) {
-            if (prev[def.component] === undefined && next[def.component] == null) writes[def.component] = defaultIcon;
+            if ((prev === null || prev[def.component] === undefined) && next[def.component] == null) writes[def.component] = defaultIcon;
             continue;
         }
-        if (iconDefShown(template, def, before) || !iconDefShown(template, def, after)) continue;
+        if ((before !== null && iconDefShown(template, def, before)) || !iconDefShown(template, def, after)) continue;
         if (after[def.component] == null) writes[def.component] = defaultIcon;
     }
     return writes;
+}
+
+/**
+ * The icon each slot takes when its instance is created: the edit rule (newlyShownIconDefaults) with nothing shown before, so a slot that is on from the
+ * start (an always visible one, or a switch on by default) holds the default icon from the first frame. A new Button or Input has no icon on: no writes.
+ * @param {TemplateSchema} template
+ * @param {Record<string, unknown>} props the stored props of the new instance
+ * @param {string | null} defaultIcon the id of the default icon, or null when the document has none
+ * @returns {Record<string, string>} prop name to icon id
+ */
+export function createdIconDefaults(template, props, defaultIcon) {
+    return newlyShownIconDefaults(template, null, props, defaultIcon);
 }
 
 /**
