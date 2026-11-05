@@ -251,13 +251,7 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
         out.push(next);
     }
     // A part on a side sits before the label on the start side and after it on the end side (the spinner, by iconPlacement).
-    for (const part of canvasPartsOf(template).filter(p => p.side)) {
-        const copy = out.find(c => c.behavior?.part === part.id);
-        const label = out.find(c => c !== copy && c.type === 'text' && !c.behavior?.part && !c.behavior?.slot);
-        if (!copy || !label) continue;
-        out.splice(out.indexOf(copy), 1);
-        out.splice(out.indexOf(label) + (resolved[part.side] === 'end' ? 1 : 0), 0, copy);
-    }
+    out.splice(1, out.length - 1, ...placeSidedParts(template, out.slice(1), resolved));
     // A managed slot the props show, that the subtree does not hold, is created on the instance (its frame is empty; the icon is content).
     const stubs = [];
     for (const slot of template.anatomy.filter(s => s.kind === 'icon' || s.managed)) {
@@ -324,14 +318,27 @@ function sizedSlot(template, slotId) {
  * @returns {string[]} the layer ids in the order they belong
  */
 export function sidedPartOrder(template, children, resolved) {
-    const ids = children.map(c => c.id);
-    const label = children.find(c => c.type === 'text' && !c.behavior?.part && !c.behavior?.slot && !c.behavior?.text);
-    if (!label) return ids;
+    return placeSidedParts(template, children, resolved).map(c => c.id);
+}
+
+/**
+ * The layers with every part that sits on a side placed: against the label when the template has one (before it for `start`, after it for
+ * `end`), else against the root (a `start` part first, in part order; an `end` part last). Every other layer keeps its place. A template
+ * with no sided part returns the layers as they are.
+ * @param {any} template
+ * @param {{ id: string, type?: string, behavior?: any }[]} layers the instance's layers, in order, without the root
+ * @param {Record<string, unknown>} resolved the instance's resolved props
+ */
+function placeSidedParts(template, layers, resolved) {
+    const out = [...layers];
+    const label = out.find(c => c.type === 'text' && !c.behavior?.part && !c.behavior?.slot && !c.behavior?.text);
+    let front = 0;
     for (const part of canvasPartsOf(template).filter(p => p.side)) {
-        const copy = children.find(c => c.behavior?.part === part.id);
+        const copy = out.find(c => c.behavior?.part === part.id);
         if (!copy) continue;
-        ids.splice(ids.indexOf(copy.id), 1);
-        ids.splice(ids.indexOf(label.id) + (resolved[part.side] === 'end' ? 1 : 0), 0, copy.id);
+        out.splice(out.indexOf(copy), 1);
+        const end = resolved[part.side] === 'end';
+        out.splice(label ? out.indexOf(label) + (end ? 1 : 0) : end ? out.length : front++, 0, copy);
     }
-    return ids;
+    return out;
 }
