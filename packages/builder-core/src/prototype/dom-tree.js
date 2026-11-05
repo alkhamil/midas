@@ -47,7 +47,15 @@ export function toDomTree(doc, frameId, { responsive = false } = {}) {
     const parent = frame?.parentId ? byId.get(frame.parentId) : null;
     if (!frame || !(frame.type === 'frame' && (!frame.parentId || parent?.isSection))) throw new Error(`"${frameId}" is not a top-level frame`);
     const pageVarModes = pages.find(p => (p.nodes || []).includes(frame))?.varModes;
-    const scope = { byId, assets: doc.assets || {}, variables: doc.variables || {}, pageVarModes, responsive, unsupported: [], problems: [], styles: new Map(), childrenOf: id => nodes.filter(n => n.parentId === id) };
+    // The children of each layer, indexed once: searching every layer of the document for each layer made a frame cost the square of its size.
+    const kids = new Map();
+    for (const n of nodes) {
+        if (n.parentId == null) continue;
+        const list = kids.get(n.parentId);
+        if (list) list.push(n);
+        else kids.set(n.parentId, [n]);
+    }
+    const scope = { byId, assets: doc.assets || {}, variables: doc.variables || {}, pageVarModes, responsive, unsupported: [], problems: [], styles: new Map(), childrenOf: id => kids.get(id) ?? [] };
     const root = renderNode(frame, null, scope);
     if (!root) return { root: null, styles: null, unsupported: scope.unsupported, problems: scope.problems };
     const styles = [...scope.styles.values()].join('\n');
