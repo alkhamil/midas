@@ -1,0 +1,85 @@
+// The built-in icon set (data) and its planning (pure). Every icon slot of every template takes the file's default icon, the first component named Icon/<name>
+// (see createdIconDefaults), so a file with no icon has empty slots. The Design System bundle creates what the file lacks from this set: one icon per role the
+// registry's schemas ask for. A template that needs an icon of its own adds it here (a name, a role and a vector path); nothing in the bundle names a template.
+import { iconDefsOf } from './anatomy.js';
+
+/** The file convention for an icon component's name. */
+export const ICON_PREFIX = 'Icon/';
+
+/** The size of an icon component's box and of its path space, in px. */
+const SIZE = 24;
+/** The control distance of a bezier circle, for a radius of 10: radius times 0.5523. */
+const K = 5.523;
+const at = (x, y, inX, inY, outX, outY) => ({ x, y, in: { x: inX, y: inY }, out: { x: outX, y: outY } });
+
+/**
+ * The icons the bundle creates. `role` is the need they fill (`default`: the icon every slot takes until the designer chooses one), `points` the closed outline
+ * in a 24 x 24 space (bezier handles absolute), filled so the foreground colour binds to it.
+ * @type {{ name: string, role: string, closed: boolean, points: { x: number, y: number, in?: { x: number, y: number }, out?: { x: number, y: number } }[] }[]}
+ */
+export const ICON_SET = [
+    // A disc: neutral for a button's icon and for the clear icon, which takes the same default.
+    { name: 'circle', role: 'default', closed: true, points: [at(12, 2, 12 - K, 2, 12 + K, 2), at(22, 12, 22, 12 - K, 22, 12 + K), at(12, 22, 12 + K, 22, 12 - K, 22), at(2, 12, 2, 12 + K, 2, 12 - K)] },
+];
+
+/**
+ * The icon roles a set of templates asks for, in order: one per icon def that holds an icon component (a def says its role, `default` when it says none).
+ * @param {{ icons?: any[] }[]} templates
+ * @returns {string[]}
+ */
+export function iconRolesOf(templates) {
+    const roles = [];
+    for (const template of templates) {
+        for (const def of iconDefsOf(template)) {
+            const role = def.role ?? 'default';
+            if (def.component && !roles.includes(role)) roles.push(role);
+        }
+    }
+    return roles;
+}
+
+/**
+ * The file's default icon: the id of the first component named Icon/<name>, on any page and at any depth (the Design System page keeps its icons in a section).
+ * Null when the file has none. The one definition the editor and the bundle read.
+ * @param {{ nodes?: any[] }[]} pages
+ * @returns {string | null}
+ */
+export function defaultIconOf(pages) {
+    for (const page of pages) {
+        const icon = (page.nodes ?? []).find(n => n.component === true && typeof n.name === 'string' && n.name.startsWith(ICON_PREFIX));
+        if (icon) return icon.id;
+    }
+    return null;
+}
+
+/**
+ * What the bundle does for the icons in this file: the set's icons to create, and those already there. An icon is there when a component of that name exists
+ * (never replaced, a designer's or an imported one included), and a role with a default icon already in the file needs none of its own.
+ * @param {{ pages: { nodes?: any[] }[] }} input
+ * @param {typeof ICON_SET} [set]
+ */
+export function planIcons({ pages }, set = ICON_SET) {
+    const names = new Set(pages.flatMap(p => (p.nodes ?? []).filter(n => n.component === true).map(n => n.name)));
+    const haveDefault = defaultIconOf(pages) !== null;
+    const create = [], present = [];
+    for (const entry of set) {
+        (names.has(ICON_PREFIX + entry.name) || (entry.role === 'default' && haveDefault) ? present : create).push(entry);
+    }
+    return { create, present };
+}
+
+/**
+ * An icon's nodes: the component frame and its vector path, as the engine's icon slots expect them (an auto layout frame, a filled path). `idOf(key)` gives each an id.
+ * @param {typeof ICON_SET[number]} entry
+ * @param {(key: string) => string} idOf
+ */
+export function iconNodes(entry, idOf) {
+    const id = idOf(`${ICON_PREFIX}${entry.name}`), pathId = idOf(`${ICON_PREFIX}${entry.name}/path`);
+    const root = { id, name: ICON_PREFIX + entry.name, type: 'frame', parentId: null, x: 0, y: 0, w: SIZE, h: SIZE, component: true, layout: 'horizontal', gap: 0, padding: 0, layoutSizingH: 'fixed', layoutSizingV: 'fixed', fills: [], clip: false, stroke: '#000000', strokeWidth: 0, radius: 0, opacity: 1, visible: true, locked: false, rotation: 0, version: 0 };
+    const path = {
+        id: pathId, name: entry.name, type: 'path', parentId: id, x: 0, y: 0, w: SIZE, h: SIZE, pathW: SIZE, pathH: SIZE, closed: entry.closed,
+        points: structuredClone(entry.points), fills: [{ type: 'solid', color: '#20202a', opacity: 1, visible: true }], stroke: '#20202a', strokeWidth: 0,
+        rotation: 0, opacity: 1, visible: true, locked: false, clip: false, radius: 0, version: 0,
+    };
+    return [root, path];
+}
