@@ -9263,6 +9263,18 @@ function fixableAutoFix(master) {
     return { fixable: true, count: plan.summary.variables + plan.summary.fills };
 }
 
+/** Applies an Auto Fix plan to a master: the variables it needs, the binding, and its instances' layers. One undo step; the Design System bundle runs it inside its own. */
+function applyAutoFixPlan(master, plan) {
+    let result;
+    const binding = master.behavior;
+    transaction('Auto Fix', () => {
+        result = applyAutoFix(varStore(), binding, plan, uid);
+        bindMasterTokens(master);
+        for (const inst of instancesOf(master.id)) syncInstance(inst);
+    });
+    return result;
+}
+
 /** Auto Fix: creates what the template requires (collections, modes, variables as aliases by role), binds the frame with the existing pipeline, and reports what was made. One undo step. */
 async function autoFixMaster(master) {
     const binding = master?.behavior;
@@ -9279,12 +9291,7 @@ async function autoFixMaster(master) {
     if (!plan.fixable) { toast('Nothing to fix.'); return; }
     const ok = await confirmDialog({ title: `Auto Fix ${master.name}?`, message: `Create ${plan.summary.variables} variables in collections [${[...new Set(plan.summary.collections)].join(', ')}], bind ${plan.summary.boundProperties} properties${plan.summary.rebound ? `, rebind ${plan.summary.rebound} line heights to px tokens` : ''}.`, confirmLabel: 'Auto Fix' });
     if (!ok) return;
-    let result;
-    transaction('Auto Fix', () => {
-        result = applyAutoFix(varStore(), binding, plan, uid);
-        bindMasterTokens(master);
-        for (const inst of instancesOf(master.id)) syncInstance(inst);
-    });
+    const result = applyAutoFixPlan(master, plan);
     const { summary } = plan;
     toast(`Auto Fix: ${result.items} variables, ${summary.boundProperties} properties bound.`);
     const lines = [
@@ -19623,10 +19630,10 @@ function templateChoices() {
 }
 /**
  * Applies a template to a frame through the generator: the frame becomes the master, its missing parts are created and bound, and
- * nothing it already has is removed. Works inside the caller's transaction.
+ * nothing it already has is removed. Works inside the caller's transaction. `binding` is the master's own when it already has one (the Design System
+ * bundle completing a master); a new master takes the collections its template finds by name.
  */
-function applyTemplateNodes(frame, template) {
-    const binding = setMasterTemplate(template.id, varStore().collections || []);
+function applyTemplateNodes(frame, template, binding = setMasterTemplate(template.id, varStore().collections || [])) {
     const out = applyTemplateToFrame(template, { frame, children: doc.descendants(frame.id), binding, variables: varStore(), idOf: () => uid() });
     for (const n of out.created)
         doc.add(n);
