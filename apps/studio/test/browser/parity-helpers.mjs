@@ -36,13 +36,26 @@ export function isolatedStage({ icons = true, name = 'strict-parity.midas' } = {
     return file;
 }
 
-/** Creates a template component from the Components panel, and waits for its instance to be selected. */
+/**
+ * Builds the template components with the Assets tab's one button (Generate Design System: every registered template on the Design System page, each with a
+ * demo instance) the first time, then selects the demo instance of `templateId`. A second call finds the page built and only selects.
+ */
 export async function createFromPanel(page, templateId) {
     await page.getByRole('button', { name: 'Components' }).first().click();
     await page.waitForTimeout(300);
-    await page.locator(`[data-create-template="${templateId}"]`).click();
-    await page.waitForFunction(() => window.midas.state.selection.size === 1, null, { timeout: 5000 });
-    return page.evaluate(() => [...window.midas.state.selection][0]);
+    const built = await page.evaluate(() => window.midas.doc.data.pages.some(p => p.name === 'Design System'));
+    if (!built) {
+        await page.locator('[data-generate-design-system]').click();
+        await page.waitForFunction(() => window.midas.doc.page?.name === 'Design System', null, { timeout: 30000 });
+        await page.waitForTimeout(500);
+    }
+    return page.evaluate(templateId => {
+        const nodes = window.midas.doc.data.pages.find(p => p.name === 'Design System').nodes;
+        const master = nodes.find(n => n.component && n.behavior?.templateId === templateId);
+        const instance = nodes.find(n => n.isInstance && n.sourceId === master.id);
+        window.midas.select([instance.id]);
+        return instance.id;
+    }, templateId);
 }
 
 /** Sets a prop in the Behavior tab: a checkbox for a boolean, a text field for the value. */

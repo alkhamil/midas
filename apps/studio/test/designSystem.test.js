@@ -35,3 +35,9 @@ test('a master that is already there is completed with its own binding, and gets
     assert.ok(/counts\.present\+\+/.test(bundle) && /counts\.created\+\+/.test(bundle));
     assert.equal(bundle.split('instanceOf(').length - 1, 1, 'the demo instance is made once, for a master the run created');
 });
+
+test('the per-template Create buttons and their handlers are gone; the Template dropdown still lists the registry', () => {
+    assert.ok(!src.includes('data-create-template'), 'no Create button markup or handler');
+    assert.ok(!src.includes('createTemplateComponent'), 'the old Create action is removed');
+    assert.ok(src.includes('function templateChoices()'), 'the dropdown keeps listing every registered template');
+});

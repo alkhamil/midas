@@ -19682,48 +19682,10 @@ function frameApplyTemplate(frame, templateId) {
     if (out && out.created.length === 0 && out.matched.length === 0)
         toast(`${frame.name} has nothing to build for ${template.name}.`);
 }
-/**
- * Create <Template>: a master frame built by the generator, and one instance of it placed beside it. One transaction, one undo step;
- * the instance is selected afterwards, so the Behavior panel opens on it.
- */
-function createTemplateComponent(templateId) {
-    const template = BEHAVIOR_TEMPLATES.get(templateId);
-    if (!template)
-        return;
-    const c = screenToWorld(area.clientWidth / 2, area.clientHeight / 2);
-    let placed = null;
-    transaction(`Create ${template.name}`, () => {
-        const master = doc.add(node('frame', { name: template.name, x: Math.round(c.x - 80), y: Math.round(c.y - 16), w: 160, h: 32, fills: paintOf('#ffffff'), clip: false, component: true }));
-        applyTemplateNodes(master, template);
-        const subtree = doc.descendants(master.id);
-        // The instance shows each collection its master binds, at the first mode: the Appearance modes the Design panel lists.
-        const varModes = {};
-        for (const [prop, cid] of Object.entries(master.behavior.variables)) {
-            const modes = varColl(cid)?.modes ?? [];
-            const wanted = BEHAVIOR_TEMPLATES.get(master.behavior.templateId)?.props[prop]?.defaultMode;
-            const mode = modes.find(mo => mo.id === wanted || mo.name === wanted) ?? modes[0];
-            if (mode) varModes[cid] = mode.id;
-        }
-        const copies = instanceOf(template, master, subtree, {}, { id: () => uid(), varModes });
-        copies[0].x = master.x + master.w + 48;
-        copies[0].y = master.y;
-        for (const n of copies)
-            doc.add(n);
-        doc.touch(copies[0]);
-        placed = copies[0];
-    });
-    if (placed)
-        select([placed.id]);
-}
 /** The Assets panel's one template action: the Design System bundle builds every registered template. */
 function templateCreateRow() {
     return `<div class="asset-create"><button class="cmp-btn" data-generate-design-system>Generate Design System</button></div>`;
 }
-document.addEventListener('click', e => {
-    const b = e.target.closest('[data-create-template]');
-    if (b)
-        createTemplateComponent(b.dataset.createTemplate);
-});
 
 // ===== Design System bundle =====
 /** A node made from a core spec ({ type, props }), under `parentId`. */
