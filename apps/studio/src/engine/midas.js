@@ -9,6 +9,7 @@ import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libr
 import { VAR_TYPES } from './varTypes.js';
 import { boot } from '../boot.js';
 import { AtlasPacker, tileGrid } from './atlasPacker.js';
+import { commitAffectsComponents, layerFlagsOf } from '@midas/builder-core';
 import { boundsIn, descendantsOf, effectBleed, planRasterRoots } from './rasterRoutes.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
 import { subtreeFrom } from './nodeIndex.js';
@@ -6478,9 +6479,13 @@ function xyForTopLeft(n, tl) {
 
 // Pages of the open file that are still being streamed in (see streamPages): empty stubs until their data arrives.
 const lazyPages = new Set();
+/** The changes since the last commit: the layers added, removed and edited, and whether something unknown changed (see commit-scope.js). */
+function emptyChanges() {
+    return { added: [], removed: [], changed: [], full: false };
+}
 class DocumentModel {
     // `lazy`: some pages are still stubs, so cross-page clean-ups (they would see the missing layers as dangling) wait for streamPages.
-    constructor(data, { lazy = false } = {}) { this.data = data || makeStarter(); activateDocumentTemplates(this.data.behavior); this.data.variables = cleanVariables(this.data.variables); this.revision = 0; this.structure = 0; this._sceneRevision = -1; this._scene = []; this._map = new Map(); this._byParent = new Map(); this._pageSnapshots = new Map(); this._layerJson = new WeakMap(); this._world = new Map(); this.refresh(); }
+    constructor(data, { lazy = false } = {}) { this.data = data || makeStarter(); activateDocumentTemplates(this.data.behavior); this.data.variables = cleanVariables(this.data.variables); this.revision = 0; this.structure = 0; this._sceneRevision = -1; this._scene = []; this._map = new Map(); this._byParent = new Map(); this._pageSnapshots = new Map(); this._layerJson = new WeakMap(); this.changes = emptyChanges(); this.knownProto = null; this.knownSlots = null; this._world = new Map(); this.refresh(); }
     get page() { return this.data.pages.find(p => p.id === this.data.pageId) || this.data.pages[0]; }
     get nodes() { return this.page.nodes; }
     get(id) { return this._map.get(id); }
@@ -6512,7 +6517,30 @@ class DocumentModel {
     }
     // `structure` counts the changes that can move ids, parents, components or instance sources: the whole-file indexes
     // (nodeIndex, ensureGlobalIndexes, overlayIndex) are rebuilt only then. Every touch is one unless the caller knows better.
-    touch(n, { structure = true } = {}) {
+    /** What a layer changes for the commit scope: its type, parent, flags, and whether it lies inside a master or an instance. */
+    changeEntry(n) {
+        let inComponent = false;
+        for (let p = n.parentId ?? null, guard = 0; p != null && guard < 10000; guard++) {
+            const a = this.get(p);
+            if (!a || a.component || a.componentSet || a.isInstance || a.booleanOp) {
+                inComponent = true; // a boolean group recomputes from its layers; a parent this document does not hold is taken as a component
+                break;
+            }
+            p = a.parentId ?? null;
+        }
+        return { id: n.id, type: n.type, parentId: n.parentId ?? null, flags: layerFlagsOf(n), inComponent };
+    }
+    /** The changes since the last commit, and a fresh record. */
+    takeChanges() {
+        const c = this.changes;
+        this.changes = emptyChanges();
+        return c;
+    }
+    touch(n, { structure = true, record = true } = {}) {
+        if (record) {
+            if (n) this.changes.changed.push(this.changeEntry(n));
+            else this.changes.full = true;
+        }
         if (n)
             n.version = (n.version || 0) + 1;
         this.revision++;
@@ -6533,7 +6561,8 @@ class DocumentModel {
             this._byParent.set(pid, list);
         }
         list.push(n);
-        this.touch(n);
+        this.changes.added.push(this.changeEntry(n));
+        this.touch(n, { record: false });
         return n;
     }
     children(id) { return this._byParent.get(id || null) || []; }
@@ -6574,6 +6603,10 @@ class DocumentModel {
         for (const id of ids)
             for (const n of this.descendants(id))
                 all.add(n.id);
+        for (const id of all) {
+            const x = this.get(id);
+            if (x) this.changes.removed.push(this.changeEntry(x));
+        }
         this.page.nodes = this.nodes.filter(n => !all.has(n.id));
         // Guides bound to a removed frame are its children: they go with it.
         if (this.page.guides)
@@ -6708,6 +6741,9 @@ class DocumentModel {
     }
     restore(s) {
         this._pageSnapshots.clear();
+        this.changes.full = true;
+        this.knownProto = null;
+        this.knownSlots = null;
         delete this.data.behavior;
         Object.assign(this.data, { ...JSON.parse(s.meta), pages: s.pages.map(p => JSON.parse(p)) });
         activateDocumentTemplates(this.data.behavior);
@@ -8729,17 +8765,28 @@ function changed({ ui = true, commit = false } = {}) {
         refreshUI();
         return;
     }
+    // What this commit changed, as the commit scope classifies it. The bookkeeping below records its own changes; they are discarded.
+    const scope = commit ? commitAffectsComponents(doc.takeChanges()) : { affects: true, reason: null };
+    doc.lastAffects = scope.affects;
     refreshBooleans();
     if (commit && normalizeSetChildren() && !state.selection.size)
         refreshUI();
-    doc.touch();
+    doc.touch(undefined, { record: false });
     if (commit) {
-        markSelectedOverrides();
+        if (scope.affects)
+            markSelectedOverrides();
         applyAllLayouts();
-        syncComponents();
+        if (scope.affects)
+            syncComponents();
         autoMatchUnbound();
-        if (rolledBackForBehavior() || rolledBackForPrototype())
-            return;
+        doc.takeChanges();
+        if (scope.affects) {
+            // The problems last known are stale after an edit that can change a component.
+            doc.knownProto = null;
+            doc.knownSlots = null;
+            if (rolledBackForBehavior() || rolledBackForPrototype())
+                return;
+        }
         // Save only real edits: commit() is false when the document is unchanged (a click that just selects,
         // a gesture that didn't move anything, setting a value to what it already was).
         const hadPending = !!history.pending;
@@ -8822,9 +8869,12 @@ function transaction(label, fn) {
     finishText();
     history.begin(label);
     const outer = protoBefore;
-    protoBefore = prototypeProblemsNow();
+    protoBefore = doc.knownProto ?? prototypeProblemsNow();
+    doc.knownProto = protoBefore;
     // The slot findings before the outermost edit, to say what it newly breaks; an edit inside another is part of it.
-    const slotsBefore = transactionDepth === 0 ? slotProblemsNow() : null;
+    const slotsBefore = transactionDepth === 0 ? (doc.knownSlots ?? slotProblemsNow()) : null;
+    if (slotsBefore)
+        doc.knownSlots = slotsBefore;
     transactionDepth++;
     try {
         fn();
@@ -8836,7 +8886,7 @@ function transaction(label, fn) {
     }
     // Content enters a slot by the picker, a paste, a drag, a duplicate or an import, and leaves it by a delete: the picker is where a slot
     // refuses; every other way only says what it broke (see slot-diagnostics.js).
-    if (slotsBefore) {
+    if (slotsBefore && doc.lastAffects) {
         const notice = slotNotice(withoutFreshMinimums(introducedSlotProblems(slotsBefore, slotProblemsNow() ?? []), freshInstanceIds));
         if (notice)
             toast(notice);
@@ -10214,7 +10264,7 @@ function constrainChildren(n, oldW, oldH, forceScale = false) {
         constraintSizes.set(n, { w: n.w, h: n.h });
 }
 function applyLayout() { }
-function applyAllLayouts() { doc.touch(); doc.scene(); }
+function applyAllLayouts() { doc.touch(undefined, { record: false }); doc.scene(); }
 function setProperty(prop, value, { live = false } = {}) {
     if (!state.selection.size)
         return;
