@@ -69,3 +69,8 @@ test('layerFlagsOf names the fields that tie a layer to components, and nothing 
     assert.deepEqual(layerFlagsOf({ type: 'frame', componentSet: true, cprops: [{}] }).sort(), ['componentSet', 'cprops']);
     assert.deepEqual(layerFlagsOf({ type: 'path', booleanOp: 'union' }), ['booleanOp']);
 });
+
+test('a layer with prototype interactions takes the full path: the prototype check depends on it', () => {
+    assert.equal(commitAffectsComponents(change({ added: [layer('p', { flags: ['prototype'] })] })).affects, true);
+    assert.deepEqual(layerFlagsOf({ type: 'rect', prototype: { interactions: [{ id: 'i' }] } }), ['prototype']);
+});

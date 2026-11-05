@@ -6,7 +6,7 @@
 // path. Undo, redo, paste and import are given as `full`.
 
 /** The fields that tie a layer to components, variables, slots, or behaviour. A layer with any of them can change a component. */
-const COMPONENT_FIELDS = ['component', 'componentSet', 'isInstance', 'sourceId', 'behavior', 'propBind', 'vars', 'cprops', 'booleanOp'];
+const COMPONENT_FIELDS = ['component', 'componentSet', 'isInstance', 'sourceId', 'behavior', 'propBind', 'vars', 'cprops', 'booleanOp', 'prototype'];
 
 /**
  * The flags a layer's own fields give: the names of the component fields it has. Only presence counts.
