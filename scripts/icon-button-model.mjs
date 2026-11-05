@@ -21,13 +21,13 @@ const DEFAULT = {
     bg: '#ffffff', fg: '#18181b', border: '#18181b', shadow: 'fx:none',
     'bg-hover': '#ffffff', 'fg-hover': '#4338ca', 'border-hover': '#4338ca',
     'bg-active': '#ffffff', 'fg-active': '#312e81', 'border-active': '#312e81',
-    'bg-disabled': '#f4f4f5', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent', 'outline-color-active': '#4338ca33',
+    'bg-disabled': '#f4f4f5', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent', 'outline-color-active': '#4338ca33', 'wave-color': '#18181b',
 };
 const FLOAT = {
     bg: '#ffffff', fg: '#18181b', border: 'transparent', shadow: 'fx:float',
     'bg-hover': '#f4f4f5', 'fg-hover': '#4338ca', 'border-hover': 'transparent',
     'bg-active': '#f4f4f5', 'fg-active': '#312e81', 'border-active': 'transparent',
-    'bg-disabled': '#f4f4f5', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent', 'outline-color-active': '#4338ca33',
+    'bg-disabled': '#f4f4f5', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent', 'outline-color-active': '#4338ca33', 'wave-color': '#18181b',
 };
 const VARIANT_VALUES = { default: DEFAULT, float: FLOAT };
 const VARIANT_TOKENS = Object.keys(DEFAULT);

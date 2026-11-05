@@ -17,7 +17,8 @@ export const ICON_BUTTON = {
     anatomy: [{ id: 'icon', kind: 'icon', managed: true, alwaysVisible: true }],
     icons: [{ slot: 'icon', component: 'icon', label: 'Icon', tokens: ICON_TOKENS }],
     outline: { offset: 0 },
-    interaction: { focus: 'outline', wave: false },
+    // The click wave is Button's: the host's ::after ring inherits the host radius, so it follows the Shape; wave-color is its colour.
+    interaction: { focus: 'outline', wave: true },
     props: {
         variant: { source: 'variable', collection: 'Variant', modes: ['default', 'float'] },
         shape: { source: 'variable', collection: 'Shape', modes: ['square', 'circle'], defaultMode: 'square' },
@@ -29,12 +30,12 @@ export const ICON_BUTTON = {
     tokens: {
         fromSize: ['height', 'radiusSquare', 'iconSize', 'borderWidth', 'outlineWidth'],
         fromShape: ['radius'],
-        fromVariant: ['bg', 'fg', 'border', 'shadow', 'bg-hover', 'fg-hover', 'border-hover', 'bg-active', 'fg-active', 'border-active', 'bg-disabled', 'fg-disabled', 'outline-color', 'outline-color-active'],
+        fromVariant: ['bg', 'fg', 'border', 'shadow', 'bg-hover', 'fg-hover', 'border-hover', 'bg-active', 'fg-active', 'border-active', 'bg-disabled', 'fg-disabled', 'outline-color', 'outline-color-active', 'wave-color'],
     },
     tokenKinds: {
         height: 'length', radiusSquare: 'length', radius: 'length', iconSize: 'length', borderWidth: 'length', outlineWidth: 'length',
         bg: 'color', fg: 'color', border: 'color', shadow: 'effect', 'bg-hover': 'color', 'fg-hover': 'color', 'border-hover': 'color',
-        'bg-active': 'color', 'fg-active': 'color', 'border-active': 'color', 'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color', 'outline-color-active': 'color',
+        'bg-active': 'color', 'fg-active': 'color', 'border-active': 'color', 'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color', 'outline-color-active': 'color', 'wave-color': 'color',
     },
     tokenRoles: {
         height: BUTTON.tokenRoles.height,
@@ -58,6 +59,8 @@ export const ICON_BUTTON = {
         'fg-disabled': 'fg-disabled',
         'outline-color': 'outline-transparent',
         'outline-color-active': 'outline',
+        // The ring is drawn in the colour the content has: the border of the default variant is that colour, the float variant has no border.
+        'wave-color': { default: 'text', float: 'text' },
     },
     // The spinner takes the icon's place while loading, drawn in the icon's colour and size (the same part as Button's, with no side to put it on).
     parts: [
@@ -67,8 +70,9 @@ export const ICON_BUTTON = {
         { id: 'hover', reason: 'pointer state; the canvas shows the rest state and the Preview panel shows hover' },
         { id: 'active', reason: 'pointer press; the canvas shows the rest state and the Preview panel shows pressed' },
         { id: 'focus-ring', reason: 'keyboard focus ring follows focus; the canvas shows the rest state' },
+        { id: 'wave', reason: 'click wave is an animation on click; the canvas has no click' },
         { id: 'spin', reason: 'the spinner turns while loading: an animation, so the canvas draws the spinner at rest' },
-        { id: 'loading-click', reason: 'a loading Icon Button fires no click: a click is an interaction the canvas does not have' },
+        { id: 'loading-click', reason: 'a loading Icon Button fires no click and draws no wave: a click is an interaction the canvas does not have' },
     ],
     persistentStates: {
         disabled: { prop: 'disabled', tokens: { bg: 'bg-disabled', fg: 'fg-disabled' } },

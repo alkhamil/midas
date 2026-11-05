@@ -126,7 +126,7 @@ test('the ring: the outline starts at the border, drawn inside it with no gap, f
     const css = exported(master())['IconButton.css'];
     assert.match(css, /\.icon-button \{[^}]*outline: 2px solid var\(--icon-button-outline-color\);[^}]*outline-offset: -1px;/s);
     assert.match(css, /:focus-visible:not\(:disabled\):not\(\[data-blocked\]\) \{\s*--icon-button-outline-color: var\(--icon-button-outline-color-active\);/);
-    assert.deepEqual([template.outline, template.interaction], [{ offset: 0 }, { focus: 'outline', wave: false }]);
+    assert.deepEqual([template.outline, template.interaction], [{ offset: 0 }, { focus: 'outline', wave: true }]);
 });
 
 test('the export: a fixed square host that draws its own border, radius and shadow, with no positioning, no text and no icon switch', () => {
