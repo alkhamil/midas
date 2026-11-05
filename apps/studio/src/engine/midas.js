@@ -11797,7 +11797,7 @@ function pointerDown(e) {
         }
         state.pen.push(a);
         state.gesture = { kind: 'pen-handle', index: state.pen.length - 1, start: p };
-        invalidate();
+        invalidate(false);
         return;
     }
     if (state.tool === 'text') {
@@ -12031,7 +12031,7 @@ function pointerMove(e) {
         }
         if (state.tool === 'pen') {
             state.penHover = w;
-            invalidate();
+            invalidate(false);
             return;
         }
         if (state.tool === 'select' || state.tool === 'scale') {
@@ -12074,7 +12074,7 @@ function pointerMove(e) {
             a.out = { x: w.x, y: w.y };
             a.in = { x: 2 * a.x - w.x, y: 2 * a.y - w.y };
             state.penHover = null;
-            invalidate();
+            invalidate(false);
         }
         return;
     }
