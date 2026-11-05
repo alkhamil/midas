@@ -5,6 +5,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BUILT_IN_TEMPLATES } from '../src/behavior-engine/registry.js';
 import { orderTemplates, planDesignSystem } from '../src/behavior-engine/design-system.js';
+import { defaultIconOf, iconNodes, planIcons } from '../src/behavior-engine/icon-set.js';
+import { generateComponent } from '../src/behavior-engine/codegen.js';
 import { applyTemplateToFrame, instanceOf, masterLayersByKey } from '../src/behavior-engine/template-master.js';
 import { planAutoFix, applyAutoFix } from '../src/behavior-engine/auto-fix.js';
 import { planBindTokens, applyBindTokens } from '../src/behavior-engine/bind-tokens.js';
@@ -18,12 +20,29 @@ let seq = 0;
 const uid = () => `u${++seq}`;
 /** Every node under `id`, depth first (what the studio's doc.descendants gives the generator). */
 const descendants = (nodes, id) => nodes.filter(n => n.parentId === id).flatMap(n => [n, ...descendants(nodes, n.id)]);
-const ICON = { id: 'icon-star', name: 'Icon/Star', type: 'frame', parentId: null, component: true, fills: [] };
+/** An icon a designer made: a component named Icon/<name> holding its own path. */
+const designerIcon = (name, id) => [
+    { id, name: `Icon/${name}`, type: 'frame', parentId: null, component: true, w: 24, h: 24, fills: [] },
+    { id: `${id}-path`, name: 'mine', type: 'path', parentId: id, points: [{ x: 1, y: 1 }, { x: 9, y: 9 }], closed: false, fills: [], stroke: '#123456', strokeWidth: 2 },
+];
 
 /** One run of the sequence on a document ({ variables, nodes }); a second call is the second run. */
-function run(doc, { defaultIcon = ICON.id } = {}) {
+function run(doc) {
     const templates = [...BUILT_IN_TEMPLATES.values()];
-    const counts = { variables: applyBasePlan(doc.variables, planFromSnapshot(BASE_SNAPSHOT), uid).items, created: 0, present: 0 };
+    const counts = { variables: applyBasePlan(doc.variables, planFromSnapshot(BASE_SNAPSHOT), uid).items, icons: 0, iconsPresent: 0, created: 0, present: 0 };
+    // The icons come before the templates: the ones the file lacks, in a row of the Icons section (so they are nested, as in the studio).
+    const iconPlan = planIcons({ pages: [{ nodes: doc.nodes }] });
+    counts.iconsPresent = iconPlan.present.length;
+    if (iconPlan.create.length) {
+        const row = { id: uid(), name: 'Components', type: 'frame', parentId: null };
+        doc.nodes.push(row);
+        for (const entry of iconPlan.create) {
+            const [root, ...rest] = iconNodes(entry, uid);
+            doc.nodes.push({ ...root, parentId: row.id }, ...rest);
+            counts.icons++;
+        }
+    }
+    const defaultIcon = defaultIconOf([{ nodes: doc.nodes }]);
     const plan = planDesignSystem({ templates, nodes: doc.nodes });
     for (const template of plan.order) {
         let master = plan.masters.get(template.id);
@@ -77,7 +96,8 @@ function firstDifference(a, b, path = '') {
     return `${path}: ${JSON.stringify(a)?.slice(0, 120)} became ${JSON.stringify(b)?.slice(0, 120)}`;
 }
 const findings = doc => diagnoseDocument({ variables: doc.variables, pages: [{ name: 'Design System', nodes: doc.nodes }] });
-const fresh = () => ({ variables: { collections: [], items: [] }, nodes: [{ ...ICON }] });
+const fresh = (nodes = []) => ({ variables: { collections: [], items: [] }, nodes });
+const icon = doc => doc.nodes.find(n => n.id === defaultIconOf([{ nodes: doc.nodes }]));
 
 test('the run builds a master for every registered template, in dependency order, each with its demo instance', () => {
     const doc = fresh();
@@ -101,14 +121,21 @@ test('right after the run no master lacks a part and no icon slot is empty', () 
     assert.deepEqual(found.filter(f => f.severity === 'error').map(f => `${f.code}: ${f.message}`), []);
 });
 
-test('the Icon Button demo instance holds the default icon in its always visible slot', () => {
+test('in an empty file the run creates the icon as a vector component, and the Icon Button demo instance holds it in its always visible slot', () => {
     const doc = fresh();
-    run(doc);
+    const { counts } = run(doc);
+    assert.deepEqual([counts.icons, counts.iconsPresent], [1, 0]);
+    const created = icon(doc);
+    assert.equal(created.name, 'Icon/circle');
+    assert.equal(created.component, true);
+    const path = doc.nodes.find(n => n.parentId === created.id);
+    assert.equal(path.type, 'path');
+    assert.ok(path.fills.length > 0 && path.points.length > 2, 'a filled vector: the foreground and the icon size bind');
     const master = doc.nodes.find(n => n.behavior?.templateId === 'icon-button');
     const instance = doc.nodes.find(n => n.isInstance && n.sourceId === master.id);
-    assert.equal(instance.behavior.props.icon, ICON.id);
+    assert.equal(instance.behavior.props.icon, created.id);
     const slot = doc.nodes.find(n => n.parentId === instance.id && n.behavior?.slot === 'icon');
-    assert.ok(doc.nodes.some(n => n.parentId === slot.id && n.sourceId === ICON.id));
+    assert.ok(doc.nodes.some(n => n.parentId === slot.id && n.sourceId === created.id));
 });
 
 test('a second run adds nothing: no variable, no master, no node', () => {
@@ -117,6 +144,8 @@ test('a second run adds nothing: no variable, no master, no node', () => {
     const before = structuredClone(doc);
     const again = run(doc);
     assert.equal(again.counts.variables, 0);
+    assert.equal(again.counts.icons, 0);
+    assert.equal(again.counts.iconsPresent, 1);
     assert.equal(again.counts.created, 0);
     assert.equal(again.counts.present, 5);
     assert.equal(firstDifference(before, doc), null, 'the document is what it was');
@@ -136,12 +165,46 @@ test('a master the designer changed is completed, not replaced: a deleted part c
     assert.equal(doc.nodes.filter(n => n.behavior?.templateId === 'button').length, 1);
 });
 
-test('with no icon in the file the icon slots stay empty and Diagnostics says so; nothing else breaks', () => {
-    const doc = { variables: { collections: [], items: [] }, nodes: [] };
-    run(doc, { defaultIcon: null });
-    const found = findings(doc);
-    assert.ok(found.some(f => f.code === 'icon-slot-empty'));
-    assert.deepEqual(found.filter(f => f.code === 'part-missing'), []);
+test('an icon the designer made with the same name is untouched, and the run makes no second one', () => {
+    const doc = fresh(designerIcon('circle', 'mine'));
+    const before = structuredClone(doc.nodes);
+    const { counts } = run(doc);
+    assert.deepEqual([counts.icons, counts.iconsPresent], [0, 1]);
+    assert.deepEqual(doc.nodes.filter(n => before.some(b => b.id === n.id)), before, 'their nodes are what they were');
+    assert.equal(doc.nodes.filter(n => n.name === 'Icon/circle').length, 1);
+    assert.equal(doc.nodes.find(n => n.isInstance && n.behavior?.props?.icon).behavior.props.icon, 'mine');
+    assert.deepEqual(findings(doc).filter(f => f.code === 'icon-slot-empty'), []);
+});
+
+test('a file that already has a default icon under another name gets no icon of its own, and its slots use that one', () => {
+    const doc = fresh(designerIcon('arrow', 'theirs'));
+    const { counts } = run(doc);
+    assert.deepEqual([counts.icons, counts.iconsPresent], [0, 1]);
+    assert.ok(!doc.nodes.some(n => n.name === 'Icon/circle'));
+    assert.equal(doc.nodes.find(n => n.isInstance && n.behavior?.props?.icon).behavior.props.icon, 'theirs');
+    assert.deepEqual(findings(doc).filter(f => f.code === 'icon-slot-empty'), []);
+});
+
+test('Button and Input come out byte for byte the same with or without an icon already in the file (the icon is the only difference)', () => {
+    const exportOf = (doc, id) => {
+        const template = BUILT_IN_TEMPLATES.get(id);
+        const master = doc.nodes.find(n => n.behavior?.templateId === id);
+        const files = generateComponent(template, master.behavior, doc.variables, template.name, master, parent => doc.nodes.filter(n => n.parentId === parent)).files;
+        // The ids of the modes are the run's own counter (data-variant="u12"): the same everywhere else.
+        return Object.fromEntries(Object.entries(files).map(([name, text]) => [name, text.replace(/\bu\d+\b/g, 'ID')]));
+    };
+    const empty = fresh(), withIcon = fresh(designerIcon('arrow', 'theirs'));
+    run(empty);
+    run(withIcon);
+    for (const id of ['button', 'input']) {
+        const [a, b] = [exportOf(empty, id), exportOf(withIcon, id)];
+        for (const name of Object.keys(a)) {
+            const at = [...a[name]].findIndex((ch, i) => ch !== b[name][i]);
+            assert.ok(a[name] === b[name], `${name} is the same (first difference at ${at}: ${JSON.stringify(a[name].slice(at - 40, at + 60))} against ${JSON.stringify(b[name].slice(at - 40, at + 60))})`);
+        }
+    }
+    const shape = (doc, id) => descendants(doc.nodes, doc.nodes.find(n => n.behavior?.templateId === id).id).map(n => `${n.name}:${n.type}:${n.visible}`);
+    for (const id of ['button', 'input']) assert.deepEqual(shape(empty, id), shape(withIcon, id), `${id} master layers`);
 });
 
 test('ordering the registry twice gives the same order', () => {
