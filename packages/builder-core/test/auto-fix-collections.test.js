@@ -40,7 +40,7 @@ function bindMaster(store, nodes, template, id, name, labelText) {
 /** One studio Auto Fix click: plan, apply, then bind tokens through the existing pipeline. */
 function autoFix(store, nodes, master) {
     const template = TEMPLATES.get(master.behavior.templateId);
-    const layers = () => masterLayersOf(master, childrenOf(nodes));
+    const layers = () => masterLayersOf(master, childrenOf(nodes), 'label');
     const plan = planAutoFix({ template, binding: master.behavior, variables: store, layers: layers() });
     applyAutoFix(store, master.behavior, plan, uid);
     const bound = planBindTokens({ template, binding: master.behavior, layers: layers(), variables: store });

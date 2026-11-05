@@ -5,6 +5,7 @@
 import { TEMPLATES, variableProps, sameModes, fallbackCollection } from './registry.js';
 import { resolveTokens, tokenValueOf, valueIn, variableIdNamed, variableKey, splitColor, withOpacity, restOf } from './tokens.js';
 import { roleOf } from './auto-fix.js';
+import { primarySlotOf } from './anatomy.js';
 import ROLES from '../base-tokens/roles.json' with { type: 'json' };
 import { resolveProps } from './instance-props.js';
 import { resolveMode } from './modes.js';
@@ -165,7 +166,7 @@ export function diagnoseDocument(doc) {
             out.push({ severity: 'warning', code: 'icon-slot-empty', node: inst.name, nodeId: inst.id, slot: slot.behavior.slot, message: `${inst.name}: the ${slot.behavior.slot} icon slot is empty: no icon is chosen.` });
         }
         const props = resolveProps(template, inst.behavior.props);
-        const { warnings } = planStateBindings({ template, binding, props, layers: instanceLayers(inst, master, childrenOf), variables });
+        const { warnings } = planStateBindings({ template, binding, props, layers: instanceLayers(inst, master, childrenOf, primarySlotOf(template)), variables });
         for (const w of warnings) {
             out.push({ severity: 'warning', code: 'rebound-by-hand', node: inst.name, nodeId: inst.id, layer: w.key, prop: w.prop, state: w.state, message: `${inst.name}: ${w.key} ${w.prop} was set by hand, so state "${w.state}" does not change it.` });
         }
@@ -236,10 +237,10 @@ export function diagnoseDocument(doc) {
  * @param {any} master
  * @param {(id: string) => any[]} childrenOf
  */
-function instanceLayers(inst, master, childrenOf) {
+function instanceLayers(inst, master, childrenOf, primary) {
     if (!master) return [];
     const instChildren = childrenOf(inst.id);
-    return masterLayersOf(master, childrenOf).map(({ key, node }) => {
+    return masterLayersOf(master, childrenOf, primary).map(({ key, node }) => {
         const instance = key === 'root' ? inst : instChildren.find(c => c.sourceId === node.id);
         return instance ? { key, instance: { id: instance.id, vars: instance.vars }, master: { vars: node.vars } } : null;
     }).filter(Boolean);
@@ -255,7 +256,7 @@ function instanceLayers(inst, master, childrenOf) {
  */
 function unboundTokens(template, master, childrenOf, known) {
     const tokens = Object.values(template.tokens).flat();
-    const layers = new Map(masterLayersOf(master, childrenOf).map(({ key, node }) => [key, node]));
+    const layers = new Map(masterLayersOf(master, childrenOf, primarySlotOf(template)).map(({ key, node }) => [key, node]));
     /** @type {[string, string, string][]} */
     const out = [];
     for (const [key, props] of Object.entries(template.display)) {

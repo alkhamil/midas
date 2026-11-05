@@ -34,7 +34,7 @@ for (const [variant, color, expected] of [['outlined', 'primary', '#4338ca'], ['
         const resolved = resolveBorder(ctx, { 'c-variant': variant, 'c-color': color });
         assert.equal(resolved, expected);
         master.stroke = resolved;
-        const layers = masterLayersOf(master, id => ctx.all.filter(n => n.parentId === id));
+        const layers = masterLayersOf(master, id => ctx.all.filter(n => n.parentId === id), 'label');
         const { ops } = planBindTokens({ template: TEMPLATES.get('button'), binding: master.behavior, layers, variables: ctx.doc.variables });
         assert.equal(ops.some(o => o.varKey === 'stroke'), false, 'the stroke is bound already: only the mode change can repair the paint');
         assert.equal(restoreStrokePaint(master, resolved, { ensureWidth: true }), true);

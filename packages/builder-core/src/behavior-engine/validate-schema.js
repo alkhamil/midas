@@ -184,6 +184,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
     out.push(...partTokenProblems(schema, allTokens));
     out.push(...slotProblems(schema, templateIds));
     out.push(...controlProblems(schema));
+    out.push(...primarySlotProblems(schema));
     out.push(...shownWhenProblems(schema, props || {}));
     out.push(...focusTargetProblems(schema));
     out.push(...interactionProblems(schema));
@@ -439,6 +440,24 @@ function partTokenProblems(schema, allTokens) {
  * @param {any} schema
  * @returns {string[]}
  */
+/**
+ * The primary text part: one anatomy slot that is a text or control slot. A template with a required text or control slot declares it;
+ * a template with none declares none. A declaration given twice (a list) is refused.
+ * @param {any} schema
+ */
+function primarySlotProblems(schema) {
+    const declared = schema.primarySlot;
+    const anatomy = Array.isArray(schema.anatomy) ? schema.anatomy.filter(isPlainObject) : [];
+    const hasText = anatomy.some(s => (s.kind === 'text' || s.kind === 'control') && !s.optional);
+    if (Array.isArray(declared)) return declared.length > 1 ? ['primarySlot is declared more than once'] : ['primarySlot must name one anatomy slot'];
+    if (declared === undefined) return hasText ? ['primarySlot is missing: name the text part a fresh instance shows'] : [];
+    if (typeof declared !== 'string') return ['primarySlot must name one anatomy slot'];
+    const slot = anatomy.find(s => s.id === declared);
+    if (!slot) return [`primarySlot "${declared}" names no anatomy slot`];
+    if (slot.kind !== 'text' && slot.kind !== 'control') return [`primarySlot "${declared}" is not a text part`];
+    return [];
+}
+
 function controlProblems(schema) {
     const control = schema.control;
     if (control === undefined) return [];

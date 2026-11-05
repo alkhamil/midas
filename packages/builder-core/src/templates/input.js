@@ -17,6 +17,8 @@ const sideShown = (side, kind) => ({ all: [{ prop: `has${side}`, is: true }, { p
 export const INPUT = {
     id: 'input',
     name: 'Input',
+    // The primary text part: the control the value prop writes.
+    primarySlot: 'label',
     // The element the component is written as. `disabledState` is the persistent state that disables it.
     element: { tag: 'span', attrs: {}, disabledState: 'disabled', blockClickProps: [] },
     // The prefix (start side) and the suffix (end side): each holds Text (the text layer, shown while its text is not empty) or an Icon

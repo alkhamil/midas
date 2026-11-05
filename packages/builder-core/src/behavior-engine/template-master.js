@@ -7,7 +7,7 @@
 import { canvasPartsOf, literalFields, nodeFieldPatch, partWrites } from './display.js';
 import { planBindTokens, applyBindTokens } from './bind-tokens.js';
 import { resolveProps } from './instance-props.js';
-import { controlOf, iconDefOn, indexAmongLaterSlots, placementsOfDef, replacedSlotsOf, slotDefsOf } from './anatomy.js';
+import { controlOf, iconDefOn, indexAmongLaterSlots, placementsOfDef, primarySlotOf, replacedSlotsOf, slotDefsOf } from './anatomy.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
 import { newSlotProp } from './slot-property.js';
 
@@ -262,7 +262,7 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
     }
     // Each slot goes where the anatomy puts it: before the label (and so before the spinner) when it precedes the label; after it, before
     // the first layer the anatomy puts later (the clear icon before the suffix text), else last. Slots are placed in anatomy order.
-    const labelIndex = template.anatomy.findIndex(s => (s.kind === 'text' || s.kind === 'control') && !s.optional);
+    const labelIndex = template.anatomy.findIndex(s => s.id === primarySlotOf(template));
     const before = stubs.filter(s => s.anatomy < labelIndex).sort((a, b) => a.anatomy - b.anatomy).map(s => s.node);
     const layers = [...before, ...out.slice(1)];
     for (const stub of stubs.filter(s => s.anatomy >= labelIndex).sort((a, b) => a.anatomy - b.anatomy)) {

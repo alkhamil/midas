@@ -2,6 +2,7 @@
 // instance's props (disabled, ...) and win over a preview-only state (hover, active, focus), which is studio-side only. A state
 // token that does not resolve is reported by the resolver and left out: it is never replaced by the base token.
 import { resolveTokens, cssVarOf } from './tokens.js';
+import { primarySlotOf } from './anatomy.js';
 
 /**
  * The state an instance is in: every persistent state whose prop is true (their tokens merged), else the preview-only state asked
@@ -85,5 +86,5 @@ export function canvasColorsOf(template, binding, modes, variables, props, previ
  * @returns {string | null}
  */
 export function textColorTokenOf(template) {
-    return template.display?.label?.fill ?? null;
+    return template.display?.[primarySlotOf(template)]?.fill ?? null;
 }

@@ -7,6 +7,8 @@ import { DEFAULT_SIZE_MODE, SIZE_MODES } from './size-modes.js';
 export const BUTTON = {
     id: 'button',
     name: 'Button',
+    // The primary text part: the label is what a fresh Button shows and what its label prop edits.
+    primarySlot: 'label',
     // The element the component is written as. `disabledState` is the persistent state that disables it; `blockClickProps` stop onClick.
     element: { tag: 'button', attrs: { type: 'button' }, disabledState: 'disabled', blockClickProps: ['disabled', 'loading'] },
     anatomy: [

@@ -29,7 +29,7 @@ function autoFixedButton() {
     nodes.push(root, { id: 'btn-label', name: 'Label', type: 'text', parentId: 'btn', text: 'Button', vars: {} });
     root.behavior = createBinding(button, store.collections);
     const childrenOf = id => nodes.filter(x => x.parentId === id);
-    const layers = () => masterLayersOf(root, childrenOf);
+    const layers = () => masterLayersOf(root, childrenOf, 'label');
     applyAutoFix(store, root.behavior, planAutoFix({ template: button, binding: root.behavior, variables: store, layers: layers() }), uid);
     const bound = planBindTokens({ template: button, binding: root.behavior, layers: layers(), variables: store });
     applyBindTokens(layers(), bound.ops);

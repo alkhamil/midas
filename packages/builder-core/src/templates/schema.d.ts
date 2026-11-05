@@ -155,6 +155,8 @@ export interface TemplateSchema {
     id: string;
     name: string;
     element: ElementDef;
+    /** The primary text part: the anatomy id of the text or control slot a fresh instance shows and the text content prop edits. */
+    primarySlot?: string;
     anatomy: AnatomySlot[];
     /** The managed icon slots; absent or empty for a template with none. */
     icons?: IconSlotDef[];

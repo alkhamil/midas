@@ -90,7 +90,7 @@ test('with the real Button fixture: after selecting modes, root fill, stroke and
     master.behavior.variables = { variant: 'c-variant', color: 'c-color', size: 'c-size' };
     const inst = all.find(n => n.isInstance);
     inst.varModes = { 'c-variant': 'solid', 'c-color': 'primary', 'c-size': 'lg' };
-    const layers = masterLayersOf(master, id => all.filter(n => n.parentId === id));
+    const layers = masterLayersOf(master, id => all.filter(n => n.parentId === id), 'label');
     const { ops, problems } = planBindTokens({ template: button, binding: master.behavior, layers, variables: doc.variables });
     assert.deepEqual(problems, []);
     const ids = new Set(doc.variables.items.map(i => i.id));
@@ -124,7 +124,7 @@ test('auto-bind flow on the real fixture: collections, modes and hasIcon bind wi
     const props = setInstanceProp(button, setInstanceProp(button, inst.behavior?.props ?? {}, 'hasIcon', true), 'iconPlacement', 'start');
     assert.equal(props.hasIcon, true);
     // The token plan covers the master's root and label with no manual bind step.
-    const layers = masterLayersOf(master, id => all.filter(n => n.parentId === id));
+    const layers = masterLayersOf(master, id => all.filter(n => n.parentId === id), 'label');
     const { ops, problems } = planBindTokens({ template: button, binding, layers, variables: doc.variables });
     assert.deepEqual(problems, []);
     const ids = new Set(doc.variables.items.map(i => i.id));

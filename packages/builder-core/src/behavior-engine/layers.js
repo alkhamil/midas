@@ -37,12 +37,14 @@ export function labelLayerOf(id, childrenOf, parent = null) {
 }
 
 /**
- * The master layers a display key maps to, as { key, node } pairs: `root` and, when there is one, `label`.
+ * The master layers a display key maps to, as { key, node } pairs: `root` and, when there is one, the primary text layer under the
+ * key the template names it by (its primarySlot, see primarySlotOf).
  * @param {any} master
  * @param {(id: string) => any[]} childrenOf
+ * @param {string | null} primary the template's primary text part id
  * @returns {{ key: string, node: any }[]}
  */
-export function masterLayersOf(master, childrenOf) {
-    const label = labelLayerOf(master.id, childrenOf, master);
-    return [{ key: 'root', node: master }, ...(label ? [{ key: 'label', node: label }] : [])];
+export function masterLayersOf(master, childrenOf, primary) {
+    const text = labelLayerOf(master.id, childrenOf, master);
+    return [{ key: 'root', node: master }, ...(text && primary ? [{ key: primary, node: text }] : [])];
 }

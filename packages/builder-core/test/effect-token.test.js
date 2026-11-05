@@ -19,6 +19,7 @@ const RAISE = {
     id: 'raise', name: 'Raise',
     element: { tag: 'div', attrs: {}, disabledState: 'disabled', blockClickProps: [] },
     anatomy: [{ id: 'label', kind: 'text', typography: 'label' }],
+    primarySlot: 'label',
     props: {
         variant: { source: 'variable', collection: 'Variant', modes: ['flat', 'raised'] },
         label: { source: 'literal', type: 'string', default: 'Label', node: { key: 'label', field: 'text' } },

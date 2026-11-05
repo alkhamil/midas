@@ -9851,7 +9851,7 @@ function ownedFieldsOf(n, getNode, components, labels) {
     if (!template) return [];
     // The key the template writes the layer under: root, the label (the control), or a text slot by its id.
     // The label is keyed by its role, whatever its name: a bound frame's own text layer is the label too.
-    const key = n.isInstance ? 'root' : labels && [...labels.values()].includes(n.sourceId) ? 'label' : getNode(n.sourceId)?.name;
+    const key = n.isInstance ? 'root' : labels && [...labels.values()].includes(n.sourceId) ? template.primarySlot : getNode(n.sourceId)?.name;
     // The value layer's visibility follows the value (partWrites), so the master's copy never overwrites it; a text slot with a
     // shownWhen follows its condition.
     const shownByValue = !n.isInstance && template.control?.hideWhenEmpty ? ['visible'] : [];
@@ -9982,7 +9982,7 @@ function stateBindingsOf(inst) {
     if (!template) return [];
     const { masterLabel, label } = instanceLabelOf(inst, master);
     const layers = [{ key: 'root', instance: { id: inst.id, vars: inst.vars }, master: { vars: master.vars } }];
-    if (label) layers.push({ key: 'label', instance: { id: label.id, vars: label.vars }, master: { vars: masterLabel.vars } });
+    if (label) layers.push({ key: template.primarySlot, instance: { id: label.id, vars: label.vars }, master: { vars: masterLabel.vars } });
     return planStateBindings({ template, binding, props: resolveProps(template, inst.behavior?.props ?? {}), layers, variables: varStore() }).ops;
 }
 /** Writes the derived bindings. A layer whose value is null loses that binding; a layer left with none loses its vars. */

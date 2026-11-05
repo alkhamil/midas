@@ -14,7 +14,7 @@ import { cssVarOf } from '../behavior-engine/tokens.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { componentNameOf, generateComponent, SPIN_ANIMATION } from '../behavior-engine/codegen.js';
-import { controlOf, iconDefOn, placementsOfDef, slotDefsOf } from '../behavior-engine/anatomy.js';
+import { controlOf, iconDefOn, placementsOfDef, primarySlotOf, slotDefsOf } from '../behavior-engine/anatomy.js';
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { repeatCount } from '../behavior-engine/slot-rules.js';
@@ -313,7 +313,7 @@ function renderTemplate(n, template, parent, scope) {
                     const el = layer && layer.visible !== false ? renderNode(layer, scope.byId.get(layer.parentId) ?? n, scope, false) : null;
                     if (el) out.push(el);
                 }
-                else out.push({ tag: 'span', nodeId: slot.id === 'label' ? labelEntry?.node?.id : undefined, attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
+                else out.push({ tag: 'span', nodeId: slot.id === primarySlotOf(template) ? labelEntry?.node?.id : undefined, attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
             }
         }
         else if (slot.managed) {

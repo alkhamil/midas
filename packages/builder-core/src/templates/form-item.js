@@ -11,6 +11,8 @@ import { DEFAULT_SIZE_MODE, SIZE_MODES } from './size-modes.js';
 export const FORM_ITEM = {
     id: 'formitem',
     name: 'FormItem',
+    // The primary text part: the label text.
+    primarySlot: 'label',
     element: { tag: 'div', attrs: {}, disabledState: 'disabled', blockClickProps: [] },
     anatomy: [
         { id: 'labelBox', kind: 'frame', layout: 'horizontal' },

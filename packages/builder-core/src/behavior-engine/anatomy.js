@@ -172,6 +172,16 @@ export function hasTextSlot(template) {
     return template.anatomy.some(s => (s.kind === 'text' || s.kind === 'control') && !s.optional);
 }
 
+/**
+ * The primary text part of a template: the part a fresh instance shows and the text content property edits. Null when the template
+ * declares none (a template with no text part); validate-schema.js names a malformed declaration.
+ * @param {{ primarySlot?: unknown }} template
+ * @returns {string | null}
+ */
+export function primarySlotOf(template) {
+    return typeof template.primarySlot === 'string' ? template.primarySlot : null;
+}
+
 /** The control of a template: the text slot drawn as an input, or undefined for plain labels. */
 export function controlOf(template) {
     return template.control;
