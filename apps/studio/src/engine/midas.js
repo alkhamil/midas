@@ -6518,7 +6518,7 @@ class DocumentModel {
     // `structure` counts the changes that can move ids, parents, components or instance sources: the whole-file indexes
     // (nodeIndex, ensureGlobalIndexes, overlayIndex) are rebuilt only then. Every touch is one unless the caller knows better.
     /** What a layer changes for the commit scope: its type, parent, flags, and whether it lies inside a master or an instance. */
-    changeEntry(n) {
+    changeEntry(n, keys = null) {
         let inComponent = false;
         for (let p = n.parentId ?? null, guard = 0; p != null && guard < 10000; guard++) {
             const a = this.get(p);
@@ -6528,7 +6528,7 @@ class DocumentModel {
             }
             p = a.parentId ?? null;
         }
-        return { id: n.id, type: n.type, parentId: n.parentId ?? null, flags: layerFlagsOf(n), inComponent };
+        return { id: n.id, type: n.type, parentId: n.parentId ?? null, flags: layerFlagsOf(n), inComponent, keys: keys ? [...keys] : null };
     }
     /** The changes since the last commit, and a fresh record. */
     takeChanges() {
@@ -6536,9 +6536,9 @@ class DocumentModel {
         this.changes = emptyChanges();
         return c;
     }
-    touch(n, { structure = true, record = true } = {}) {
+    touch(n, { structure = true, record = true, keys = null } = {}) {
         if (record) {
-            if (n) this.changes.changed.push(this.changeEntry(n));
+            if (n) this.changes.changed.push(this.changeEntry(n, keys));
             else this.changes.full = true;
         }
         if (n)
@@ -10295,7 +10295,7 @@ function setProperty(prop, value, { live = false } = {}) {
             continue;
         if (PAINT_PROPS.includes(prop)) {
             setPaint(n, prop, v);
-            doc.touch(n);
+            doc.touch(n, { keys: [prop] });
             continue;
         }
         const ow = n.w, oh = n.h;
@@ -10306,12 +10306,12 @@ function setProperty(prop, value, { live = false } = {}) {
         }
         if (prop === 'strokeWidth') {
             setStrokeWeight(n, v);
-            doc.touch(n);
+            doc.touch(n, { keys: [prop] });
             continue;
         }
         if (['strokeT', 'strokeR', 'strokeB', 'strokeL'].includes(prop)) {
             setStrokeSide(n, prop, v);
-            doc.touch(n);
+            doc.touch(n, { keys: [prop] });
             continue;
         }
         if (prop === 'gridCols')
@@ -10325,7 +10325,7 @@ function setProperty(prop, value, { live = false } = {}) {
             }
             n.radii = [...n.radii];
             n.radii[{ rTL: 0, rTR: 1, rBR: 2, rBL: 3 }[prop]] = v;
-            doc.touch(n);
+            doc.touch(n, { keys: [prop] });
             continue;
         }
         if (prop === 'radius' && hasRadii(n))
@@ -12674,7 +12674,7 @@ function normalizePath(n) {
     n.pathW = n.w;
     n.pathH = n.h;
     Object.assign(n, xyForTopLeft(n, tl));
-    doc.touch(n);
+    doc.touch(n, { keys: ['x', 'y', 'w', 'h', 'points', 'pathW', 'pathH'] });
 }
 function finishPen(closed = false) {
     if (state.pen.length < 2) {
