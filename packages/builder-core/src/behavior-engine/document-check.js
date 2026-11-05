@@ -34,6 +34,9 @@ export function assertPagesBehavior(doc, pageIds) {
  */
 function checkPages(doc, arrived) {
     const pages = doc?.pages || [];
+    // Only instances and layers with behavior data are checked: a document with neither has nothing to check, so the indexes below are not built.
+    if (!pages.some(p => (p.nodes || []).some(n => n.isInstance === true || n.behavior)))
+        return;
     const all = pages.flatMap(p => p.nodes || []);
     const nodes = new Map(all.map(n => [n.id, n]));
     const children = childrenByParent(all);
