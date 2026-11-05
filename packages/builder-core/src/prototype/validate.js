@@ -40,6 +40,9 @@ const onlyKeys = (obj, allowed) => Object.keys(obj).every(k => allowed.includes(
  */
 export function validatePrototype(doc, { complete = true } = {}) {
     const pages = doc.pages || [];
+    // Only pages and layers with prototype data are checked: a document with none has no problems, and the id indexes below are not built.
+    if (!pages.some(p => p.prototype !== undefined || (p.nodes || []).some(n => n.prototype !== undefined)))
+        return [];
     const nodes = pages.flatMap(p => p.nodes || []);
     const byId = new Map(nodes.map(n => [n.id, n]));
     const pageOf = new Map(pages.flatMap(p => (p.nodes || []).map(n => [n.id, p.name])));
