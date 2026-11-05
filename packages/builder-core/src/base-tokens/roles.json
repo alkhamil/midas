@@ -56,6 +56,8 @@
   "radius-lg": { "base": "Semantic/borderRadiusLG" },
   "radius-xl": { "base": "Semantic/borderRadiusXL" },
   "radius-full": { "base": "Semantic/borderRadiusFull" },
+  "shadow-none": { "base": "Semantic/boxShadowNone" },
+  "shadow-float": { "base": "Semantic/boxShadowSecondary" },
   "gap-xs": { "base": "Semantic/gapXS" },
   "gap-sm": { "base": "Semantic/gapSM" },
   "gap": { "base": "Semantic/gapMD" },

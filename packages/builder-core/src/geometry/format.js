@@ -18,5 +18,13 @@ export function colorWithAlpha(color, opacity) {
     return `color-mix(in srgb, ${color} ${Math.round(o * 100)}%, transparent)`;
 }
 
+/**
+ * The CSS shadow of one drop or inner effect: offset, blur, spread and colour (`inset` first for an inner one). The one text the DOM preview and the effect tokens write.
+ * @param {{ type?: string, x?: number, y?: number, blur?: number, spread?: number, color?: string, opacity?: number }} e
+ */
+export function shadowCss(e) {
+    return `${e.type === 'inner' ? 'inset ' : ''}${e.x || 0}px ${e.y || 0}px ${e.blur || 0}px ${e.spread || 0}px ${colorWithAlpha(e.color ?? '#000000', e.opacity ?? 0.25)}`;
+}
+
 /** Clamps a number into [min, max]. */
 export const clamp = (v, min, max) => Math.max(min, Math.min(max, v));

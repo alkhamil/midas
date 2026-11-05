@@ -3,6 +3,7 @@
 import { variableProps } from './registry.js';
 import { dimensionOfGroup } from './validate-schema.js';
 import { typographyCss, typographyOf } from './typography.js';
+import { shadowCss } from '../geometry/format.js';
 
 /** A variable name as it is matched: trimmed and lower case. Variables are named `<group>/<token>`, e.g. `button/bg`. */
 const nameKey = (/** @type {unknown} */ name) => String(name ?? '').trim().toLowerCase();
@@ -111,6 +112,13 @@ function formatOf(kind, value, opacities) {
     return kind === 'length' ? `${value}px` : String(value);
 }
 
+/** The box-shadow text of an effect list: its visible drop and inner shadows, or `none`. Null when the value is not a list of effects. */
+function effectsCss(value) {
+    if (!Array.isArray(value)) return null;
+    const shadows = value.filter(e => e && e.visible !== false && (e.type === 'drop' || e.type === 'inner')).map(shadowCss);
+    return shadows.length ? shadows.join(', ') : 'none';
+}
+
 /** A mode name as it is matched: trimmed and lower case. */
 const modeKey = s => String(s ?? '').trim().toLowerCase();
 
@@ -193,9 +201,9 @@ export function resolveTokens(template, binding, selectedModes, variables) {
             }
             const found = valueIn(named[0], modeOf, items);
             if ('reason' in found) { miss(found.reason); continue; }
-            const wanted = kind === 'color' ? 'color' : 'number';
+            const wanted = kind === 'color' ? 'color' : kind === 'effect' ? 'effect' : 'number';
             if (named[0].type !== wanted || found.item.type !== wanted) { miss('type-mismatch'); continue; }
-            const text = formatOf(kind, found.value, found.opacities);
+            const text = kind === 'effect' ? effectsCss(found.value) : formatOf(kind, found.value, found.opacities);
             if (text === null) { miss('invalid-value'); continue; }
             vars[cssVarOf(template.id, token)] = text;
         }

@@ -21,7 +21,7 @@ import { repeatCount } from '../behavior-engine/slot-rules.js';
 import { canvasPartsOf, counterLabel, fieldStyleOf, placeholderPartOf, stateOn } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
-import { colorWithAlpha, escapeAttr, svgNumber } from '../geometry/format.js';
+import { colorWithAlpha, escapeAttr, shadowCss, svgNumber } from '../geometry/format.js';
 import { layoutOrder, ownSizingOf } from '../geometry/autolayout.js';
 
 /**
@@ -639,14 +639,13 @@ function fillAttrs(n, scope, icon = false) {
 function effectStyle(n, scope, onOutline) {
     const shadows = [], filters = [], backdrops = [];
     for (const e of (Array.isArray(n.effects) ? n.effects : []).filter(x => x.visible !== false)) {
-        const shadow = `${e.x || 0}px ${e.y || 0}px ${e.blur || 0}px ${e.spread || 0}px ${colorWithAlpha(e.color ?? '#000000', e.opacity ?? 0.25)}`;
         if (e.type === 'drop') {
             if (onOutline) filters.push(`drop-shadow(${e.x || 0}px ${e.y || 0}px ${e.blur || 0}px ${colorWithAlpha(e.color ?? '#000000', e.opacity ?? 0.25)})`);
-            else shadows.push(shadow);
+            else shadows.push(shadowCss(e));
         }
         else if (e.type === 'inner') {
             if (onOutline) scope.unsupported.push({ nodeId: n.id, type: 'inner shadow on a text or vector layer' });
-            else shadows.push(`inset ${shadow}`);
+            else shadows.push(shadowCss(e));
         }
         else if (e.type === 'layerBlur') filters.push(`blur(${(e.radius || 0) / 2}px)`);
         else if (e.type === 'bgBlur') backdrops.push(`blur(${(e.radius || 0) / 2}px)`);

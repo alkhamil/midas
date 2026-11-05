@@ -23,7 +23,7 @@ export { ROLES };
 export const BASE_COLLECTIONS = ['Primitives', 'Semantic', 'Typography'];
 
 const modeKey = (/** @type {unknown} */ s) => String(s ?? '').toLowerCase();
-const varTypeOf = (/** @type {string} */ kind) => kind === 'color' ? 'color' : kind === 'length' || kind === 'ratio' ? 'number' : kind === 'typography' ? 'typography' : null;
+const varTypeOf = (/** @type {string} */ kind) => kind === 'color' ? 'color' : kind === 'length' || kind === 'ratio' ? 'number' : kind === 'typography' ? 'typography' : kind === 'effect' ? 'effect' : null;
 
 /**
  * The role a token fills in one collection mode: the schema entry (a plain role, or a per-mode map matched

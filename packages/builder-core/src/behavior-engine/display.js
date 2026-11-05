@@ -18,6 +18,8 @@ export const NODE_PROPERTIES = {
         gap: { kind: 'length', css: 'gap' },
         height: { kind: 'length', css: 'height' },
         size: { kind: 'length', css: ['width', 'height'] },
+        // An effect token: the elevation of the box, a list of drop shadows (an empty list is none).
+        shadow: { kind: 'effect', css: 'box-shadow' },
     },
     text: {
         fill: { kind: 'color', css: 'color' },
@@ -185,6 +187,7 @@ export const VARIABLE_KEYS = {
     typography: ['typography'],
     height: ['h'],
     size: ['w', 'h'],
+    shadow: ['effects'],
 };
 
 /**

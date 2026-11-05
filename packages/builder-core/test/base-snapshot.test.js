@@ -17,12 +17,12 @@ test('the snapshot holds three collections with their modes', () => {
     ]);
 });
 
-test('the snapshot plus the text styles: 338 variables with the known report', () => {
+test('the snapshot plus the text styles: 342 variables with the known report', () => {
     const plan = planFromSnapshot(BASE_SNAPSHOT);
     const per = {};
     for (const i of plan.items) per[i.collection] = (per[i.collection] || 0) + 1;
-    assert.deepEqual(per, { Primitives: 203, Typography: 31, Semantic: 104 });
-    assert.equal(plan.items.length, 338);
+    assert.deepEqual(per, { Primitives: 205, Typography: 31, Semantic: 106 });
+    assert.equal(plan.items.length, 342);
     assert.deepEqual(plan.report.derived.map(d => d.name), [
         'Primitives/transparent',
         'Semantic/controlHeightXL',
@@ -140,7 +140,7 @@ test('the snapshot plan applies and a second run is a no-op', () => {
     const store = { collections: [], items: [] };
     let n = 0;
     const first = applyBasePlan(store, planFromSnapshot(BASE_SNAPSHOT), () => `id${++n}`);
-    assert.deepEqual(first, { collections: 3, items: 338, modes: 4, aliases: 208 });
+    assert.deepEqual(first, { collections: 3, items: 342, modes: 4, aliases: 212 });
     assert.deepEqual(applyBasePlan(store, planFromSnapshot(BASE_SNAPSHOT), () => `id${++n}`), { collections: 0, items: 0, modes: 0, aliases: 0 });
 });
 
