@@ -98,9 +98,13 @@ export function effectBleed(effects) {
  * @returns {{ x: number, y: number, w: number, h: number }}
  */
 export function boundsIn(box, inv) {
+    // Called for every layer in view on every frame: four corners as plain numbers, no arrays.
     const [a, b, c, d, e, f] = inv;
-    const pts = [[box.x, box.y], [box.x + box.w, box.y], [box.x, box.y + box.h], [box.x + box.w, box.y + box.h]].map(([x, y]) => [a * x + c * y + e, b * x + d * y + f]);
-    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
-    const x = Math.min(...xs), y = Math.min(...ys);
-    return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+    const x0 = box.x, y0 = box.y, x1 = box.x + box.w, y1 = box.y + box.h;
+    const ax = a * x0 + c * y0 + e, ay = b * x0 + d * y0 + f;
+    const bx = a * x1 + c * y0 + e, by = b * x1 + d * y0 + f;
+    const cx = a * x0 + c * y1 + e, cy = b * x0 + d * y1 + f;
+    const dx = a * x1 + c * y1 + e, dy = b * x1 + d * y1 + f;
+    const x = Math.min(ax, bx, cx, dx), y = Math.min(ay, by, cy, dy);
+    return { x, y, w: Math.max(ax, bx, cx, dx) - x, h: Math.max(ay, by, cy, dy) - y };
 }

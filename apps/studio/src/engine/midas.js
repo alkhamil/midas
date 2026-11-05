@@ -7581,8 +7581,9 @@ class Renderer {
         const bleed = Math.max(0, ...p.members.map(s => effectBleed(getEffects(s.node)))) + 2 / Math.min(res, 1);
         const offX = box.x - bleed, offY = box.y - bleed, width = box.w + 2 * bleed, height = box.h + 2 * bleed;
         const key = `root:${root.node.id}:${res}:${[...p.backdrop, ...p.members].map(s => this.rasterSignature(s, inv, opacity)).join(';')}`;
-        const members = p.members.map(s => ({ ...s, opacity: s.opacity / opacity })), backdrop = p.backdrop.map(s => ({ ...s, opacity: s.opacity / opacity }));
         const entry = this.atlas.entries.get(key) ?? this.atlas.rasterize(key, width, height, res, bleed, (ctx, scale) => {
+            // The members relative to the root's opacity, made only when the entry is painted.
+            const members = p.members.map(s => ({ ...s, opacity: s.opacity / opacity })), backdrop = p.backdrop.map(s => ({ ...s, opacity: s.opacity / opacity }));
             const t = new DOMMatrix([scale, 0, 0, scale, -scale * offX, -scale * offY]).multiply(new DOMMatrix(inv));
             ctx.setTransform(t);
             if (backdrop.length)
