@@ -8,8 +8,11 @@ export const DESIGN_SYSTEM_PAGE = 'Design System';
 /** The section the icons go in: a section like a template's (see sectionSpecs), placed before the template sections. */
 export const ICONS_SECTION = { id: 'icons', name: 'Icons' };
 
-/** The gaps of the page, in px: between sections, between a section's title and its row, and between the masters of a row. */
-const LAYOUT = { sectionGap: 64, titleGap: 16, rowGap: 24, titleSize: 20, titleWeight: 600 };
+/**
+ * The gaps of the page, in px: between sections, between a section's title and its row, and between the masters of a row. `rowRoom` is the padding of a row: Play clips
+ * every frame, so what a component draws outside its box (the click wave spreads 6px, the focus ring draws 1px outside the border) has to fit inside the row.
+ */
+const LAYOUT = { sectionGap: 64, titleGap: 16, rowGap: 24, rowRoom: 8, titleSize: 20, titleWeight: 600 };
 
 /**
  * The registered templates a template needs before it: those its slots accept (`accepts` names template ids). A template is never its own dependency, and an
@@ -108,7 +111,7 @@ export function sectionSpecs(template) {
     return {
         section: { type: 'frame', props: { name: template.name, layout: 'vertical', gap: LAYOUT.titleGap, padding: 0, fills: [], clip: false, ...hug } },
         title: { type: 'text', props: { name: 'Title', text: template.name, fontSize: LAYOUT.titleSize, fontWeight: LAYOUT.titleWeight, autoW: true, ...hug } },
-        row: { type: 'frame', props: { name: 'Components', layout: 'horizontal', gap: LAYOUT.rowGap, padding: 0, fills: [], clip: false, ...hug } },
+        row: { type: 'frame', props: { name: 'Components', layout: 'horizontal', gap: LAYOUT.rowGap, padding: LAYOUT.rowRoom, fills: [], clip: false, ...hug } },
     };
 }
 

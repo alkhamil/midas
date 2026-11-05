@@ -3,6 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BUILT_IN_TEMPLATES } from '../src/behavior-engine/registry.js';
+import { WAVE_SPREAD } from '../src/behavior-engine/codegen.js';
 import { DESIGN_SYSTEM_PAGE, ICONS_SECTION, designSystemSummary, mastersByTemplate, orderTemplates, planDesignSystem, sectionSpecs, templateDependencies } from '../src/behavior-engine/design-system.js';
 
 const t = (id, accepts = []) => ({ id, name: id.toUpperCase(), slots: accepts.length ? [{ id: 'content', accepts }] : undefined });
@@ -97,4 +98,16 @@ test('the Icons section is a section like the others: a titled vertical frame wi
     const spec = sectionSpecs(ICONS_SECTION);
     assert.deepEqual([spec.section.props.name, spec.title.props.text, spec.row.props.name], ['Icons', 'Icons', 'Components']);
     assert.equal(spec.row.props.gap, sectionSpecs({ id: 'x', name: 'X' }).row.props.gap);
+});
+
+test('a row leaves room for what a component draws outside its box: Play clips every frame, so the click wave (6px) and the focus ring (1px outside the border) must fit inside the row', () => {
+    const { row, section } = sectionSpecs({ id: 'a', name: 'A' });
+    assert.ok(row.props.padding >= parseFloat(WAVE_SPREAD), `the row padding ${row.props.padding} holds the ${WAVE_SPREAD} wave`);
+    assert.ok(row.props.padding >= 1, 'and the ring');
+    assert.equal(section.props.padding, 0, 'the section adds none: the row is its edge');
+});
+
+test('the room is the same in the Icons section and every template section', () => {
+    const pads = ['a', 'b', 'icons'].map(id => sectionSpecs({ id, name: id }).row.props.padding);
+    assert.deepEqual([...new Set(pads)].length, 1);
 });
