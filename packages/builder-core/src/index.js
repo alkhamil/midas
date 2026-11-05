@@ -8,6 +8,7 @@ export * from './behavior-engine/panel.js';
 export * from './behavior-engine/tokens.js';
 export * from './selection.js';
 export * from './behavior-engine/anatomy.js';
+export * from './behavior-engine/design-system.js';
 export * from './behavior-engine/managed-layers.js';
 export * from './behavior-engine/content-slots.js';
 export * from './behavior-engine/slot-rules.js';
