@@ -6480,7 +6480,7 @@ function xyForTopLeft(n, tl) {
 const lazyPages = new Set();
 class DocumentModel {
     // `lazy`: some pages are still stubs, so cross-page clean-ups (they would see the missing layers as dangling) wait for streamPages.
-    constructor(data, { lazy = false } = {}) { this.data = data || makeStarter(); activateDocumentTemplates(this.data.behavior); this.data.variables = cleanVariables(this.data.variables); this.revision = 0; this.structure = 0; this._sceneRevision = -1; this._scene = []; this._map = new Map(); this._byParent = new Map(); this._pageSnapshots = new Map(); this._world = new Map(); this.refresh(); }
+    constructor(data, { lazy = false } = {}) { this.data = data || makeStarter(); activateDocumentTemplates(this.data.behavior); this.data.variables = cleanVariables(this.data.variables); this.revision = 0; this.structure = 0; this._sceneRevision = -1; this._scene = []; this._map = new Map(); this._byParent = new Map(); this._pageSnapshots = new Map(); this._layerJson = new WeakMap(); this._world = new Map(); this.refresh(); }
     get page() { return this.data.pages.find(p => p.id === this.data.pageId) || this.data.pages[0]; }
     get nodes() { return this.page.nodes; }
     get(id) { return this._map.get(id); }
@@ -6660,11 +6660,28 @@ class DocumentModel {
         };
     }
     bounds(ids) { return union((ids ? ids.map(id => this.world(id)) : this.scene().filter(s => !s.node.parentId && !s.node.isOverlay)).filter(Boolean).map(s => s.box)); }
+    /**
+     * A page as JSON, assembled from its layers: a layer is stringified again only when its version changed. The active page is
+     * stringified again after every edit, and on a large page that was most of an undo step.
+     */
+    pageJson(p) {
+        const { nodes = [], ...rest } = p;
+        const layers = nodes.map(n => {
+            const cached = this._layerJson.get(n);
+            if (cached && cached.version === n.version)
+                return cached.json;
+            const json = JSON.stringify(n);
+            this._layerJson.set(n, { version: n.version, json });
+            return json;
+        });
+        const head = JSON.stringify(rest);
+        return `${head.slice(0, -1)}${Object.keys(rest).length ? ',' : ''}"nodes":[${layers.join(',')}]}`;
+    }
     snapshot() {
         const pageChunks = this.data.pages.map(p => {
             let s = this._pageSnapshots.get(p.id);
             if (!s) {
-                s = JSON.stringify(p);
+                s = this.pageJson(p);
                 this._pageSnapshots.set(p.id, s);
             }
             return s;
