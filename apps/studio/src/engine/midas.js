@@ -7424,7 +7424,7 @@ class Renderer {
      * @type {(() => { id: string, colors: { fill?: string, stroke?: string } } | null) | null}
      */
     canvasPreview = null;
-    constructor(canvas, doc, onStatus, invalidate) { this.canvas = canvas; this.doc = doc; this.onStatus = onStatus; this.invalidate = invalidate; this.backend = 'Starting'; this.ready = false; this.skipId = null; this.images = activeImages = new ImageStore(doc, invalidate); this.width = 1; this.height = 1; this.dpr = 1; this.cpuMs = 0; this.visibleCount = 0; this.instanceCount = 0; this.drawCalls = 0; this.capacity = 0; this.clipCapacity = 0; this.device = null; this.cache = new Map(); this.gpuError = null; this.zoomSeen = null; this.zoomingUntil = 0; this.settleTimer = null; }
+    constructor(canvas, doc, onStatus, invalidate) { this.canvas = canvas; this.doc = doc; this.onStatus = onStatus; this.invalidate = invalidate; this.backend = 'Starting'; this.ready = false; this.skipId = null; this.images = activeImages = new ImageStore(doc, invalidate); this.width = 1; this.height = 1; this.dpr = 1; this.cpuMs = 0; this.visibleCount = 0; this.instanceCount = 0; this.drawCalls = 0; this.capacity = 0; this.clipCapacity = 0; this.device = null; this.cache = new Map(); this.gpuError = null; this.zoomSeen = null; this.zoomingUntil = 0; this.settleTimer = null; this.paints = new WeakMap(); }
     async initialize() {
         try {
             if (!navigator.gpu || new URLSearchParams(location.search).has('canvas'))
@@ -7568,6 +7568,30 @@ class Renderer {
         this.cpuMs = performance.now() - start;
     }
     /**
+     * What a layer's GPU instance draws from the layer alone (its colours, radius, stroke, shape kind and simple shadow), kept per
+     * version: the instance is written every frame, and these were recomputed for every layer on every frame.
+     */
+    paintOf(n) {
+        const cached = this.paints.get(n);
+        if (cached && cached.version === n.version)
+            return cached;
+        const top = getFills(n).find(f => f.visible !== false), linear = top?.type === 'linear' && topColorOf(n) !== 'none';
+        const desc = {
+            version: n.version,
+            fill: color(topColorOf(n), topOpacityOf(n)),
+            stroke: color(n.stroke, n.strokeOpacity ?? 1),
+            color2: color(top?.color2 ?? '#ffffff', topOpacityOf(n)),
+            angle: linear ? (top.angle ?? 90) * Math.PI / 180 : -1000,
+            radius: n.radius || 0,
+            strokeW: n.strokeVisible === false ? 0 : (n.strokeWidth || 0),
+            ellipse: n.type === 'ellipse' ? 1 : 0,
+            raster: ['text', 'path', 'line', 'image'].includes(n.type) || needsRasterFill(n) || needsRasterShape(n),
+            drop: simpleDropOf(n),
+        };
+        this.paints.set(n, desc);
+        return desc;
+    }
+    /**
      * One layer the shader cannot draw, painted into the atlas: its root's members in the root's own space, with the margin their effects
      * paint into and, for a backdrop blur or glass, the layers under it. Null when the entry cannot be made (the atlas is full).
      */
@@ -7657,7 +7681,7 @@ class Renderer {
         let instances = scene.length * 2 + rasters.length + 1;
         for (const s of scene) {
             const n = s.node;
-            if (!(['text', 'path', 'line', 'image'].includes(n.type) || needsRasterFill(n) || needsRasterShape(n)))
+            if (!this.paintOf(n).raster)
                 continue;
             const tiles = this.atlas.tilesFor(n, resolution, this.images, s.mode || '', boundsIn(view, s.inverse), stale);
             tilesOf.set(s, tiles);
@@ -7667,15 +7691,31 @@ class Renderer {
         // The Behavior preview colours the root's fill and stroke for this draw only: the document keeps its own colours.
         const preview = this.canvasPreview?.() ?? null;
         const push = (s, n, clipId, shadow = null, tile = null) => {
-            const base = count++ * 32, d = this.instanceData, m = s.matrix, sub = preview?.id === n.id ? preview.colors : null;
-            const top = getFills(n).find(f => f.visible !== false), linear = top?.type === 'linear' && topColorOf(n) !== 'none';
-            d.set([m[0], m[1], m[2], m[3], m[4] - originX, m[5] - originY, n.w, n.h], base);
-            d.set(color(sub?.fill ?? topColorOf(n), topOpacityOf(n)), base + 8);
-            d.set(color(sub?.stroke ?? n.stroke, n.strokeOpacity ?? 1), base + 12);
-            d.set([n.radius || 0, n.strokeVisible === false ? 0 : (n.strokeWidth || 0), n.type === 'ellipse' ? 1 : 0, s.opacity], base + 16);
-            d.set([0, 0, 0, 0], base + 20);
-            d.set(color(top?.color2 ?? '#ffffff', topOpacityOf(n)), base + 24);
-            d.set([linear ? (top.angle ?? 90) * Math.PI / 180 : -1000, 0, clipId, 0], base + 28);
+            // The instance is written field by field: an array literal per call was the largest allocation in a frame.
+            const base = count++ * 32, d = this.instanceData, m = s.matrix, sub = preview?.id === n.id ? preview.colors : null, desc = this.paintOf(n);
+            const fill = sub ? color(sub.fill ?? topColorOf(n), topOpacityOf(n)) : desc.fill, stroke = sub ? color(sub.stroke ?? n.stroke, n.strokeOpacity ?? 1) : desc.stroke;
+            d[base] = m[0];
+            d[base + 1] = m[1];
+            d[base + 2] = m[2];
+            d[base + 3] = m[3];
+            d[base + 4] = m[4] - originX;
+            d[base + 5] = m[5] - originY;
+            d[base + 6] = n.w;
+            d[base + 7] = n.h;
+            for (let i = 0; i < 4; i++) {
+                d[base + 8 + i] = fill[i];
+                d[base + 12 + i] = stroke[i];
+                d[base + 20 + i] = 0;
+                d[base + 24 + i] = desc.color2[i];
+            }
+            d[base + 16] = desc.radius;
+            d[base + 17] = desc.strokeW;
+            d[base + 18] = desc.ellipse;
+            d[base + 19] = s.opacity;
+            d[base + 28] = desc.angle;
+            d[base + 29] = 0;
+            d[base + 30] = clipId;
+            d[base + 31] = 0;
             if (s.mode === 'fill')
                 d[base + 17] = 0; // the stroke comes later, above the children
             else if (s.mode === 'stroke') {
@@ -7691,7 +7731,7 @@ class Renderer {
                 d[base + 29] = (shadow.blur || 20) * .5;
                 return;
             }
-            if (['text', 'path', 'line', 'image'].includes(n.type) || needsRasterFill(n) || needsRasterShape(n)) {
+            if (desc.raster) {
                 // Vector shapes are rasterised at 2x at least, so their edges stay crisp (and not smudged) at 100% zoom.
                 // A layer larger than the atlas takes one quad per tile (tileGrid), so it stays sharp at any zoom.
                 const [first, ...rest] = tile ? [tile] : tilesOf.get(s) ?? [];
@@ -7743,7 +7783,7 @@ class Renderer {
             if (plan.roots.has(s.node.id) || plan.skip.has(s.node.id))
                 continue;
             const clipId = writeClips(s.clips);
-            const simpleDrop = simpleDropOf(s.node);
+            const simpleDrop = this.paintOf(s.node).drop;
             if (simpleDrop && !['text', 'path', 'line'].includes(s.node.type) && s.mode !== 'stroke')
                 push(s, s.node, clipId, simpleDrop);
             push(s, s.node, clipId);
