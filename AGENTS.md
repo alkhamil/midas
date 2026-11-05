@@ -65,7 +65,7 @@
 
 - Button template: `packages/builder-core/src/templates/button.js`. Engine: `packages/builder-core/src/behavior-engine/` (`codegen.js`, `preview.js`, `anatomy.js`, `icon-slot.js`, `display.js`).
 - Play DOM: `packages/builder-core/src/prototype/dom-tree.js` (`renderButton` plus codegen stylesheet). Panel: `apps/studio/src/engine/behaviorPanel.js`.
-- Raster atlas (WebGPU text and vector shapes): `apps/studio/src/engine/midas.js` `Atlas.tilesFor`. A layer larger than the atlas is rastered in tiles (`tileGrid`), so it stays sharp; while the zoom moves a layer keeps its last raster, and sharp rasters are made within a per-frame budget.
+- Raster atlas (WebGPU text and vector shapes): `apps/studio/src/engine/midas.js` `Atlas.tilesFor`. A layer larger than the atlas is rastered in tiles (`tileGrid`), so it stays sharp; while the zoom moves a layer keeps its last raster, and sharp rasters are made within a per-frame budget. Rasters are keyed by content (`contentKeyOf`), so identical layers share one raster.
 - Button variable fixture: `scripts/button-model.mjs` (gap per Size mode 4/6/8/8/10, mirroring the production ladder).
 
 ## Known issues

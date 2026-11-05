@@ -7246,9 +7246,36 @@ function deferFrameStrokes(scene) {
         close();
     return out;
 }
+// A 53-bit hash (cyrb53) of a string, so an atlas key stays short for a large path.
+function hashString(s) {
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for (let i = 0; i < s.length; i++) {
+        const c = s.charCodeAt(i);
+        h1 = Math.imul(h1 ^ c, 2654435761);
+        h2 = Math.imul(h2 ^ c, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36) + s.length.toString(36);
+}
+// Fields that place a layer rather than paint it: two layers that differ only in these share one raster.
+const PLACEMENT_FIELDS = new Set(['id', 'name', 'parentId', 'x', 'y', 'rotation', 'version', 'flipX', 'flipY']);
 class Atlas {
-    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.latest = new Map(); this.packer = new AtlasPacker(this.size, this.layers); this.epoch = 0; this.budgetEnd = Infinity; this.deferred = false; this.canvas = document.createElement('canvas'); }
+    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.latest = new Map(); this.keys = new WeakMap(); this.packer = new AtlasPacker(this.size, this.layers); this.epoch = 0; this.budgetEnd = Infinity; this.deferred = false; this.canvas = document.createElement('canvas'); }
     reset() { this.entries.clear(); this.latest.clear(); this.packer.reset(); this.epoch++; }
+    /** What a layer's raster depends on, as a key: layers with the same content share their rasters, wherever they are placed. */
+    contentKeyOf(n) {
+        const cached = this.keys.get(n);
+        if (cached && cached.version === n.version)
+            return cached.key;
+        const content = {};
+        for (const k of Object.keys(n).sort())
+            if (!PLACEMENT_FIELDS.has(k))
+                content[k] = n[k];
+        const key = hashString(JSON.stringify(content));
+        this.keys.set(n, { version: n.version, key });
+        return key;
+    }
     /** The margin of a layer's entry: a transparent border of at least two texels, and the stroke a raster-only layer needs. */
     paddingOf(n, res) {
         // Raster-only paths carry stroke padding; the geometry stays editable in the document.
@@ -7264,7 +7291,7 @@ class Atlas {
      */
     tilesFor(n, res, images, mode, view, stale = false) {
         const padding = this.paddingOf(n, res), grid = tileGrid(n.w, n.h, res, this.size, padding);
-        const base = `${n.id}:${n.version}:${res}${mode ? ':' + mode : ''}`, latestKey = `${n.id}:${mode}`;
+        const content = this.contentKeyOf(n), base = `${content}:${res}${mode ? ':' + mode : ''}`, latestKey = `${content}:${mode}`;
         const out = [];
         for (const t of grid) {
             if (t.x > view.x + view.w || t.x + t.w < view.x || t.y > view.y + view.h || t.y + t.h < view.y)
@@ -7272,7 +7299,7 @@ class Atlas {
             if ((stale || performance.now() > this.budgetEnd) && grid.length === 1 && !this.entries.has(base)) {
                 // While the zoom moves the layer keeps the raster it has, drawn at the new size; the sharp one follows once the zoom settles.
                 const prev = this.latest.get(latestKey);
-                if (prev && prev.version === n.version) {
+                if (prev) {
                     this.deferred = true;
                     out.push({ entry: prev.entry, ox: -prev.entry.padding, oy: -prev.entry.padding });
                     continue;
@@ -7282,7 +7309,7 @@ class Atlas {
             if (!entry)
                 continue;
             if (grid.length === 1)
-                this.latest.set(latestKey, { version: n.version, entry });
+                this.latest.set(latestKey, { entry });
             out.push({ entry, ox: t.x - padding, oy: t.y - padding });
         }
         return out;
@@ -7325,7 +7352,7 @@ class Atlas {
      * Paints one atlas entry: `width` x `height` world units (the box and its margin, `padding` on each side of the box) at `res`
      * texels per unit, lower when the atlas cannot hold it. `paint(ctx, scale)` draws in world units. Null when the atlas is full.
      */
-    rasterize(key, width, height, res, padding, paint) {
+    rasterize(key, width, height, res, padding, paint, exact = false) {
         const scale = Math.min(res, (this.size - 4) / Math.max(width, 1), (this.size - 4) / Math.max(height, 1));
         const w = Math.max(1, Math.ceil(width * scale)), h = Math.max(1, Math.ceil(height * scale));
         let slot = this.packer.alloc(w, h);
@@ -7340,10 +7367,11 @@ class Atlas {
         }
         const { x, y, page } = slot;
         // The copy covers the entry's 2-texel gutter too (transparent): the sampler reads into it at a quad's edge, and a gutter left
-        // over from an earlier entry shows as a line along the node's edge. The canvas only grows: resizing it per entry reallocates it.
-        if (this.canvas.width < w + 2)
+        // over from an earlier entry shows as a line along the node's edge. The canvas only grows, so a leaf paints on it as it is; a subtree
+        // paints masks on offscreen canvases the size of its own canvas, so its entry gets a canvas of its own size.
+        if (exact || this.canvas.width < w + 2)
             this.canvas.width = w + 2;
-        if (this.canvas.height < h + 2)
+        if (exact || this.canvas.height < h + 2)
             this.canvas.height = h + 2;
         const ctx = this.canvas.getContext('2d');
         ctx.reset();
@@ -7571,7 +7599,7 @@ class Renderer {
                 ctx.fill(shape);
                 ctx.restore();
             }
-        });
+        }, true);
         return entry ? { entry, offX, offY } : null;
     }
     /** What a raster root depends on, relative to the root: a change to any of it re-paints the root (see rasterRoot). */
