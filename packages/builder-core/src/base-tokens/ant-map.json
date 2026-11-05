@@ -212,5 +212,54 @@
       "Mode 1"
     ],
     "naming": "raw"
+  },
+  "Effects": {
+    "primitives": {
+      "shadow/none": [],
+      "shadow/secondary": [
+        {
+          "type": "drop",
+          "visible": true,
+          "color": "#000000",
+          "opacity": 0.08,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "spread": 0
+        },
+        {
+          "type": "drop",
+          "visible": true,
+          "color": "#000000",
+          "opacity": 0.12,
+          "x": 0,
+          "y": 3,
+          "blur": 6,
+          "spread": -4
+        },
+        {
+          "type": "drop",
+          "visible": true,
+          "color": "#000000",
+          "opacity": 0.05,
+          "x": 0,
+          "y": 9,
+          "blur": 28,
+          "spread": 8
+        }
+      ]
+    },
+    "items": {
+      "boxShadowNone": {
+        "primitive": "shadow/none",
+        "role": "no elevation: the flat variant",
+        "derived": false
+      },
+      "boxShadowSecondary": {
+        "primitive": "shadow/secondary",
+        "role": "antd boxShadowSecondary: the float elevation (three drop shadows)",
+        "derived": false
+      }
+    }
   }
 }

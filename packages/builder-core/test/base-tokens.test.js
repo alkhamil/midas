@@ -135,7 +135,8 @@ test('buildBasePlan is deterministic', () => {
 test('the bundled ant-map is well-formed', () => {
     assert.ok(!('Size' in ANT_MAP), 'no JSON-based size mapping remains');
     for (const [section, map] of Object.entries(ANT_MAP)) {
-        assert.ok(Array.isArray(map.modes) && map.modes.length, section + ' modes');
+        // The Effects section has no modes of its own: its Primitives take the Primitives mode and its Semantic aliases the Semantic modes.
+        if (section !== 'Effects') assert.ok(Array.isArray(map.modes) && map.modes.length, section + ' modes');
         for (const [name, entry] of Object.entries(map.items ?? map.colors ?? {})) {
             assert.equal(typeof entry.role, 'string', `${section}/${name} role`);
             assert.equal(typeof entry.derived, 'boolean', `${section}/${name} derived`);

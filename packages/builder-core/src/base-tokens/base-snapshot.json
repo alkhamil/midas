@@ -853,57 +853,6 @@
     },
     {
       "collection": "Primitives",
-      "name": "shadow/none",
-      "type": "effect",
-      "values": {
-        "Base": {
-          "literal": []
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
-      "name": "shadow/secondary",
-      "type": "effect",
-      "values": {
-        "Base": {
-          "literal": [
-            {
-              "type": "drop",
-              "visible": true,
-              "color": "#000000",
-              "opacity": 0.08,
-              "x": 0,
-              "y": 6,
-              "blur": 16,
-              "spread": 0
-            },
-            {
-              "type": "drop",
-              "visible": true,
-              "color": "#000000",
-              "opacity": 0.12,
-              "x": 0,
-              "y": 3,
-              "blur": 6,
-              "spread": -4
-            },
-            {
-              "type": "drop",
-              "visible": true,
-              "color": "#000000",
-              "opacity": 0.05,
-              "x": 0,
-              "y": 9,
-              "blur": 28,
-              "spread": 8
-            }
-          ]
-        }
-      }
-    },
-    {
-      "collection": "Primitives",
       "name": "secondary/25",
       "type": "color",
       "values": {
@@ -3314,44 +3263,6 @@
     },
     {
       "collection": "Semantic",
-      "name": "boxShadowNone",
-      "type": "effect",
-      "values": {
-        "Light": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "shadow/none"
-          }
-        },
-        "Dark": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "shadow/none"
-          }
-        }
-      }
-    },
-    {
-      "collection": "Semantic",
-      "name": "boxShadowSecondary",
-      "type": "effect",
-      "values": {
-        "Light": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "shadow/secondary"
-          }
-        },
-        "Dark": {
-          "alias": {
-            "collection": "Primitives",
-            "name": "shadow/secondary"
-          }
-        }
-      }
-    },
-    {
-      "collection": "Semantic",
       "name": "paddingXS",
       "type": "number",
       "values": {
@@ -3996,6 +3907,95 @@
           }
         }
       }
+    },
+    {
+      "collection": "Primitives",
+      "name": "shadow/none",
+      "type": "effect",
+      "values": {
+        "Base": {
+          "literal": []
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "shadow/secondary",
+      "type": "effect",
+      "values": {
+        "Base": {
+          "literal": [
+            {
+              "type": "drop",
+              "visible": true,
+              "color": "#000000",
+              "opacity": 0.08,
+              "x": 0,
+              "y": 6,
+              "blur": 16,
+              "spread": 0
+            },
+            {
+              "type": "drop",
+              "visible": true,
+              "color": "#000000",
+              "opacity": 0.12,
+              "x": 0,
+              "y": 3,
+              "blur": 6,
+              "spread": -4
+            },
+            {
+              "type": "drop",
+              "visible": true,
+              "color": "#000000",
+              "opacity": 0.05,
+              "x": 0,
+              "y": 9,
+              "blur": 28,
+              "spread": 8
+            }
+          ]
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "boxShadowNone",
+      "type": "effect",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "shadow/none"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "shadow/none"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "boxShadowSecondary",
+      "type": "effect",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "shadow/secondary"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "shadow/secondary"
+          }
+        }
+      }
     }
   ],
   "report": {
@@ -4272,6 +4272,7 @@
       "Semantic/borderRadiusMD",
       "Semantic/borderRadiusLG",
       "Semantic/borderRadiusXL",
+      "Semantic/borderRadiusFull",
       "Semantic/paddingXS",
       "Semantic/paddingSM",
       "Semantic/paddingMD",
@@ -4305,7 +4306,12 @@
       "Semantic/clearIconSizeMD",
       "Semantic/clearIconSizeLG",
       "Semantic/clearIconSizeXL",
-      "Semantic/lineWidth"
+      "Semantic/lineWidth",
+      "Semantic/controlOutlineWidth",
+      "Primitives/shadow/none",
+      "Primitives/shadow/secondary",
+      "Semantic/boxShadowNone",
+      "Semantic/boxShadowSecondary"
     ],
     "derived": [
       {

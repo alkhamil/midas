@@ -169,7 +169,7 @@ function correspondingMode(sourcesByName, collection, path, mode) {
 function failSection(/** @type {string} */ section) { throw new Error(`Base variables: unknown mapping section "${section}"`); }
 export function buildBasePlan(parsed, antMap = ANT_MAP, sizes = SIZES) {
     for (const section of Object.keys(antMap)) {
-        if (!['Primitives', 'Semantic', 'Typography'].includes(section)) failSection(section);
+        if (!['Primitives', 'Semantic', 'Typography', 'Effects'].includes(section)) failSection(section);
     }
     const only = SOURCE_ORDER.filter(n => parsed.sources.some(s => s.name === n));
     const { unresolved } = resolveTokenRefs(parsed.sources, only);
@@ -278,6 +278,21 @@ export function buildBasePlan(parsed, antMap = ANT_MAP, sizes = SIZES) {
         for (const mode of antMap.Semantic.modes) values[mode] = { alias: { collection: 'Primitives', name: spec.primitive } };
         items.push({ collection: 'Semantic', name: antName, type: 'number', values });
         if (spec.derived) derived.push({ name: `Semantic/${antName}`, reason: `extrapolated antd size (${spec.source})` });
+    }
+    // Effects: lists of drop and inner shadows the JSON export cannot hold (Figma variables have no effect type). The mapping declares the Primitives and
+    // the Semantic names that alias them; both come last, so a rebuild writes them after everything the token JSON and the sizes make.
+    if (antMap.Effects) {
+        const { primitives = {}, items: named = {} } = antMap.Effects;
+        for (const [name, list] of Object.entries(primitives)) {
+            if (!Array.isArray(list)) fail(`Effects primitive "${name}" must be a list of effects`);
+            items.push({ collection: 'Primitives', name, type: 'effect', values: { [antMap.Primitives.modes[0]]: { literal: structuredClone(list) } } });
+        }
+        for (const [antName, entry] of Object.entries(named)) {
+            if (!Array.isArray(primitives[entry.primitive])) fail(`Effects/${antName} names the primitive "${entry.primitive}", which the Effects section does not hold`);
+            const values = {};
+            for (const mode of antMap.Semantic.modes) values[mode] = { alias: { collection: 'Primitives', name: entry.primitive } };
+            items.push({ collection: 'Semantic', name: antName, type: 'effect', values });
+        }
     }
     const created = [...new Set(items.map(i => `${i.collection}/${i.name}`))];
     return { collections: ['Primitives', 'Semantic', 'Typography'].map(name => ({ name, modes: antMap[name].modes })), items, report: { created, derived, needsValue, renamed: parsed.renames, unresolved: inScope } };

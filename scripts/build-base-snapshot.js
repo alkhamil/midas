@@ -6,6 +6,7 @@
 //   token-json-path defaults to packages/builder-core/src/base-tokens/source/token.json (the Figma variables export, not in
 //   the repo: put it there, or pass its path). The antd source the size table is checked against is read from ANTD_REF, which
 //   defaults to D:/antd-ref. Both must exist, or the script stops before it writes anything.
+// The effect items (Primitives shadow/*, Semantic boxShadow*) come from the Effects section of ant-map.json, not from the token JSON.
 // Then commit the snapshot; the studio reads it, never the token JSON.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
