@@ -8378,14 +8378,21 @@ async function resolveConflict() {
         conflictOpen = false;
     }
 }
-function invalidate() {
+// A change to the scene redraws the scene and the overlay; a change only to the overlay (the hovered layer) redraws the overlay.
+let sceneDirty = false;
+function invalidate(scene = true) {
+    if (scene)
+        sceneDirty = true;
     if (scheduled)
         return;
     scheduled = true;
     requestAnimationFrame(() => {
         scheduled = false;
         syncUrl();
-        renderer.render(state.camera);
+        if (sceneDirty) {
+            sceneDirty = false;
+            renderer.render(state.camera);
+        }
         drawOverlay();
         $('#performance').textContent = `${renderer.visibleCount} layers · ${renderer.cpuMs.toFixed(1)} ms CPU · ${renderer.route || ''}`;
         $('#zoom-value').textContent = `${Math.round(state.camera.zoom * 100)}%`;
@@ -11993,7 +12000,7 @@ function pointerMove(e) {
                 overlay.style.cursor = 'pointer';
             if (hover !== state.hover) {
                 state.hover = hover;
-                invalidate();
+                invalidate(false);
             }
         }
         return;
