@@ -8,7 +8,7 @@ import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
 import { VAR_TYPES } from './varTypes.js';
 import { boot } from '../boot.js';
-import { AtlasPacker } from './atlasPacker.js';
+import { AtlasPacker, tileGrid } from './atlasPacker.js';
 import { boundsIn, descendantsOf, effectBleed, planRasterRoots } from './rasterRoutes.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
 import { subtreeFrom } from './nodeIndex.js';
@@ -7247,24 +7247,56 @@ function deferFrameStrokes(scene) {
     return out;
 }
 class Atlas {
-    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.packer = new AtlasPacker(this.size, this.layers); this.epoch = 0; this.canvas = document.createElement('canvas'); }
-    reset() { this.entries.clear(); this.packer.reset(); this.epoch++; }
-    get(n, res, images, mode = '') {
-        const key = `${n.id}:${n.version}:${res}${mode ? ':' + mode : ''}`;
+    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.latest = new Map(); this.packer = new AtlasPacker(this.size, this.layers); this.epoch = 0; this.budgetEnd = Infinity; this.deferred = false; this.canvas = document.createElement('canvas'); }
+    reset() { this.entries.clear(); this.latest.clear(); this.packer.reset(); this.epoch++; }
+    /** The margin of a layer's entry: a transparent border of at least two texels, and the stroke a raster-only layer needs. */
+    paddingOf(n, res) {
+        // Raster-only paths carry stroke padding; the geometry stays editable in the document.
+        const basePad = n.type === 'path' || n.type === 'line' ? (n.strokeWidth || 0) / 2 + 1 : (needsRasterFill(n) || needsRasterShape(n)) ? (n.strokeWidth || 0) + 1 : 0;
+        // Always a transparent border of about 2 texels: the bilinear sampler at the edge of a quad would otherwise pick up the
+        // neighbouring atlas entry (thin streaks along text boxes while zooming).
+        const padding = Math.max(basePad, Math.ceil(2 / Math.max(.05, Math.min(res, 1))));
+        return padding;
+    }
+    /**
+     * The entries a layer is drawn with at `res`: one per tile (tileGrid) that meets `view`, a rect in the layer's own units. Each entry
+     * comes with its offset from the layer's origin, so its quad lands on its tile.
+     */
+    tilesFor(n, res, images, mode, view, stale = false) {
+        const padding = this.paddingOf(n, res), grid = tileGrid(n.w, n.h, res, this.size, padding);
+        const base = `${n.id}:${n.version}:${res}${mode ? ':' + mode : ''}`, latestKey = `${n.id}:${mode}`;
+        const out = [];
+        for (const t of grid) {
+            if (t.x > view.x + view.w || t.x + t.w < view.x || t.y > view.y + view.h || t.y + t.h < view.y)
+                continue;
+            if ((stale || performance.now() > this.budgetEnd) && grid.length === 1 && !this.entries.has(base)) {
+                // While the zoom moves the layer keeps the raster it has, drawn at the new size; the sharp one follows once the zoom settles.
+                const prev = this.latest.get(latestKey);
+                if (prev && prev.version === n.version) {
+                    this.deferred = true;
+                    out.push({ entry: prev.entry, ox: -prev.entry.padding, oy: -prev.entry.padding });
+                    continue;
+                }
+            }
+            const entry = this.entryOf(n, res, images, mode, t, padding, grid.length > 1 ? `${base}:${t.x},${t.y}` : base);
+            if (!entry)
+                continue;
+            if (grid.length === 1)
+                this.latest.set(latestKey, { version: n.version, entry });
+            out.push({ entry, ox: t.x - padding, oy: t.y - padding });
+        }
+        return out;
+    }
+    entryOf(n, res, images, mode, t, padding, key) {
         if (this.entries.has(key))
             return this.entries.get(key);
         if (n.type === 'image' && !images.get(n.assetId))
             return null;
         if (needsRasterFill(n) && getFills(n).some(f => f.visible !== false && f.type === 'image' && f.image && images.doc.data.assets[f.image] && !images.get(f.image)))
             return null;
-        // Raster-only paths carry stroke padding; the geometry stays editable in the document.
-        const basePad = n.type === 'path' || n.type === 'line' ? (n.strokeWidth || 0) / 2 + 1 : (needsRasterFill(n) || needsRasterShape(n)) ? (n.strokeWidth || 0) + 1 : 0;
-        // Always a transparent border of about 2 texels: the bilinear sampler at the edge of a quad would otherwise pick up the
-        // neighbouring atlas entry (thin streaks along text boxes while zooming).
-        const padding = Math.max(basePad, Math.ceil(2 / Math.max(.05, Math.min(res, 1))));
-        return this.rasterize(key, n.w + padding * 2, n.h + padding * 2, res, padding, (ctx, scale) => {
+        return this.rasterize(key, t.w + padding * 2, t.h + padding * 2, res, padding, (ctx, scale) => {
             ctx.scale(scale, scale);
-            ctx.translate(padding, padding);
+            ctx.translate(padding - t.x, padding - t.y);
             if (n.type === 'text') {
                 ctx.beginPath();
                 ctx.rect(0, 0, n.w, n.h);
@@ -7300,6 +7332,7 @@ class Atlas {
         if (!slot) {
             // Atlas penuh: buang semuanya dan mulai lagi (ring buffer) daripada membuat WebGPU error.
             this.entries.clear();
+            this.latest.clear();
             this.packer.reset();
             slot = this.packer.alloc(w, h);
             if (!slot)
@@ -7307,10 +7340,13 @@ class Atlas {
         }
         const { x, y, page } = slot;
         // The copy covers the entry's 2-texel gutter too (transparent): the sampler reads into it at a quad's edge, and a gutter left
-        // over from an earlier entry shows as a line along the node's edge.
-        this.canvas.width = w + 2;
-        this.canvas.height = h + 2;
+        // over from an earlier entry shows as a line along the node's edge. The canvas only grows: resizing it per entry reallocates it.
+        if (this.canvas.width < w + 2)
+            this.canvas.width = w + 2;
+        if (this.canvas.height < h + 2)
+            this.canvas.height = h + 2;
         const ctx = this.canvas.getContext('2d');
+        ctx.reset();
         paint(ctx, scale);
         this.device.queue.copyExternalImageToTexture({ source: this.canvas }, { texture: this.texture, origin: [x, y, page], premultipliedAlpha: true }, [w + 2, h + 2]);
         const entry = { u: x / this.size, v: y / this.size, du: w / this.size, dv: h / this.size, page, padding, w: width, h: height };
@@ -7353,7 +7389,7 @@ class Renderer {
      * @type {(() => { id: string, colors: { fill?: string, stroke?: string } } | null) | null}
      */
     canvasPreview = null;
-    constructor(canvas, doc, onStatus, invalidate) { this.canvas = canvas; this.doc = doc; this.onStatus = onStatus; this.invalidate = invalidate; this.backend = 'Starting'; this.ready = false; this.skipId = null; this.images = activeImages = new ImageStore(doc, invalidate); this.width = 1; this.height = 1; this.dpr = 1; this.cpuMs = 0; this.visibleCount = 0; this.instanceCount = 0; this.drawCalls = 0; this.capacity = 0; this.clipCapacity = 0; this.device = null; this.cache = new Map(); this.gpuError = null; }
+    constructor(canvas, doc, onStatus, invalidate) { this.canvas = canvas; this.doc = doc; this.onStatus = onStatus; this.invalidate = invalidate; this.backend = 'Starting'; this.ready = false; this.skipId = null; this.images = activeImages = new ImageStore(doc, invalidate); this.width = 1; this.height = 1; this.dpr = 1; this.cpuMs = 0; this.visibleCount = 0; this.instanceCount = 0; this.drawCalls = 0; this.capacity = 0; this.clipCapacity = 0; this.device = null; this.cache = new Map(); this.gpuError = null; this.zoomSeen = null; this.zoomingUntil = 0; this.settleTimer = null; }
     async initialize() {
         try {
             if (!navigator.gpu || new URLSearchParams(location.search).has('canvas'))
@@ -7444,6 +7480,13 @@ class Renderer {
         if (!this.ready)
             return;
         const start = performance.now();
+        if (camera.zoom !== this.zoomSeen) {
+            // The zoom is moving: rasters stay as they are for a moment, and a settle frame re-rasters the layers sharp.
+            this.zoomSeen = camera.zoom;
+            this.zoomingUntil = start + 200;
+            clearTimeout(this.settleTimer);
+            this.settleTimer = setTimeout(() => this.invalidate(), 220);
+        }
         const viewport = { x: -camera.x / camera.zoom, y: -camera.y / camera.zoom, w: this.width / camera.zoom, h: this.height / camera.zoom };
         // What does not depend on the camera (layer kind, masks) is filtered once per scene, not every frame;
         // a pan or zoom only repeats the cheap viewport test.
@@ -7485,6 +7528,8 @@ class Renderer {
         }
         else
             this.renderCanvas(scene, camera);
+        if (this.atlas?.deferred)
+            this.invalidate();
         this.cpuMs = performance.now() - start;
     }
     /**
@@ -7546,6 +7591,9 @@ class Renderer {
         const resolution = clamp(2 ** (Math.ceil(Math.log2(camera.zoom * this.dpr) * 4) / 4), 1 / 16, 32) * quality;
         // The raster roots in view, each with its entry, in paint order.
         const z = camera.zoom, vx0 = originX - 100, vy0 = originY - 100, vx1 = originX + this.width / z + 100, vy1 = originY + this.height / z + 100;
+        // Sharp rasters are made within a frame's time budget; the rest keep their stale raster and the next frame continues.
+        this.atlas.budgetEnd = performance.now() + 6;
+        this.atlas.deferred = false;
         const rasters = [];
         for (const [id, p] of plan.roots) {
             const b = p.root.box;
@@ -7557,10 +7605,22 @@ class Renderer {
         }
         rasters.sort((a, b) => a.index - b.index);
         const clipCount = scene.reduce((sum, s) => sum + s.clips.length, 0) + rasters.reduce((sum, r) => sum + r.p.root.clips.length, 0);
-        this.ensureBuffers(scene.length * 2 + rasters.length + 1, clipCount + 1);
+        // The raster layers' tiles in view, computed once: they size the instance buffer, since a large layer takes one instance per tile.
+        const tilesOf = new Map(), stale = performance.now() < this.zoomingUntil;
+        const view = { x: originX - 100, y: originY - 100, w: this.width / camera.zoom + 200, h: this.height / camera.zoom + 200 };
+        let instances = scene.length * 2 + rasters.length + 1;
+        for (const s of scene) {
+            const n = s.node;
+            if (!(['text', 'path', 'line', 'image'].includes(n.type) || needsRasterFill(n) || needsRasterShape(n)))
+                continue;
+            const tiles = this.atlas.tilesFor(n, resolution, this.images, s.mode || '', boundsIn(view, s.inverse), stale);
+            tilesOf.set(s, tiles);
+            instances += Math.max(0, tiles.length - 1);
+        }
+        this.ensureBuffers(instances, clipCount + 1);
         // The Behavior preview colours the root's fill and stroke for this draw only: the document keeps its own colours.
         const preview = this.canvasPreview?.() ?? null;
-        const push = (s, n, clipId, shadow = null) => {
+        const push = (s, n, clipId, shadow = null, tile = null) => {
             const base = count++ * 32, d = this.instanceData, m = s.matrix, sub = preview?.id === n.id ? preview.colors : null;
             const top = getFills(n).find(f => f.visible !== false), linear = top?.type === 'linear' && topColorOf(n) !== 'none';
             d.set([m[0], m[1], m[2], m[3], m[4] - originX, m[5] - originY, n.w, n.h], base);
@@ -7587,18 +7647,21 @@ class Renderer {
             }
             if (['text', 'path', 'line', 'image'].includes(n.type) || needsRasterFill(n) || needsRasterShape(n)) {
                 // Vector shapes are rasterised at 2x at least, so their edges stay crisp (and not smudged) at 100% zoom.
-                const entry = this.atlas.get(n, resolution, this.images, s.mode || '');
-                if (!entry) {
+                // A layer larger than the atlas takes one quad per tile (tileGrid), so it stays sharp at any zoom.
+                const [first, ...rest] = tile ? [tile] : tilesOf.get(s) ?? [];
+                if (!first) {
                     count--;
                     return;
                 }
-                d[base + 4] -= (m[0] + m[2]) * entry.padding;
-                d[base + 5] -= (m[1] + m[3]) * entry.padding;
-                d[base + 6] = entry.w;
-                d[base + 7] = entry.h;
+                for (const t of rest)
+                    push(s, n, clipId, null, t);
+                d[base + 4] += m[0] * first.ox + m[2] * first.oy;
+                d[base + 5] += m[1] * first.ox + m[3] * first.oy;
+                d[base + 6] = first.entry.w;
+                d[base + 7] = first.entry.h;
                 d[base + 18] = 2;
-                d.set([entry.u, entry.v, entry.du, entry.dv], base + 20);
-                d[base + 31] = entry.page;
+                d.set([first.entry.u, first.entry.v, first.entry.du, first.entry.dv], base + 20);
+                d[base + 31] = first.entry.page;
             }
         };
         // The clip chain of a layer or a raster root: each clip is a rounded rectangle in the clip buffer, linked to the one before it.
