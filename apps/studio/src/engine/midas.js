@@ -7261,7 +7261,38 @@ class Atlas {
         // Always a transparent border of about 2 texels: the bilinear sampler at the edge of a quad would otherwise pick up the
         // neighbouring atlas entry (thin streaks along text boxes while zooming).
         const padding = Math.max(basePad, Math.ceil(2 / Math.max(.05, Math.min(res, 1))));
-        const width = n.w + padding * 2, height = n.h + padding * 2;
+        return this.rasterize(key, n.w + padding * 2, n.h + padding * 2, res, padding, (ctx, scale) => {
+            ctx.scale(scale, scale);
+            ctx.translate(padding, padding);
+            if (n.type === 'text') {
+                ctx.beginPath();
+                ctx.rect(0, 0, n.w, n.h);
+                ctx.clip();
+                paintText(ctx, n);
+            }
+            else if (n.type === 'image') {
+                const img = images.get(n.assetId);
+                ctx.save();
+                ctx.clip(pathFor(n));
+                ctx.drawImage(img, ...imageFit(img, n.w, n.h));
+                ctx.restore();
+                paintStroke(ctx, n, pathFor(n));
+            }
+            else {
+                const path = pathFor(n);
+                if (mode !== 'stroke')
+                    paintFills(ctx, n, path, 1);
+                ctx.globalAlpha = 1;
+                if (mode !== 'fill')
+                    paintStroke(ctx, n, path);
+            }
+        });
+    }
+    /**
+     * Paints one atlas entry: `width` x `height` world units (the box and its margin, `padding` on each side of the box) at `res`
+     * texels per unit, lower when the atlas cannot hold it. `paint(ctx, scale)` draws in world units. Null when the atlas is full.
+     */
+    rasterize(key, width, height, res, padding, paint) {
         const scale = Math.min(res, (this.size - 4) / Math.max(width, 1), (this.size - 4) / Math.max(height, 1));
         const w = Math.max(1, Math.ceil(width * scale)), h = Math.max(1, Math.ceil(height * scale));
         let slot = this.packer.alloc(w, h);
@@ -7279,30 +7310,7 @@ class Atlas {
         this.canvas.width = w + 2;
         this.canvas.height = h + 2;
         const ctx = this.canvas.getContext('2d');
-        ctx.scale(scale, scale);
-        ctx.translate(padding, padding);
-        if (n.type === 'text') {
-            ctx.beginPath();
-            ctx.rect(0, 0, n.w, n.h);
-            ctx.clip();
-            paintText(ctx, n);
-        }
-        else if (n.type === 'image') {
-            const img = images.get(n.assetId);
-            ctx.save();
-            ctx.clip(pathFor(n));
-            ctx.drawImage(img, ...imageFit(img, n.w, n.h));
-            ctx.restore();
-            paintStroke(ctx, n, pathFor(n));
-        }
-        else {
-            const path = pathFor(n);
-            if (mode !== 'stroke')
-                paintFills(ctx, n, path, 1);
-            ctx.globalAlpha = 1;
-            if (mode !== 'fill')
-                paintStroke(ctx, n, path);
-        }
+        paint(ctx, scale);
         this.device.queue.copyExternalImageToTexture({ source: this.canvas }, { texture: this.texture, origin: [x, y, page], premultipliedAlpha: true }, [w + 2, h + 2]);
         const entry = { u: x / this.size, v: y / this.size, du: w / this.size, dv: h / this.size, page, padding, w: width, h: height };
         this.entries.set(key, entry);
