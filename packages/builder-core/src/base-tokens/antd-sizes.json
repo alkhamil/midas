@@ -24,6 +24,7 @@
   "borderRadiusMD": { "collection": "Semantic", "value": 6, "primitive": "radius/6", "derived": false, "source": "components/theme/themes/seed.ts: borderRadius" },
   "borderRadiusLG": { "collection": "Semantic", "value": 8, "primitive": "radius/8", "derived": false, "source": "components/theme/themes/shared/genRadius.ts: base 6" },
   "borderRadiusXL": { "collection": "Semantic", "value": 10, "primitive": "radius/10", "derived": true, "source": "extrapolated: SM-base-LG step (+2) beyond borderRadiusLG" },
+  "borderRadiusFull": { "collection": "Semantic", "value": 9999, "primitive": "radius/full", "derived": false, "source": "Primitives radius/full: a full-round radius; every surface clamps it to half the shorter side, so it is a circle on a square box" },
   "paddingXS": { "collection": "Semantic", "value": 8, "primitive": "size/8", "derived": false, "source": "components/theme/util/alias.ts: paddingXS = sizeXS" },
   "paddingSM": { "collection": "Semantic", "value": 12, "primitive": "size/12", "derived": false, "source": "components/theme/util/alias.ts: paddingSM = sizeSM" },
   "paddingMD": { "collection": "Semantic", "value": 16, "primitive": "size/16", "derived": false, "source": "components/theme/util/alias.ts: padding = size" },

@@ -55,6 +55,7 @@
   "radius": { "base": "Semantic/borderRadiusMD" },
   "radius-lg": { "base": "Semantic/borderRadiusLG" },
   "radius-xl": { "base": "Semantic/borderRadiusXL" },
+  "radius-full": { "base": "Semantic/borderRadiusFull" },
   "gap-xs": { "base": "Semantic/gapXS" },
   "gap-sm": { "base": "Semantic/gapSM" },
   "gap": { "base": "Semantic/gapMD" },

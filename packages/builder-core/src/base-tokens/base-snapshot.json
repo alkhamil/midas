@@ -3244,6 +3244,25 @@
     },
     {
       "collection": "Semantic",
+      "name": "borderRadiusFull",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "radius/full"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "radius/full"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
       "name": "paddingXS",
       "type": "number",
       "values": {
