@@ -72,3 +72,15 @@ test('returns null when full or when an item is larger than a page, and reset st
     packer.reset();
     assert.ok(packer.alloc(30, 30));
 });
+
+test('every slot keeps its 2-texel gutter inside the page, so a copy that covers the gutter never leaves the texture', () => {
+    const packer = new AtlasPacker(64, 1);
+    assert.equal(packer.alloc(62, 10), null, 'an item that leaves no room for its gutter is refused');
+    packer.reset();
+    const items = [[61, 5], [20, 9], [7, 30], [1, 1], [40, 12]];
+    for (const [w, h] of items) {
+        const s = packer.alloc(w, h);
+        if (!s) continue;
+        assert.ok(s.x + w + 2 <= 64 && s.y + h + 2 <= 64, `slot ${w}x${h} at ${s.x},${s.y} runs past the page`);
+    }
+});

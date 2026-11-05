@@ -7274,8 +7274,10 @@ class Atlas {
                 return null;
         }
         const { x, y, page } = slot;
-        this.canvas.width = w;
-        this.canvas.height = h;
+        // The copy covers the entry's 2-texel gutter too (transparent): the sampler reads into it at a quad's edge, and a gutter left
+        // over from an earlier entry shows as a line along the node's edge.
+        this.canvas.width = w + 2;
+        this.canvas.height = h + 2;
         const ctx = this.canvas.getContext('2d');
         ctx.scale(scale, scale);
         ctx.translate(padding, padding);
@@ -7301,7 +7303,7 @@ class Atlas {
             if (mode !== 'fill')
                 paintStroke(ctx, n, path);
         }
-        this.device.queue.copyExternalImageToTexture({ source: this.canvas }, { texture: this.texture, origin: [x, y, page], premultipliedAlpha: true }, [w, h]);
+        this.device.queue.copyExternalImageToTexture({ source: this.canvas }, { texture: this.texture, origin: [x, y, page], premultipliedAlpha: true }, [w + 2, h + 2]);
         const entry = { u: x / this.size, v: y / this.size, du: w / this.size, dv: h / this.size, page, padding, w: width, h: height };
         this.entries.set(key, entry);
         return entry;

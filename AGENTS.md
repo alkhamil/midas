@@ -65,6 +65,7 @@
 
 - Button template: `packages/builder-core/src/templates/button.js`. Engine: `packages/builder-core/src/behavior-engine/` (`codegen.js`, `preview.js`, `anatomy.js`, `icon-slot.js`, `display.js`).
 - Play DOM: `packages/builder-core/src/prototype/dom-tree.js` (`renderButton` plus codegen stylesheet). Panel: `apps/studio/src/engine/behaviorPanel.js`.
+- Raster atlas (WebGPU text and rounded or stroked shapes): `apps/studio/src/engine/midas.js` `Atlas.get`. Each entry copies its 2-texel gutter too; a stale gutter draws a line along the node edge at zoom below about 67%.
 - Button variable fixture: `scripts/button-model.mjs` (gap per Size mode 4/6/8/8/10, mirroring the production ladder).
 
 ## Known issues

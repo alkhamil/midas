@@ -16,7 +16,8 @@ export class AtlasPacker {
     /** Cari tempat untuk item w × h (piksel). Mengembalikan { x, y, page } atau null bila atlas penuh. */
     alloc(w, h) {
         const size = this.size;
-        if (w + 2 > size || h + 2 > size)
+        // The item and its 2-texel gutter (right and below) must fit, and the gutter starts at texel 1: the copy covers both.
+        if (w + 3 > size || h + 3 > size)
             return null;
         for (let pi = 0; pi < this.pages.length; pi++) {
             const pg = this.pages[pi];
