@@ -255,6 +255,18 @@ function renderTemplate(n, template, parent, scope) {
     const labelEntry = labelEntryOf(n.id, scope.childrenOf, n);
     // Every layer below the instance, for the slots a container holds (an affix text can sit inside one).
     const below = id => scope.childrenOf(id).flatMap(c => [c, ...below(c.id)]);
+    // The frame parts (the Button's spinner) sit before the text, as the master draws them; a template with no text slot draws them after its slots (as the export does).
+    let framePartsDrawn = false;
+    const drawFrameParts = out => {
+        framePartsDrawn = true;
+        for (const part of canvasPartsOf(template)) {
+            if (part.kind !== 'frame') continue;
+            const el = partElement(n, part.id, scope);
+            if (!el) continue;
+            if (part.spin) el.style.animation = SPIN_ANIMATION;
+            out.push(el);
+        }
+    };
     const emitSlot = (slot, out) => {
         if (slot.kind === 'text' || slot.kind === 'control') {
             const isControl = control && control.slot === slot.id;
@@ -286,14 +298,7 @@ function renderTemplate(n, template, parent, scope) {
                 if (counter) out.push({ ...counter, attrs: { ...counter.attrs, 'data-role': 'count' } });
             }
             else {
-                // The frame parts (the Button's spinner) sit before the text, as the master draws them.
-                for (const part of canvasPartsOf(template)) {
-                    if (part.kind !== 'frame') continue;
-                    const el = partElement(n, part.id, scope);
-                    if (!el) continue;
-                    if (part.spin) el.style.animation = SPIN_ANIMATION;
-                    out.push(el);
-                }
+                drawFrameParts(out);
                 if (slot.optional) {
                     // An optional text slot (an affix) is drawn from its own layer, as the canvas draws it: shown while the layer is, with the text it holds.
                     const layer = below(n.id).find(c => c.name === slot.id && c.type === 'text');
@@ -327,6 +332,7 @@ function renderTemplate(n, template, parent, scope) {
         for (const child of template.anatomy.filter(c => c.parent === slot.id)) emitSlot(child, inner);
         children.push({ tag: 'div', nodeId: group?.id, attrs: { class: `${template.id}-${slot.id}` }, style: {}, children: inner });
     }
+    if (!framePartsDrawn && !template.anatomy.some(s => s.kind === 'text' || s.kind === 'control')) drawFrameParts(children);
     // The content slots, after the other layers as the export writes them: the slot element (class <template>-<slot>) around the layers the instance holds,
     // `repeat` copies of them for a repeating slot (the canvas keeps them once). With no copies the element is there, empty, only for a slot with showEmpty.
     for (const slot of template.slots ?? []) {
@@ -361,7 +367,7 @@ function renderTemplate(n, template, parent, scope) {
     const style = { display: ownSizingOf(n, 'h') === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...fields.vars, ...placement(n, parent, scope.responsive), ...rootLayoutOf(instanceLayoutOf(master, n), flowCount) };
     // The host draws its own border, and the box is positioned for it.
     if (hasStroke) {
-        Object.assign(style, useSvg ? { borderWidth: '0px', borderStyle: 'none', paddingInline: `var(${cssVarOf(template.id, template.display.root.paddingX)})`, paddingBlock: `var(${cssVarOf(template.id, template.display.root.paddingY)})` } : (() => { const uniform = strokeSidesUniform(shape); if (!uniform) { const s = strokeSideWidths(shape); const per = {}; for (const [k, v] of [['Top', s.t], ['Right', s.r], ['Bottom', s.b], ['Left', s.l]]) { per[`border${k}Width`] = `${v}px`; per[`border${k}Style`] = v > 0 ? lineStyle : 'none'; if (!bound && v > 0) per[`border${k}Color`] = colorWithAlpha(shape.stroke, shape.strokeOpacity); } per.backgroundClip = 'border-box'; return per; } return bw > 0 ? { borderWidth: `${bw}px`, borderStyle: lineStyle, ...(bound ? {} : { borderColor: colorWithAlpha(shape.stroke, shape.strokeOpacity) }), backgroundClip: clip } : { borderWidth: '0px', borderStyle: 'none' }; })()); if (hasStroke && !style.position) style.position = 'relative';
+        Object.assign(style, useSvg ? { borderWidth: '0px', borderStyle: 'none', ...(template.display.root.paddingX ? { paddingInline: `var(${cssVarOf(template.id, template.display.root.paddingX)})` } : {}), ...(template.display.root.paddingY ? { paddingBlock: `var(${cssVarOf(template.id, template.display.root.paddingY)})` } : {}) } : (() => { const uniform = strokeSidesUniform(shape); if (!uniform) { const s = strokeSideWidths(shape); const per = {}; for (const [k, v] of [['Top', s.t], ['Right', s.r], ['Bottom', s.b], ['Left', s.l]]) { per[`border${k}Width`] = `${v}px`; per[`border${k}Style`] = v > 0 ? lineStyle : 'none'; if (!bound && v > 0) per[`border${k}Color`] = colorWithAlpha(shape.stroke, shape.strokeOpacity); } per.backgroundClip = 'border-box'; return per; } return bw > 0 ? { borderWidth: `${bw}px`, borderStyle: lineStyle, ...(bound ? {} : { borderColor: colorWithAlpha(shape.stroke, shape.strokeOpacity) }), backgroundClip: clip } : { borderWidth: '0px', borderStyle: 'none' }; })()); if (hasStroke && !style.position) style.position = 'relative';
     }
     return { tag: template.element.tag, nodeId: n.id, attrs, style, children };
 }
