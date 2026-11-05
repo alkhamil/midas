@@ -9,6 +9,7 @@ import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libr
 import { VAR_TYPES } from './varTypes.js';
 import { boot } from '../boot.js';
 import { AtlasPacker } from './atlasPacker.js';
+import { boundsIn, descendantsOf, effectBleed, planRasterRoots } from './rasterRoutes.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
 import { subtreeFrom } from './nodeIndex.js';
 import { buildIconPage, assetIdsOf, looksLikeIcon } from '../iconSet.js';
@@ -7318,6 +7319,33 @@ class Atlas {
     }
     destroy() { this.texture.destroy(); }
 }
+/** The effects that need the atlas: a complex effect paints with the layer, a backdrop blur or glass needs the layers under it. */
+function rasterReasonsOf(s) {
+    const reasons = [];
+    if (hasComplexFx(s.node))
+        reasons.push('effect');
+    if (getEffects(s.node).some(e => e.visible !== false && (e.type === 'bgBlur' || e.type === 'glass')))
+        reasons.push('backdrop');
+    return reasons;
+}
+/**
+ * The raster roots of a scene (rasterRoutes.js): each root with its paint order, its members (the layers inside it, with frame strokes
+ * deferred as on the GPU) and, for a backdrop blur or glass, the layers painted under it.
+ */
+function rasterPlanOf(raw) {
+    const items = raw.map(s => ({ id: s.node.id, parentId: s.node.parentId ?? null, reasons: rasterReasonsOf(s), maskParents: s.clips.filter(c => c.mask).map(c => c.mask.parentId ?? null) }));
+    const index = new Map(raw.map((s, i) => [s.node.id, i]));
+    const roots = new Map(), skip = new Set();
+    const overlaps = (a, b) => a.x <= b.x + b.w && b.x <= a.x + a.w && a.y <= b.y + b.h && b.y <= a.y + a.h;
+    for (const [id, reasons] of planRasterRoots(items)) {
+        const at = index.get(id), root = raw[at], members = descendantsOf(items, id);
+        for (const m of members)
+            skip.add(m);
+        const backdrop = reasons.has('backdrop') ? raw.slice(0, at).filter(s => !members.has(s.node.id) && !s.boolChild && !s.node.isMask && s.node.type !== 'group' && overlaps(s.box, root.box)) : [];
+        roots.set(id, { root, reasons, members: deferFrameStrokes(raw.filter(s => members.has(s.node.id))), backdrop });
+    }
+    return { roots, skip, index };
+}
 class Renderer {
     /**
      * The Behavior preview's colours for the selected instance, read at each GPU draw (see canvasPreviewOf). Null when there is no
@@ -7379,8 +7407,6 @@ class Renderer {
         this.ctx = this.canvas.getContext('2d');
         this.canvas.style.visibility = 'visible';
         this.canvas.style.display = 'block';
-        if (this.fxCanvas)
-            this.fxCanvas.style.display = 'none';
         this.backend = 'Canvas 2D';
         this.onStatus(this.backend);
         this.resize(this.width, this.height, this.dpr);
@@ -7430,35 +7456,18 @@ class Renderer {
         const vx0 = viewport.x - 100, vy0 = viewport.y - 100, vx1 = viewport.x + viewport.w + 100, vy1 = viewport.y + viewport.h + 100;
         const scene = deferFrameStrokes(base.list.filter(s => { const b = s.box; return b.x <= vx1 && b.x + b.w >= vx0 && b.y <= vy1 && b.y + b.h >= vy0; }));
         this.visibleCount = scene.length;
-        // The GPU clip buffer only knows rounded rectangles, so masked layers go through the 2D painter.
-        // For large scenes (>250 visible layers), stay on WebGPU to keep UI at 60 FPS without main thread freeze.
-        // Masks need the 2D painter (alpha masking); it is allowed on much larger scenes than other complex effects.
-        // Vectors zoomed past what the raster atlas can hold would turn soft: the 2D painter draws them as true curves.
-        const pxScale = camera.zoom * this.dpr, tooBig = s => (s.node.type === 'path' || s.node.type === 'line' || s.node.type === 'text') && (Math.max(s.node.w, s.node.h) * pxScale > this.atlas.size - 8 || s.node.type === 'text' && pxScale > 24);
-        const fxFx = this.backend === 'WebGPU' && scene.length <= 250 && scene.some(s => hasComplexFx(s.node));
-        const fxMask = this.backend === 'WebGPU' && scene.length <= 6000 && scene.some(s => s.clips.some(c => c.mask));
-        const fxBig = this.backend === 'WebGPU' && scene.length <= 2000 && scene.some(tooBig);
-        const fxRoute = fxFx || fxMask || fxBig;
-        // Which painter drew this frame, shown next to the CPU time: WebGPU is the fast path, "2D" means one layer forced the slow one.
-        this.route = fxRoute ? `2D (${[fxFx && 'effects', fxMask && 'mask', fxBig && 'large text/vector'].filter(Boolean).join(', ')})` : this.backend;
-        this.toggleFx(fxRoute);
-        if (fxRoute) {
+        // The shader draws every layer that it can. A layer it cannot (a mask, an effect, a backdrop blur) is painted into the atlas
+        // on its own (rasterRoutes.js), so no layer sends the rest of the page to the 2D painter.
+        this.route = this.backend;
+        if (this.backend === 'WebGPU') {
             try {
-                this.renderFx(scene, camera, base);
-            }
-            catch (e) {
-                console.error(e);
-            }
-        }
-        else if (this.backend === 'WebGPU') {
-            try {
-                this.renderGPU(scene, camera);
+                this.renderGPU(scene, camera, base);
             }
             catch (e) {
                 if (e.message === 'ATLAS_FULL') {
                     this.atlas.reset();
                     try {
-                        this.renderGPU(scene, camera, .5);
+                        this.renderGPU(scene, camera, base, .5);
                     }
                     catch (err) {
                         this.gpuError = 'Raster working set exceeded atlas capacity; using Canvas 2D.';
@@ -7478,89 +7487,77 @@ class Renderer {
             this.renderCanvas(scene, camera);
         this.cpuMs = performance.now() - start;
     }
-    // Effects the shape shader cannot express (inner shadow, blurs, glass) are drawn by the 2D painter on a layer above the GPU canvas.
     /**
-     * The 2D painter route (effects / masks / large vectors). Repainting every layer on each frame of a pan is what makes it heavy,
-     * so while only the camera moves, the scene is painted once into a bitmap larger than the screen and the pan just slides it.
-     * Anything else (an edit, a zoom, a drag, the frame right after a pan stops) paints fresh, so nothing stale is left on screen.
+     * One layer the shader cannot draw, painted into the atlas: its root's members in the root's own space, with the margin their effects
+     * paint into and, for a backdrop blur or glass, the layers under it. Null when the entry cannot be made (the atlas is full).
      */
-    renderFx(scene, camera, base) {
-        const ctx = this.fxCtx, fc = this.fxCanvas, dpr = this.dpr, last = this._fxLast;
-        // Same document, same camera, same size: the bitmap already on screen is still right. A hover or a selection redraw used to
-        // repaint every layer on the 2D path (tens of ms per frame on a big page); now it costs nothing.
-        if (last && last.base === base && last.zoom === camera.zoom && last.x === camera.x && last.y === camera.y && last.dpr === dpr && last.W === this.width && last.H === this.height) {
-            this.instanceCount = scene.length;
-            this.drawCalls = 1;
-            return;
+    rasterRoot(p, res) {
+        const root = p.root, inv = root.inverse, opacity = root.opacity;
+        if (!(opacity > 0))
+            return null;
+        let box = null;
+        for (const s of p.members) {
+            if (s.hidden)
+                continue;
+            const b = boundsIn(s.box, inv);
+            box = box ? { x: Math.min(box.x, b.x), y: Math.min(box.y, b.y), w: Math.max(box.x + box.w, b.x + b.w) - Math.min(box.x, b.x), h: Math.max(box.y + box.h, b.y + b.h) - Math.min(box.y, b.y) } : b;
         }
-        this._fxLast = { x: camera.x, y: camera.y, zoom: camera.zoom, base, dpr, W: this.width, H: this.height };
-        const panned = last && last.base === base && last.zoom === camera.zoom && (last.x !== camera.x || last.y !== camera.y);
-        if (!panned) {
-            this._fxBig = null;
-            this.renderCanvas(scene, camera, ctx, fc.width, fc.height, dpr);
-            return;
-        }
-        let big = this._fxBig;
-        if (big && (big.base !== base || big.zoom !== camera.zoom || big.dpr !== dpr || big.W !== this.width || big.H !== this.height || Math.abs(camera.x - big.cx) > big.mx || Math.abs(camera.y - big.cy) > big.my))
-            big = null;
-        if (!big) {
-            const mx = this.width * .4, my = this.height * .4, wpx = Math.ceil((this.width + 2 * mx) * dpr), hpx = Math.ceil((this.height + 2 * my) * dpr);
-            if (wpx > 8192 || hpx > 8192) {
-                this._fxBig = null;
-                this.renderCanvas(scene, camera, ctx, fc.width, fc.height, dpr);
-                return;
+        if (!box)
+            return null;
+        // The margin each effect paints beyond the box, and at least two texels of transparent border (see Atlas.get).
+        const bleed = Math.max(0, ...p.members.map(s => effectBleed(getEffects(s.node)))) + 2 / Math.min(res, 1);
+        const offX = box.x - bleed, offY = box.y - bleed, width = box.w + 2 * bleed, height = box.h + 2 * bleed;
+        const key = `root:${root.node.id}:${res}:${[...p.backdrop, ...p.members].map(s => this.rasterSignature(s, inv, opacity)).join(';')}`;
+        const members = p.members.map(s => ({ ...s, opacity: s.opacity / opacity })), backdrop = p.backdrop.map(s => ({ ...s, opacity: s.opacity / opacity }));
+        const entry = this.atlas.entries.get(key) ?? this.atlas.rasterize(key, width, height, res, bleed, (ctx, scale) => {
+            const t = new DOMMatrix([scale, 0, 0, scale, -scale * offX, -scale * offY]).multiply(new DOMMatrix(inv));
+            ctx.setTransform(t);
+            if (backdrop.length)
+                this.paintScene(ctx, backdrop);
+            this.paintScene(ctx, members);
+            // A backdrop blur or glass fills only its own shape: what lies outside it is the backdrop, which the shader already draws.
+            if (p.reasons.has('backdrop') && !p.members.some(s => s.node.parentId === root.node.id)) {
+                // The shape is in the root's own space: the scale and offset only, without the inverse that t also holds.
+                const shape = new Path2D();
+                shape.addPath(pathFor(root.node), new DOMMatrix([scale, 0, 0, scale, -scale * offX, -scale * offY]));
+                ctx.save();
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.globalCompositeOperation = 'destination-in';
+                ctx.fill(shape);
+                ctx.restore();
             }
-            const cam = { x: camera.x + mx, y: camera.y + my, zoom: camera.zoom };
-            const z = camera.zoom, vx0 = -cam.x / z - 100, vy0 = -cam.y / z - 100, vx1 = vx0 + (this.width + 2 * mx) / z + 200, vy1 = vy0 + (this.height + 2 * my) / z + 200;
-            const sceneBig = deferFrameStrokes(base.list.filter(s => { const b = s.box; return b.x <= vx1 && b.x + b.w >= vx0 && b.y <= vy1 && b.y + b.h >= vy0; }));
-            const canvas = big?.canvas || this._fxBigCanvas || (this._fxBigCanvas = document.createElement('canvas'));
-            canvas.width = wpx;
-            canvas.height = hpx;
-            this.renderCanvas(sceneBig, cam, canvas.getContext('2d'), wpx, hpx, dpr);
-            big = this._fxBig = { canvas, base, zoom: camera.zoom, dpr, W: this.width, H: this.height, cx: camera.x, cy: camera.y, mx, my };
-        }
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.clearRect(0, 0, fc.width, fc.height);
-        ctx.drawImage(big.canvas, Math.round((camera.x - big.cx - big.mx) * dpr), Math.round((camera.y - big.cy - big.my) * dpr));
-        this.instanceCount = scene.length;
-        this.drawCalls = 1;
-        // When the pan stops, one fresh exact paint replaces the slid bitmap (it can be half a pixel off).
-        clearTimeout(this._fxIdle);
-        this._fxIdle = setTimeout(() => this.invalidate(), 140);
+        });
+        return entry ? { entry, offX, offY } : null;
     }
-    toggleFx(on) {
-        if (on && !this.fxCanvas) {
-            const c = document.createElement('canvas');
-            c.id = 'scene-fx';
-            c.setAttribute('aria-hidden', 'true');
-            c.style.pointerEvents = 'none';
-            this.canvas.after(c);
-            this.fxCanvas = c;
-            this.fxCtx = c.getContext('2d');
-        }
-        if (!this.fxCanvas)
-            return;
-        if (on) {
-            // Resizing clears the bitmap: the next frame must paint it again.
-            if (this.fxCanvas.width !== this.canvas.width || this.fxCanvas.height !== this.canvas.height)
-                this._fxLast = null;
-            if (this.fxCanvas.width !== this.canvas.width)
-                this.fxCanvas.width = this.canvas.width;
-            if (this.fxCanvas.height !== this.canvas.height)
-                this.fxCanvas.height = this.canvas.height;
-        }
-        this.fxCanvas.style.display = on ? 'block' : 'none';
-        this.canvas.style.visibility = on ? 'hidden' : 'visible';
+    /** What a raster root depends on, relative to the root: a change to any of it re-paints the root (see rasterRoot). */
+    rasterSignature(s, inv, rootOpacity) {
+        const r = v => Math.round(v * 1000) / 1000;
+        const clips = s.clips.map(c => multiply(inv, c.matrix).map(r).join(',')).join('|');
+        const image = s.node.type === 'image' && !!this.images.get(s.node.assetId);
+        return `${s.node.id}.${s.node.version}.${multiply(inv, s.matrix).map(r).join(',')}.${r(s.opacity / rootOpacity)}.${clips}.${image}`;
     }
-    renderGPU(scene, camera, quality = 1) {
+    renderGPU(scene, camera, base, quality = 1) {
+        const plan = base.plan ??= rasterPlanOf(base.raw);
         const originX = -camera.x / camera.zoom, originY = -camera.y / camera.zoom;
-        const clipCount = scene.reduce((sum, s) => sum + s.clips.length, 0);
-        this.ensureBuffers(scene.length * 2 + 1, clipCount + 1);
         let count = 0, clipN = 0;
         // Small vectors (24px icons) are zoomed far past 4×: keep their raster matched to the zoom. Atlas.get still caps big layers to the page size.
         // Skala raster mengikuti zoom (pangkat 2 di atas piksel layar). Batas bawahnya 1/16, bukan 0,5: pada zoom jauh (mis. saat
         // page dibuka dengan "fit") raster 0,5 membuat ribuan teks/path memenuhi atlas dan diraster ulang setiap frame.
         const resolution = clamp(2 ** (Math.ceil(Math.log2(camera.zoom * this.dpr) * 4) / 4), 1 / 16, 32) * quality;
+        // The raster roots in view, each with its entry, in paint order.
+        const z = camera.zoom, vx0 = originX - 100, vy0 = originY - 100, vx1 = originX + this.width / z + 100, vy1 = originY + this.height / z + 100;
+        const rasters = [];
+        for (const [id, p] of plan.roots) {
+            const b = p.root.box;
+            if (b.x > vx1 || b.x + b.w < vx0 || b.y > vy1 || b.y + b.h < vy0)
+                continue;
+            const r = this.rasterRoot(p, resolution);
+            if (r)
+                rasters.push({ ...r, p, index: plan.index.get(id) });
+        }
+        rasters.sort((a, b) => a.index - b.index);
+        const clipCount = scene.reduce((sum, s) => sum + s.clips.length, 0) + rasters.reduce((sum, r) => sum + r.p.root.clips.length, 0);
+        this.ensureBuffers(scene.length * 2 + rasters.length + 1, clipCount + 1);
         // The Behavior preview colours the root's fill and stroke for this draw only: the document keeps its own colours.
         const preview = this.canvasPreview?.() ?? null;
         const push = (s, n, clipId, shadow = null) => {
@@ -7604,18 +7601,46 @@ class Renderer {
                 d[base + 31] = entry.page;
             }
         };
-        for (const s of scene) {
+        // The clip chain of a layer or a raster root: each clip is a rounded rectangle in the clip buffer, linked to the one before it.
+        const writeClips = clips => {
             let clipId = -1;
-            for (const clip of s.clips) {
+            for (const clip of clips) {
                 const i = clipN++ * 16, m = clip.inverse, cr = clip.radii || [clip.radius || 0, clip.radius || 0, clip.radius || 0, clip.radius || 0];
                 this.clipData.set([m[0], m[1], m[2], m[3], m[4] + m[0] * originX + m[2] * originY, m[5] + m[1] * originX + m[3] * originY, clip.w, clip.h, clip.radius || 0, clipId, 0, 0, cr[0], cr[1], cr[2], cr[3]], i);
                 clipId = clipN - 1;
             }
+            return clipId;
+        };
+        // A raster root is one quad sampling its entry. The mask clips it carries are applied inside the entry, so only the rest go to the buffer.
+        const pushRoot = r => {
+            const s = r.p.root, base = count++ * 32, d = this.instanceData, m = s.matrix;
+            const clipId = writeClips(s.clips.filter(c => !c.mask));
+            d.set([m[0], m[1], m[2], m[3], m[4] - originX + m[0] * r.offX + m[2] * r.offY, m[5] - originY + m[1] * r.offX + m[3] * r.offY, r.entry.w, r.entry.h], base);
+            d.set([0, 0, 0, 0], base + 8);
+            d.set([0, 0, 0, 0], base + 12);
+            d.set([0, 0, 0, s.opacity], base + 16);
+            d.set([r.entry.u, r.entry.v, r.entry.du, r.entry.dv], base + 20);
+            d.set([0, 0, 0, 0], base + 24);
+            d.set([-1000, 0, clipId, 0], base + 28);
+            d[base + 18] = 2;
+            d[base + 31] = r.entry.page;
+        };
+        let nextRoot = 0;
+        for (const s of scene) {
+            const index = plan.index.get(s.node.id);
+            for (; nextRoot < rasters.length && rasters[nextRoot].index <= index; nextRoot++)
+                pushRoot(rasters[nextRoot]);
+            // A raster root is drawn from its entry, and the layers inside it are part of that entry.
+            if (plan.roots.has(s.node.id) || plan.skip.has(s.node.id))
+                continue;
+            const clipId = writeClips(s.clips);
             const simpleDrop = simpleDropOf(s.node);
             if (simpleDrop && !['text', 'path', 'line'].includes(s.node.type) && s.mode !== 'stroke')
                 push(s, s.node, clipId, simpleDrop);
             push(s, s.node, clipId);
         }
+        for (; nextRoot < rasters.length; nextRoot++)
+            pushRoot(rasters[nextRoot]);
         this.device.queue.writeBuffer(this.uniform, 0, new Float32Array([this.width, this.height, camera.zoom, this.dpr, 0, 0, 0, 0]));
         if (count)
             this.device.queue.writeBuffer(this.instanceBuffer, 0, this.instanceData.buffer, 0, count * 128);
