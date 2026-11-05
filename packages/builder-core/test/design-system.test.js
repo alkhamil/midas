@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BUILT_IN_TEMPLATES } from '../src/behavior-engine/registry.js';
-import { DESIGN_SYSTEM_PAGE, designSystemSummary, mastersByTemplate, orderTemplates, planDesignSystem, sectionSpecs, templateDependencies } from '../src/behavior-engine/design-system.js';
+import { DESIGN_SYSTEM_PAGE, ICONS_SECTION, designSystemSummary, mastersByTemplate, orderTemplates, planDesignSystem, sectionSpecs, templateDependencies } from '../src/behavior-engine/design-system.js';
 
 const t = (id, accepts = []) => ({ id, name: id.toUpperCase(), slots: accepts.length ? [{ id: 'content', accepts }] : undefined });
 
@@ -87,8 +87,14 @@ test('a section is a vertical frame titled with the template name, holding a row
     assert.equal(sectionSpecs({ id: 'a', name: 'A' }).root, undefined);
 });
 
-test('the toast counts the variables added, the masters created and already present, and the problems', () => {
-    assert.equal(designSystemSummary({ variables: 342, created: 5, present: 0, problems: 0 }), 'Design System: 342 variables added, 5 masters created, 0 already present, 0 problems.');
-    assert.equal(designSystemSummary({ variables: 0, created: 0, present: 5, problems: 1 }), 'Design System: 0 variables added, 0 masters created, 5 already present, 1 problem.');
-    assert.equal(designSystemSummary({ variables: 1, created: 1, present: 1, problems: 2 }), 'Design System: 1 variable added, 1 master created, 1 already present, 2 problems.');
+test('the toast counts the variables added, the icons and masters created (with those already present), and the problems', () => {
+    assert.equal(designSystemSummary({ variables: 342, icons: 1, iconsPresent: 0, created: 5, present: 0, problems: 0 }), 'Design System: 342 variables added, 1 icon created (0 already present), 5 masters created (0 already present), 0 problems.');
+    assert.equal(designSystemSummary({ variables: 0, icons: 0, iconsPresent: 1, created: 0, present: 5, problems: 1 }), 'Design System: 0 variables added, 0 icons created (1 already present), 0 masters created (5 already present), 1 problem.');
+    assert.equal(designSystemSummary({ variables: 1, icons: 2, iconsPresent: 1, created: 1, present: 1, problems: 2 }), 'Design System: 1 variable added, 2 icons created (1 already present), 1 master created (1 already present), 2 problems.');
+});
+
+test('the Icons section is a section like the others: a titled vertical frame with its row of components', () => {
+    const spec = sectionSpecs(ICONS_SECTION);
+    assert.deepEqual([spec.section.props.name, spec.title.props.text, spec.row.props.name], ['Icons', 'Icons', 'Components']);
+    assert.equal(spec.row.props.gap, sectionSpecs({ id: 'x', name: 'X' }).row.props.gap);
 });

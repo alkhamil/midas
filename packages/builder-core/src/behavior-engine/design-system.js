@@ -5,6 +5,9 @@
 /** The page the bundle builds on. */
 export const DESIGN_SYSTEM_PAGE = 'Design System';
 
+/** The section the icons go in: a section like a template's (see sectionSpecs), placed before the template sections. */
+export const ICONS_SECTION = { id: 'icons', name: 'Icons' };
+
 /** The gaps of the page, in px: between sections, between a section's title and its row, and between the masters of a row. */
 const LAYOUT = { sectionGap: 64, titleGap: 16, rowGap: 24, titleSize: 20, titleWeight: 600 };
 
@@ -96,8 +99,8 @@ export function rootSpec() {
 }
 
 /**
- * A template's section as node specs: the section (a vertical auto layout titled with the template name), its title text, and the row its masters (and demo
- * instance) are laid out in. The gaps are the same in every section.
+ * A section as node specs (a template's, or the Icons section): the section (a vertical auto layout titled with the name), its title text, and the row its
+ * components (masters and their demo instances, or icons) are laid out in. The gaps are the same in every section.
  * @param {{ id: string, name: string }} template
  */
 export function sectionSpecs(template) {
@@ -105,15 +108,15 @@ export function sectionSpecs(template) {
     return {
         section: { type: 'frame', props: { name: template.name, layout: 'vertical', gap: LAYOUT.titleGap, padding: 0, fills: [], clip: false, ...hug } },
         title: { type: 'text', props: { name: 'Title', text: template.name, fontSize: LAYOUT.titleSize, fontWeight: LAYOUT.titleWeight, autoW: true, ...hug } },
-        row: { type: 'frame', props: { name: 'Masters', layout: 'horizontal', gap: LAYOUT.rowGap, padding: 0, fills: [], clip: false, ...hug } },
+        row: { type: 'frame', props: { name: 'Components', layout: 'horizontal', gap: LAYOUT.rowGap, padding: 0, fills: [], clip: false, ...hug } },
     };
 }
 
 /**
- * The toast of a run: the variables added, the masters created and already present, and the problems found.
- * @param {{ variables: number, created: number, present: number, problems: number }} counts
+ * The toast of a run: the variables added, the icons and masters created (and how many were already there), and the problems found.
+ * @param {{ variables: number, icons: number, iconsPresent: number, created: number, present: number, problems: number }} counts
  */
-export function designSystemSummary({ variables, created, present, problems }) {
+export function designSystemSummary({ variables, icons, iconsPresent, created, present, problems }) {
     const n = (count, one, many = one + 's') => `${count} ${count === 1 ? one : many}`;
-    return `${DESIGN_SYSTEM_PAGE}: ${n(variables, 'variable')} added, ${n(created, 'master')} created, ${present} already present, ${n(problems, 'problem')}.`;
+    return `${DESIGN_SYSTEM_PAGE}: ${n(variables, 'variable')} added, ${n(icons, 'icon')} created (${iconsPresent} already present), ${n(created, 'master')} created (${present} already present), ${n(problems, 'problem')}.`;
 }
