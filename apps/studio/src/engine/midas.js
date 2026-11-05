@@ -6484,7 +6484,9 @@ class DocumentModel {
     get page() { return this.data.pages.find(p => p.id === this.data.pageId) || this.data.pages[0]; }
     get nodes() { return this.page.nodes; }
     get(id) { return this._map.get(id); }
-    refresh() {
+    // `structure: false` is for a page switch alone: the ids, parents, components and instance sources are the same, so the whole-file
+    // indexes stay valid.
+    refresh({ structure = true } = {}) {
         this._map = new Map();
         this._byParent = new Map();
         for (const n of this.nodes) {
@@ -6498,7 +6500,8 @@ class DocumentModel {
             list.push(n);
         }
         this.revision++;
-        this.structure++;
+        if (structure)
+            this.structure++;
         this._sceneRevision = -1;
         if (this.page) {
             this._pageSnapshots.delete(this.page.id);
@@ -9569,13 +9572,13 @@ function onPage(pageId, fn) {
         return fn();
     const old = doc.data.pageId;
     doc.data.pageId = pageId;
-    doc.refresh();
+    doc.refresh({ structure: false });
     try {
         return fn();
     }
     finally {
         doc.data.pageId = old;
-        doc.refresh();
+        doc.refresh({ structure: false });
     }
 }
 /** The layers under a node, depth first (the label rule reads the master's first text layer). */
@@ -9924,7 +9927,7 @@ function applyStateBindings(inst, ops) {
         const vars = varsWithOp(n.vars, op);
         if (vars) n.vars = vars;
         else delete n.vars;
-        doc.touch(n);
+        doc.touch(n, { structure: false }); // only the variable bindings change
     }
 }
 /** A master changes its template. The plan clears the instance values through the instance store. */
