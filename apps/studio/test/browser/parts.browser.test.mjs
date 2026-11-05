@@ -50,9 +50,9 @@ test('Create Input: the clear and the count show on the screen only when their p
     await setProp(page, 'value', 'Hi');
     await setProp(page, 'allowClear', true);
     await setProp(page, 'showCount', true);
-    state = await inkOf(page, browser, id, 'parts-input-value', ['placeholder', 'label', 'clear', 'count']);
+    state = await inkOf(page, browser, id, 'parts-input-value', ['placeholder', 'value', 'clear', 'count']);
     assert.equal(state.placeholder.shown, false, 'the placeholder is hidden once there is a value');
-    assert.ok(state.label.shown && state.label.ink > 0, 'the value is drawn');
+    assert.ok(state.value.shown && state.value.ink > 0, 'the value is drawn');
     assert.ok(state.clear.shown && state.clear.ink > 0, 'the clear is drawn with a value and Allow Clear on');
     assert.ok(state.count.shown && state.count.ink > 0, 'the count is drawn with Show Count on');
     await page.screenshot({ path: resolve(ARTIFACTS, 'parts-input-panel.png') });

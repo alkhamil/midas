@@ -54,7 +54,7 @@ test('a value cleared while readOnly is on leaves an empty box on every surface'
     const props = resolveProps(input, { placeholder: 'Enter your name', value: '', readOnly: true });
     const writes = partWrites(input, props);
     assert.equal(writes.find(w => w.key === 'placeholder' && w.field === 'visible').value, false, 'the canvas hides the placeholder');
-    assert.equal(writes.find(w => w.key === 'label' && w.field === 'visible').value, false, 'the canvas hides the empty value');
+    assert.equal(writes.find(w => w.key === 'value' && w.field === 'visible').value, false, 'the canvas hides the empty value');
     const control = playInput({ placeholder: 'Enter your name', value: '', readOnly: true }, {});
     assert.equal(control.attrs.placeholder, undefined, 'Play passes no placeholder');
     assert.equal(control.attrs.value, '', 'Play keeps the empty input box');
@@ -65,5 +65,5 @@ test('a value cleared while readOnly is on leaves an empty box on every surface'
 test('the export puts the placeholder on the input while the value is empty, and colours it with the placeholder token', () => {
     const { files } = generateComponent(input, model.binding, variables, 'Input', { id: 'm', type: 'frame', layout: 'horizontal' }, () => []);
     assert.match(files['Input.jsx'], /placeholder=\{String\(value \?\? ""\) === "" && readOnly !== true \? placeholder : undefined\}/);
-    assert.match(files['Input.css'], /\.input-label::placeholder \{\n  color: var\(--input-placeholder\);/);
+    assert.match(files['Input.css'], /\.input-value::placeholder \{\n  color: var\(--input-placeholder\);/);
 });

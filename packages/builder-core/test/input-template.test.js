@@ -69,7 +69,7 @@ test('codegen writes a span root with data modes, an input with its props, and a
     assert.match(jsx, /data-variant=\{variant\}/);
     assert.match(jsx, /data-status=\{status\}/);
     assert.match(jsx, /data-size=\{size\}/);
-    assert.match(jsx, /<input className="input-label" value=\{value\} placeholder=\{String\(value \?\? ""\) === "" && readOnly !== true \? placeholder : undefined\} readOnly=\{readOnly\} maxLength=\{maxLength\} minLength=\{minLength\} disabled=\{disabled \|\| readOnly\} \/>/);
+    assert.match(jsx, /<input className="input-value" value=\{value\} placeholder=\{String\(value \?\? ""\) === "" && readOnly !== true \? placeholder : undefined\} readOnly=\{readOnly\} maxLength=\{maxLength\} minLength=\{minLength\} disabled=\{disabled \|\| readOnly\} \/>/);
     assert.ok(jsx.includes('{((hasPrefix === true) && (prefixKind === "text") && (String(prefixText ?? "") !== "")) && <span className="input-prefixText">{prefixText}</span>}'), 'the prefix text is shown with its switch, the Text kind and a non-empty text');
     assert.ok(jsx.includes('{((hasSuffix === true) && (suffixKind === "text") && (String(suffixText ?? "") !== "")) && <span className="input-suffixText">{suffixText}</span>}'), 'the suffix text is shown with its switch, the Text kind and a non-empty text');
     assert.match(jsx, /\{allowClear && value !== '' && <span className="input-clear">\{clearIcon\}<\/span>\}/);
@@ -103,7 +103,7 @@ test('codegen writes the border from the variable, the placeholder rule, and sta
     const { files } = generateComponent(INPUT, model.binding, variables, 'Input', master(), childrenOf(master(), valueText()));
     const css = files['Input.css'];
     assert.match(css, /\.input \{\n(?:.*\n)*?\s*border-color: var\(--input-border\);\n/);
-    assert.match(css, /\.input-label::placeholder \{\n  color: var\(--input-placeholder\);\n\}/);
+    assert.match(css, /\.input-value::placeholder \{\n  color: var\(--input-placeholder\);\n\}/);
     assert.match(css, /\[data-status="error"\]/);
     assert.match(css, /:hover:not\(:has\(:disabled\)\)/);
     assert.match(css, /:has\(:focus-visible\):not\(:has\(:disabled\)\)/);
@@ -117,12 +117,12 @@ test('Play draws a span root with the input, and a bound inside stroke draws on 
     assert.equal(root.attrs.class, 'input');
     assert.equal(root.attrs['data-variant'], 'outlined');
     const input = root.children.find(c => c.tag === 'input');
-    assert.equal(input.attrs.class, 'input-label');
+    assert.equal(input.attrs.class, 'input-value');
     assert.equal(input.attrs.value, '');
     assert.equal(root.style.borderWidth, '1px');
     assert.equal(root.style.borderStyle, 'solid');
     assert.equal(root.style.borderColor, undefined);
-    assert.match(styles, /\.input-label::placeholder \{\n  color: var\(--input-placeholder\);\n\}/);
+    assert.match(styles, /\.input-value::placeholder \{\n  color: var\(--input-placeholder\);\n\}/);
 });
 
 test('Play draws the clear icon from its managed slot, kept and hidden while the value is empty, and the count from its node', () => {
@@ -172,15 +172,15 @@ test('a new, a matched and a rebound master carry identical placeholder and coun
     assert.deepEqual(createdVars2.placeholder, createdVars.placeholder);
     assert.deepEqual(createdVars2.count, createdVars.count);
     // The pre-existing text layer is matched as the label and bound the same way.
-    const labelHit = bound.matched.find(m => m.key === 'label');
-    assert.deepEqual(existing.find(e => e.id === labelHit.nodeId).vars, createdVars.label);
+    const labelHit = bound.matched.find(m => m.key === 'value');
+    assert.deepEqual(existing.find(e => e.id === labelHit.nodeId).vars, createdVars.value);
     // Bind-component: the generator's layer list over an unbound master, then the bind plan.
     const frame3 = blankFrame();
     const made = applyTemplateToFrame(INPUT, { frame: frame3, children: [], binding: model.binding, variables, idOf });
     const nodes = [frame3, ...made.created];
     for (const node of nodes) delete node.vars;
     const layers = masterLayersByKey(INPUT, frame3, nodes);
-    assert.deepEqual(layers.map(l => l.key).sort(), ['count', 'label', 'placeholder', 'prefixText', 'root', 'suffixText']);
+    assert.deepEqual(layers.map(l => l.key).sort(), ['count', 'placeholder', 'prefixText', 'root', 'suffixText', 'value']);
     const planned = planBindTokens({ template: INPUT, binding: model.binding, layers, variables });
     assert.deepEqual(planned.problems, []);
     applyBindTokens(layers, planned.ops);
@@ -205,7 +205,7 @@ test('binding an auto-layout frame to Input takes the fixed 343px width; rebindi
 test('binding covers collections, stroke and state modes; the border follows the Status mode through the Variant alias', () => {
     const bare = master({ vars: undefined });
     const bareText = valueText({ vars: undefined });
-    const { ops, problems } = planBindTokens({ template: INPUT, binding: model.binding, layers: [{ key: 'root', node: bare }, { key: 'label', node: bareText }], variables });
+    const { ops, problems } = planBindTokens({ template: INPUT, binding: model.binding, layers: [{ key: 'root', node: bare }, { key: 'value', node: bareText }], variables });
     assert.deepEqual(problems, []);
     assert.ok(ops.some(o => o.key === 'root' && o.varKey === 'stroke' && o.itemId === 'v-border'));
     const at = (preview, combo = { size: 'md', variant: 'outlined', status: 'default' }) =>

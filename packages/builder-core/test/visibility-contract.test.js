@@ -40,7 +40,7 @@ test('Input visibility matrix: placeholder while the value is empty and it has t
         const got = { ...visibleOf(INPUT, props), clear: slotShown(INPUT, 'clear', resolveProps(INPUT, props)) };
         assert.deepEqual({ placeholder: got.placeholder, clear: got.clear, count: got.count }, expected, JSON.stringify(props));
         // The value layer shows only while the value is not empty, so the placeholder takes its place and no more.
-        assert.equal(got.label, !!props.value, `label while the value is ${props.value ? 'set' : 'empty'}`);
+        assert.equal(got.value, !!props.value, `value while the value is ${props.value ? 'set' : 'empty'}`);
     }
     assert.equal(visibleOf(INPUT, { value: '', placeholder: '' }).placeholder, false, 'a placeholder with no text has nothing to show');
 });

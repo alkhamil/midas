@@ -39,13 +39,13 @@ for (const combo of COMBOS) {
         const props = resolveProps(input, { value: combo.value, placeholder: combo.placeholder });
         const writes = partWrites(input, props).filter(w => w.field === 'visible');
         const visible = key => writes.find(w => w.key === key)?.value;
-        assert.equal(visible('label'), combo.valueShown, 'the value layer');
+        assert.equal(visible('value'), combo.valueShown, 'the value layer');
         assert.equal(visible('placeholder'), combo.placeholderShown, 'the placeholder layer');
         const frame = { id: 'master', name: 'Input', type: 'frame', parentId: null, fills: [] };
         const made = applyTemplateToFrame(input, { frame, children: [], binding: model.binding, variables, idOf });
         const copies = instanceOf(input, frame, made.created, { value: combo.value, placeholder: combo.placeholder }, { id: idOf });
         const layer = name => copies.find(c => c.name === name);
-        assert.equal(layer('label').visible !== false, combo.valueShown, 'the instance\'s value layer');
+        assert.equal(layer('value').visible !== false, combo.valueShown, 'the instance\'s value layer');
         assert.equal(layer('placeholder').visible !== false, combo.placeholderShown, 'the instance\'s placeholder layer');
     });
 
@@ -78,7 +78,7 @@ function sourceOf(template) {
 }
 
 test('the export passes the placeholder only while the value is empty and not readOnly', () => {
-    assert.match(sourceOf(input), /<input className="input-label" value=\{value\} placeholder=\{String\(value \?\? ""\) === "" && readOnly !== true \? placeholder : undefined\}/);
+    assert.match(sourceOf(input), /<input className="input-value" value=\{value\} placeholder=\{String\(value \?\? ""\) === "" && readOnly !== true \? placeholder : undefined\}/);
 });
 
 test('without the rule the export passes the placeholder plainly: the rule is the schema\'s, not the engine\'s', () => {

@@ -27,7 +27,7 @@ const blockOf = (sheet, cls) => new RegExp(`\\.${cls} \\{([^}]*)\\}`).exec(sheet
 
 test('only the value part fills the row in the export; count, prefix and suffix hug', () => {
     const sheet = css();
-    assert.match(blockOf(sheet, 'input-label'), /flex: 1 1 0;/, 'the value takes the free row');
+    assert.match(blockOf(sheet, 'input-value'), /flex: 1 1 0;/, 'the value takes the free row');
     for (const cls of ['input-count', 'input-prefixText', 'input-suffixText']) {
         assert.doesNotMatch(blockOf(sheet, cls), /flex: 1/, `${cls} takes no free row`);
         assert.match(blockOf(sheet, cls), /flex-shrink: 0;/, `${cls} never squeezes`);

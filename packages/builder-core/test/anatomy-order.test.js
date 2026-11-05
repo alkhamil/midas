@@ -88,16 +88,16 @@ const inputDoc = layers => ({
     variables: { collections: variables.collections },
     pages: [{ id: 'p1', nodes: [
         inputMaster,
-        { id: 'mLabel', name: 'label', type: 'text', parentId: 'in' },
+        { id: 'mValue', name: 'value', type: 'text', parentId: 'in' },
         { id: 'i1', name: 'Amount', type: 'frame', isInstance: true, sourceId: 'in', behavior: { version: 2, props: { hasSuffix: true, suffixText: '.com', allowClear: true, value: 'Hello' } } },
         ...layers.map(([name, slot]) => ({ id: `l-${name}`, name, type: slot ? 'frame' : 'text', parentId: 'i1', ...(slot ? { behavior: { version: 2, slot } } : {}) })),
     ] }],
 });
 
 test('a file opens when its Input holds the clear icon before the suffix text', () => {
-    assert.doesNotThrow(() => assertBehaviorData(inputDoc([['label'], ['clear', 'clear'], ['suffixText']])));
+    assert.doesNotThrow(() => assertBehaviorData(inputDoc([['value'], ['clear', 'clear'], ['suffixText']])));
 });
 
 test('a file does not open when its Input holds the clear icon after the suffix text', () => {
-    assert.throws(() => assertBehaviorData(inputDoc([['label'], ['suffixText'], ['clear', 'clear']])), /clear/);
+    assert.throws(() => assertBehaviorData(inputDoc([['value'], ['suffixText'], ['clear', 'clear']])), /clear/);
 });

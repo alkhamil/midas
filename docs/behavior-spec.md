@@ -56,8 +56,8 @@ Behavior tab binds a canvas component to a built-in template (Ant Design-structu
 
 ## Input schema
 
-- anatomy: addonBefore (text, optional), prefix (icon, optional, managed), label (control, required: drawn as the `<input>`), suffix (icon, optional, managed), addonAfter (text, optional). Addons are prop-driven text spans; only the label has a master text layer.
-- `control` kind: a label slot drawn as a real `<input>` in Play and codegen. The template's `control` names the slot and the props that fill it (value, placeholder, readonly, maxlength, clear, count). Generic engine support; no Input-specific code.
+- anatomy: addonBefore (text, optional), prefix (icon, optional, managed), value (control, required: drawn as the `<input>`), suffix (icon, optional, managed), addonAfter (text, optional). Addons are prop-driven text spans; only the label has a master text layer.
+- `control` kind: a value slot drawn as a real `<input>` in Play and codegen. The template's `control` names the slot and the props that fill it (value, placeholder, readonly, maxlength, clear, count). Generic engine support; no Input-specific code.
 - props: variant (variable, "Variant": outlined, filled, borderless); status (variable, "Status": default, error, warning); size (variable, "Size": large, middle, small); value/placeholder/maxLength (string); allowClear/showCount (boolean); hasIcon + iconPlacement (start | end | both) + prefixIcon/suffixIcon; addonBefore/addonAfter (string); disabled/readOnly (boolean).
 - tokens: fromSize as Button; fromVariant bg/fg/border/placeholder/bg-hover/border-hover/border-focus/bg-disabled/fg-disabled/outline-color where border* alias into fromStatus (status-border/-hover/-focus); focus-visible maps outline-color to status-outline. No Color dimension.
 - states: persistent disabled (bg/fg only); preview-only hover, focus (border), focus-visible (outline ring, `:focus-visible` only). Disabled guards every state with `:not(:disabled)`.

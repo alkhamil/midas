@@ -65,7 +65,7 @@ const renderExport = (page, props) => page.evaluate(props => {
         const box = el => { if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x - r0.x, y: r.y - r0.y, w: r.width, h: r.height }; };
         resolve({
             root: { w: r0.width, h: r0.height, bg: getComputedStyle(root).backgroundColor, varsHeight: getComputedStyle(root).height, variant: root.getAttribute('data-variant') },
-            control: box(root.querySelector('input.input-label')),
+            control: box(root.querySelector('input.input-value')),
             count: box(root.querySelector('.input-count')),
             clear: box(root.querySelector('.input-clear')),
             prefix: box(root.querySelector('.input-prefixText')),
@@ -103,7 +103,7 @@ test('the exported Input renders its input, clear and counter where Play draws t
             const play = await playTree(page, id, `export-${mode.name.toLowerCase()}-${state.name}`);
             const ids = Object.fromEntries(canvas.map(n => [n.name, n]));
             // Play's single input always carries the value layer's id, in every state: the placeholder is an HTML attribute on it, never an element of its own.
-            const controlId = ids.label.id;
+            const controlId = ids.value.id;
             // The export's props: the variable props by mode id, the literal props as the state sets them.
             const props = {
                 ...resolveProps(template, { ...data.instanceProps, ...state.props }),

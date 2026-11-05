@@ -101,14 +101,14 @@ test('a disabled or loading host is blocked, which is what stops the wave (Play 
     assert.match(jsx, /const blocked = disabled \|\| loading;/);
 });
 
-test('Button and Input output is byte-identical to before the change', () => {
+test('Button and Input output match their pinned hashes (the Input text part is named value)', () => {
     const hash = text => createHash('sha256').update(text).digest('hex').slice(0, 16);
     assert.equal(hash(buttonFiles['Button.jsx']), '53b29f8cdc7c2916');
     assert.equal(hash(buttonFiles['Button.css']), '5d10105108ea07fd', 'the stylesheet changed only in the wave: the shared keyframes colour');
     const im = inputModel({ ids: { variant: 'c-input-variant', status: 'c-input-status', size: 'c-input-size', semantic: 'c-input-semantic' }, prefix: 'in-' });
     const input = generateComponent(BUILT_IN_TEMPLATES.get('input'), im.binding, { collections: im.collections, items: im.items }, 'Input', { id: 'm', name: 'Input', type: 'frame', layout: 'horizontal' }, () => []).files;
-    assert.equal(hash(input['Input.jsx']), 'cfd0caab2bd739f8');
-    assert.equal(hash(input['Input.css']), '5b6c7a7555db5859');
+    assert.equal(hash(input['Input.jsx']), '411c5ad808a5d3d2');
+    assert.equal(hash(input['Input.css']), '51b7440eb562e389');
 });
 
 test('two wave templates on one page do not fight over the keyframes: one shared midas-wave in the colour the ring sets on its own element', () => {

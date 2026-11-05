@@ -58,9 +58,9 @@ for (const [name, props, expected] of [
 
 test('Play draws the sides in the anatomy order: prefix first, then the value, the clear before the suffix, the suffix icon last', () => {
     const classes = playClasses({ hasPrefix: true, prefixKind: 'icon', prefixIcon: 'check', hasSuffix: true, suffixKind: 'icon', suffixIcon: 'check', allowClear: true, value: 'Hi', showCount: true });
-    assert.deepEqual(classes.filter(c => c === 'label' || SIDES.includes(c) || c === 'count'), ['prefixIcon', 'label', 'count', 'clear', 'suffixIcon']);
+    assert.deepEqual(classes.filter(c => c === 'value' || SIDES.includes(c) || c === 'count'), ['prefixIcon', 'value', 'count', 'clear', 'suffixIcon']);
     const text = playClasses({ hasPrefix: true, prefixKind: 'text', prefixText: 'Rp', hasSuffix: true, suffixKind: 'text', suffixText: '.com', allowClear: true, value: 'Hi' });
-    assert.deepEqual(text.filter(c => c === 'label' || SIDES.includes(c)), ['prefixText', 'label', 'clear', 'suffixText']);
+    assert.deepEqual(text.filter(c => c === 'value' || SIDES.includes(c)), ['prefixText', 'value', 'clear', 'suffixText']);
 });
 
 test('a side holds Text or Icon, never both: the kind picks the layer and the other content stays out of Play', () => {
@@ -90,7 +90,7 @@ test('the export draws each side under its switch and its kind, in the anatomy o
     assert.ok(jsx.includes('{((hasSuffix === true) && (suffixKind === "text") && (String(suffixText ?? "") !== "")) && <span className="input-suffixText">{suffixText}</span>}'));
     assert.ok(jsx.includes('{hasSuffix && suffixKind === "icon" && <span className="input-suffixIcon">{suffixIcon}</span>}'));
     const at = name => jsx.indexOf(`className="${name}"`);
-    const order = ['input-prefixIcon', 'input-prefixText', 'input-label', 'input-count', 'input-clear', 'input-suffixText', 'input-suffixIcon'].map(at);
+    const order = ['input-prefixIcon', 'input-prefixText', 'input-value', 'input-count', 'input-clear', 'input-suffixText', 'input-suffixIcon'].map(at);
     assert.ok(order.every(i => i > -1), 'every side layer is written');
     assert.deepEqual([...order].sort((a, b) => a - b), order, 'in the anatomy order');
 });

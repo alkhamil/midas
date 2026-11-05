@@ -18,7 +18,7 @@ export const INPUT = {
     id: 'input',
     name: 'Input',
     // The primary text part: the control the value prop writes.
-    primarySlot: 'label',
+    primarySlot: 'value',
     // The element the component is written as. `disabledState` is the persistent state that disables it.
     element: { tag: 'span', attrs: {}, disabledState: 'disabled', blockClickProps: [] },
     // The prefix (start side) and the suffix (end side): each holds Text (the text layer, shown while its text is not empty) or an Icon
@@ -26,18 +26,18 @@ export const INPUT = {
     anatomy: [
         { id: 'prefixIcon', kind: 'icon', optional: true, managed: true },
         { id: 'prefixText', kind: 'text', optional: true, typography: 'addon', shownWhen: { all: [...sideShown('Prefix', 'text').all, { prop: 'prefixText', empty: false }] } },
-        { id: 'label', kind: 'control', typography: 'value', fill: true },
+        { id: 'value', kind: 'control', typography: 'value', fill: true },
         { id: 'clear', kind: 'icon', optional: true, managed: true },
         { id: 'suffixText', kind: 'text', optional: true, typography: 'addon', shownWhen: { all: [...sideShown('Suffix', 'text').all, { prop: 'suffixText', empty: false }] } },
         { id: 'suffixIcon', kind: 'icon', optional: true, managed: true },
     ],
     // The managed icon slots: the prefix icon, the suffix icon and the clear icon.
     icons: [PREFIX_ICON, SUFFIX_ICON, CLEAR_ICON],
-    // The control: the label slot drawn as an input holding the value prop (and the placeholder beside it). `count` is the prop that
+    // The control: the value slot drawn as an input holding the value prop (and the placeholder beside it). `count` is the prop that
     // shows the character counter (with `maxlength`). `hidePlaceholderWhenFilled`: the value wins, so the placeholder layer is hidden while
     // the value is not empty (it also needs its own text to show: see its part). `hideWhenEmpty`: the
     // value layer is hidden while the value is empty, so the placeholder that shows in its place takes its space and no more.
-    control: { slot: 'label', value: 'value', placeholder: 'placeholder', readonly: 'readOnly', maxlength: 'maxLength', minlength: 'minLength', count: 'showCount', hideWhenEmpty: true, hidePlaceholderWhenFilled: true },
+    control: { slot: 'value', value: 'value', placeholder: 'placeholder', readonly: 'readOnly', maxlength: 'maxLength', minlength: 'minLength', count: 'showCount', hideWhenEmpty: true, hidePlaceholderWhenFilled: true },
     // The focus outline: its width is the outline-width token (it counts the border) and it is drawn with no gap from
     // the border's inner edge; its colour is the outline-color token (transparent until focus).
     // The box that owns interaction visuals: the root wrapper reflects the inner control focus and disabled
@@ -54,7 +54,7 @@ export const INPUT = {
         status: { source: 'variable', collection: 'Status', modes: ['default', 'error', 'warning'] },
         size: { source: 'variable', collection: 'Size', modes: SIZE_MODES, defaultMode: DEFAULT_SIZE_MODE, standard: true },
         // `node` is the node field the prop writes (see display.js NODE_FIELDS). The value writes the canvas text layer.
-        value: { source: 'literal', type: 'string', default: '', node: { key: 'label', field: 'text' } },
+        value: { source: 'literal', type: 'string', default: '', node: { key: 'value', field: 'text' } },
         placeholder: { source: 'literal', type: 'string', default: '', node: { key: 'placeholder', field: 'text' } },
         // The limits are whole numbers, and null for no limit. minLength is never above maxLength (see instance-props.js).
         maxLength: { source: 'literal', type: 'number', default: null },
@@ -152,7 +152,7 @@ export const INPUT = {
     // Which token drives which property of which node (root, an anatomy slot or a part). Literal props write their node field (see props).
     display: {
         root: { fill: 'bg', stroke: 'border', strokeWidth: 'borderWidth', radius: 'radius', height: 'height', paddingX: 'paddingX', paddingY: 'paddingY', gap: 'gap' },
-        label: { fill: 'fg', typography: 'valueTypography', placeholder: 'placeholder' },
+        value: { fill: 'fg', typography: 'valueTypography', placeholder: 'placeholder' },
         prefixText: { fill: 'fg', typography: 'addonTypography' },
         suffixText: { fill: 'fg', typography: 'addonTypography' },
         placeholder: { fill: 'placeholder', typography: 'placeholderTypography' },

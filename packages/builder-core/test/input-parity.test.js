@@ -1,5 +1,5 @@
 // Input visual parity with antd: one box owns every box visual. The wrapper (`.input`) owns border, radius,
-// background, padding, gap and all interactive/status visuals; the inner control (`.input-label`) owns text only:
+// background, padding, gap and all interactive/status visuals; the inner control (`.input-value`) owns text only:
 // transparent background, no border, no outline and no shadow in every state. Focus and hover styles are emitted on
 // the wrapper (`:has(:focus-visible)` with a `:focus-within` fallback), never on the input.
 import test from 'node:test';
@@ -52,9 +52,9 @@ test('a control schema may name the wrapper as its focus target; anything else i
 
 test('the inner input owns text only: transparent, no border, outline or shadow', () => {
     const css = cssOf();
-    const rule = /\.input-label \{(?<body>[^}]*)\}/.exec(css)?.groups?.body ?? '';
+    const rule = /\.input-value \{(?<body>[^}]*)\}/.exec(css)?.groups?.body ?? '';
     for (const decl of ['background: transparent', 'border: none', 'outline: none', 'box-shadow: none', 'padding: 0', 'margin: 0', 'border-radius: 0', 'appearance: none', 'font: inherit']) {
-        assert.ok(rule.includes(decl), `.input-label sets ${decl}`);
+        assert.ok(rule.includes(decl), `.input-value sets ${decl}`);
     }
     assert.ok(rule.includes('color: var(--input-fg)'), 'text colour comes from the text token');
     assert.ok(!/border-width|border-color|border-style/.test(rule), 'no border width, colour or style on the input');
@@ -62,7 +62,7 @@ test('the inner input owns text only: transparent, no border, outline or shadow'
 
 test('no state selector targets the inner input: exactly one element carries a border', () => {
     const css = cssOf();
-    assert.ok(!/\.input-label:(?!:placeholder)/.test(css), 'no hover, focus or disabled rule on the input');
+    assert.ok(!/\.input-value:(?!:placeholder)/.test(css), 'no hover, focus or disabled rule on the input');
     assert.ok(/\.input \{[^}]*border-width: 1px;/.test(css), 'the wrapper draws its own border');
     assert.ok(!/\.input::before \{[^}]*border-width/.test(css), 'no ::before border');
 });

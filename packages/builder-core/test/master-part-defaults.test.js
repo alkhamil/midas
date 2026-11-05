@@ -28,7 +28,7 @@ test('the Input master starts with its counter and placeholder hidden (no count,
     assert.equal(layers.placeholder.visible, false, 'no placeholder text');
     assert.equal(layers.prefixText.visible, false);
     assert.equal(layers.suffixText.visible, false);
-    assert.equal(layers.label.visible, true, 'the value layer stays: the master is never blank');
+    assert.equal(layers.value.visible, true, 'the value layer stays: the master is never blank');
 });
 
 test('a part whose condition holds at the defaults stays visible; a template with no parts is unaffected', () => {

@@ -18,7 +18,7 @@ const docOf = (f, nodes) => ({ variables, pages: [{ name: 'p', nodes: [f, ...nod
 const missing = (f, nodes) => diagnoseDocument(docOf(f, nodes)).filter(finding => finding.code === 'part-missing').map(finding => finding.layer);
 
 test('the master layers of an Input are its side texts, value, placeholder, count and clear slot, in the anatomy order', () => {
-    assert.deepEqual(layerSpecsOf(input).map(s => s.key), ['root', 'prefixIcon', 'prefixText', 'label', 'placeholder', 'count', 'clear', 'suffixText', 'suffixIcon']);
+    assert.deepEqual(layerSpecsOf(input).map(s => s.key), ['root', 'prefixIcon', 'prefixText', 'value', 'placeholder', 'count', 'clear', 'suffixText', 'suffixIcon']);
     assert.deepEqual(layerSpecsOf(input).filter(s => s.role === 'text').map(s => s.key), ['prefixText', 'suffixText']);
 });
 

@@ -13,7 +13,7 @@ const clone = o => structuredClone(o);
 
 test('Button, Input and FormItem declare their primary text part, and it names a text part', () => {
     assert.equal(BUTTON.primarySlot, 'label');
-    assert.equal(INPUT.primarySlot, 'label');
+    assert.equal(INPUT.primarySlot, 'value');
     assert.equal(FORM_ITEM.primarySlot, 'label');
     for (const t of [BUTTON, INPUT, FORM_ITEM]) assert.deepEqual(validateTemplateSchema(t), []);
 });

@@ -11,7 +11,7 @@ test('the Input value and placeholder fill the row; the clear, count, prefix and
     const frame = { id: 'f', name: 'Input', type: 'frame', parentId: null, x: 0, y: 0, w: 200, h: 32, fills: [], clip: false, layout: 'horizontal', gap: 0, padding: 0 };
     const out = applyTemplateToFrame(INPUT, { frame, children: [], binding: model.binding, variables, idOf: key => `g${++n}-${key}` });
     const sizing = Object.fromEntries(out.created.map(node => [node.name, node.layoutSizingH]));
-    assert.equal(sizing.label, 'fill', 'the value fills');
+    assert.equal(sizing.value, 'fill', 'the value fills');
     assert.equal(sizing.placeholder, 'fill', 'the placeholder fills');
     for (const hugging of ['prefixText', 'suffixText', 'count', 'clear']) {
         if (sizing[hugging] !== undefined) assert.equal(sizing[hugging], 'hug', `${hugging} hugs its text`);
