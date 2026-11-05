@@ -136,7 +136,7 @@ export function restOf(item, modeName, items, collections, guard = new Set(), tr
         ?? modes.find(m => item.values?.[m.id] !== undefined)?.id ?? modes[0]?.id;
     const value = modeId === undefined ? undefined : item.values?.[modeId];
     const here = [...trail, coll?.name ?? null];
-    if (typeof value === 'number' || typeof value === 'string' || (item.type === 'typography' && value && typeof value === 'object' && !('alias' in value))) {
+    if (typeof value === 'number' || typeof value === 'string' || (item.type === 'typography' && value && typeof value === 'object' && !('alias' in value)) || (item.type === 'effect' && Array.isArray(value))) {
         let text = value;
         for (let k = ops.length - 1; k >= 0; k--) {
             if (typeof text === 'string' && splitColor(text)) text = withOpacity(text, ops[k]);

@@ -10,6 +10,7 @@ import { diagnoseDocument } from '../src/behavior-engine/diagnostics.js';
 import { buttonModel } from '../../../scripts/button-model.mjs';
 import { inputModel } from '../../../scripts/input-model.mjs';
 import { formItemModel } from '../../../scripts/form-item-model.mjs';
+import { iconButtonModel } from '../../../scripts/icon-button-model.mjs';
 
 /** The variable model and binding each registered template is checked with. */
 const MODELS = {
@@ -18,6 +19,10 @@ const MODELS = {
         return { variables: { collections: model.collections, items: model.items }, binding: { variables: { variant: model.ids.variant, color: model.ids.color, size: model.ids.size } } };
     },
     list: () => ({ variables: { collections: [], items: [] }, binding: { variables: {} } }),
+    'icon-button': () => {
+        const model = iconButtonModel();
+        return { variables: { collections: model.collections, items: model.items }, binding: { variables: model.binding.variables } };
+    },
     formitem: () => {
         const model = formItemModel({ ids: { size: 'c-formitem-size', semantic: 'c-formitem-semantic' }, prefix: 'fi-' });
         return { variables: { collections: model.collections, items: model.items }, binding: { variables: { size: model.ids.size } } };
