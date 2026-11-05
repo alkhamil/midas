@@ -6484,6 +6484,9 @@ class DocumentModel {
     get page() { return this.data.pages.find(p => p.id === this.data.pageId) || this.data.pages[0]; }
     get nodes() { return this.page.nodes; }
     get(id) { return this._map.get(id); }
+    /** The active page's lookup indexes, to give back after a page switch (see onPage). */
+    indexes() { return { map: this._map, byParent: this._byParent }; }
+    setIndexes(ix) { this._map = ix.map; this._byParent = ix.byParent; }
     // `structure: false` is for a page switch alone: the ids, parents, components and instance sources are the same, so the whole-file
     // indexes stay valid.
     refresh({ structure = true } = {}) {
@@ -9587,15 +9590,16 @@ function commitPlan(label, master, plan) {
 function onPage(pageId, fn) {
     if (!pageId || pageId === doc.data.pageId)
         return fn();
-    const old = doc.data.pageId;
+    const old = doc.data.pageId, indexes = doc.indexes();
     doc.data.pageId = pageId;
     doc.refresh({ structure: false });
     try {
         return fn();
     }
     finally {
+        // The page's indexes are still valid: the layers of the page we came from were not changed inside fn.
         doc.data.pageId = old;
-        doc.refresh({ structure: false });
+        doc.setIndexes(indexes);
     }
 }
 /** The layers under a node, depth first (the label rule reads the master's first text layer). */
