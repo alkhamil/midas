@@ -57,3 +57,17 @@ test('boundsIn maps a world box into a root’s local space through the inverse 
     const inv = [1, 0, 0, 1, -100, -50];
     assert.deepEqual(boundsIn({ x: 110, y: 60, w: 20, h: 10 }, inv), { x: 10, y: 10, w: 20, h: 10 });
 });
+
+test('a page with a mask, an effect, an oversized node and many plain layers routes only the mask group and the effect node', () => {
+    const plain = Array.from({ length: 400 }, (_, i) => item('p' + i, i % 3 ? null : 'p' + Math.max(0, i - 1)));
+    const items = [
+        ...plain,
+        item('G'), item('M', 'G'), item('C', 'G', { maskParents: ['G'] }),
+        item('E', null, { reasons: ['effect'] }),
+        item('oversized', null),
+    ];
+    const roots = planRasterRoots(items);
+    assert.deepEqual([...roots.keys()].sort(), ['E', 'G']);
+    assert.deepEqual([...roots.get('G')], ['mask']);
+    assert.deepEqual([...roots.get('E')], ['effect']);
+});
