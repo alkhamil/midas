@@ -7261,8 +7261,8 @@ function hashString(s) {
 // Fields that place a layer rather than paint it: two layers that differ only in these share one raster.
 const PLACEMENT_FIELDS = new Set(['id', 'name', 'parentId', 'x', 'y', 'rotation', 'version', 'flipX', 'flipY']);
 class Atlas {
-    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.latest = new Map(); this.keys = new WeakMap(); this.packer = new AtlasPacker(this.size, this.layers); this.epoch = 0; this.budgetEnd = Infinity; this.deferred = false; this.canvas = document.createElement('canvas'); }
-    reset() { this.entries.clear(); this.latest.clear(); this.packer.reset(); this.epoch++; }
+    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.latest = new Map(); this.keys = new WeakMap(); this.latestRoot = new Map(); this.packer = new AtlasPacker(this.size, this.layers); this.epoch = 0; this.budgetEnd = Infinity; this.deferred = false; this.rastered = 0; this.canvas = document.createElement('canvas'); }
+    reset() { this.entries.clear(); this.latest.clear(); this.latestRoot.clear(); this.packer.reset(); this.epoch++; }
     /** What a layer's raster depends on, as a key: layers with the same content share their rasters, wherever they are placed. */
     contentKeyOf(n) {
         const cached = this.keys.get(n);
@@ -7305,7 +7305,12 @@ class Atlas {
                     continue;
                 }
             }
-            const entry = this.entryOf(n, res, images, mode, t, padding, grid.length > 1 ? `${base}:${t.x},${t.y}` : base);
+            const key = grid.length > 1 ? `${base}:${t.x},${t.y}` : base;
+            if (!this.entries.has(key) && performance.now() > this.budgetEnd && this.rastered > 0) {
+                this.deferred = true;
+                continue;
+            }
+            const entry = this.entryOf(n, res, images, mode, t, padding, key);
             if (!entry)
                 continue;
             if (grid.length === 1)
@@ -7353,6 +7358,7 @@ class Atlas {
      * texels per unit, lower when the atlas cannot hold it. `paint(ctx, scale)` draws in world units. Null when the atlas is full.
      */
     rasterize(key, width, height, res, padding, paint, exact = false) {
+        this.rastered++;
         const scale = Math.min(res, (this.size - 4) / Math.max(width, 1), (this.size - 4) / Math.max(height, 1));
         const w = Math.max(1, Math.ceil(width * scale)), h = Math.max(1, Math.ceil(height * scale));
         let slot = this.packer.alloc(w, h);
@@ -7360,6 +7366,7 @@ class Atlas {
             // Atlas penuh: buang semuanya dan mulai lagi (ring buffer) daripada membuat WebGPU error.
             this.entries.clear();
             this.latest.clear();
+            this.latestRoot.clear();
             this.packer.reset();
             slot = this.packer.alloc(w, h);
             if (!slot)
@@ -7581,7 +7588,13 @@ class Renderer {
         const bleed = Math.max(0, ...p.members.map(s => effectBleed(getEffects(s.node)))) + 2 / Math.min(res, 1);
         const offX = box.x - bleed, offY = box.y - bleed, width = box.w + 2 * bleed, height = box.h + 2 * bleed;
         const key = `root:${root.node.id}:${res}:${[...p.backdrop, ...p.members].map(s => this.rasterSignature(s, inv, opacity)).join(';')}`;
-        const entry = this.atlas.entries.get(key) ?? this.atlas.rasterize(key, width, height, res, bleed, (ctx, scale) => {
+        const atlas = this.atlas;
+        if (!atlas.entries.has(key) && performance.now() > atlas.budgetEnd && atlas.rastered > 0) {
+            // Over this frame's budget: the root keeps its last raster, or waits for the next frame.
+            atlas.deferred = true;
+            return atlas.latestRoot.get(root.node.id) ?? null;
+        }
+        const entry = atlas.entries.get(key) ?? atlas.rasterize(key, width, height, res, bleed, (ctx, scale) => {
             // The members relative to the root's opacity, made only when the entry is painted.
             const members = p.members.map(s => ({ ...s, opacity: s.opacity / opacity })), backdrop = p.backdrop.map(s => ({ ...s, opacity: s.opacity / opacity }));
             const t = new DOMMatrix([scale, 0, 0, scale, -scale * offX, -scale * offY]).multiply(new DOMMatrix(inv));
@@ -7601,7 +7614,10 @@ class Renderer {
                 ctx.restore();
             }
         }, true);
-        return entry ? { entry, offX, offY } : null;
+        const drawn = entry ? { entry, offX, offY } : null;
+        if (drawn)
+            atlas.latestRoot.set(root.node.id, drawn);
+        return drawn;
     }
     /** What a raster root depends on, relative to the root: a change to any of it re-paints the root (see rasterRoot). */
     rasterSignature(s, inv, rootOpacity) {
@@ -7623,6 +7639,7 @@ class Renderer {
         // Sharp rasters are made within a frame's time budget; the rest keep their stale raster and the next frame continues.
         this.atlas.budgetEnd = performance.now() + 6;
         this.atlas.deferred = false;
+        this.atlas.rastered = 0;
         const rasters = [];
         for (const [id, p] of plan.roots) {
             const b = p.root.box;
