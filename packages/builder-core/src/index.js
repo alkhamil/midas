@@ -2,6 +2,7 @@ export * from './behavior-engine/registry.js';
 export * from './behavior-engine/validate-schema.js';
 export * from './behavior-engine/data.js';
 export * from './behavior-engine/document-check.js';
+export * from './commit-scope.js';
 export * from './behavior-engine/binding.js';
 export * from './behavior-engine/instance-props.js';
 export * from './behavior-engine/panel.js';
