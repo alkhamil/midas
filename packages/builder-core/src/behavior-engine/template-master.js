@@ -224,6 +224,20 @@ export function masterLayersByKey(template, frame, nodes) {
 }
 
 /**
+ * The layer an instance holds for a managed text or control slot: a text layer of the instance, not a copy of a master layer, carrying the
+ * text its prop writes. The prop is the memory, so a layer made again shows what the designer typed.
+ * @param {any} template
+ * @param {string} slotId
+ * @param {Record<string, unknown>} resolved the instance's resolved props
+ * @param {{ id: string, parentId: string }} at
+ */
+export function managedTextLayer(template, slotId, resolved, { id, parentId }) {
+    const spec = layerSpecsOf(template).find(sp => sp.key === slotId);
+    const text = literalFields(template, resolved).find(w => w.key === slotId && w.field === 'text');
+    return { ...nodeOf(spec, template, null, () => id, parentId), ...(text ? { text: text.value } : {}), visible: slotShown(template, slotId, resolved), sourceId: undefined, isInstance: false, component: false, overrides: {} };
+}
+
+/**
  * An instance of a master: a copy of its subtree with the instance\'s own props. Each part copy takes its visibility and text from the
  * template\'s writes for the props (partWrites) and each literal prop writes its node field (literalFields), so the copy draws what the
  * props say on the canvas and in Play. Returns the copied nodes, the instance root first.
@@ -264,10 +278,7 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
             continue;
         const stub = { id: `slot-${slot.id}`, name: slot.id };
         if (slot.kind !== 'icon') {
-            // A managed text layer holds the text its prop writes: the prop is the memory, so a layer made again shows what was typed.
-            const spec = layerSpecsOf(template).find(sp => sp.key === slot.id);
-            const text = writes.find(w => w.key === slot.id && w.field === 'text');
-            stubs.push({ anatomy: template.anatomy.indexOf(slot), node: { ...nodeOf(spec, template, null, () => id(stub), root.id), ...(text ? { text: text.value } : {}), sourceId: undefined, isInstance: false, component: false, overrides: {} } });
+            stubs.push({ anatomy: template.anatomy.indexOf(slot), node: managedTextLayer(template, slot.id, resolved, { id: id(stub), parentId: root.id }) });
             continue;
         }
         stubs.push({ anatomy: template.anatomy.indexOf(slot), node: { ...LAYER, id: id(stub), name: slot.id, type: 'frame', parentId: root.id, sourceId: undefined, isInstance: false, component: false, overrides: {}, visible: slotShown(template, slot.id, resolved), w: 16, h: 16, layout: 'none', fills: [], layoutSizingH: sizedSlot(template, slot.id), layoutSizingV: sizedSlot(template, slot.id), behavior: { version: BEHAVIOR_DATA_VERSION, slot: slot.id } } });
