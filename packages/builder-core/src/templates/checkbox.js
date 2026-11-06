@@ -53,7 +53,7 @@ export const CHECKBOX = {
         'check-fg': 'color', 'dash-fg': 'color', 'glyph-fg-disabled': 'color', fg: 'color', 'fg-disabled': 'color',
     },
     tokenRoles: {
-        'box-bg': 'bg', 'box-border': 'border', 'box-bg-checked': ACCENT, 'box-border-checked': ACCENT, 'box-border-hover': ACCENT, 'box-border-focus': ACCENT, 'box-bg-disabled': 'bg-disabled', 'box-border-disabled': 'border',
+        'box-bg': 'transparent', 'box-border': 'border', 'box-bg-checked': ACCENT, 'box-border-checked': ACCENT, 'box-border-hover': ACCENT, 'box-border-focus': ACCENT, 'box-bg-disabled': 'bg-disabled', 'box-border-disabled': 'border',
         boxSize: 'box-size', boxRadius: 'radius-sm', borderWidth: 'border-width', checkSize: 'icon-sm', indicatorSize: 'indicator-size', gap: 'gap', labelTypography: { xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
         'check-fg': 'bg', 'dash-fg': ACCENT, 'glyph-fg-disabled': 'fg-disabled', fg: 'fg', 'fg-disabled': 'fg-disabled',
     },

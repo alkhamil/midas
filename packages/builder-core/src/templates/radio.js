@@ -51,7 +51,7 @@ export const RADIO = {
         'dot-fg': 'color', 'dot-fg-disabled': 'color', fg: 'color', 'fg-disabled': 'color',
     },
     tokenRoles: {
-        'box-bg': 'bg', 'box-border': 'border', 'box-border-checked': ACCENT, 'box-border-hover': ACCENT, 'box-border-focus': ACCENT, 'box-bg-disabled': 'bg-disabled', 'box-border-disabled': 'border',
+        'box-bg': 'transparent', 'box-border': 'border', 'box-border-checked': ACCENT, 'box-border-hover': ACCENT, 'box-border-focus': ACCENT, 'box-bg-disabled': 'bg-disabled', 'box-border-disabled': 'border',
         boxSize: 'box-size', boxRadius: 'radius-full', borderWidth: 'border-width', indicatorSize: 'indicator-size', gap: 'gap',
         labelTypography: { xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
         'dot-fg': ACCENT, 'dot-fg-disabled': 'fg-disabled', fg: 'fg', 'fg-disabled': 'fg-disabled',

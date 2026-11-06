@@ -135,3 +135,44 @@ test('Generate Design System catches what the run throws: it cancels the open ed
     for (const part of ['history.cancel()', 'doc.refresh()', 'console.error(', 'toast(']) assert.ok(fn.includes(part), part);
     assert.ok(body('buildDesignSystemPage').includes('${template.id}'), 'the failing template is named');
 });
+
+// ---- no white in the main components ----
+/** Whether a colour is white or near-white and visible. */
+const isWhite = c => typeof c === 'string' && /^#(f[0-9a-f]{5}|fff)([0-9a-f]{2})?$/i.test(c) && !/^#[0-9a-f]{6}00$/i.test(c) && !(c.length === 5 && c.endsWith('0'));
+
+/** The colour a layer is drawn with in the rest state: its fill variable resolved in the instance's modes, else its own visible fill. */
+function fillOf(template, binding, variables, node, modes) {
+    const bound = node.vars?.['fills.0'];
+    if (bound) {
+        const item = variables.items.find(i => i.id === bound);
+        const { vars } = core.previewOf(template, binding, modes, variables, {}, 'default');
+        return vars[core.cssVarOf(template.id, item.name)];
+    }
+    return (node.fills ?? []).find(f => f.visible !== false)?.color;
+}
+
+test('the generated masters and demo instances of Checkbox, Radio, Switch and FormItem have no white fill on the root, the wrapper, the label or the box', () => {
+    const { doc, page } = generate();
+    const variables = doc.data.variables;
+    for (const id of ['checkbox', 'radio', 'switch', 'formitem']) {
+        const template = TEMPLATES.get(id);
+        const master = masterOf(page, template);
+        const binding = master.behavior;
+        const modes = Object.fromEntries(Object.entries(binding.variables).map(([prop, collectionId]) => {
+            const collection = variables.collections.find(c => c.id === collectionId), wanted = template.props[prop].defaultMode;
+            return [prop, (collection.modes.find(m => m.id === wanted || m.name === wanted) ?? collection.modes[0]).id];
+        }));
+        const demo = page.nodes.find(n => n.isInstance && n.sourceId === master.id);
+        // The Switch handle is white on purpose (the handle token), and the glyphs are the checked mark: neither is a fill of the component itself.
+        const layers = [master, demo, ...doc.descendants(master.id), ...doc.descendants(demo.id)].filter(n => n.name !== 'handle' && n.type !== 'path');
+        for (const node of layers) assert.ok(!isWhite(fillOf(template, binding, variables, node, modes)), `${id}: ${node.name} is white (${fillOf(template, binding, variables, node, modes)})`);
+    }
+});
+
+test('a master gets a rest fill only when its template maps one: the rest are transparent', () => {
+    const { page } = generate();
+    for (const template of TEMPLATES.values()) {
+        const master = masterOf(page, template);
+        if (template.display.root?.fill === undefined) assert.deepEqual(master.fills, [], `${template.id} root has no fill`);
+    }
+});

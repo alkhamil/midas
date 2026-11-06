@@ -20089,7 +20089,8 @@ function buildDesignSystemPage(counts) {
             }
             counts.created++;
             const row = sectionFor(root, template);
-            master = doc.add(node('frame', { name: template.name, parentId: row.id, w: 160, h: 32, fills: paintOf('#ffffff'), clip: false, component: true }));
+            // The root has a rest fill only when the template maps one (its token then replaces this placeholder); otherwise it is transparent, never a white default.
+            master = doc.add(node('frame', { name: template.name, parentId: row.id, w: 160, h: 32, fills: template.display.root?.fill !== undefined ? paintOf('#ffffff') : [], clip: false, component: true }));
             doc.refresh();
             applyTemplateNodes(master, template);
             counts.variables += fixMaster(master, template);
