@@ -10004,6 +10004,20 @@ function applyLiteralFields(inst) {
         doc.touch(inst);
     }
 }
+/**
+ * The instance's copy of each box (a group frame) and frame part of the master, paired with the master layer it copies, by the key the display uses:
+ * the layers a persistent state recolours besides the root and the label.
+ */
+function copyPairsOf(inst, master) {
+    const copies = doc.descendants(inst.id);
+    const pairs = [];
+    for (const m of doc.descendants(master.id)) {
+        const key = m.behavior?.group ?? m.behavior?.part;
+        const copy = key !== undefined ? copies.find(c => c.sourceId === m.id) : undefined;
+        if (copy) pairs.push({ key, instance: { id: copy.id, vars: copy.vars }, master: { vars: m.vars } });
+    }
+    return pairs;
+}
 /** The variable bindings an instance's persistent states need now (disabled -> bg-disabled and fg-disabled), from planStateBindings. */
 function stateBindingsOf(inst) {
     const master = componentById(inst.sourceId);
@@ -10013,6 +10027,7 @@ function stateBindingsOf(inst) {
     const { masterLabel, label } = instanceLabelOf(inst, master);
     const layers = [{ key: 'root', instance: { id: inst.id, vars: inst.vars }, master: { vars: master.vars } }];
     if (label) layers.push({ key: template.primarySlot, instance: { id: label.id, vars: label.vars }, master: { vars: masterLabel.vars } });
+    layers.push(...copyPairsOf(inst, master));
     return planStateBindings({ template, binding, props: resolveProps(template, inst.behavior?.props ?? {}), layers, variables: varStore() }).ops;
 }
 /**
