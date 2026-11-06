@@ -331,10 +331,12 @@ function iconProblems(schema, allTokens) {
     icons.forEach((icon, i) => {
         const tag = `icon def ${i}`;
         if (!isPlainObject(icon)) { out.push(`${tag} must be an object`); return; }
-        const show = props[icon.show], component = props[icon.component];
+        const showName = typeof icon.show === 'string' ? icon.show : isPlainObject(icon.show) ? icon.show.prop : icon.show;
+        const show = props[showName], component = props[icon.component];
         const always = (Array.isArray(schema.anatomy) ? schema.anatomy : []).some(s => isPlainObject(s) && s.id === icon.slot && s.alwaysVisible === true);
         if (always) { if (icon.show !== undefined) out.push(`${tag} shows an alwaysVisible slot, so it has no show switch`); }
-        else if (!show || show.source !== 'literal' || show.type !== 'boolean') out.push(`${tag} show "${icon.show}" is not a boolean prop`);
+        else if (!show || show.source !== 'literal' || show.type !== 'boolean') out.push(`${tag} show "${showName}" is not a boolean prop`);
+        else if (isPlainObject(icon.show) && typeof icon.show.is !== 'boolean') out.push(`${tag} show "is" must be true or false`);
         if (!component || component.source !== 'literal' || component.type !== 'iconComponent') out.push(`${tag} component "${icon.component}" is not an icon prop`);
         if (icon.hideWhenEmpty !== undefined && (props[icon.hideWhenEmpty]?.source !== 'literal' || props[icon.hideWhenEmpty]?.type !== 'string')) out.push(`${tag} hideWhenEmpty "${icon.hideWhenEmpty}" is not a string prop`);
         if (icon.placement !== undefined) {
@@ -660,16 +662,6 @@ function motionProblems(schema, allTokens) {
         time(`${where} duration`, a.duration);
         ease(`${where} timing`, a.timing);
         if (a.delay !== undefined) time(`${where} delay`, a.delay);
-    }
-    if (motion.slide !== undefined) {
-        const s = motion.slide, where = 'motion slide';
-        if (!isPlainObject(s)) out.push(`${where} must be an object`);
-        else {
-            if (!keys.includes(s.key)) out.push(`${where} names "${s.key}", which is not root or a display key`);
-            const prop = isPlainObject(schema.props) ? schema.props[s.prop] : null;
-            if (!prop || prop.source !== 'literal' || prop.type !== 'boolean') out.push(`${where} prop "${s.prop}" must be a boolean literal prop`);
-            for (const side of ['track', 'handle', 'padding']) if (!allTokens.includes(s.travel?.[side])) out.push(`${where} travel ${side} "${s.travel?.[side]}" is not a token`);
-        }
     }
     if (motion.press !== undefined) {
         const p = motion.press, where = 'motion press';

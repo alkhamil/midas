@@ -132,7 +132,7 @@ export interface ElementDef {
 /** A managed icon slot: the props that show it and choose its icon, and the tokens that colour and size it. A def with a
  * placement maps each placement value to a managed slot; a def without one names its fixed slot directly. */
 export interface IconSlotDef {
-    show: string;
+    show: string | { prop: string; is: boolean };
     placement?: string;
     slot?: string;
     component: string;
@@ -181,16 +181,6 @@ export interface MotionAppearance {
     delay?: string;
 }
 
-/** The sliding handle: the checked prop moves it across the track by transform (Play/export only). */
-export interface MotionSlide {
-    /** The handle slot. */
-    key: string;
-    /** The boolean prop that slides it (its root attribute selects the slid rule). */
-    prop: string;
-    /** The tokens the travel derives from: `track - handle - 2 * padding`, read as CSS variables. */
-    travel: { track: string; handle: string; padding: string };
-}
-
 /** The press grow: while pressed the handle widens by a fixed amount (Play/export only). */
 export interface MotionPress {
     /** The handle slot. */
@@ -207,7 +197,6 @@ export interface MotionPress {
 export interface MotionDef {
     transitions?: MotionTransition[];
     appearances?: MotionAppearance[];
-    slide?: MotionSlide;
     press?: MotionPress;
 }
 

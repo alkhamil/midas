@@ -74,9 +74,18 @@ export function placementsOfSlot(template, slot) {
     return slotDefsOf(template, slot).flatMap(def => placementsOfDef(template, def, slot));
 }
 
+/**
+ * Whether an icon def's show condition holds for these resolved values: no switch, a boolean switch
+ * prop that is true, or a state gate (`{ prop, is }`, for a slot shown while a boolean prop holds a value).
+ */
+export function showOn(show, values) {
+    if (show === undefined) return true;
+    if (typeof show === 'string') return values[show] === true;
+    return values[show.prop] === show.is;
+}
 /** Whether an icon def is on for these resolved values: its switch is on, or it has none because its slot is `alwaysVisible`. */
 export function iconDefOn(def, values) {
-    return def.show === undefined || values[def.show] === true;
+    return showOn(def.show, values);
 }
 
 /** Whether the managed slot of an icon def is shown for these resolved values: the def is on and its placement (if any) picks the slot. */
@@ -137,7 +146,7 @@ export function carryPlacementIcons(template, placement, prev, next) {
     if (!prevSlots.length || !nextSlots.length) return {};
     const liveOn = slot => {
         for (const def of iconDefsOf(template)) {
-            if (def.show !== undefined && prev[def.show] !== true) continue;
+            if (!showOn(def.show, prev)) continue;
             if (def.slot !== undefined && def.slot !== slot) continue;
             if (slotsOfValue(template, def.placement, prev[def.placement]).includes(slot) && typeof prev[def.component] === 'string') return prev[def.component];
         }
@@ -145,7 +154,7 @@ export function carryPlacementIcons(template, placement, prev, next) {
     };
     const writerFor = (slot, values) => {
         for (const def of iconDefsOf(template)) {
-            if (def.show !== undefined && values[def.show] !== true) continue;
+            if (!showOn(def.show, values)) continue;
             if (def.slot !== undefined && def.slot !== slot) continue;
             if (def.component && slotsOfValue(template, def.placement, values[def.placement]).includes(slot)) return def.component;
         }

@@ -17,8 +17,9 @@ export const NODE_PROPERTIES = {
         paddingY: { kind: 'length', css: 'padding-block' },
         gap: { kind: 'length', css: 'gap' },
         height: { kind: 'length', css: 'height' },
-        // A fixed width from a token (a Switch's track), bound through the w variable like the height through h.
+        // A fixed width from a token, bound through the w variable like the height through h.
         width: { kind: 'length', css: 'width' },
+        minWidth: { kind: 'length', css: 'min-width' },
         size: { kind: 'length', css: ['width', 'height'] },
         // An effect token: the elevation of the box, a list of drop shadows (an empty list is none).
         shadow: { kind: 'effect', css: 'box-shadow' },
@@ -233,6 +234,7 @@ export const VARIABLE_KEYS = {
     typography: ['typography'],
     height: ['h'],
     width: ['w'],
+    minWidth: ['minW'],
     size: ['w', 'h'],
     shadow: ['effects'],
 };

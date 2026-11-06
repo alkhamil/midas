@@ -1,7 +1,9 @@
 // Switch handle geometry (round 4): the real Play output (generated CSS + DOM) is measured
-// as boxes. For both sizes, checked and unchecked, idle and pressed, the handle rect must
-// lie inside the track minus padding. Antd numbers: 44x22 handle 18 padding 2 (travel 22);
-// small 28x16 handle 12 (travel 12); pressed grows 4px toward the inside, never past padding.
+// as boxes. The track hugs its content with the token width as the minimum (44 default,
+// 28 small); the handle (18, small 12) is placed by alignment — flex-start unchecked,
+// flex-end checked — so the travel always spans the real track width. For both sizes,
+// checked and unchecked, idle and pressed, the handle rect must lie inside the track
+// minus padding. Pressed grows 4px toward the inside, never past the padding.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
@@ -18,7 +20,7 @@ const px = v => {
 };
 
 const sw = TEMPLATES.get('switch');
-const EXPECT = { default: { w: 44, h: 22, handle: 18 }, small: { w: 28, h: 16, handle: 12 } };
+const EXPECT = { default: { min: 44, h: 22, handle: 18 }, small: { min: 28, h: 16, handle: 12 } };
 
 function modesOf(model, size) {
     return Object.fromEntries(Object.entries(model.binding.variables).map(([prop, cid]) => {
@@ -69,27 +71,35 @@ for (const size of ['default', 'small']) {
                 const trackStyle = styleOf(styles, track.chain);
                 let handleStyle = styleOf(styles, handle.chain);
                 if (pressed) {
-                    // The generic pressed rule plus the checked-specific one when the handle is slid.
-                    const decls = { ...activeDecls(styles, false), ...(checked ? activeDecls(styles, true) : {}) };
+                    // The generic pressed rule (no checked-specific one: alignment holds the far edge).
+                    const decls = activeDecls(styles, false);
+                    assert.deepEqual(Object.keys(decls), ['width'], 'one press rule, no checked variant');
                     handleStyle = { ...handleStyle };
                     for (const [p, v] of Object.entries(decls)) handleStyle[p] = resolveVars(v, trackStyle);
                 }
-                const tw = px(trackStyle.width), th = px(trackStyle.height);
-                assert.deepEqual([tw, th], [EXPECT[size].w, EXPECT[size].h], 'track size');
+                // The track hugs: no width declaration, the token minimum clamps the content.
+                assert.equal(trackStyle.width, undefined, 'the track hugs: no fixed width');
+                const tmin = px(trackStyle['min-width']);
+                assert.equal(tmin, EXPECT[size].min, 'min-width is the track token');
+                assert.equal(px(trackStyle.height), EXPECT[size].h, 'track height');
                 const pad = paddingOf(trackStyle), border = borderOf(trackStyle);
                 assert.deepEqual([pad.l, pad.r, pad.t, pad.b], [2, 2, 2, 2], 'track padding is 2');
                 assert.deepEqual([border.l, border.r, border.t, border.b], [0, 0, 0, 0], 'track draws no border of its own');
                 const hw = px(handleStyle.width);
                 const wantIdle = EXPECT[size].handle, wantPressed = pressed ? wantIdle + 4 : wantIdle;
                 assert.equal(hw, wantPressed, `handle width ${pressed ? '(grown)' : ''}`);
-                // Static flex offset (root justifies flex-start in both states) plus the slide transform.
-                const hx = pad.l + translateXOf(handleStyle.transform);
-                const contentH = th - pad.t - pad.b;
+                // Alignment places the handle: start unchecked, end checked (no transform travel).
+                assert.equal(translateXOf(handleStyle.transform), 0, 'no transform travel: alignment slides the handle');
+                assert.equal(trackStyle['justify-content'], checked ? 'flex-end' : 'flex-start', `root justifies to the ${checked ? 'end' : 'start'}`);
+                const tw = Math.max(tmin, pad.l + hw + pad.r);
+                assert.ok(pad.l + hw + pad.r <= tmin + 0.5, 'the bare track fits its minimum');
+                const hx = checked ? tw - pad.r - hw : pad.l;
+                const contentH = px(trackStyle.height) - pad.t - pad.b;
                 const hy = pad.t + (contentH - px(handleStyle.height)) / 2;
                 const hh = px(handleStyle.height);
                 assert.ok(hx >= pad.l - 0.5, `handle starts inside left padding (x=${hx.toFixed(2)})`);
                 assert.ok(hx + hw <= tw - pad.r + 0.5, `handle ends inside right padding (right=${(hx + hw).toFixed(2)} vs ${tw - pad.r})`);
-                assert.ok(hy >= pad.t - 0.5 && hy + hh <= th - pad.b + 0.5, 'handle fits vertically');
+                assert.ok(hy >= pad.t - 0.5 && hy + hh <= px(trackStyle.height) - pad.b + 0.5, 'handle fits vertically');
             });
         }
     }

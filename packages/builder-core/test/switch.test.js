@@ -1,5 +1,5 @@
-// Switch: a track (the root: fill, radius, fixed height and width, padding) and a handle (a group frame) that moves to the end while checked. Props checked,
-// disabled, size (default | small). No text. Every visual value is a token.
+// Switch: a track (the root: fill, radius, fixed height, padding, hugging with the token width as minimum) and a handle (a group frame) that moves to
+// the end while checked. Props checked, loading, disabled, size (default | small) and per-state Text|Icon children. Every visual value is a token.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
@@ -11,26 +11,27 @@ import { modelFor, instanceFor } from './helpers/box-template.js';
 const sw = TEMPLATES.get('switch');
 const model = modelFor(sw);
 
-test('Switch is a registered form control with no text: checked, disabled, and the Color and Size dimensions only', () => {
+test('Switch is a registered form control with managed text and icon slots: checked, loading, disabled, per-state Text|Icon children, Color and Size', () => {
     assert.ok(sw);
     assert.equal(sw.isControl, true);
-    assert.equal(sw.primarySlot, undefined);
-    assert.deepEqual(Object.keys(sw.props), ['color', 'size', 'checked', 'disabled']);
+    assert.equal(sw.primarySlot, 'checkedChildren');
+    assert.deepEqual(Object.keys(sw.props), ['color', 'size', 'checked', 'loading', 'disabled', 'checkedKind', 'checkedChildren', 'checkedIcon', 'uncheckedKind', 'uncheckedChildren', 'uncheckedIcon']);
     assert.deepEqual(sw.props.size.modes, ['small', 'default']);
     assert.equal(sw.props.size.defaultMode, 'default');
-    assert.ok(!sw.anatomy.some(s => s.kind === 'text' || s.kind === 'control'), 'no label text');
+    assert.ok(sw.anatomy.some(s => s.kind === 'text'), 'managed text slots');
+    assert.ok(sw.anatomy.some(s => s.kind === 'icon'), 'managed icon slots');
 });
 
-test('the master is the track and the handle, and the instance shows no text node at all', () => {
-    assert.deepEqual(model.created.map(n => n.name), ['handle']);
+test('the master is the track, the handle and the spinner; a fresh instance shows no text node', () => {
+    assert.deepEqual(model.created.map(n => n.name), ['handle', 'spinner']);
     assert.equal(instanceFor(model, {}).filter(n => n.type === 'text').length, 0);
     const doc = { variables: model.variables, pages: [{ name: 'p', nodes: [model.frame, ...model.created] }] };
     assert.deepEqual(diagnoseDocument(doc).filter(f => f.severity === 'error' || f.code === 'part-missing'), []);
 });
 
-test('the track and the handle are bound to tokens and fixed in both axes', () => {
-    assert.deepEqual(Object.keys(model.frame.vars).sort(), ['fills.0', 'h', 'padH', 'padV', 'radius', 'w']);
-    assert.deepEqual([model.frame.layoutSizingH, model.frame.layoutSizingV], ['fixed', 'fixed']);
+test('the track hugs with the token minimum and the handle is fixed; both are bound to tokens', () => {
+    assert.deepEqual(Object.keys(model.frame.vars).sort(), ['fills.0', 'h', 'minW', 'padH', 'padV', 'radius']);
+    assert.deepEqual([model.frame.layoutSizingH, model.frame.layoutSizingV], ['hug', 'fixed']);
     const handle = model.created[0];
     assert.deepEqual(Object.keys(handle.vars).sort(), ['fills.0', 'h', 'radius', 'w']);
     assert.deepEqual([handle.layoutSizingH, handle.layoutSizingV], ['fixed', 'fixed']);
@@ -52,7 +53,7 @@ test('the export draws the track, the handle and the alignment rules; the track 
     assert.match(jsx, /data-checked=\{checked \|\| undefined\}/);
     assert.match(jsx, /data-checked-align=\{checked \? "end" : "start"\}/);
     assert.match(jsx, /<div className="switch-handle">/);
-    assert.match(css, /\.switch \{[^}]*width: var\(--switch-track-width\)/);
+    assert.match(css, /\.switch \{[^}]*min-width: var\(--switch-track-width\)/);
     assert.match(css, /\.switch \{[^}]*height: var\(--switch-track-height\)/);
     assert.match(css, /\.switch-handle \{[^}]*width: var\(--switch-handle-size\)/);
     assert.match(css, /\[data-checked-align="end"\] \{\s*justify-content: flex-end/);

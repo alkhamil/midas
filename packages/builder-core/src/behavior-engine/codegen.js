@@ -185,7 +185,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
                     ...canvasPartsOf(template).filter(part => part.replaces === slot.id).map(part => `${part.shownWhen.prop} !== true`),
                     ...canvasPartsOf(template).filter(part => part.side).flatMap(part => Object.entries(template.props[part.side].slots ?? {}).filter(([, mapped]) => [mapped].flat().includes(slot.id)).map(([value]) => `!(${part.shownWhen.prop} === true && ${part.side} === "${value}")`)),
                 ];
-                out.push(`{${[...(def.show !== undefined ? [def.show] : []), ...(def.hideWhenEmpty !== undefined ? [`${def.hideWhenEmpty} !== ''`] : []), ...(cond ? [cond] : []), ...replacedBy].join(' && ')} && <span className="${template.id}-${slot.id}">{${def.component}}</span>}`);
+                out.push(`{${[...(typeof def.show === 'string' ? [def.show] : def.show === undefined ? [] : [shownJsx(def.show)]), ...(def.hideWhenEmpty !== undefined ? [`${def.hideWhenEmpty} !== ''`] : []), ...(cond ? [cond] : []), ...replacedBy].join(' && ')} && <span className="${template.id}-${slot.id}">{${def.component}}</span>}`);
             }
         }
         else problems.push({ slot: slot.id, reason: 'unsupported-slot' });
@@ -481,28 +481,9 @@ function motionRules(template) {
         const roots = a.states.map(s => `.${template.id}[${stateAttributesOf(template).find(x => x.state === s)?.attr}]${notDis} .${template.id}-${a.key}`);
         out.push(`${roots.join(', ')} {\n  animation: ${name} ${a.duration} ${a.timing}${a.delay ? ` ${a.delay}` : ''} backwards;\n}\n`);
     }
-    if (motion.slide) {
-        const { key, prop, travel } = motion.slide;
-        const attr = stateAttributesOf(template).find(x => x.prop === prop)?.attr;
-        const v = t => `var(${cssVarOf(template.id, t)})`;
-        out.push(`.${template.id} .${template.id}-${key} {\n  transform: translateX(0);\n}\n`);
-        // The resting end position stays where the canvas puts it (track - handle - padding), but reached
-        // by transform so the travel animates; this overrides the align-end rule above (same specificity, later wins).
-        out.push(`.${template.id}[${attr}] {\n  justify-content: flex-start;\n}\n`);
-        out.push(`.${template.id}[${attr}] .${template.id}-${key} {\n  transform: translateX(calc(${v(travel.track)} - ${v(travel.handle)} - 2 * ${v(travel.padding)}));\n}\n`);
-    }
     if (motion.press) {
         const { key, token, prop, grow } = motion.press;
         out.push(`.${template.id}:active${notDis} .${template.id}-${key} {\n  ${prop}: calc(var(${cssVarOf(template.id, token)}) + ${grow});\n}\n`);
-        const slide = motion.slide;
-        if (slide && slide.key === key) {
-            // A slid handle grows toward the inside: while pressed and slid it widens leftwards,
-            // so its far edge stays on the padding (more specific than the press rule, so it wins).
-            const attr = stateAttributesOf(template).find(x => x.prop === slide.prop)?.attr;
-            const v = t => `var(${cssVarOf(template.id, t)})`;
-            const travel = slide.travel;
-            out.push(`.${template.id}[${attr}]:active${notDis} .${template.id}-${key} {\n  ${prop}: calc(var(${cssVarOf(template.id, token)}) + ${grow});\n  transform: translateX(calc(${v(travel.track)} - ${v(travel.handle)} - 2 * ${v(travel.padding)} - ${grow}));\n}\n`);
-        }
     }
     return out;
 }
