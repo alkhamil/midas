@@ -102,10 +102,10 @@ const icon = doc => doc.nodes.find(n => n.id === defaultIconOf([{ nodes: doc.nod
 test('the run builds a master for every registered template, in dependency order, each with its demo instance', () => {
     const doc = fresh();
     const { counts, plan } = run(doc);
-    assert.deepEqual(plan.order.map(t => t.id), ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch']);
-    assert.equal(counts.created, 7);
+    assert.deepEqual(plan.order.map(t => t.id), ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio']);
+    assert.equal(counts.created, 8);
     const masters = doc.nodes.filter(n => n.component && n.behavior?.templateId);
-    assert.deepEqual(masters.map(m => m.behavior.templateId), ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch']);
+    assert.deepEqual(masters.map(m => m.behavior.templateId), ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio']);
     for (const template of BUILT_IN_TEMPLATES.values()) {
         const master = masters.find(m => m.behavior.templateId === template.id);
         assert.ok(doc.nodes.some(n => n.isInstance && n.sourceId === master.id), `${template.id} has a demo instance`);
@@ -124,8 +124,8 @@ test('right after the run no master lacks a part and no icon slot is empty', () 
 test('in an empty file the run creates the icon as a vector component, and the Icon Button demo instance holds it in its always visible slot', () => {
     const doc = fresh();
     const { counts } = run(doc);
-    // The disc and the Checkbox's two glyphs (the checkmark and the square), made in one row.
-    assert.deepEqual([counts.icons, counts.iconsPresent], [3, 0]);
+    // The disc and the glyphs of the form controls (checkmark, square, dot), made in one row.
+    assert.deepEqual([counts.icons, counts.iconsPresent], [4, 0]);
     const created = icon(doc);
     assert.equal(created.name, 'Icon/circle');
     assert.equal(created.component, true);
@@ -146,9 +146,9 @@ test('a second run adds nothing: no variable, no master, no node', () => {
     const again = run(doc);
     assert.equal(again.counts.variables, 0);
     assert.equal(again.counts.icons, 0);
-    assert.equal(again.counts.iconsPresent, 3);
+    assert.equal(again.counts.iconsPresent, 4);
     assert.equal(again.counts.created, 0);
-    assert.equal(again.counts.present, 7);
+    assert.equal(again.counts.present, 8);
     assert.equal(firstDifference(before, doc), null, 'the document is what it was');
 });
 
@@ -170,7 +170,7 @@ test('an icon the designer made with the same name is untouched, and the run mak
     const doc = fresh(designerIcon('circle', 'mine'));
     const before = structuredClone(doc.nodes);
     const { counts } = run(doc);
-    assert.deepEqual([counts.icons, counts.iconsPresent], [2, 1], 'the glyphs of the other roles are still made');
+    assert.deepEqual([counts.icons, counts.iconsPresent], [3, 1], 'the glyphs of the other roles are still made');
     assert.deepEqual(doc.nodes.filter(n => before.some(b => b.id === n.id)), before, 'their nodes are what they were');
     assert.equal(doc.nodes.filter(n => n.name === 'Icon/circle').length, 1);
     assert.equal(doc.nodes.find(n => n.isInstance && n.behavior?.props?.icon).behavior.props.icon, 'mine');
@@ -180,7 +180,7 @@ test('an icon the designer made with the same name is untouched, and the run mak
 test('a file that already has a default icon under another name gets no icon of its own, and its slots use that one', () => {
     const doc = fresh(designerIcon('arrow', 'theirs'));
     const { counts } = run(doc);
-    assert.deepEqual([counts.icons, counts.iconsPresent], [2, 1], 'a role with a default icon needs none of its own; the glyph roles are made');
+    assert.deepEqual([counts.icons, counts.iconsPresent], [3, 1], 'a role with a default icon needs none of its own; the glyph roles are made');
     assert.ok(!doc.nodes.some(n => n.name === 'Icon/circle'));
     assert.equal(doc.nodes.find(n => n.isInstance && n.behavior?.props?.icon).behavior.props.icon, 'theirs');
     assert.deepEqual(findings(doc).filter(f => f.code === 'icon-slot-empty'), []);

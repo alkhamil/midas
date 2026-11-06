@@ -20,6 +20,7 @@ const generated = id => () => { const m = modelFor(TEMPLATES.get(id)); return { 
 const MODELS = {
     checkbox: generated('checkbox'),
     switch: generated('switch'),
+    radio: generated('radio'),
     button: () => {
         const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
         return { variables: { collections: model.collections, items: model.items }, binding: { variables: { variant: model.ids.variant, color: model.ids.color, size: model.ids.size } } };

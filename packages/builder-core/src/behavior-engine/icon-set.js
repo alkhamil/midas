@@ -10,6 +10,8 @@ export const ICON_PREFIX = 'Icon/';
 const SIZE = 24;
 /** The control distance of a bezier circle, for a radius of 10: radius times 0.5523. */
 const K = 5.523;
+/** The control distance of a bezier circle of radius 12: radius times 0.5523. */
+const K12 = 6.6276;
 const at = (x, y, inX, inY, outX, outY) => (inX === undefined ? { x, y } : { x, y, in: { x: inX, y: inY }, out: { x: outX, y: outY } });
 
 /**
@@ -23,6 +25,8 @@ export const ICON_SET = [
     // The Checkbox's glyphs: the checkmark of a checked box and the square of an indeterminate one, each the icon its slot starts with.
     { name: 'check', role: 'check', closed: true, points: [at(2.5, 12.5), at(5, 10), at(9.5, 14.5), at(19, 5), at(21.5, 7.5), at(9.5, 19.5)] },
     { name: 'square', role: 'indeterminate', closed: true, points: [at(0, 0), at(24, 0), at(24, 24), at(0, 24)] },
+    // The Radio's dot: a full-bleed disc, which its 8px slot draws as the dot.
+    { name: 'dot', role: 'dot', closed: true, points: [at(12, 0, 12 - K12, 0, 12 + K12, 0), at(24, 12, 24, 12 - K12, 24, 12 + K12), at(12, 24, 12 + K12, 24, 12 - K12, 24), at(0, 12, 0, 12 + K12, 0, 12 - K12)] },
 ];
 
 /**
