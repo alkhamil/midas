@@ -20019,7 +20019,7 @@ function placeDemoInstance(master, template, row) {
         const mode = modes.find(mo => mo.id === wanted || mo.name === wanted) ?? modes[0];
         if (mode) varModes[cid] = mode.id;
     }
-    const copies = instanceOf(template, master, doc.descendants(master.id), createdIconDefaults(template, {}, defaultIconId()), { id: () => uid(), varModes });
+    const copies = instanceOf(template, master, doc.descendants(master.id), { ...template.sampleProps, ...createdIconDefaults(template, {}, defaultIconId()) }, { id: () => uid(), varModes });
     copies[0].parentId = row.id;
     for (const n of copies) doc.add(n);
     doc.refresh();

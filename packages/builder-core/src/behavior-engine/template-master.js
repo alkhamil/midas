@@ -152,7 +152,8 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
     // A template root that binds a height is fixed vertically, whatever the frame was (the Size height is its box).
     frame.layoutSizingV = rootSizingV(template);
     frame.behavior = { version: BEHAVIOR_DATA_VERSION, templateId: template.id, variables: { ...binding.variables } };
-    const defaults = resolveProps(template, {});
+    // The master is built as an instance of the sample props would be: a part's visibility and text follow them (see sampleProps).
+    const defaults = resolveProps(template, template.sampleProps ?? {});
     const layer = new Map([['root', frame]]);
     // The node each key stands for, the root and each container: the parent of the slots that name a container, and where to look for them.
     const holders = new Map([['root', frame]]);
@@ -175,6 +176,8 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
         if (spec.role === 'part' || spec.role === 'text') {
             const written = partWrites(template, defaults).find(w => w.key === spec.key && w.field === 'visible');
             if (written) node.visible = written.value === true;
+            const text = literalFields(template, defaults).find(w => w.key === spec.key && w.field === 'text' && w.value !== '');
+            if (text && 'text' in node) node.text = text.value;
         }
         if (spec.role === 'content') { created.push(node); claimed.add(node.id); continue; }
         if (spec.role === 'group') { created.push(node); claimed.add(node.id); holders.set(spec.key, node); continue; }

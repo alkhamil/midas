@@ -71,7 +71,7 @@ function run(doc) {
                 const mode = modes.find(m => m.id === wanted || m.name === wanted) ?? modes[0];
                 if (mode) varModes[cid] = mode.id;
             }
-            const props = createdIconDefaults(template, {}, defaultIcon);
+            const props = { ...template.sampleProps, ...createdIconDefaults(template, {}, defaultIcon) };
             const copies = instanceOf(template, master, descendants(doc.nodes, master.id), props, { id: uid, varModes });
             // The slot holds the icon its prop names: the nested instance the anatomy sync inserts in the studio.
             const resolved = { ...props };
@@ -210,4 +210,16 @@ test('Button and Input come out byte for byte the same with or without an icon a
 test('ordering the registry twice gives the same order', () => {
     const templates = [...BUILT_IN_TEMPLATES.values()];
     assert.deepEqual(orderTemplates(templates).order.map(t => t.id), orderTemplates(templates).order.map(t => t.id));
+});
+
+test('the Input master and its demo instance show the sample placeholder', () => {
+    const doc = fresh();
+    run(doc);
+    const master = doc.nodes.find(n => n.component && n.behavior?.templateId === 'input');
+    const demo = doc.nodes.find(n => n.isInstance && n.sourceId === master.id);
+    for (const root of [master, demo]) {
+        const placeholder = descendants(doc.nodes, root.id).find(n => n.name === 'placeholder');
+        assert.equal(placeholder.text, 'Input placeholder');
+        assert.equal(placeholder.visible, true);
+    }
 });

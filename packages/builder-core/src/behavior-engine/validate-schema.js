@@ -182,6 +182,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
     if (schema.rootPrimaryAlign !== undefined && !['start', 'center', 'end'].includes(schema.rootPrimaryAlign)) out.push(`rootPrimaryAlign "${schema.rootPrimaryAlign}" must be start, center or end`);
     if (schema.rootWidth !== undefined && !(typeof schema.rootWidth === 'number' && Number.isFinite(schema.rootWidth) && schema.rootWidth > 0)) out.push('rootWidth must be a positive number of px');
     if (schema.rootAlign !== undefined && !['start', 'center', 'end'].includes(schema.rootAlign)) out.push(`rootAlign "${schema.rootAlign}" must be start, center or end`);
+    out.push(...sampleProblems(schema));
     out.push(...iconProblems(schema, allTokens));
     out.push(...partTokenProblems(schema, allTokens));
     out.push(...slotProblems(schema, templateIds));
@@ -447,6 +448,24 @@ function partTokenProblems(schema, allTokens) {
  * a template with none declares none. A declaration given twice (a list) is refused.
  * @param {any} schema
  */
+/** `sampleProps` (the props a generated master and its demo instance start with) are literal props of the right type. */
+function sampleProblems(schema) {
+    const sample = schema.sampleProps;
+    if (sample === undefined) return [];
+    if (!isPlainObject(sample)) return ['sampleProps must be an object of prop values'];
+    const props = isPlainObject(schema.props) ? schema.props : {};
+    return Object.entries(sample).flatMap(([name, value]) => {
+        const def = props[name];
+        if (!isPlainObject(def) || def.source !== 'literal') return [`sampleProps "${name}" names no literal prop`];
+        const ok = def.type === 'string' ? typeof value === 'string'
+            : def.type === 'boolean' ? typeof value === 'boolean'
+            : def.type === 'number' ? typeof value === 'number' && Number.isFinite(value)
+            : def.type === 'enum' ? Array.isArray(def.options) && def.options.includes(value)
+            : false;
+        return ok ? [] : [`sampleProps "${name}" must be a ${def.type} value`];
+    });
+}
+
 function primarySlotProblems(schema) {
     const declared = schema.primarySlot;
     const anatomy = Array.isArray(schema.anatomy) ? schema.anatomy.filter(isPlainObject) : [];

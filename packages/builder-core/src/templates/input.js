@@ -19,6 +19,8 @@ export const INPUT = {
     name: 'Input',
     // The primary text part: the control the value prop writes.
     primarySlot: 'value',
+    // What Generate Design System builds the master and its demo instance with: a placeholder that reads and shows.
+    sampleProps: { placeholder: 'Input placeholder' },
     // The element the component is written as. `disabledState` is the persistent state that disables it.
     element: { tag: 'span', attrs: {}, disabledState: 'disabled', blockClickProps: [] },
     // The prefix (start side) and the suffix (end side): each holds Text (the text layer, shown while its text is not empty) or an Icon

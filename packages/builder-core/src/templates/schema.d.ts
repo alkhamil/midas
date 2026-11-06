@@ -159,6 +159,8 @@ export interface TemplateSchema {
     element: ElementDef;
     /** The primary text part: the anatomy id of the text or control slot a fresh instance shows and the text content prop edits. */
     primarySlot?: string;
+    /** Literal props a generated master and its demo instance start with (Generate Design System), so a part such as a placeholder reads and shows. */
+    sampleProps?: Record<string, string | number | boolean>;
     anatomy: AnatomySlot[];
     /** The managed icon slots; absent or empty for a template with none. */
     icons?: IconSlotDef[];
