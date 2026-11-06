@@ -206,100 +206,6 @@
           "locked": false,
           "clip": false,
           "version": 0,
-          "id": "inp-prefixText",
-          "name": "prefixText",
-          "type": "text",
-          "parentId": "inp",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "prefixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          }
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "inp-value",
-          "name": "value",
-          "type": "text",
-          "parentId": "inp",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "fill",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-valueTypography"
-          }
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
           "id": "inp-placeholder",
           "name": "placeholder",
           "type": "text",
@@ -335,104 +241,6 @@
           "vars": {
             "fills.0": "in-v-placeholder",
             "typography": "in-s-placeholderTypography"
-          }
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "inp-count",
-          "name": "count",
-          "type": "text",
-          "parentId": "inp",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "part": "count"
-          },
-          "vars": {
-            "fills.0": "in-v-placeholder",
-            "typography": "in-s-countTypography"
-          }
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "inp-suffixText",
-          "name": "suffixText",
-          "type": "text",
-          "parentId": "inp",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "suffixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
           }
         },
         {
@@ -2338,108 +2146,6 @@
           "locked": false,
           "clip": false,
           "version": 0,
-          "id": "i-outlined-prefixText",
-          "name": "prefixText",
-          "type": "text",
-          "parentId": "i-outlined",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "prefixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-prefixText",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-outlined-value",
-          "name": "value",
-          "type": "text",
-          "parentId": "i-outlined",
-          "text": "Hello",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "fill",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-valueTypography"
-          },
-          "sourceId": "inp-value",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
           "id": "i-outlined-placeholder",
           "name": "placeholder",
           "type": "text",
@@ -2489,15 +2195,15 @@
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
-          "visible": false,
+          "visible": true,
           "locked": false,
           "clip": false,
           "version": 0,
-          "id": "i-outlined-count",
-          "name": "count",
+          "id": "i-outlined-value",
+          "name": "value",
           "type": "text",
           "parentId": "i-outlined",
-          "text": "5",
+          "text": "Hello",
           "fontFamily": "Inter",
           "fontSize": 14,
           "fontWeight": 400,
@@ -2511,7 +2217,7 @@
           "w": 0,
           "h": 0,
           "autoW": true,
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fill",
           "layoutSizingV": "hug",
           "fills": [
             {
@@ -2523,68 +2229,10 @@
           ],
           "behavior": {
             "version": 2,
-            "part": "count"
+            "slot": "value"
           },
-          "vars": {
-            "fills.0": "in-v-placeholder",
-            "typography": "in-s-countTypography"
-          },
-          "sourceId": "inp-count",
-          "component": false,
           "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-outlined-suffixText",
-          "name": "suffixText",
-          "type": "text",
-          "parentId": "i-outlined",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "suffixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-suffixText",
           "component": false,
-          "isInstance": false,
           "overrides": {}
         },
         {
@@ -2697,108 +2345,6 @@
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-error-prefixText",
-          "name": "prefixText",
-          "type": "text",
-          "parentId": "i-error",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "prefixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-prefixText",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-error-value",
-          "name": "value",
-          "type": "text",
-          "parentId": "i-error",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "fill",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-valueTypography"
-          },
-          "sourceId": "inp-value",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
           "visible": true,
           "locked": false,
           "clip": false,
@@ -2840,112 +2386,6 @@
             "typography": "in-s-placeholderTypography"
           },
           "sourceId": "inp-placeholder",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-error-count",
-          "name": "count",
-          "type": "text",
-          "parentId": "i-error",
-          "text": "0",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "part": "count"
-          },
-          "vars": {
-            "fills.0": "in-v-placeholder",
-            "typography": "in-s-countTypography"
-          },
-          "sourceId": "inp-count",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-error-suffixText",
-          "name": "suffixText",
-          "type": "text",
-          "parentId": "i-error",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "suffixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-suffixText",
           "component": false,
           "isInstance": false,
           "overrides": {}
@@ -3104,108 +2544,6 @@
           "locked": false,
           "clip": false,
           "version": 0,
-          "id": "i-filled-prefixText",
-          "name": "prefixText",
-          "type": "text",
-          "parentId": "i-filled",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "prefixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-prefixText",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-filled-value",
-          "name": "value",
-          "type": "text",
-          "parentId": "i-filled",
-          "text": "Hi",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "fill",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-valueTypography"
-          },
-          "sourceId": "inp-value",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
           "id": "i-filled-placeholder",
           "name": "placeholder",
           "type": "text",
@@ -3259,6 +2597,54 @@
           "locked": false,
           "clip": false,
           "version": 0,
+          "id": "i-filled-value",
+          "name": "value",
+          "type": "text",
+          "parentId": "i-filled",
+          "text": "Hi",
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400,
+          "fontStyle": "normal",
+          "lineHeight": 1.4,
+          "letterSpacing": 0,
+          "textAlign": "left",
+          "textDecoration": "none",
+          "textCase": "none",
+          "direction": "auto",
+          "w": 0,
+          "h": 0,
+          "autoW": true,
+          "layoutSizingH": "fill",
+          "layoutSizingV": "hug",
+          "fills": [
+            {
+              "type": "solid",
+              "color": "#18181b",
+              "opacity": 1,
+              "visible": true
+            }
+          ],
+          "behavior": {
+            "version": 2,
+            "slot": "value"
+          },
+          "isInstance": false,
+          "component": false,
+          "overrides": {}
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "stroke": "#000000",
+          "strokeWidth": 0,
+          "radius": 0,
+          "opacity": 1,
+          "visible": true,
+          "locked": false,
+          "clip": false,
+          "version": 0,
           "id": "i-filled-count",
           "name": "count",
           "type": "text",
@@ -3289,15 +2675,10 @@
           ],
           "behavior": {
             "version": 2,
-            "part": "count"
+            "slot": "count"
           },
-          "vars": {
-            "fills.0": "in-v-placeholder",
-            "typography": "in-s-countTypography"
-          },
-          "sourceId": "inp-count",
-          "component": false,
           "isInstance": false,
+          "component": false,
           "overrides": {}
         },
         {
@@ -3339,59 +2720,6 @@
             "w": "in-s-iconSize",
             "h": "in-s-iconSize"
           }
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-filled-suffixText",
-          "name": "suffixText",
-          "type": "text",
-          "parentId": "i-filled",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "suffixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-suffixText",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
         },
         {
           "id": "i-filled-clear-ic-icon-check",
@@ -3544,108 +2872,6 @@
           "locked": false,
           "clip": false,
           "version": 0,
-          "id": "i-disabled-prefixText",
-          "name": "prefixText",
-          "type": "text",
-          "parentId": "i-disabled",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "prefixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-prefixText",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-disabled-value",
-          "name": "value",
-          "type": "text",
-          "parentId": "i-disabled",
-          "text": "No edit",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "fill",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-valueTypography"
-          },
-          "sourceId": "inp-value",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
           "id": "i-disabled-placeholder",
           "name": "placeholder",
           "type": "text",
@@ -3695,15 +2921,15 @@
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
-          "visible": false,
+          "visible": true,
           "locked": false,
           "clip": false,
           "version": 0,
-          "id": "i-disabled-count",
-          "name": "count",
+          "id": "i-disabled-value",
+          "name": "value",
           "type": "text",
           "parentId": "i-disabled",
-          "text": "7",
+          "text": "No edit",
           "fontFamily": "Inter",
           "fontSize": 14,
           "fontWeight": 400,
@@ -3717,7 +2943,7 @@
           "w": 0,
           "h": 0,
           "autoW": true,
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fill",
           "layoutSizingV": "hug",
           "fills": [
             {
@@ -3729,68 +2955,10 @@
           ],
           "behavior": {
             "version": 2,
-            "part": "count"
+            "slot": "value"
           },
-          "vars": {
-            "fills.0": "in-v-placeholder",
-            "typography": "in-s-countTypography"
-          },
-          "sourceId": "inp-count",
-          "component": false,
           "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-disabled-suffixText",
-          "name": "suffixText",
-          "type": "text",
-          "parentId": "i-disabled",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "suffixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-suffixText",
           "component": false,
-          "isInstance": false,
           "overrides": {}
         },
         {
@@ -3897,64 +3065,10 @@
           ],
           "behavior": {
             "version": 2,
-            "text": "prefixText"
+            "slot": "prefixText"
           },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-prefixText",
-          "component": false,
           "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-addon-value",
-          "name": "value",
-          "type": "text",
-          "parentId": "i-addon",
-          "text": "midas",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "fill",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-valueTypography"
-          },
-          "sourceId": "inp-value",
           "component": false,
-          "isInstance": false,
           "overrides": {}
         },
         {
@@ -4018,15 +3132,15 @@
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
-          "visible": false,
+          "visible": true,
           "locked": false,
           "clip": false,
           "version": 0,
-          "id": "i-addon-count",
-          "name": "count",
+          "id": "i-addon-value",
+          "name": "value",
           "type": "text",
           "parentId": "i-addon",
-          "text": "5",
+          "text": "midas",
           "fontFamily": "Inter",
           "fontSize": 14,
           "fontWeight": 400,
@@ -4040,7 +3154,7 @@
           "w": 0,
           "h": 0,
           "autoW": true,
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fill",
           "layoutSizingV": "hug",
           "fills": [
             {
@@ -4052,15 +3166,10 @@
           ],
           "behavior": {
             "version": 2,
-            "part": "count"
+            "slot": "value"
           },
-          "vars": {
-            "fills.0": "in-v-placeholder",
-            "typography": "in-s-countTypography"
-          },
-          "sourceId": "inp-count",
-          "component": false,
           "isInstance": false,
+          "component": false,
           "overrides": {}
         },
         {
@@ -4105,15 +3214,10 @@
           ],
           "behavior": {
             "version": 2,
-            "text": "suffixText"
+            "slot": "suffixText"
           },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-suffixText",
-          "component": false,
           "isInstance": false,
+          "component": false,
           "overrides": {}
         },
         {
@@ -4225,108 +3329,6 @@
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-size-lg-prefixText",
-          "name": "prefixText",
-          "type": "text",
-          "parentId": "i-size-lg",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "prefixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-prefixText",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-size-lg-value",
-          "name": "value",
-          "type": "text",
-          "parentId": "i-size-lg",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "fill",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-valueTypography"
-          },
-          "sourceId": "inp-value",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
           "visible": true,
           "locked": false,
           "clip": false,
@@ -4368,112 +3370,6 @@
             "typography": "in-s-placeholderTypography"
           },
           "sourceId": "inp-placeholder",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-size-lg-count",
-          "name": "count",
-          "type": "text",
-          "parentId": "i-size-lg",
-          "text": "0",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "part": "count"
-          },
-          "vars": {
-            "fills.0": "in-v-placeholder",
-            "typography": "in-s-countTypography"
-          },
-          "sourceId": "inp-count",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-size-lg-suffixText",
-          "name": "suffixText",
-          "type": "text",
-          "parentId": "i-size-lg",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "suffixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-suffixText",
           "component": false,
           "isInstance": false,
           "overrides": {}
@@ -4667,108 +3563,6 @@
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-size-md-prefixText",
-          "name": "prefixText",
-          "type": "text",
-          "parentId": "i-size-md",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "prefixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-prefixText",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-size-md-value",
-          "name": "value",
-          "type": "text",
-          "parentId": "i-size-md",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "fill",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-valueTypography"
-          },
-          "sourceId": "inp-value",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
           "visible": true,
           "locked": false,
           "clip": false,
@@ -4810,112 +3604,6 @@
             "typography": "in-s-placeholderTypography"
           },
           "sourceId": "inp-placeholder",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-size-md-count",
-          "name": "count",
-          "type": "text",
-          "parentId": "i-size-md",
-          "text": "0",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "part": "count"
-          },
-          "vars": {
-            "fills.0": "in-v-placeholder",
-            "typography": "in-s-countTypography"
-          },
-          "sourceId": "inp-count",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-size-md-suffixText",
-          "name": "suffixText",
-          "type": "text",
-          "parentId": "i-size-md",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "suffixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-suffixText",
           "component": false,
           "isInstance": false,
           "overrides": {}
@@ -5109,108 +3797,6 @@
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-size-sm-prefixText",
-          "name": "prefixText",
-          "type": "text",
-          "parentId": "i-size-sm",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "prefixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-prefixText",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-size-sm-value",
-          "name": "value",
-          "type": "text",
-          "parentId": "i-size-sm",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "fill",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-valueTypography"
-          },
-          "sourceId": "inp-value",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
           "visible": true,
           "locked": false,
           "clip": false,
@@ -5252,112 +3838,6 @@
             "typography": "in-s-placeholderTypography"
           },
           "sourceId": "inp-placeholder",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-size-sm-count",
-          "name": "count",
-          "type": "text",
-          "parentId": "i-size-sm",
-          "text": "0",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "part": "count"
-          },
-          "vars": {
-            "fills.0": "in-v-placeholder",
-            "typography": "in-s-countTypography"
-          },
-          "sourceId": "inp-count",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-size-sm-suffixText",
-          "name": "suffixText",
-          "type": "text",
-          "parentId": "i-size-sm",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "suffixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-suffixText",
           "component": false,
           "isInstance": false,
           "overrides": {}
@@ -5513,108 +3993,6 @@
           "locked": false,
           "clip": false,
           "version": 0,
-          "id": "i-value-prefixText",
-          "name": "prefixText",
-          "type": "text",
-          "parentId": "i-value",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "prefixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-prefixText",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-value-value",
-          "name": "value",
-          "type": "text",
-          "parentId": "i-value",
-          "text": "Kopi Kita",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "fill",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-valueTypography"
-          },
-          "sourceId": "inp-value",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
           "id": "i-value-placeholder",
           "name": "placeholder",
           "type": "text",
@@ -5664,15 +4042,15 @@
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
-          "visible": false,
+          "visible": true,
           "locked": false,
           "clip": false,
           "version": 0,
-          "id": "i-value-count",
-          "name": "count",
+          "id": "i-value-value",
+          "name": "value",
           "type": "text",
           "parentId": "i-value",
-          "text": "9",
+          "text": "Kopi Kita",
           "fontFamily": "Inter",
           "fontSize": 14,
           "fontWeight": 400,
@@ -5686,7 +4064,7 @@
           "w": 0,
           "h": 0,
           "autoW": true,
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fill",
           "layoutSizingV": "hug",
           "fills": [
             {
@@ -5698,68 +4076,10 @@
           ],
           "behavior": {
             "version": 2,
-            "part": "count"
+            "slot": "value"
           },
-          "vars": {
-            "fills.0": "in-v-placeholder",
-            "typography": "in-s-countTypography"
-          },
-          "sourceId": "inp-count",
-          "component": false,
           "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-value-suffixText",
-          "name": "suffixText",
-          "type": "text",
-          "parentId": "i-value",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "suffixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-suffixText",
           "component": false,
-          "isInstance": false,
           "overrides": {}
         },
         {
@@ -5834,108 +4154,6 @@
           "locked": false,
           "clip": false,
           "version": 0,
-          "id": "i-state-disabled-prefixText",
-          "name": "prefixText",
-          "type": "text",
-          "parentId": "i-state-disabled",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "prefixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-prefixText",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-state-disabled-value",
-          "name": "value",
-          "type": "text",
-          "parentId": "i-state-disabled",
-          "text": "Disabled text",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "fill",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-valueTypography"
-          },
-          "sourceId": "inp-value",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
           "id": "i-state-disabled-placeholder",
           "name": "placeholder",
           "type": "text",
@@ -5985,15 +4203,15 @@
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
-          "visible": false,
+          "visible": true,
           "locked": false,
           "clip": false,
           "version": 0,
-          "id": "i-state-disabled-count",
-          "name": "count",
+          "id": "i-state-disabled-value",
+          "name": "value",
           "type": "text",
           "parentId": "i-state-disabled",
-          "text": "13",
+          "text": "Disabled text",
           "fontFamily": "Inter",
           "fontSize": 14,
           "fontWeight": 400,
@@ -6007,7 +4225,7 @@
           "w": 0,
           "h": 0,
           "autoW": true,
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fill",
           "layoutSizingV": "hug",
           "fills": [
             {
@@ -6019,68 +4237,10 @@
           ],
           "behavior": {
             "version": 2,
-            "part": "count"
+            "slot": "value"
           },
-          "vars": {
-            "fills.0": "in-v-placeholder",
-            "typography": "in-s-countTypography"
-          },
-          "sourceId": "inp-count",
-          "component": false,
           "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-state-disabled-suffixText",
-          "name": "suffixText",
-          "type": "text",
-          "parentId": "i-state-disabled",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "suffixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-suffixText",
           "component": false,
-          "isInstance": false,
           "overrides": {}
         },
         {
@@ -6158,108 +4318,6 @@
           "locked": false,
           "clip": false,
           "version": 0,
-          "id": "i-suffix-icon-prefixText",
-          "name": "prefixText",
-          "type": "text",
-          "parentId": "i-suffix-icon",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "prefixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-prefixText",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": true,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-suffix-icon-value",
-          "name": "value",
-          "type": "text",
-          "parentId": "i-suffix-icon",
-          "text": "midas",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "fill",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-valueTypography"
-          },
-          "sourceId": "inp-value",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
           "id": "i-suffix-icon-placeholder",
           "name": "placeholder",
           "type": "text",
@@ -6309,15 +4367,15 @@
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
-          "visible": false,
+          "visible": true,
           "locked": false,
           "clip": false,
           "version": 0,
-          "id": "i-suffix-icon-count",
-          "name": "count",
+          "id": "i-suffix-icon-value",
+          "name": "value",
           "type": "text",
           "parentId": "i-suffix-icon",
-          "text": "5",
+          "text": "midas",
           "fontFamily": "Inter",
           "fontSize": 14,
           "fontWeight": 400,
@@ -6331,7 +4389,7 @@
           "w": 0,
           "h": 0,
           "autoW": true,
-          "layoutSizingH": "hug",
+          "layoutSizingH": "fill",
           "layoutSizingV": "hug",
           "fills": [
             {
@@ -6343,15 +4401,10 @@
           ],
           "behavior": {
             "version": 2,
-            "part": "count"
+            "slot": "value"
           },
-          "vars": {
-            "fills.0": "in-v-placeholder",
-            "typography": "in-s-countTypography"
-          },
-          "sourceId": "inp-count",
-          "component": false,
           "isInstance": false,
+          "component": false,
           "overrides": {}
         },
         {
@@ -6393,59 +4446,6 @@
             "w": "in-s-iconSize",
             "h": "in-s-iconSize"
           }
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-suffix-icon-suffixText",
-          "name": "suffixText",
-          "type": "text",
-          "parentId": "i-suffix-icon",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "suffixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-suffixText",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
         },
         {
           "x": 0,
@@ -6703,108 +4703,6 @@
           "strokeWidth": 0,
           "radius": 0,
           "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-state-error-prefixText",
-          "name": "prefixText",
-          "type": "text",
-          "parentId": "i-state-error",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "prefixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-prefixText",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-state-error-value",
-          "name": "value",
-          "type": "text",
-          "parentId": "i-state-error",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "fill",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-valueTypography"
-          },
-          "sourceId": "inp-value",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
           "visible": true,
           "locked": false,
           "clip": false,
@@ -6846,112 +4744,6 @@
             "typography": "in-s-placeholderTypography"
           },
           "sourceId": "inp-placeholder",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-state-error-count",
-          "name": "count",
-          "type": "text",
-          "parentId": "i-state-error",
-          "text": "0",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "part": "count"
-          },
-          "vars": {
-            "fills.0": "in-v-placeholder",
-            "typography": "in-s-countTypography"
-          },
-          "sourceId": "inp-count",
-          "component": false,
-          "isInstance": false,
-          "overrides": {}
-        },
-        {
-          "x": 0,
-          "y": 0,
-          "rotation": 0,
-          "stroke": "#000000",
-          "strokeWidth": 0,
-          "radius": 0,
-          "opacity": 1,
-          "visible": false,
-          "locked": false,
-          "clip": false,
-          "version": 0,
-          "id": "i-state-error-suffixText",
-          "name": "suffixText",
-          "type": "text",
-          "parentId": "i-state-error",
-          "text": "",
-          "fontFamily": "Inter",
-          "fontSize": 14,
-          "fontWeight": 400,
-          "fontStyle": "normal",
-          "lineHeight": 1.4,
-          "letterSpacing": 0,
-          "textAlign": "left",
-          "textDecoration": "none",
-          "textCase": "none",
-          "direction": "auto",
-          "w": 0,
-          "h": 0,
-          "autoW": true,
-          "layoutSizingH": "hug",
-          "layoutSizingV": "hug",
-          "fills": [
-            {
-              "type": "solid",
-              "color": "#18181b",
-              "opacity": 1,
-              "visible": true
-            }
-          ],
-          "behavior": {
-            "version": 2,
-            "text": "suffixText"
-          },
-          "vars": {
-            "fills.0": "in-v-fg",
-            "typography": "in-s-addonTypography"
-          },
-          "sourceId": "inp-suffixText",
           "component": false,
           "isInstance": false,
           "overrides": {}

@@ -9970,7 +9970,7 @@ function applyLiteralFields(inst) {
     if (!template) return;
     const { label } = instanceLabelOf(inst, master);
     const managedText = Object.fromEntries(managedTextLayersOf(inst, template).map(c => [c.behavior.slot, c]));
-    const target = { root: inst, label, ...partLayersOf(inst, master), ...groupLayersOf(inst, master), ...textSlotLayersOf(inst, master, template), ...managedText };
+    const target = { root: inst, ...(template.primarySlot ? { [template.primarySlot]: label } : {}), ...partLayersOf(inst, master), ...groupLayersOf(inst, master), ...textSlotLayersOf(inst, master, template), ...managedText };
     const props = resolveProps(template, inst.behavior?.props ?? {});
     for (const { key, field, value } of [...literalFields(template, props), ...partWrites(template, props)]) {
         const n = target[key];
