@@ -13,11 +13,15 @@ export const SWITCH = {
     id: 'switch',
     name: 'Switch',
     isControl: true,
-    element: { tag: 'button', attrs: { type: 'button', role: 'switch', tabindex: '0' }, disabledState: 'disabled', blockClickProps: [] },
+    element: { tag: 'button', attrs: { type: 'button', role: 'switch', tabindex: '0' }, disabledState: 'disabled', blockClickProps: ['loading'] },
     anatomy: [
-        { id: 'handle', kind: 'frame', layout: 'horizontal' },
+        { id: 'handle', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center' },
     ],
     icons: [],
+    // The parts the canvas draws: the spinner is an arc node inside the handle, shown while `loading` is set.
+    parts: [
+        { id: 'spinner', kind: 'frame', parent: 'handle', tokens: { size: 'iconSize', colour: 'track-bg', disabledColour: 'track-bg' }, shownWhen: { prop: 'loading', is: true }, spin: true, arc: { size: 12, start: -90, sweep: 25, ratio: 75, width: 1.5 } },
+    ],
     // The handle sits at the start of the track and is centred across it; checked moves it to the end.
     rootAlign: 'center',
     rootPrimaryAlign: 'start',
@@ -28,14 +32,16 @@ export const SWITCH = {
         size: { source: 'variable', collection: 'Size', modes: ['small', 'default'], defaultMode: 'default' },
         // Checked writes the root's alignment: on puts the handle at the end of the track, off at the start.
         checked: { source: 'literal', type: 'boolean', default: false, node: { key: 'root', field: 'primaryAlign' } },
-        disabled: { source: 'literal', type: 'boolean', default: false },
+        // Loading dims the root and blocks clicks (the spinner shows); exclusive with Disabled, like Button.
+        loading: { source: 'literal', type: 'boolean', default: false, exclusiveWith: 'disabled', clearsPreview: true, node: { key: 'root', field: 'opacity' } },
+        disabled: { source: 'literal', type: 'boolean', default: false, exclusiveWith: 'loading' },
     },
     tokens: {
         fromColor: ['track-bg', 'track-bg-checked', 'track-bg-disabled', 'track-bg-hover', 'track-bg-focus', 'handle-bg'],
-        fromSize: ['trackHeight', 'trackWidth', 'trackPadding', 'handleSize', 'radiusFull'],
+        fromSize: ['trackHeight', 'trackWidth', 'trackPadding', 'handleSize', 'radiusFull', 'iconSize'],
     },
     tokenKinds: {
-        trackHeight: 'length', trackWidth: 'length', trackPadding: 'length', handleSize: 'length', radiusFull: 'length',
+        trackHeight: 'length', trackWidth: 'length', trackPadding: 'length', handleSize: 'length', radiusFull: 'length', iconSize: 'length',
         'track-bg': 'color', 'track-bg-checked': 'color', 'track-bg-disabled': 'color', 'track-bg-hover': 'color', 'track-bg-focus': 'color', 'handle-bg': 'color',
     },
     tokenRoles: {
@@ -44,6 +50,7 @@ export const SWITCH = {
         trackPadding: 'switch-padding',
         handleSize: { small: 'switch-handle-sm', default: 'switch-handle' },
         radiusFull: 'radius-full',
+        iconSize: { small: 'icon-sm', default: 'icon-md' },
         'track-bg': 'track-off', 'track-bg-checked': ACCENT, 'track-bg-disabled': 'border', 'track-bg-hover': 'track-off-hover', 'track-bg-focus': 'track-off-hover', 'handle-bg': 'solid-text',
     },
     // Checked swaps the track colour; Disabled is declared last, so it wins over Checked.
@@ -70,11 +77,14 @@ export const SWITCH = {
         focus: { 'track-bg': 'track-bg-focus' },
     },
     statePseudo: { hover: ':hover', focus: ':focus-visible', checked: '[data-checked]', disabled: ':disabled' },
-    parts: [],
-    playOnly: [],
+    playOnly: [
+        { id: 'spin', reason: 'the spinner turns while loading: an animation, so the canvas draws the spinner at rest' },
+        { id: 'loading-click', reason: 'a loading Switch fires no click: a click is an interaction the canvas does not have' },
+    ],
     display: {
         root: { fill: 'track-bg', radius: 'radiusFull', height: 'trackHeight', width: 'trackWidth', paddingX: 'trackPadding', paddingY: 'trackPadding' },
         handle: { fill: 'handle-bg', radius: 'radiusFull', size: 'handleSize' },
+        spinner: { stroke: 'track-bg', size: 'iconSize' },
     },
     events: [{ name: 'onClick', exposeAsTrigger: true }],
 };

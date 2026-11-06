@@ -73,7 +73,8 @@ export function toDomTree(doc, frameId, { responsive = false } = {}) {
  */
 /** The instance's copy of a canvas part (a layer marked `behavior.part`), or undefined. */
 function partLayerOf(n, id, scope) {
-    return scope.childrenOf(n.id).find(c => c.behavior?.part === id);
+    const below = pid => scope.childrenOf(pid).flatMap(c => [c, ...below(c.id)]);
+    return below(n.id).find(c => c.behavior?.part === id);
 }
 
 /** The element a canvas part draws, from its node: none when the part is hidden or the instance has no copy of it. */
@@ -274,7 +275,7 @@ function renderTemplate(n, template, parent, scope) {
     const drawFrameParts = out => {
         framePartsDrawn = true;
         for (const part of canvasPartsOf(template)) {
-            if (part.kind !== 'frame') continue;
+            if (part.kind !== 'frame' || part.parent) continue;
             const el = partElement(n, part.id, scope);
             if (!el) continue;
             if (part.spin) el.style.animation = SPIN_ANIMATION;
@@ -347,6 +348,12 @@ function renderTemplate(n, template, parent, scope) {
         const group = below(n.id).find(c => c.behavior?.group === slot.id);
         const inner = [];
         for (const child of template.anatomy.filter(c => c.parent === slot.id)) emitSlot(child, inner);
+        for (const part of canvasPartsOf(template).filter(p => p.kind === 'frame' && p.parent === slot.id)) {
+            const el = partElement(n, part.id, scope);
+            if (!el) continue;
+            if (part.spin) el.style.animation = SPIN_ANIMATION;
+            inner.push(el);
+        }
         children.push({ tag: 'div', nodeId: group?.id, attrs: { class: `${template.id}-${slot.id}` }, style: {}, children: inner });
     }
     if (!framePartsDrawn && !template.anatomy.some(s => s.kind === 'text' || s.kind === 'control')) drawFrameParts(children);

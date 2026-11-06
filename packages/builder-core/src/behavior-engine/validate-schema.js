@@ -197,6 +197,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
     out.push(...sampleProblems(schema));
     out.push(...iconProblems(schema, allTokens));
     out.push(...partTokenProblems(schema, allTokens));
+    out.push(...partParentProblems(schema));
     out.push(...slotProblems(schema, templateIds));
     out.push(...controlProblems(schema));
     out.push(...primarySlotProblems(schema));
@@ -440,6 +441,21 @@ function slotProblems(schema, templateIds) {
  * @param {string[]} allTokens
  * @returns {string[]}
  */
+/**
+ * Problems in a part's parent: a part inside a container names an anatomy frame slot of the template.
+ * @param {any} schema
+ * @returns {string[]}
+ */
+function partParentProblems(schema) {
+    const out = [];
+    const frames = new Set((Array.isArray(schema.anatomy) ? schema.anatomy : []).filter(s => isPlainObject(s) && s.kind === 'frame').map(s => s.id));
+    for (const part of Array.isArray(schema.parts) ? schema.parts : []) {
+        if (!isPlainObject(part) || part.parent === undefined) continue;
+        if (!frames.has(part.parent)) out.push(`part "${part.id}" parent "${part.parent}" is not an anatomy frame slot`);
+        if (part.side !== undefined) out.push(`part "${part.id}" has both a parent and a side: it cannot sit on a side inside a container`);
+    }
+    return out;
+}
 function partTokenProblems(schema, allTokens) {
     const out = [];
     for (const part of Array.isArray(schema.parts) ? schema.parts : []) {

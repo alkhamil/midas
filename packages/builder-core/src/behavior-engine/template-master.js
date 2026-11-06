@@ -46,8 +46,10 @@ export function layerSpecsOf(template) {
     const specs = [{ key: 'root', role: 'root', type: 'frame' }];
     const control = controlOf(template);
     // Frame parts (the spinner) sit before the text layers, as the renderer draws them: the first text layer comes after them.
-    const partSpec = part => ({ key: part.id, role: 'part', type: part.arc ? 'ellipse' : part.kind === 'text' ? 'text' : 'frame', part, behavior: { part: part.id } });
-    const framed = canvasPartsOf(template).filter(part => part.kind !== 'text').map(partSpec);
+    const partSpec = part => ({ key: part.id, role: 'part', type: part.arc ? 'ellipse' : part.kind === 'text' ? 'text' : 'frame', part, behavior: { part: part.id }, ...(part.parent ? { parentKey: part.parent } : {}) });
+    const framed = canvasPartsOf(template).filter(part => part.kind !== 'text' && !part.parent).map(partSpec);
+    // A part with a parent lives inside its container: it is placed after the anatomy, once its holder is registered.
+    const parented = canvasPartsOf(template).filter(part => part.kind !== 'text' && part.parent).map(partSpec);
     const texted = canvasPartsOf(template).filter(part => part.kind === 'text').map(partSpec);
     // The text parts follow the control (its value, placeholder, clear and count sit together), so the text after it (an affix) comes after them.
     let placed = false, textedPlaced = false;
@@ -66,6 +68,7 @@ export function layerSpecsOf(template) {
     }
     if (!placed) specs.push(...framed);
     if (!textedPlaced) specs.push(...texted);
+    specs.push(...parented);
     // A content slot is a frame of the master that instances fill; it is the slot property's layer (propBind.slot), not a managed icon slot.
     for (const slot of template.slots ?? []) specs.push({ key: slot.id, role: 'content', type: 'frame', content: slot });
     return specs;

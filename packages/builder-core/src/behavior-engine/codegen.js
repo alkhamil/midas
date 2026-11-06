@@ -142,6 +142,9 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         return `{${part.shownWhen.prop} === true${extra ? ` && ${extra}` : ''} && (<svg className="${template.id}-${part.id}" ${box} viewBox="0 0 ${size} ${size}" aria-hidden="true"><path transform="translate(${width / 2} ${width / 2})" d="${d}" fill="none" stroke="currentColor" strokeWidth={${width}} vectorEffect="non-scaling-stroke" /></svg>)}`;
     };
     const framed = canvasPartsOf(template).filter(part => part.kind === 'frame' && part.arc);
+    // A part with a parent draws inside its container (the Switch spinner in the handle), never at the root.
+    const rooted = framed.filter(part => !part.parent);
+    const parented = part => framed.filter(p => p.parent === part);
     const ctl = controlOf(template);
     // The clear and the counter follow the input, as the canvas and Play order them: a text affix after the input comes after them.
     const controlPartsJsx = () => [
@@ -149,12 +152,12 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     ];
     let framePlaced = false;
     let sidedAfterPlaced = false;
-    const sidedAfter = framed.filter(part => part.side).map(part => framePartJsx(part, `${part.side} === "end"`));
+    const sidedAfter = rooted.filter(part => part.side).map(part => framePartJsx(part, `${part.side} === "end"`));
     const emitSlot = (slot, out) => {
         if (slot.kind === 'text' || slot.kind === 'control') {
             // The counter is written after the control it counts (controlPartsJsx), which is where the anatomy puts it.
             if (slot.text?.counter) return;
-            if (!framePlaced && !slot.parent) { out.push(...framed.filter(part => !part.side).map(part => framePartJsx(part)), ...framed.filter(part => part.side).map(part => framePartJsx(part, `${part.side} !== "end"`))); framePlaced = true; }
+            if (!framePlaced && !slot.parent) { out.push(...rooted.filter(part => !part.side).map(part => framePartJsx(part)), ...rooted.filter(part => part.side).map(part => framePartJsx(part, `${part.side} !== "end"`))); framePlaced = true; }
             const isControl = controlOf(template)?.slot === slot.id;
             const control = controlOf(template);
             if (!template.props[slot.id] && !isControl) problems.push({ slot: slot.id, reason: 'no-prop' });
@@ -192,10 +195,11 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         if (slot.kind !== 'frame') { emitSlot(slot, children); continue; }
         const inner = [];
         for (const child of template.anatomy.filter(c => c.parent === slot.id)) emitSlot(child, inner);
+        for (const part of parented(slot.id)) inner.push(framePartJsx(part));
         const indented = inner.map(line => line.split('\n').map(l => '  ' + l).join('\n')).join('\n');
         children.push(`<div className="${template.id}-${slot.id}">\n${indented}\n</div>`);
     }
-    if (!framePlaced) children.push(...framed.filter(part => !part.side).map(part => framePartJsx(part)));
+    if (!framePlaced) children.push(...rooted.filter(part => !part.side).map(part => framePartJsx(part)));
     // A content slot is an element of the component, after the other layers in schema order: drawn when its prop holds something, always with showEmpty.
     for (const { prop, slot } of slotPropsOf(template)) {
         // A repeating slot draws its children `<id>Copies` times (0 while they are empty), in one slot element; without copies it is empty like any other.
