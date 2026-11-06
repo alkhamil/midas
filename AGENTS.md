@@ -101,6 +101,8 @@
 - Fase 1 batch 1 done: Input template exists, `control` kind is generic (real `<input>` in Play/codegen). Single-line only.
 - A template root that maps `height` binds the Size `height` variable to h and is fixed vertically (bind-tokens `height: ['h']`, template-master `rootSizingV`).
 - Button paddingY is 0 in every size: antd forces `buttonPaddingVertical = 0` (`button/style/token.ts`, `index.ts`); Input paddingY (4 md, 7 lg) comes from `paddingBlock`. Template-qualified tokens are correct. `Input Size` paddingY xl (9) is derived. The token JSON is not in the repo, so `base-snapshot.json` cannot be rebuilt here.
+- Motion is schema data (`motion`: transitions, appearances, slide, press): the engine emits Play/export CSS from it (canvas static, no literals in engine); disabled and reduced-motion kill the motion, never the state.
+- An instance's managed layers include its containers' children (a glyph lives in its box): the binding pass reads descendants, not root children.
 
 ## Maintenance
 
