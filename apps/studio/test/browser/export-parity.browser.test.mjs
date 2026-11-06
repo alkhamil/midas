@@ -19,7 +19,7 @@ const EXPORT_DIR = resolve(ARTIFACTS, 'export');
 /** The states the export is checked in: the props each sets, and the node the control box is in Play (placeholder or value). */
 // The affix switches come before their texts (a text row is shown only while its switch is on), and every state sets both switches.
 const STATES = [
-    { name: 'empty', props: { hasPrefix: false, hasSuffix: false, value: '', allowClear: false, showCount: false } },
+    { name: 'empty', props: { hasPrefix: false, hasSuffix: false, value: '', placeholder: 'Search', allowClear: false, showCount: false } },
     { name: 'value', props: { hasPrefix: false, hasSuffix: false, value: 'Hello', allowClear: false, showCount: false } },
     { name: 'showCount', props: { hasPrefix: false, hasSuffix: false, value: 'Hello', allowClear: false, showCount: true } },
     { name: 'allowClear', props: { hasPrefix: false, hasSuffix: false, value: 'Hello', allowClear: true, showCount: false } },
@@ -102,8 +102,9 @@ test('the exported Input renders its input, clear and counter where Play draws t
             const canvas = await canvasTree(page, id);
             const play = await playTree(page, id, `export-${mode.name.toLowerCase()}-${state.name}`);
             const ids = Object.fromEntries(canvas.map(n => [n.name, n]));
-            // Play's single input always carries the value layer's id, in every state: the placeholder is an HTML attribute on it, never an element of its own.
-            const controlId = ids.value.id;
+            // Play's single input carries the id of the layer it covers: the value layer while there is a value (a managed layer, made only then), else the
+            // placeholder's (the empty state sets a placeholder text, so the placeholder layer shows and the input has a node to cover).
+            const controlId = (ids.value ?? ids.placeholder).id;
             // The export's props: the variable props by mode id, the literal props as the state sets them.
             const props = {
                 ...resolveProps(template, { ...data.instanceProps, ...state.props }),
