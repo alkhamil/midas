@@ -8,6 +8,7 @@ import { variableKey } from './tokens.js';
 import { varsWithBinding } from './edits.js';
 import { setStrokeWeight, strokePaintMissing } from '../geometry/shapes.js';
 import { fixBoundAxes } from '../geometry/autolayout.js';
+import { stateTokenOf } from './state-bindings.js';
 
 /** @param {string} name */
 
@@ -46,6 +47,57 @@ export function planBindTokens({ template, binding, layers, variables }) {
             if (prop === 'stroke' && strokePaintMissing(node) && !ops.some(o => o.key === key && o.varKey === 'stroke')) {
                 // The template owns the stroke: a master with no paint still gets the stroke op, so one bind adds and binds it.
                 ops.push({ key, varKey: 'stroke', itemId: item.id });
+            }
+        }
+    }
+    return { ops, problems };
+}
+
+/**
+ * The bindings of an instance's managed text layers, which have no master layer to carry them: each mapped property is bound to the
+ * variable of its token (from the master's collections), or of the state's token while a persistent state is on. A binding that is
+ * neither of the two (a designer's) is kept; one pointing at a variable that no longer exists is rebound. Same ops as planBindTokens,
+ * so applyBindTokens writes them.
+ * @param {{
+ *   template: import('../templates/schema.js').TemplateSchema,
+ *   binding: { variables: Record<string, string | null> },
+ *   props: Record<string, unknown>,
+ *   layers: { key: string, node: { vars?: Record<string, string> } }[],
+ *   variables: { collections?: any[], items?: any[] }
+ * }} input `props` are the instance's resolved literal props; `layers` the instance's managed text layers by slot id
+ * @returns {{ ops: { key: string, varKey: string, itemId: string }[], problems: { key: string, prop: string, token: string, reason: string }[] }}
+ */
+export function planManagedTextBindings({ template, binding, props, layers, variables }) {
+    /** @type {{ key: string, varKey: string, itemId: string }[]} */
+    const ops = [];
+    /** @type {{ key: string, prop: string, token: string, reason: string }[]} */
+    const problems = [];
+    const tokens = Object.values(template.tokens).flat();
+    const items = variables.items || [];
+    const known = new Set(items.map(i => i.id));
+    /** The variable of a token, or why there is none. */
+    const itemOf = token => {
+        const group = Object.keys(template.tokens).find(g => template.tokens[g].includes(token));
+        const dimension = group ? dimensionOfGroup(group, template.props) : null;
+        const collectionId = dimension ? binding.variables[dimension] : null;
+        if (!collectionId) return { reason: 'dimension-unbound' };
+        const item = items.find(i => i.collectionId === collectionId && variableKey(i.name) === variableKey(token));
+        return item ? { item } : { reason: 'no-variable' };
+    };
+    for (const { key, node } of layers) {
+        const kind = targetKindOf(template, key);
+        for (const [prop, source] of Object.entries(template.display[key] || {})) {
+            if (!tokens.includes(source) || !NODE_PROPERTIES[kind][prop]) continue;
+            const base = itemOf(source);
+            if (!base.item) { problems.push({ key, prop, token: source, reason: base.reason }); continue; }
+            const state = stateTokenOf(template, props, key, prop, source);
+            const stateHit = state ? itemOf(state.stateToken) : null;
+            if (stateHit && !stateHit.item) { problems.push({ key, prop, token: state.stateToken, reason: stateHit.reason }); continue; }
+            const want = state?.on ? stateHit.item : base.item;
+            for (const varKey of VARIABLE_KEYS[prop] || []) {
+                const current = node.vars?.[varKey];
+                const ours = current === undefined || !known.has(current) || current === base.item.id || current === stateHit?.item.id;
+                if (ours && current !== want.id) ops.push({ key, varKey, itemId: want.id });
             }
         }
     }

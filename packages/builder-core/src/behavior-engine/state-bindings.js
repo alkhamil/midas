@@ -81,6 +81,23 @@ function derivedNodeProps(template) {
 }
 
 /**
+ * The variable a persistent state swaps in for a layer's property: the state's token for the display token the property is bound to,
+ * and whether that state is on now. Null when no persistent state derives that property.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ * @param {Record<string, unknown>} props the instance's resolved literal props
+ * @param {string} key the display key
+ * @param {string} prop the display property (fill or stroke)
+ * @param {string} base the token the display maps the property to
+ * @returns {{ stateToken: string, on: boolean } | null}
+ */
+export function stateTokenOf(template, props, key, prop, base) {
+    const derived = derivedNodeProps(template).filter(d => d.key === key && d.prop === prop && d.base === base);
+    if (!derived.length) return null;
+    const active = derived.find(d => stateOn(template, d.state, props));
+    return { stateToken: (active ?? derived[0]).stateToken, on: !!active };
+}
+
+/**
  * The vars keys the behavior engine owns on an instance's layers: a derived property is written by the engine on every sync, so
  * it is never copied from the master and never snapshotted into the instance's overrides.
  * @param {import('../templates/schema.js').TemplateSchema} template
