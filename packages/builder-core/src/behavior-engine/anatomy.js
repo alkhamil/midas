@@ -229,6 +229,10 @@ export function planAnatomy(template, values, children, flip = false) {
             wanted.push({ slot, component: typeof values[def.component] === 'string' ? values[def.component] : null });
         }
     }
+    // A managed text or control layer is wanted while its slot's condition holds; its text is the prop's, so it carries no component.
+    for (const slot of template.anatomy) {
+        if (slot.managed && slot.kind !== 'icon' && conditionHolds(slot.shownWhen, values) && !wanted.some(w => w.slot === slot.id)) wanted.push({ slot: slot.id, component: null });
+    }
     const want = new Set(wanted.map(w => w.slot));
     /** @type {AnatomyOp[]} */
     const ops = [];
@@ -242,7 +246,9 @@ export function planAnatomy(template, values, children, flip = false) {
         else ops.push({ op: 'remove', id: c.id });
     }
     if (!wanted.length) return ops;
-    const textIndex = template.anatomy.findIndex(s => (s.kind === 'text' || s.kind === 'control') && !s.optional);
+    // The slots before the primary text part go first. A template with no primary part orders against its first required text slot.
+    const primary = primarySlotOf(template);
+    const textIndex = primary !== null ? template.anatomy.findIndex(s => s.id === primary) : template.anatomy.findIndex(s => (s.kind === 'text' || s.kind === 'control') && !s.optional);
     const slotIndex = slot => template.anatomy.findIndex(s => s.id === slot);
     const queue = [...wanted].sort((a, b) => slotIndex(a.slot) - slotIndex(b.slot));
     // A slot anatomically before the label goes first; one after it goes before the first layer the anatomy puts after it, else last.
