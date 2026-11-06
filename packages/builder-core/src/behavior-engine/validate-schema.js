@@ -137,7 +137,8 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
         if (slot.kind === 'frame') {
             if (slot.layout !== 'horizontal' && slot.layout !== 'vertical') out.push(`frame slot "${slot.id}" layout must be horizontal or vertical`);
             if (slot.optional || slot.managed) out.push(`frame slot "${slot.id}" cannot be optional or managed`);
-            if (!anatomy.some(c => isPlainObject(c) && c.parent === slot.id)) out.push(`frame slot "${slot.id}" holds no slot`);
+            // A container that holds nothing is a drawn box when the display maps it (a Switch's handle).
+            if (!anatomy.some(c => isPlainObject(c) && c.parent === slot.id) && !drawnBox(schema, slot.id)) out.push(`frame slot "${slot.id}" holds no slot`);
         }
         if (slot.parent !== undefined) {
             const holder = anatomy.find(c => isPlainObject(c) && c.id === slot.parent);
@@ -157,7 +158,8 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
     }
     const text = anatomy.filter(s => isPlainObject(s) && (s.kind === 'text' || s.kind === 'control') && (!s.optional || s.id === schema.primarySlot));
     const shown = anatomy.filter(s => isPlainObject(s) && s.alwaysVisible === true && s.kind === 'icon' && s.managed);
-    if (text.length === 0 && shown.length === 0 && !(Array.isArray(schema.slots) && schema.slots.length > 0)) out.push('anatomy needs a required text or control slot, an always visible icon slot, or a content slot');
+    const drawn = anatomy.some(s => isPlainObject(s) && s.kind === 'frame' && drawnBox(schema, s.id));
+    if (text.length === 0 && shown.length === 0 && !drawn && !(Array.isArray(schema.slots) && schema.slots.length > 0)) out.push('anatomy needs a required text or control slot, an always visible icon slot, a drawn box or a content slot');
 
     const props = isPlainObject(schema.props) ? schema.props : null;
     if (!props) out.push('props must be an object');
@@ -449,6 +451,11 @@ function partTokenProblems(schema, allTokens) {
  * a template with none declares none. A declaration given twice (a list) is refused.
  * @param {any} schema
  */
+/** Whether a container of the anatomy is a drawn box: the display maps it, so it draws itself (fill, radius, size) and needs no content. */
+function drawnBox(schema, id) {
+    return isPlainObject(schema.display) && isPlainObject(schema.display[id]) && Object.keys(schema.display[id]).length > 0;
+}
+
 /** `sampleProps` (the props a generated master and its demo instance start with) are literal props of the right type. */
 function sampleProblems(schema) {
     const sample = schema.sampleProps;

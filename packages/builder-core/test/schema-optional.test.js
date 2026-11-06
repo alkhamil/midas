@@ -64,6 +64,6 @@ test('a template whose content is a content slot needs no text or control slot i
     const slot = { id: 'item', name: 'Item', layout: 'vertical' };
     const onlySlot = { ...SIMPLE, primarySlot: undefined, anatomy: [], props: { size: SIMPLE.props.size, disabled: SIMPLE.props.disabled }, display: { root: { gap: 'gap' } }, tokens: { fromSize: ['gap'] }, tokenKinds: { gap: 'length' }, tokenRoles: { gap: 'gap' }, persistentStates: { disabled: { prop: 'disabled', tokens: {} } }, slots: [slot] };
     assert.deepEqual(validateTemplateSchema(onlySlot), []);
-    assert.match(validateTemplateSchema({ ...onlySlot, slots: undefined }).join('\n'), /anatomy needs a required text or control slot, an always visible icon slot, or a content slot/);
-    assert.match(validateTemplateSchema({ ...onlySlot, slots: [] }).join('\n'), /anatomy needs a required text or control slot, an always visible icon slot, or a content slot/);
+    assert.match(validateTemplateSchema({ ...onlySlot, slots: undefined }).join('\n'), /anatomy needs a required text or control slot, an always visible icon slot, a drawn box or a content slot/);
+    assert.match(validateTemplateSchema({ ...onlySlot, slots: [] }).join('\n'), /anatomy needs a required text or control slot, an always visible icon slot, a drawn box or a content slot/);
 });
