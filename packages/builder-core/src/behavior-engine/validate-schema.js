@@ -182,6 +182,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
     if (schema.rootPrimaryAlign !== undefined && !['start', 'center', 'end'].includes(schema.rootPrimaryAlign)) out.push(`rootPrimaryAlign "${schema.rootPrimaryAlign}" must be start, center or end`);
     if (schema.rootWidth !== undefined && !(typeof schema.rootWidth === 'number' && Number.isFinite(schema.rootWidth) && schema.rootWidth > 0)) out.push('rootWidth must be a positive number of px');
     if (schema.rootAlign !== undefined && !['start', 'center', 'end'].includes(schema.rootAlign)) out.push(`rootAlign "${schema.rootAlign}" must be start, center or end`);
+    if (schema.isControl !== undefined && typeof schema.isControl !== 'boolean') out.push('isControl must be true or false');
     out.push(...sampleProblems(schema));
     out.push(...iconProblems(schema, allTokens));
     out.push(...partTokenProblems(schema, allTokens));
