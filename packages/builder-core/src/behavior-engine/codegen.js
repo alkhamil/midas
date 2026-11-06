@@ -486,8 +486,12 @@ function fieldRules(template) {
 function groupRules(template, master, childrenOf) {
     return template.anatomy.filter(slot => slot.kind === 'frame').map(slot => {
         const node = childrenOf(master.id).find(c => c.behavior?.group === slot.id) ?? { type: 'frame', layout: slot.layout, w: 0, h: 0, layoutSizingH: 'hug', layoutSizingV: 'hug' };
+        // An axis bound to a variable is the token's value (the display rule writes it): the node's own number is not a second source, and written after the token it would win.
+        const sizing = flowSizing(node, master);
+        if (node.vars?.w !== undefined) delete sizing.width;
+        if (node.vars?.h !== undefined) delete sizing.height;
         return `.${template.id}-${slot.id} {
-${cssDecls({ ...flexOf(node, 0), ...flowSizing(node, master) }).join('')}}
+${cssDecls({ ...flexOf(node, 0), ...sizing }).join('')}}
 `;
     });
 }
