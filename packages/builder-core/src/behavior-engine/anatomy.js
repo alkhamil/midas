@@ -32,14 +32,14 @@ export function indexAmongLaterSlots(template, slot, layers) {
 }
 
 /**
- * The layers of an instance the editor binds to the icon tokens, in order: each managed icon slot (the layer holds the icon, which carries the
+ * The layers of an instance the editor binds to the icon tokens, in order: each managed icon slot (never a managed text layer: it follows the text tokens; the layer holds the icon, which carries the
  * colour) and each part that holds icon tokens (the spinner draws the colour itself). One function binds them all (iconSlotBindings).
  * @param {TemplateSchema} template
  * @returns {{ key: string, kind: 'slot' | 'part' }[]}
  */
 export function iconBoundKeysOf(template) {
     return [
-        ...template.anatomy.filter(s => s.managed).map(s => ({ key: s.id, kind: /** @type {const} */ ('slot') })),
+        ...template.anatomy.filter(s => s.managed && s.kind === 'icon').map(s => ({ key: s.id, kind: /** @type {const} */ ('slot') })),
         ...(template.parts ?? []).filter(p => p.tokens !== undefined).map(p => ({ key: p.id, kind: /** @type {const} */ ('part') })),
     ];
 }
