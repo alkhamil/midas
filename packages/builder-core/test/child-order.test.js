@@ -42,7 +42,7 @@ const instanceDoc = nodes => ({ pages: [{ id: 'p', nodes: [master, { id: 'mLabel
 
 test('the backstop sees a misplaced managed layer that a naive sort leaves behind', () => {
     const naive = [{ id: 'label', name: 'Label', type: 'text', parentId: 'i1' }, { id: 'icon', name: 'iconStart', type: 'frame', parentId: 'i1', behavior: { version: 2, slot: 'iconStart' } }];
-    assert.deepEqual(behaviorProblem(instanceDoc(naive)), { name: 'Save', problem: 'managed layer "iconStart" is at the wrong position' });
+    assert.deepEqual(behaviorProblem(instanceDoc(naive)), { name: 'Save', problem: 'managed layer "iconStart" is at the wrong position (expected 0, found 1)' });
 });
 
 test('a leading icon before the label survives save and load', () => {

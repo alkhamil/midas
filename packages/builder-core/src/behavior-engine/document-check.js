@@ -122,17 +122,6 @@ function insideInstance(n, nodes) {
 }
 
 /**
- * The layers the anatomy plan looks at for an instance: its children and the children of its containers, where a slot named for a container lives.
- * @param {any} n an instance
- * @param {Map<string | null, any[]>} children
- * @returns {any[]}
- */
-function managedChildren(n, children) {
-    const kids = children.get(n.id) || [];
-    return [...kids, ...kids.filter(c => c.behavior?.group !== undefined).flatMap(c => children.get(c.id) || [])];
-}
-
-/**
  * The managed layers of an instance must match its values: present iff hasIcon, the right slot, the right position.
  * Nothing is repaired; the first mismatch fails the file. A master without a label layer or auto layout is not checked.
  * @param {any} n an instance
@@ -142,6 +131,18 @@ function managedChildren(n, children) {
  */
 function checkAnatomy(n, nodes, children, page) {
     const master = nodes.get(n.sourceId);
+    // The planner orders a root slot among the root's direct children: a layer hanging under a container
+    // carries its container, so a container's content never moves a root index.
+    const kids = children.get(n.id) || [];
+    const layers = [
+        ...kids.map(c => ({ node: c })),
+        ...kids.filter(c => c.behavior?.group !== undefined).flatMap(c => (children.get(c.id) || []).map(g => ({ node: g, parent: c.behavior.group }))),
+    ].map(({ node: c, parent }) => ({
+        id: c.id, slot: c.behavior?.slot ?? null, name: c.name,
+        ...(parent === undefined ? {} : { parent }),
+        // A slot shows the icon its nested instance is an instance of (null for the placeholder).
+        component: c.behavior && 'slot' in c.behavior ? (children.get(c.id) || []).find(x => x.isInstance && x.sourceId)?.sourceId ?? null : undefined,
+    }));
     const { ops, reason } = planInstanceAnatomy({
         binding: master?.behavior,
         masterRoot: { isAutoLayout: !!master && master.type === 'frame' && !!master.layout && master.layout !== 'none' },
@@ -149,20 +150,21 @@ function checkAnatomy(n, nodes, children, page) {
         // A flipped instance root stores its children back to front: the planner places icons at the visual start and end.
         flip: !!n.layoutFlip,
         stored: n.behavior?.props,
-        children: managedChildren(n, children).map(c => ({
-            id: c.id, slot: c.behavior?.slot ?? null, name: c.name,
-            // A slot shows the icon its nested instance is an instance of (null for the placeholder).
-            component: c.behavior && 'slot' in c.behavior ? (children.get(c.id) || []).find(x => x.isInstance && x.sourceId)?.sourceId ?? null : undefined,
-        })),
+        children: layers,
     });
     if (reason || !ops.length) return;
     const op = ops[0];
     /** @param {string} id */
     const slotOf = id => nodes.get(id)?.behavior?.slot;
+    // A move names the expected index and the actual one among the holder's direct children, so the toast says where to look.
+    const placed = op.op === 'move' ? (() => {
+        const sibs = layers.filter(c => (c.parent ?? null) === (op.parent ?? null));
+        return ` (expected ${op.index}, found ${sibs.findIndex(c => c.id === op.id)})`;
+    })() : '';
     const problem = op.op === 'remove' ? `managed layer "${slotOf(op.id)}" is not expected for these values`
         : op.op === 'insert' ? `managed layer "${op.slot}" is missing`
             : op.op === 'swap' ? `managed layer "${slotOf(op.id)}" does not show the icon its instance chose`
-                : `managed layer "${slotOf(op.id)}" is at the wrong position`;
+                : `managed layer "${slotOf(op.id)}" is at the wrong position${placed}`;
     throw behaviorError(n, problem, page);
 }
 

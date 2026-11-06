@@ -7,7 +7,7 @@ import { resolveProps } from './instance-props.js';
 import { conditionHolds } from './display.js';
 
 /** @typedef {import('../templates/schema.js').TemplateSchema} TemplateSchema */
-/** @typedef {{ id: string, slot: string | null, name?: string, component?: string | null }} ChildLayer  an instance's child, in order; slot is its managed slot marker; name is its layer name (an anatomy slot's id for the layers the anatomy names); component is the icon component the slot shows (null for the placeholder) */
+/** @typedef {{ id: string, slot: string | null, name?: string, component?: string | null, parent?: string }} ChildLayer  an instance's child, in order; slot is its managed slot marker; name is its layer name (an anatomy slot's id for the layers the anatomy names); component is the icon component the slot shows (null for the placeholder); parent is the container group the layer hangs under, absent for a direct child */
 /**
  * @typedef {{ op: 'remove', id: string }
  *   | { op: 'move', id: string, index: number }
@@ -264,7 +264,9 @@ export function planAnatomy(template, values, children, flip = false) {
     // Slots are placed in anatomy order.
     // A slot inside a container is placed by the container: it is the only layer there, so it has no order of its own and no index among the root's layers.
     const parentOf = slot => template.anatomy.find(s => s.id === slot)?.parent;
-    const working = (flip ? [...kept].reverse() : [...kept]).filter(c => c.slot === null || parentOf(c.slot) === undefined);
+    // A root slot is ordered among the root's own layers only: a container's content (the Switch spinner under the handle) is not a direct
+    // child, so counting it would land every later slot one short of where the editor inserts, and the backstop would see a permanent move.
+    const working = (flip ? [...kept].reverse() : [...kept]).filter(c => c.slot === null ? c.parent == null : parentOf(c.slot) === undefined);
     let missing = queue.filter(w => parentOf(w.slot) === undefined && !working.some(c => c.slot === w.slot)).length;
     let front = 0;
     for (const w of queue) {

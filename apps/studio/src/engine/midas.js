@@ -9669,7 +9669,12 @@ function anatomyPlanOf(inst) {
             masterTree,
             flip: !!inst.layoutFlip,
             stored: inst.behavior?.props,
-            children: managedLayersOf(inst).map(c => ({ id: c.id, slot: c.behavior?.slot ?? null, name: c.name, component: iconOfSlot(c) })),
+            children: (() => {
+                // The planner orders a root slot among the root's direct children: a layer hanging
+                // under a container carries its container, so its content never moves a root index.
+                const groupOf = new Map(doc.children(inst.id).filter(c => c.behavior?.group !== undefined).map(c => [c.id, c.behavior.group]));
+                return managedLayersOf(inst).map(c => ({ id: c.id, slot: c.behavior?.slot ?? null, name: c.name, component: iconOfSlot(c), ...(groupOf.get(c.parentId) === undefined ? {} : { parent: groupOf.get(c.parentId) }) }));
+            })(),
         });
     });
 }
