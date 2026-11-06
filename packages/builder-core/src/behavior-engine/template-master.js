@@ -4,7 +4,7 @@
 // creates only what is missing; user layers are never deleted or restyled. Bindings go through the existing planner (planBindTokens),
 // so a generated master is bound the same way a hand-bound one is. An instance is a copy of its master's subtree with the part
 // visibility and text its props say (partWrites, literalFields), which is what the canvas and Play draw.
-import { canvasPartsOf, literalFields, nodeFieldPatch, partWrites } from './display.js';
+import { canvasPartsOf, conditionHolds, literalFields, nodeFieldPatch, partWrites } from './display.js';
 import { planBindTokens, applyBindTokens } from './bind-tokens.js';
 import { resolveProps } from './instance-props.js';
 import { controlOf, iconDefOn, indexAmongLaterSlots, placementsOfDef, primarySlotOf, replacedSlotsOf, slotDefsOf } from './anatomy.js';
@@ -13,12 +13,17 @@ import { newSlotProp } from './slot-property.js';
 
 /** Whether a managed icon slot is shown: one of its definitions is switched on, and its placement (if any) is the one picked. */
 export function slotWanted(template, slotId, resolved) {
+    // A managed text or control slot is wanted while its own condition holds; only an icon slot is shown by icon defs.
+    const anatomy = template.anatomy.find(s => s.id === slotId);
+    if (anatomy?.managed && anatomy.kind !== 'icon') return conditionHolds(anatomy.shownWhen, resolved);
     if (replacedSlotsOf(template, resolved).includes(slotId)) return false;
     return slotDefsOf(template, slotId).some(def => iconDefOn(def, resolved) && (!def.placement || placementsOfDef(template, def, slotId).includes(String(resolved[def.placement]))));
 }
 
 /** Whether a managed slot is drawn: wanted, and for a slot that hides while its value is empty, the value is not empty. */
 export function slotShown(template, slotId, resolved) {
+    const anatomy = template.anatomy.find(s => s.id === slotId);
+    if (anatomy?.managed && anatomy.kind !== 'icon') return slotWanted(template, slotId, resolved);
     return slotWanted(template, slotId, resolved) && slotDefsOf(template, slotId).some(def => iconDefOn(def, resolved) && (def.hideWhenEmpty === undefined || String(resolved[def.hideWhenEmpty] ?? '') !== ''));
 }
 
@@ -52,8 +57,8 @@ export function layerSpecsOf(template) {
             continue;
         }
         if (!placed && slot.kind === 'text' || slot.kind === 'control') { specs.push(...framed); placed = true; }
-        // A managed icon slot is a layer of the instance only, shown while its props say so (instanceOf); a master holds none.
-        if (slot.kind === 'icon' || slot.managed) specs.push({ key: slot.id, role: 'slot', type: 'frame', behavior: { slot: slot.id }, optional: true });
+        // A managed slot (an icon frame, or a text layer) is a layer of the instance only, made while its props ask for it (instanceOf); a master holds none.
+        if (slot.kind === 'icon' || slot.managed) specs.push({ key: slot.id, role: 'slot', type: slot.kind === 'icon' ? 'frame' : 'text', behavior: { slot: slot.id }, optional: true });
         // An optional text slot (an affix) is marked, so it is not the label and does not claim an existing text layer when a master is built.
         else specs.push({ key: slot.id, role: control?.slot === slot.id ? 'control' : 'text', type: 'text', optional: !!slot.optional, ...(slot.parent ? { parentKey: slot.parent } : {}), ...(slot.optional ? { behavior: { text: slot.id } } : {}) });
         if (slot.kind === 'control' && !textedPlaced) { specs.push(...texted); textedPlaced = true; }
@@ -81,7 +86,7 @@ function nodeOf(spec, template, binding, idOf, parentId) {
     }
     if (spec.type === 'text') {
         // A text layer starts with the default of the prop it shows (a control shows the value prop); a text part starts with its text.
-        const prop = spec.role === 'control' ? controlOf(template).value : spec.key;
+        const prop = spec.role === 'control' || controlOf(template)?.slot === spec.key ? controlOf(template).value : spec.key;
         const fallback = spec.role === 'part' ? (typeof spec.part?.text === 'string' ? spec.part.text : '') : String(template.props[prop]?.default ?? '');
         // A layer that fills (the Input's value and placeholder) takes the width the row leaves; the rest hug their text.
         const fills = (template.anatomy.find(slot => slot.id === spec.key) ?? spec.part ?? {}).fill === true;
@@ -258,6 +263,13 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
         if (!slotWanted(template, slot.id, resolved) || subtree.some(n => n.behavior?.slot === slot.id))
             continue;
         const stub = { id: `slot-${slot.id}`, name: slot.id };
+        if (slot.kind !== 'icon') {
+            // A managed text layer holds the text its prop writes: the prop is the memory, so a layer made again shows what was typed.
+            const spec = layerSpecsOf(template).find(sp => sp.key === slot.id);
+            const text = writes.find(w => w.key === slot.id && w.field === 'text');
+            stubs.push({ anatomy: template.anatomy.indexOf(slot), node: { ...nodeOf(spec, template, null, () => id(stub), root.id), ...(text ? { text: text.value } : {}), sourceId: undefined, isInstance: false, component: false, overrides: {} } });
+            continue;
+        }
         stubs.push({ anatomy: template.anatomy.indexOf(slot), node: { ...LAYER, id: id(stub), name: slot.id, type: 'frame', parentId: root.id, sourceId: undefined, isInstance: false, component: false, overrides: {}, visible: slotShown(template, slot.id, resolved), w: 16, h: 16, layout: 'none', fills: [], layoutSizingH: sizedSlot(template, slot.id), layoutSizingV: sizedSlot(template, slot.id), behavior: { version: BEHAVIOR_DATA_VERSION, slot: slot.id } } });
     }
     // Each slot goes where the anatomy puts it: before the label (and so before the spinner) when it precedes the label; after it, before
