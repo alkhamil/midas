@@ -95,3 +95,43 @@ test('every token of every template names a dimension the template has, and reso
     }
 });
 
+// ---- loud failures ----
+import fs from 'node:fs';
+const midas = fs.readFileSync(new URL('../src/engine/midas.js', import.meta.url), 'utf8');
+const body = name => { const at = midas.indexOf(`function ${name}(`); return midas.slice(at, midas.indexOf('\n}\n', at)); };
+
+/** runDesignSystem over the fake document; `rollback` makes the transaction end as the commit backstop ends one it rejects: the page is gone. */
+function run({ rollback = false, extra = {} } = {}) {
+    const calls = { switched: [] };
+    const replay = studioReplay({
+        switchPage: id => calls.switched.push(id),
+        transaction: (label, fn) => { fn(); if (rollback) replay.doc.data.pages = replay.doc.data.pages.filter(p => p.name !== DESIGN_SYSTEM_PAGE); },
+        ...extra,
+    });
+    replay.runDesignSystem();
+    return { ...replay, calls };
+}
+
+test('a finished run switches to the page and says what it made', () => {
+    const { toasts, calls, doc } = run();
+    assert.equal(calls.switched.length, 1);
+    assert.ok(doc.data.pages.some(p => p.name === DESIGN_SYSTEM_PAGE));
+    assert.equal(toasts.length, 1);
+});
+
+test('a run the backstop rolled back neither switches pages nor reports a success: the reason it gave is the last word', () => {
+    const { toasts, calls } = run({ rollback: true });
+    assert.deepEqual(calls.switched, []);
+    assert.deepEqual(toasts, [], 'no summary toast over the "Not applied" one');
+});
+
+test('a template that throws stops the run with its id in the message', () => {
+    assert.throws(() => run({ extra: { fixMaster: (master, template) => { if (template.id === 'radio') throw new Error('boom'); return 0; } } }), /radio.*boom/s);
+});
+
+test('Generate Design System catches what the run throws: it cancels the open edit, logs the template and tells the user, never an empty page in silence', () => {
+    const fn = body('generateDesignSystem');
+    assert.ok(fn.includes('catch (err)'), 'a failure is caught here');
+    for (const part of ['history.cancel()', 'doc.refresh()', 'console.error(', 'toast(']) assert.ok(fn.includes(part), part);
+    assert.ok(body('buildDesignSystemPage').includes('${template.id}'), 'the failing template is named');
+});

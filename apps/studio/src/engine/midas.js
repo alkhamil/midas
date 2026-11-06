@@ -20077,21 +20077,27 @@ function buildDesignSystemPage(counts) {
         doc.refresh();
     }
     for (const template of plan.order) {
-        let master = plan.masters.get(template.id);
-        if (master) {
-            // A master that is there is completed through the generator with its own binding (its missing parts) and Auto Fix; nothing of it is replaced.
-            counts.present++;
-            applyTemplateNodes(master, template, master.behavior);
+        // A template that throws stops the run, named: the caller undoes the whole run and says which template it was (see generateDesignSystem).
+        try {
+            let master = plan.masters.get(template.id);
+            if (master) {
+                // A master that is there is completed through the generator with its own binding (its missing parts) and Auto Fix; nothing of it is replaced.
+                counts.present++;
+                applyTemplateNodes(master, template, master.behavior);
+                counts.variables += fixMaster(master, template);
+                continue;
+            }
+            counts.created++;
+            const row = sectionFor(root, template);
+            master = doc.add(node('frame', { name: template.name, parentId: row.id, w: 160, h: 32, fills: paintOf('#ffffff'), clip: false, component: true }));
+            doc.refresh();
+            applyTemplateNodes(master, template);
             counts.variables += fixMaster(master, template);
-            continue;
+            placeDemoInstance(master, template, row);
         }
-        counts.created++;
-        const row = sectionFor(root, template);
-        master = doc.add(node('frame', { name: template.name, parentId: row.id, w: 160, h: 32, fills: paintOf('#ffffff'), clip: false, component: true }));
-        doc.refresh();
-        applyTemplateNodes(master, template);
-        counts.variables += fixMaster(master, template);
-        placeDemoInstance(master, template, row);
+        catch (err) {
+            throw new Error(`${template.id}: ${err?.message ?? err}`, { cause: err });
+        }
     }
     const ids = new Set(doc.nodes.map(n => n.id));
     counts.problems += diagnoseDocument(doc.data).filter(f => ids.has(f.nodeId) && (f.severity === 'error' || f.severity === 'warning')).length;
@@ -20118,6 +20124,14 @@ async function generateDesignSystem() {
         if (designSystemContent() === before && history.undoStack.at(-1)?.label === DESIGN_SYSTEM_LABEL)
             history.undoStack.pop();
     }
+    catch (err) {
+        // A run that throws is undone whole (the edit it left open is cancelled, so nothing half built stays) and says why, naming the template: never an empty page in silence.
+        history.cancel();
+        doc.refresh();
+        console.error('Generate Design System failed', err);
+        toast(`Generate Design System failed, nothing was changed: ${err?.message ?? err}`);
+        refreshUI();
+    }
     finally {
         designSystemRunning = false;
     }
@@ -20140,7 +20154,8 @@ function runDesignSystem() {
         counts.variables += applyBasePlan(varStore(), planFromSnapshot(BASE_SNAPSHOT), uid).items;
         onPage(page.id, () => buildDesignSystemPage(counts));
     });
-    if (!page) return;
+    // An edit the commit backstop rolled back has said why ("Not applied: ..."): the page is gone, and no summary or page switch may cover that reason.
+    if (!page || !doc.data.pages.some(p => p.id === page.id)) return;
     switchPage(page.id);
     toast(designSystemSummary(counts));
 }
