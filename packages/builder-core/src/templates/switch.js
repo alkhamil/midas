@@ -5,6 +5,9 @@
 // track colour; Disabled is declared last, so it wins. There is no text and no border. Size is the antd small | default. Structure follows Ant Design
 // (components/switch: checked, disabled, size); every value is a token.
 
+/** The accent colour of a Color mode: default is the text colour, primary the brand colour, danger the error colour (Button's Color roles). */
+const ACCENT = { default: 'text', primary: 'brand', danger: 'danger' };
+
 /** @type {TemplateSchema} */
 export const SWITCH = {
     id: 'switch',
@@ -19,13 +22,17 @@ export const SWITCH = {
     rootAlign: 'center',
     rootPrimaryAlign: 'start',
     props: {
+        // The colours, as Button's Color collection holds its own: only the checked track follows the mode (default is the text colour, primary the brand colour,
+        // danger the error colour). A new instance takes primary. The Size collection holds sizes only.
+        color: { source: 'variable', collection: 'Color', modes: ['default', 'primary', 'danger'], defaultMode: 'primary' },
         size: { source: 'variable', collection: 'Size', modes: ['small', 'default'], defaultMode: 'default' },
         // Checked writes the root's alignment: on puts the handle at the end of the track, off at the start.
         checked: { source: 'literal', type: 'boolean', default: false, node: { key: 'root', field: 'primaryAlign' } },
         disabled: { source: 'literal', type: 'boolean', default: false },
     },
     tokens: {
-        fromSize: ['trackHeight', 'trackWidth', 'trackPadding', 'handleSize', 'radiusFull', 'track-bg', 'track-bg-checked', 'track-bg-disabled', 'track-bg-hover', 'track-bg-focus', 'handle-bg'],
+        fromColor: ['track-bg', 'track-bg-checked', 'track-bg-disabled', 'track-bg-hover', 'track-bg-focus', 'handle-bg'],
+        fromSize: ['trackHeight', 'trackWidth', 'trackPadding', 'handleSize', 'radiusFull'],
     },
     tokenKinds: {
         trackHeight: 'length', trackWidth: 'length', trackPadding: 'length', handleSize: 'length', radiusFull: 'length',
@@ -37,7 +44,7 @@ export const SWITCH = {
         trackPadding: 'switch-padding',
         handleSize: { small: 'switch-handle-sm', default: 'switch-handle' },
         radiusFull: 'radius-full',
-        'track-bg': 'track-off', 'track-bg-checked': 'brand', 'track-bg-disabled': 'border', 'track-bg-hover': 'track-off-hover', 'track-bg-focus': 'track-off-hover', 'handle-bg': 'solid-text',
+        'track-bg': 'track-off', 'track-bg-checked': ACCENT, 'track-bg-disabled': 'border', 'track-bg-hover': 'track-off-hover', 'track-bg-focus': 'track-off-hover', 'handle-bg': 'solid-text',
     },
     // Checked swaps the track colour; Disabled is declared last, so it wins over Checked.
     persistentStates: {

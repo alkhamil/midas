@@ -8,6 +8,9 @@ import { DEFAULT_SIZE_MODE, SIZE_MODES } from './size-modes.js';
 // checked (Disabled is declared last, so it wins). The glyph slots are on the instance from the start and drawn only while their state holds (showWhen), so Play can
 // show them on a click. Structure follows Ant Design (components/checkbox: checked, indeterminate, disabled); values are tokens.
 
+/** The accent colour of a Color mode: default is the text colour, primary the brand colour, danger the error colour (Button's Color roles). */
+const ACCENT = { default: 'text', primary: 'brand', danger: 'danger' };
+
 const CHECK = { colour: 'check-fg', disabledColour: 'glyph-fg-disabled', size: 'checkSize' };
 const SQUARE = { colour: 'dash-fg', disabledColour: 'glyph-fg-disabled', size: 'indicatorSize' };
 
@@ -35,7 +38,10 @@ export const CHECKBOX = {
     rootAlign: 'center',
     rootPrimaryAlign: 'start',
     props: {
-        // The one dimension: the Size collection holds every token (as FormItem's does). The antd box has one size, so only the label's type follows the mode.
+        // The colours, as Button's Color collection holds its own: default is the text colour, primary the brand colour, danger the error colour. Only the accent follows
+        // the mode (the checked fill and border, the glyph, the hover and focus border); the rest is the same in every mode. A new instance takes primary.
+        color: { source: 'variable', collection: 'Color', modes: ['default', 'primary', 'danger'], defaultMode: 'primary' },
+        // The Size collection holds sizes and typography only. The antd box has one size, so only the label's type follows the mode.
         size: { source: 'variable', collection: 'Size', modes: SIZE_MODES, defaultMode: DEFAULT_SIZE_MODE, standard: true },
         checked: { source: 'literal', type: 'boolean', default: false, exclusiveWith: 'indeterminate' },
         checkIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'checked', is: true }, remembered: true },
@@ -46,7 +52,8 @@ export const CHECKBOX = {
         disabled: { source: 'literal', type: 'boolean', default: false },
     },
     tokens: {
-        fromSize: ['box-bg', 'box-border', 'box-bg-checked', 'box-border-checked', 'box-border-hover', 'box-border-focus', 'box-bg-disabled', 'box-border-disabled', 'boxSize', 'boxRadius', 'borderWidth', 'checkSize', 'indicatorSize', 'gap', 'labelTypography', 'check-fg', 'dash-fg', 'glyph-fg-disabled', 'fg', 'fg-disabled'],
+        fromColor: ['box-bg', 'box-border', 'box-bg-checked', 'box-border-checked', 'box-border-hover', 'box-border-focus', 'box-bg-disabled', 'box-border-disabled', 'check-fg', 'dash-fg', 'glyph-fg-disabled', 'fg', 'fg-disabled'],
+        fromSize: ['boxSize', 'boxRadius', 'borderWidth', 'checkSize', 'indicatorSize', 'gap', 'labelTypography'],
     },
     tokenKinds: {
         'box-bg': 'color', 'box-border': 'color', 'box-bg-checked': 'color', 'box-border-checked': 'color', 'box-border-hover': 'color', 'box-border-focus': 'color', 'box-bg-disabled': 'color', 'box-border-disabled': 'color',
@@ -54,9 +61,9 @@ export const CHECKBOX = {
         'check-fg': 'color', 'dash-fg': 'color', 'glyph-fg-disabled': 'color', fg: 'color', 'fg-disabled': 'color',
     },
     tokenRoles: {
-        'box-bg': 'bg', 'box-border': 'border', 'box-bg-checked': 'brand', 'box-border-checked': 'brand', 'box-border-hover': 'brand', 'box-border-focus': 'brand', 'box-bg-disabled': 'bg-disabled', 'box-border-disabled': 'border',
+        'box-bg': 'bg', 'box-border': 'border', 'box-bg-checked': ACCENT, 'box-border-checked': ACCENT, 'box-border-hover': ACCENT, 'box-border-focus': ACCENT, 'box-bg-disabled': 'bg-disabled', 'box-border-disabled': 'border',
         boxSize: 'box-size', boxRadius: 'radius-sm', borderWidth: 'border-width', checkSize: 'icon-sm', indicatorSize: 'indicator-size', gap: 'gap', labelTypography: { xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
-        'check-fg': 'bg', 'dash-fg': 'brand', 'glyph-fg-disabled': 'fg-disabled', fg: 'fg', 'fg-disabled': 'fg-disabled',
+        'check-fg': 'bg', 'dash-fg': ACCENT, 'glyph-fg-disabled': 'fg-disabled', fg: 'fg', 'fg-disabled': 'fg-disabled',
     },
     // Checked swaps the box colours; Disabled is declared last, so it wins over Checked. The glyph colours are the icon slots' own tokens.
     persistentStates: {

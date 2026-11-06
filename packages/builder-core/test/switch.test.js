@@ -11,11 +11,11 @@ import { modelFor, instanceFor } from './helpers/box-template.js';
 const sw = TEMPLATES.get('switch');
 const model = modelFor(sw);
 
-test('Switch is a registered form control with no text: checked, disabled and size only', () => {
+test('Switch is a registered form control with no text: checked, disabled, and the Color and Size dimensions only', () => {
     assert.ok(sw);
     assert.equal(sw.isControl, true);
     assert.equal(sw.primarySlot, undefined);
-    assert.deepEqual(Object.keys(sw.props), ['size', 'checked', 'disabled']);
+    assert.deepEqual(Object.keys(sw.props), ['color', 'size', 'checked', 'disabled']);
     assert.deepEqual(sw.props.size.modes, ['small', 'default']);
     assert.equal(sw.props.size.defaultMode, 'default');
     assert.ok(!sw.anatomy.some(s => s.kind === 'text' || s.kind === 'control'), 'no label text');

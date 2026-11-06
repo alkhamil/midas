@@ -7,6 +7,9 @@ import { DEFAULT_SIZE_MODE, SIZE_MODES } from './size-modes.js';
 // a managed text layer, made while the text is not empty and the switch is on. Checked recolours the border only (the box keeps its fill and the dot is the
 // mark, as in antd); Disabled is declared last, so it wins. Structure follows Ant Design (components/radio: checked, disabled); every value is a token.
 
+/** The accent colour of a Color mode: default is the text colour, primary the brand colour, danger the error colour (Button's Color roles). */
+const ACCENT = { default: 'text', primary: 'brand', danger: 'danger' };
+
 const DOT = { colour: 'dot-fg', disabledColour: 'dot-fg-disabled', size: 'indicatorSize' };
 
 /** @type {TemplateSchema} */
@@ -31,7 +34,10 @@ export const RADIO = {
     rootAlign: 'center',
     rootPrimaryAlign: 'start',
     props: {
-        // The one dimension: the Size collection holds every token (as FormItem's does); the antd box has one size, so only the label's type follows the mode.
+        // The colours, as Button's Color collection holds its own: default is the text colour, primary the brand colour, danger the error colour. Only the accent follows
+        // the mode (the checked fill and border, the glyph, the hover and focus border); the rest is the same in every mode. A new instance takes primary.
+        color: { source: 'variable', collection: 'Color', modes: ['default', 'primary', 'danger'], defaultMode: 'primary' },
+        // The Size collection holds sizes and typography only; the antd box has one size, so only the label's type follows the mode.
         size: { source: 'variable', collection: 'Size', modes: SIZE_MODES, defaultMode: DEFAULT_SIZE_MODE, standard: true },
         checked: { source: 'literal', type: 'boolean', default: false },
         dotIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'checked', is: true }, remembered: true },
@@ -40,7 +46,8 @@ export const RADIO = {
         disabled: { source: 'literal', type: 'boolean', default: false },
     },
     tokens: {
-        fromSize: ['box-bg', 'box-border', 'box-border-checked', 'box-border-hover', 'box-border-focus', 'box-bg-disabled', 'box-border-disabled', 'boxSize', 'boxRadius', 'borderWidth', 'indicatorSize', 'gap', 'labelTypography', 'dot-fg', 'dot-fg-disabled', 'fg', 'fg-disabled'],
+        fromColor: ['box-bg', 'box-border', 'box-border-checked', 'box-border-hover', 'box-border-focus', 'box-bg-disabled', 'box-border-disabled', 'dot-fg', 'dot-fg-disabled', 'fg', 'fg-disabled'],
+        fromSize: ['boxSize', 'boxRadius', 'borderWidth', 'indicatorSize', 'gap', 'labelTypography'],
     },
     tokenKinds: {
         'box-bg': 'color', 'box-border': 'color', 'box-border-checked': 'color', 'box-border-hover': 'color', 'box-border-focus': 'color', 'box-bg-disabled': 'color', 'box-border-disabled': 'color',
@@ -48,10 +55,10 @@ export const RADIO = {
         'dot-fg': 'color', 'dot-fg-disabled': 'color', fg: 'color', 'fg-disabled': 'color',
     },
     tokenRoles: {
-        'box-bg': 'bg', 'box-border': 'border', 'box-border-checked': 'brand', 'box-border-hover': 'brand', 'box-border-focus': 'brand', 'box-bg-disabled': 'bg-disabled', 'box-border-disabled': 'border',
+        'box-bg': 'bg', 'box-border': 'border', 'box-border-checked': ACCENT, 'box-border-hover': ACCENT, 'box-border-focus': ACCENT, 'box-bg-disabled': 'bg-disabled', 'box-border-disabled': 'border',
         boxSize: 'box-size', boxRadius: 'radius-full', borderWidth: 'border-width', indicatorSize: 'indicator-size', gap: 'gap',
         labelTypography: { xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
-        'dot-fg': 'brand', 'dot-fg-disabled': 'fg-disabled', fg: 'fg', 'fg-disabled': 'fg-disabled',
+        'dot-fg': ACCENT, 'dot-fg-disabled': 'fg-disabled', fg: 'fg', 'fg-disabled': 'fg-disabled',
     },
     // Checked recolours the border; Disabled is declared last, so it wins over Checked. The dot colours are the icon slot's own tokens.
     persistentStates: {

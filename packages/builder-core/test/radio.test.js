@@ -19,7 +19,7 @@ test('Radio is a registered form control whose primary slot is the label; it has
     assert.ok(radio);
     assert.equal(radio.isControl, true);
     assert.equal(radio.primarySlot, 'label');
-    assert.deepEqual(Object.keys(radio.props), ['size', 'checked', 'dotIcon', 'hasLabel', 'label', 'disabled']);
+    assert.deepEqual(Object.keys(radio.props), ['color', 'size', 'checked', 'dotIcon', 'hasLabel', 'label', 'disabled']);
 });
 
 test('a fresh instance shows ONE text node: the label; the label is never lost on a toggle', () => {
