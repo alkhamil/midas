@@ -57,12 +57,12 @@ export const SWITCH = {
         uncheckedIcon: { source: 'literal', type: 'iconComponent', default: null, remembered: true, visibleIf: { prop: 'uncheckedKind', is: 'icon' } },
     },
     tokens: {
-        fromColor: ['track-bg', 'track-bg-checked', 'track-bg-disabled', 'track-bg-hover', 'track-bg-focus', 'handle-bg'],
+        fromColor: ['track-bg', 'track-bg-checked', 'track-bg-disabled', 'track-bg-hover', 'track-bg-focus', 'handle-bg', 'wave-color'],
         fromSize: ['trackHeight', 'trackWidth', 'trackPadding', 'handleSize', 'radiusFull', 'iconSize', 'textTypography'],
     },
     tokenKinds: {
         trackHeight: 'length', trackWidth: 'length', trackPadding: 'length', handleSize: 'length', radiusFull: 'length', iconSize: 'length', textTypography: 'typography',
-        'track-bg': 'color', 'track-bg-checked': 'color', 'track-bg-disabled': 'color', 'track-bg-hover': 'color', 'track-bg-focus': 'color', 'handle-bg': 'color',
+        'track-bg': 'color', 'track-bg-checked': 'color', 'track-bg-disabled': 'color', 'track-bg-hover': 'color', 'track-bg-focus': 'color', 'handle-bg': 'color', 'wave-color': 'color',
     },
     tokenRoles: {
         trackHeight: { small: 'switch-height-sm', default: 'switch-height' },
@@ -72,7 +72,7 @@ export const SWITCH = {
         radiusFull: 'radius-full',
         iconSize: { small: 'icon-sm', default: 'icon-md' },
         textTypography: { small: 'text-sm', default: 'text-sm' },
-        'track-bg': 'track-off', 'track-bg-checked': ACCENT, 'track-bg-disabled': 'border', 'track-bg-hover': 'track-off-hover', 'track-bg-focus': 'track-off-hover', 'handle-bg': 'solid-text',
+        'track-bg': 'track-off', 'track-bg-checked': ACCENT, 'track-bg-disabled': 'border', 'track-bg-hover': 'track-off-hover', 'track-bg-focus': 'track-off-hover', 'handle-bg': 'solid-text', 'wave-color': ACCENT,
     },
     // Checked swaps the track colour; Disabled is declared last, so it wins over Checked.
     persistentStates: {
@@ -81,6 +81,8 @@ export const SWITCH = {
     },
     // A click turns Checked on and off.
     toggle: { prop: 'checked' },
+    // The click wave is Button's generic mechanism (the track ripples in the accent colour); the ring itself is not drawn.
+    interaction: { focus: 'outline', wave: true },
     // Motion (antd, timings and easings only): the track recolours over 0.2s; the handle grows 4px
     // while pressed over 0.2s (flex-end keeps its far edge on the padding, so it grows toward the
     // inside). The checked prop moves the handle by alignment on every surface: the travel always
@@ -101,6 +103,7 @@ export const SWITCH = {
     playOnly: [
         { id: 'spin', reason: 'the spinner turns while loading: an animation, so the canvas draws the spinner at rest' },
         { id: 'loading-click', reason: 'a loading Switch fires no click: a click is an interaction the canvas does not have' },
+        { id: 'wave', reason: 'click wave is an animation on click; the canvas has no click' },
     ],
     display: {
         root: { fill: 'track-bg', radius: 'radiusFull', height: 'trackHeight', minWidth: 'trackWidth', paddingX: 'trackPadding', paddingY: 'trackPadding' },
