@@ -53,6 +53,17 @@ export const SWITCH = {
     },
     // A click turns Checked on and off.
     toggle: { prop: 'checked' },
+    // Motion (antd, timings and easings only): the track recolours over 0.2s; the handle slides by
+    // transform over 0.2s (travel is track - handle - 2*padding, the resting positions the canvas lays
+    // out) and grows 4px while pressed. Play and the export read it; the canvas stays static.
+    motion: {
+        transitions: [
+            { key: 'root', props: ['background-color'], duration: '0.2s', timing: 'ease-in-out' },
+            { key: 'handle', props: ['transform', 'width'], duration: '0.2s', timing: 'ease-in-out' },
+        ],
+        slide: { key: 'handle', prop: 'checked', travel: { track: 'trackWidth', handle: 'handleSize', padding: 'trackPadding' } },
+        press: { key: 'handle', token: 'handleSize', prop: 'width', grow: '4px' },
+    },
     // Hover and focus darken the off track while nothing replaces it (the checked look wins). The focus ring itself is not drawn.
     previewStates: {
         hover: { 'track-bg': 'track-bg-hover' },
