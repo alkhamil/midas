@@ -13,10 +13,10 @@ test('the icon prefix is the file convention, Icon/', () => {
     assert.equal(ICON_PREFIX, 'Icon/');
 });
 
-test('the registry asks for one role: every icon slot of every template takes the default icon', () => {
+test('the registry asks for the default role and the Checkbox glyph roles', () => {
     const roles = iconRolesOf([...BUILT_IN_TEMPLATES.values()]);
-    assert.deepEqual(roles, ['default']);
-    // The slots behind it, by template: nothing is special-cased, every icon def is a default-role slot.
+    assert.deepEqual(roles, ['default', 'check', 'indeterminate']);
+    // The slots behind it, by template: nothing is special-cased, the Checkbox slots say their own role, every other icon def is a default-role slot.
     const slots = [...BUILT_IN_TEMPLATES.values()].flatMap(t => iconDefsOf(t).map(d => `${t.id}.${d.slot ?? d.placement}`));
     assert.ok(slots.includes('icon-button.icon') && slots.includes('input.clear') && slots.includes('button.iconStart'));
 });

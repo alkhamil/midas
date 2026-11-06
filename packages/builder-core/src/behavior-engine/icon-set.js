@@ -20,6 +20,9 @@ const at = (x, y, inX, inY, outX, outY) => (inX === undefined ? { x, y } : { x, 
 export const ICON_SET = [
     // A disc: neutral for a button's icon and for the clear icon, which takes the same default.
     { name: 'circle', role: 'default', closed: true, points: [at(12, 2, 12 - K, 2, 12 + K, 2), at(22, 12, 22, 12 - K, 22, 12 + K), at(12, 22, 12 + K, 22, 12 - K, 22), at(2, 12, 2, 12 + K, 2, 12 - K)] },
+    // The Checkbox's glyphs: the checkmark of a checked box and the square of an indeterminate one, each the icon its slot starts with.
+    { name: 'check', role: 'check', closed: true, points: [at(2.5, 12.5), at(5, 10), at(9.5, 14.5), at(19, 5), at(21.5, 7.5), at(9.5, 19.5)] },
+    { name: 'square', role: 'indeterminate', closed: true, points: [at(0, 0), at(24, 0), at(24, 24), at(0, 24)] },
 ];
 
 /**

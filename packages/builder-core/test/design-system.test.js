@@ -38,7 +38,7 @@ test('a cycle is reported once, and every template is still in the order (nothin
 
 test('the built-in registry is ordered with Input before FormItem, and every template is in it', () => {
     const { order, cycles } = orderTemplates([...BUILT_IN_TEMPLATES.values()]);
-    assert.deepEqual(order.map(x => x.id), ['button', 'input', 'formitem', 'list', 'icon-button']);
+    assert.deepEqual(order.map(x => x.id), ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox']);
     assert.ok(order.findIndex(x => x.id === 'input') < order.findIndex(x => x.id === 'formitem'));
     assert.deepEqual(cycles, []);
 });

@@ -11,9 +11,14 @@ import { buttonModel } from '../../../scripts/button-model.mjs';
 import { inputModel } from '../../../scripts/input-model.mjs';
 import { formItemModel } from '../../../scripts/form-item-model.mjs';
 import { iconButtonModel } from '../../../scripts/icon-button-model.mjs';
+import { modelFor } from './helpers/box-template.js';
+
+/** The variables a template gets from the bundled base and Auto Fix, as Generate Design System makes them: the model of a template with no hand-built fixture. */
+const generated = id => () => { const m = modelFor(TEMPLATES.get(id)); return { variables: m.variables, binding: { variables: m.binding.variables } }; };
 
 /** The variable model and binding each registered template is checked with. */
 const MODELS = {
+    checkbox: generated('checkbox'),
     button: () => {
         const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
         return { variables: { collections: model.collections, items: model.items }, binding: { variables: { variant: model.ids.variant, color: model.ids.color, size: model.ids.size } } };
