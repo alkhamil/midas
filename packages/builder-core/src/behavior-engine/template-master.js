@@ -180,7 +180,7 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
             if (text && 'text' in node) node.text = text.value;
         }
         if (spec.role === 'content') { created.push(node); claimed.add(node.id); continue; }
-        if (spec.role === 'group') { created.push(node); claimed.add(node.id); holders.set(spec.key, node); continue; }
+        if (spec.role === 'group') { created.push(node); claimed.add(node.id); holders.set(spec.key, node); layer.set(spec.key, node); continue; }
         created.push(node);
         claimed.add(node.id);
         layer.set(spec.key, node);

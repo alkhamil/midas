@@ -1,4 +1,4 @@
-import { COLOUR_TOKENS, NODE_FIELDS, displayProblems, targetKindOf } from './display.js';
+import { COLOUR_TOKENS, NODE_FIELDS, STATE_ATTRIBUTE, displayProblems, targetKindOf } from './display.js';
 
 const LITERAL_TYPES = ['boolean', 'string', 'number', 'enum', 'iconComponent'];
 
@@ -586,6 +586,11 @@ function nodeProblems(schema) {
     const states = [...Object.keys(isPlainObject(schema.persistentStates) ? schema.persistentStates : {}), ...Object.keys(isPlainObject(schema.previewStates) ? schema.previewStates : {})];
     const pseudo = isPlainObject(schema.statePseudo) ? schema.statePseudo : {};
     const aliases = new Set(Object.entries(isPlainObject(schema.persistentStates) ? schema.persistentStates : {}).filter(([, d]) => isPlainObject(d) && d.as !== undefined).map(([name]) => name));
-    for (const state of states) if (!aliases.has(state) && !String(pseudo[state] ?? '').startsWith(':')) out.push(`state "${state}" has no pseudo-class in statePseudo`);
+    // A persistent state may be an attribute of the root (`[data-checked]`): the export writes it from the prop; a preview state is a pseudo-class.
+    const persistent = isPlainObject(schema.persistentStates) ? schema.persistentStates : {};
+    for (const state of states) {
+        const ok = String(pseudo[state] ?? '').startsWith(':') || (Object.hasOwn(persistent, state) && STATE_ATTRIBUTE.test(String(pseudo[state] ?? '')));
+        if (!aliases.has(state) && !ok) out.push(`state "${state}" has no pseudo-class in statePseudo`);
+    }
     return out;
 }

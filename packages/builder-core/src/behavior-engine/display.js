@@ -56,6 +56,22 @@ export const NODE_FIELDS = {
     arc: { visible: { kind: 'boolean' } },
 };
 
+/** The attribute selector a persistent state may be written as instead of a pseudo-class: `[data-<name>]`. */
+export const STATE_ATTRIBUTE = /^\[(data-[a-z][a-z0-9-]*)\]$/;
+
+/**
+ * The persistent states the root says as an attribute: `{ state, attr, prop }` for each whose statePseudo is `[data-<name>]`. The export writes the
+ * attribute from the prop and Play draws the same one, so the stylesheet's selector matches on every surface.
+ * @param {any} template
+ * @returns {{ state: string, attr: string, prop: string }[]}
+ */
+export function stateAttributesOf(template) {
+    return Object.entries(template.persistentStates ?? {}).flatMap(([state, def]) => {
+        const attr = STATE_ATTRIBUTE.exec(String(template.statePseudo?.[state] ?? ''))?.[1];
+        return attr ? [{ state, attr, prop: def.prop }] : [];
+    });
+}
+
 /** The node kind a display key targets: `root` is the instance's frame, otherwise the anatomy slot's or the part's kind. */
 export const targetKindOf = (template, key) => {
     if (key === 'root') return 'frame';

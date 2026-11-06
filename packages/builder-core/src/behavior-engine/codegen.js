@@ -4,7 +4,7 @@
 import { previewOf } from './preview.js';
 import { variableProps } from './registry.js';
 import { resolveProps } from './instance-props.js';
-import { NODE_PROPERTIES, LOADING_OPACITY, canvasPartsOf, fieldWritersOf, placeholderPartOf, targetKindOf } from './display.js';
+import { NODE_PROPERTIES, LOADING_OPACITY, canvasPartsOf, fieldWritersOf, placeholderPartOf, stateAttributesOf, targetKindOf } from './display.js';
 import { pathCommands, svgPathD } from '../geometry/shapes.js';
 import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js';
 import { cssVarOf, splitColor, tokenValueOf } from './tokens.js';
@@ -205,6 +205,8 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         ...(template.interaction?.wave && !template.events.some(event => event.name === 'onClick') ? ['onClick={(e) => { if (blocked) return; waveDown(e.currentTarget); }}'] : []),
         ...(template.interaction?.wave ? [`onAnimationEnd={(e) => { if (e.animationName === '${WAVE_KEYFRAMES}') e.currentTarget.removeAttribute('data-wave-on'); }}`] : []),
         ...dims.map(dim => `data-${dim}={${dim}}`),
+        // A persistent state the stylesheet selects as an attribute (`[data-checked]`) is written from its prop.
+        ...stateAttributesOf(template).map(({ attr, prop }) => `${attr}={${prop} || undefined}`),
         ...fieldWritersOf(template).filter(w => w.field === 'layout').map(w => `data-${w.prop}={${w.prop}}`),
         // Only some elements have a `disabled` attribute; any other root says it with aria-disabled (and the schema's state pseudo selects on it).
         ...(ctl ? [] : [DISABLEABLE.has(tag) ? `disabled={${disabledProp}}` : `aria-disabled={${disabledProp} || undefined}`]),
@@ -331,6 +333,12 @@ function displayRules(template, master, childrenOf, geometry) {
         if (key === 'root' && 'stroke' in (template.display.root ?? {})) { const w = rootBorderWidthOf(master); decls.push(`  border-width: ${w}px;\n`, `  border-style: ${w === 0 ? 'none' : lineStyleOf(master)};\n`);
         decls.push(`  background-clip: ${clipOf(master)};\n`); }
         if (key === 'root' && (template.interaction?.wave || 'stroke' in (template.display.root ?? {}))) decls.push('  position: relative;\n');
+        // A box of the anatomy (a group frame) draws its own border the same way, from its own layer: its size includes the border.
+        if (key !== 'root' && kind === 'frame' && 'stroke' in props) {
+            const box = under.find(({ node: c }) => c.behavior?.group === key)?.node ?? master;
+            const w = rootBorderWidthOf(box);
+            decls.push('  box-sizing: border-box;\n', `  border-width: ${w}px;\n`, `  border-style: ${w === 0 ? 'none' : lineStyleOf(box)};\n`, `  background-clip: ${clipOf(box)};\n`);
+        }
         // A control slot draws as a native input: it owns text only, so the reset comes first and the
         // token-driven declarations below win for colour and font metrics. Generic: any template with a
         // `control` reads this path. Its width is its text's, as the canvas's hugging layer is: the value, or the placeholder while
