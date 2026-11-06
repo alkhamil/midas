@@ -18,7 +18,7 @@ import { controlOf, iconDefOn, placementsOfDef, primarySlotOf, slotDefsOf } from
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { repeatCount } from '../behavior-engine/slot-rules.js';
-import { canvasPartsOf, counterLabel, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn } from '../behavior-engine/display.js';
+import { ariaCheckedOf, canvasPartsOf, counterLabel, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, shadowCss, svgNumber } from '../geometry/format.js';
@@ -257,6 +257,9 @@ function renderTemplate(n, template, parent, scope) {
     Object.assign(attrs, fields.attrs);
     // A persistent state the stylesheet selects as an attribute is drawn from its prop, as the export writes it.
     for (const { attr, prop } of stateAttributesOf(template)) if (props[prop] === true) attrs[attr] = true;
+    // A toggle control: the root says what a click changes (Play needs no template for it) and its aria-checked.
+    const toggle = toggleOf(template);
+    if (toggle) Object.assign(attrs, { 'data-toggle': toggle.attr, ...(toggle.clearsAttr ? { 'data-toggle-clears': toggle.clearsAttr } : {}), ...(toggle.once ? { 'data-toggle-once': true } : {}), 'aria-checked': ariaCheckedOf(template, props) });
     if (!control && stateOn(template, template.element.disabledState, props)) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true', tabindex: '-1' });
     // A layer that blocks its click (a loading Button) stays enabled, but its clicks fire nothing (see isDisabledTarget).
     if (template.element.blockClickProps.some(prop => props[prop] === true)) attrs['data-blocked'] = true;

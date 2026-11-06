@@ -207,6 +207,8 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         ...dims.map(dim => `data-${dim}={${dim}}`),
         // A persistent state the stylesheet selects as an attribute (`[data-checked]`) is written from its prop.
         ...stateAttributesOf(template).map(({ attr, prop }) => `${attr}={${prop} || undefined}`),
+        // A toggle control says its state to assistive technology: true, false, or mixed while the state it clears holds.
+        ...(template.toggle ? [`aria-checked={${template.toggle.clears ? `${template.toggle.clears} ? "mixed" : ` : ''}${template.toggle.prop} ? "true" : "false"}`] : []),
         ...fieldWritersOf(template).filter(w => w.field === 'layout').map(w => `data-${w.prop}={${w.prop}}`),
         // A prop that aligns the row's content to the end says which end as a data attribute (a Switch's handle).
         ...fieldWritersOf(template).filter(w => w.field === 'primaryAlign').map(w => `data-${w.prop}-align={${w.prop} ? "end" : "start"}`),

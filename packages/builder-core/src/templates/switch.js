@@ -44,6 +44,8 @@ export const SWITCH = {
         checked: { prop: 'checked', tokens: { 'track-bg': 'track-bg-checked' } },
         disabled: { prop: 'disabled', tokens: { 'track-bg': 'track-bg-disabled' } },
     },
+    // A click turns Checked on and off.
+    toggle: { prop: 'checked' },
     previewStates: {},
     statePseudo: { checked: '[data-checked]', disabled: ':disabled' },
     parts: [],

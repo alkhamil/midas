@@ -194,6 +194,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
     out.push(...shownWhenProblems(schema, props || {}));
     out.push(...focusTargetProblems(schema));
     out.push(...interactionProblems(schema));
+    out.push(...toggleProblems(schema));
     out.push(...nodeProblems(schema));
     out.push(...outlineProblems(schema));
     if (!Array.isArray(schema.events)) out.push('events must be a list');
@@ -520,6 +521,27 @@ function controlProblems(schema) {
             if (!parts.includes(key)) out.push(`control hidePlaceholderWhenFilled names the placeholder layer "${key}", which is not a part of the template`);
         }
     }
+    return out;
+}
+
+/**
+ * Problems in a click toggle: its prop (and the state it clears) is a boolean literal prop that a persistent state with an attribute follows, so Play can write it
+ * on the root; `once` is a boolean.
+ * @param {any} schema
+ * @returns {string[]}
+ */
+function toggleProblems(schema) {
+    if (schema.toggle === undefined) return [];
+    if (!isPlainObject(schema.toggle)) return ['toggle must be an object'];
+    const props = isPlainObject(schema.props) ? schema.props : {};
+    const attrs = stateAttributesOf(schema);
+    const out = [];
+    for (const key of ['prop', 'clears']) {
+        const name = schema.toggle[key];
+        if (key === 'clears' && name === undefined) continue;
+        if (!(props[name]?.source === 'literal' && props[name]?.type === 'boolean' && attrs.some(a => a.prop === name))) out.push(`toggle ${key} "${name}" is not a boolean prop that a state with an attribute follows`);
+    }
+    if (schema.toggle.once !== undefined && typeof schema.toggle.once !== 'boolean') out.push('toggle once must be true or false');
     return out;
 }
 

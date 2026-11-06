@@ -18,7 +18,7 @@ export const RADIO = {
     primarySlot: 'label',
     // What Generate Design System builds the demo instance with: a label that reads.
     sampleProps: { label: 'Radio label' },
-    element: { tag: 'label', attrs: {}, disabledState: 'disabled', blockClickProps: [] },
+    element: { tag: 'label', attrs: { role: 'radio' }, disabledState: 'disabled', blockClickProps: [] },
     anatomy: [
         { id: 'box', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center' },
         { id: 'dot', kind: 'icon', managed: true, alwaysVisible: true, parent: 'box' },
@@ -58,6 +58,8 @@ export const RADIO = {
         checked: { prop: 'checked', tokens: { 'box-border': 'box-border-checked' } },
         disabled: { prop: 'disabled', tokens: { 'box-bg': 'box-bg-disabled', 'box-border': 'box-border-disabled', fg: 'fg-disabled' } },
     },
+    // A click selects the radio; it does not unselect it.
+    toggle: { prop: 'checked', once: true },
     previewStates: {},
     statePseudo: { checked: '[data-checked]', disabled: ':disabled' },
     parts: [],

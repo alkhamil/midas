@@ -74,6 +74,30 @@ export function stateAttributesOf(template) {
     });
 }
 
+/**
+ * A template's click toggle: the root attribute of the state prop a click turns on (and off), the attribute of the state it clears, and whether the click
+ * only turns it on. Null when the template declares none. Play reads it from data attributes on the root.
+ * @param {any} template
+ * @returns {{ attr: string, clearsAttr: string | undefined, once: boolean } | null}
+ */
+export function toggleOf(template) {
+    if (!template.toggle) return null;
+    const attrs = stateAttributesOf(template);
+    return { attr: attrs.find(a => a.prop === template.toggle.prop)?.attr, clearsAttr: attrs.find(a => a.prop === template.toggle.clears)?.attr, once: template.toggle.once === true };
+}
+
+/**
+ * The aria-checked of a toggle control for the resolved props: `mixed` while the state it clears holds, else true or false. Undefined for a template with no toggle.
+ * @param {any} template
+ * @param {Record<string, unknown>} props
+ * @returns {'true' | 'false' | 'mixed' | undefined}
+ */
+export function ariaCheckedOf(template, props) {
+    if (!template.toggle) return undefined;
+    if (template.toggle.clears && props[template.toggle.clears] === true) return 'mixed';
+    return props[template.toggle.prop] === true ? 'true' : 'false';
+}
+
 /** The node kind a display key targets: `root` is the instance's frame, otherwise the anatomy slot's or the part's kind. */
 export const targetKindOf = (template, key) => {
     if (key === 'root') return 'frame';

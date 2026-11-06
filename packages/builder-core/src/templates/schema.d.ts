@@ -162,6 +162,8 @@ export interface TemplateSchema {
     /** Literal props a generated master and its demo instance start with (Generate Design System), so a part such as a placeholder reads and shows. */
     /** The template is a form control: it holds a value the user sets (Checkbox, Switch, Radio). */
     isControl?: boolean;
+    /** A click in Play turns the state prop on (and off, unless `once`) and ends the state `clears` names; both are booleans a state with an attribute follows. */
+    toggle?: { prop: string, clears?: string, once?: boolean };
     sampleProps?: Record<string, string | number | boolean>;
     anatomy: AnatomySlot[];
     /** The managed icon slots; absent or empty for a template with none. */

@@ -20,7 +20,7 @@ export const CHECKBOX = {
     primarySlot: 'label',
     // What Generate Design System builds the demo instance with: a label that reads.
     sampleProps: { label: 'Checkbox label' },
-    element: { tag: 'label', attrs: {}, disabledState: 'disabled', blockClickProps: [] },
+    element: { tag: 'label', attrs: { role: 'checkbox' }, disabledState: 'disabled', blockClickProps: [] },
     anatomy: [
         { id: 'box', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center' },
         { id: 'check', kind: 'icon', managed: true, alwaysVisible: true, parent: 'box' },
@@ -65,6 +65,8 @@ export const CHECKBOX = {
         indeterminate: { prop: 'indeterminate', tokens: {} },
         disabled: { prop: 'disabled', tokens: { 'box-bg': 'box-bg-disabled', 'box-border': 'box-border-disabled', fg: 'fg-disabled' } },
     },
+    // A click turns Checked on and off and ends Indeterminate.
+    toggle: { prop: 'checked', clears: 'indeterminate' },
     previewStates: {},
     statePseudo: { checked: '[data-checked]', indeterminate: '[data-indeterminate]', disabled: ':disabled' },
     parts: [],
