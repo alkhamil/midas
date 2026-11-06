@@ -52,7 +52,7 @@ test('the Input in Play follows typing and a click on its clear; the canvas stay
     await setProp(page, 'allowClear', true);
     await setProp(page, 'showCount', true);
     await setProp(page, 'placeholder', 'Search');
-    const countId = await page.evaluate(id => window.midas.doc.children(id).find(c => c.behavior?.part === 'count')?.id, id);
+    const countId = await page.evaluate(id => window.midas.doc.children(id).find(c => c.behavior?.slot === 'count')?.id, id);
     const canvasCount = () => page.evaluate(countId => window.midas.doc.get(countId).text, countId);
     const canvasBefore = await canvasCount();
 
