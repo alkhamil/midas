@@ -1,7 +1,7 @@
 // The border and the focus ring are controlled by variables, not by a literal strokeWidth on a master: the root stroke
 // binds to the border token (the existing Semantic lineWidth, 1px, from the antd seed), and the focus ring derives from
-// the outline token (Semantic controlOutlineWidth, 2px, mirroring antd's controlOutlineWidth = lineWidth * 2 as its own
-// independent token). Both are single-step tokens: one role, the same value in every Size mode, no size suffix.
+// the outline token (Semantic controlOutlineWidth, 3px, as its own independent token). Both are single-step tokens:
+// one role, the same value in every Size mode, no size suffix.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -19,10 +19,10 @@ test('the border width reuses the antd seed lineWidth, 1px, on a stroke primitiv
     });
 });
 
-test('the outline width is its own Semantic token, 2px, mirroring antd controlOutlineWidth as an independent default', () => {
+test('the outline width is its own Semantic token, 3px, as an independent default', () => {
     assert.deepEqual(sizes.controlOutlineWidth, {
-        collection: 'Semantic', value: 2, primitive: 'stroke/2', derived: false,
-        source: 'components/theme/util/alias.ts: controlOutlineWidth (Midas keeps its own default of 2, independent of lineWidth)',
+        collection: 'Semantic', value: 3, primitive: 'stroke/3', derived: false,
+        source: 'components/theme/util/alias.ts: controlOutlineWidth (Midas keeps its own default of 3, independent of lineWidth)',
     });
 });
 
@@ -45,7 +45,7 @@ test('the snapshot holds both Semantic widths, aliasing the stroke primitives in
         return variableValue(store, item, c => c.modes[0].id);
     };
     assert.equal(valueOf('lineWidth'), 1);
-    assert.equal(valueOf('controlOutlineWidth'), 2);
+    assert.equal(valueOf('controlOutlineWidth'), 3);
 });
 
 test('the snapshot holds the Semantic items the templates read: 115', () => {

@@ -3897,13 +3897,13 @@
         "Light": {
           "alias": {
             "collection": "Primitives",
-            "name": "stroke/2"
+            "name": "stroke/3"
           }
         },
         "Dark": {
           "alias": {
             "collection": "Primitives",
-            "name": "stroke/2"
+            "name": "stroke/3"
           }
         }
       }
