@@ -475,7 +475,7 @@ function motionRules(template) {
         const name = `midas-${template.id}-${a.key}-in`;
         out.push(`@keyframes ${name} {\n  from {\n${Object.entries(a.from).map(([p, v]) => `    ${p}: ${v};`).join('\n')}\n  }\n}\n`);
         const roots = a.states.map(s => `.${template.id}[${stateAttributesOf(template).find(x => x.state === s)?.attr}]${notDis} .${template.id}-${a.key}`);
-        out.push(`${roots.join(', ')} {\n  animation: ${name} ${a.duration} ${a.timing}${a.delay ? ` ${a.delay}` : ''};\n}\n`);
+        out.push(`${roots.join(', ')} {\n  animation: ${name} ${a.duration} ${a.timing}${a.delay ? ` ${a.delay}` : ''} backwards;\n}\n`);
     }
     if (motion.slide) {
         const { key, prop, travel } = motion.slide;

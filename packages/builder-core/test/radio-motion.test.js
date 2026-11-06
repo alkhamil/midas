@@ -36,7 +36,7 @@ test('the export transitions the ring colour over 0.3s with the antd ease', () =
 test('the dot scales in from 0 over 0.3s with the antd ease', () => {
     const text = css();
     assert.match(text, /@keyframes midas-radio-dot-in \{\s*from \{\s*transform: scale\(0\);\s*\}\s*\}/s);
-    assert.match(text, /\.radio\[data-checked\]:not\(\[aria-disabled="true"\]\) \.radio-dot \{\s*animation: midas-radio-dot-in 0\.3s cubic-bezier\(0\.78, 0\.14, 0\.15, 0\.86\);\s*\}/s);
+    assert.match(text, /\.radio\[data-checked\]:not\(\[aria-disabled="true"\]\) \.radio-dot \{\s*animation: midas-radio-dot-in 0\.3s cubic-bezier\(0\.78, 0\.14, 0\.15, 0\.86\) backwards;\s*\}/s);
 });
 
 test('a disabled radio does not animate', () => {
@@ -60,5 +60,5 @@ test('Play applies the same motion stylesheet as the export', () => {
     const { styles, problems } = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [frame, model.frame, ...model.created, ...nodes] }], variables: model.variables }, 'top');
     assert.deepEqual(problems, []);
     assert.match(styles, /transition: border-color 0\.3s cubic-bezier\(0\.78, 0\.14, 0\.15, 0\.86\)/s);
-    assert.match(styles, /animation: midas-radio-dot-in 0\.3s cubic-bezier\(0\.78, 0\.14, 0\.15, 0\.86\);/s);
+    assert.match(styles, /animation: midas-radio-dot-in 0\.3s cubic-bezier\(0\.78, 0\.14, 0\.15, 0\.86\) backwards;/s);
 });
