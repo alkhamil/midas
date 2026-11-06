@@ -11,7 +11,7 @@ import { conditionHolds } from './display.js';
 /**
  * @typedef {{ op: 'remove', id: string }
  *   | { op: 'move', id: string, index: number }
- *   | { op: 'insert', slot: string, index: number, component?: string }
+ *   | { op: 'insert', slot: string, index: number, component?: string, parent?: string }
  *   | { op: 'swap', id: string, component: string | null }} AnatomyOp
  */
 
@@ -253,10 +253,19 @@ export function planAnatomy(template, values, children, flip = false) {
     const queue = [...wanted].sort((a, b) => slotIndex(a.slot) - slotIndex(b.slot));
     // A slot anatomically before the label goes first; one after it goes before the first layer the anatomy puts after it, else last.
     // Slots are placed in anatomy order.
-    const working = flip ? [...kept].reverse() : [...kept];
-    let missing = queue.filter(w => !working.some(c => c.slot === w.slot)).length;
+    // A slot inside a container is placed by the container: it is the only layer there, so it has no order of its own and no index among the root's layers.
+    const parentOf = slot => template.anatomy.find(s => s.id === slot)?.parent;
+    const working = (flip ? [...kept].reverse() : [...kept]).filter(c => c.slot === null || parentOf(c.slot) === undefined);
+    let missing = queue.filter(w => parentOf(w.slot) === undefined && !working.some(c => c.slot === w.slot)).length;
     let front = 0;
     for (const w of queue) {
+        const parent = parentOf(w.slot);
+        if (parent !== undefined) {
+            const held = kept.find(c => c.slot === w.slot);
+            if (!held) ops.push(w.component ? { op: 'insert', slot: w.slot, index: 0, parent, component: w.component } : { op: 'insert', slot: w.slot, index: 0, parent });
+            else if ((held.component ?? null) !== w.component) ops.push({ op: 'swap', id: held.id, component: w.component });
+            continue;
+        }
         const at = working.findIndex(c => c.slot === w.slot);
         const finalLength = working.length + missing;
         const index = slotIndex(w.slot) < textIndex ? front++ : indexAmongLaterSlots(template, w.slot, working.filter((c, i) => i !== at));

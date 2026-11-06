@@ -9667,7 +9667,7 @@ function anatomyPlanOf(inst) {
             masterTree,
             flip: !!inst.layoutFlip,
             stored: inst.behavior?.props,
-            children: doc.children(inst.id).map(c => ({ id: c.id, slot: c.behavior?.slot ?? null, name: c.name, component: iconOfSlot(c) })),
+            children: managedLayersOf(inst).map(c => ({ id: c.id, slot: c.behavior?.slot ?? null, name: c.name, component: iconOfSlot(c) })),
         });
     });
 }
@@ -9759,7 +9759,7 @@ function applyIconSlotBindings(inst) {
     // Every layer that follows the icon tokens, through one function: a managed slot (its size, and the colour of each layer of the icon it
     // holds) and a part that holds the tokens itself (the spinner: its size and its own stroke colour).
     for (const { key, kind } of iconBoundKeysOf(template)) {
-        const holder = doc.children(inst.id).find(c => (kind === 'slot' ? c.behavior?.slot : c.behavior?.part) === key);
+        const holder = managedLayersOf(inst).find(c => (kind === 'slot' ? c.behavior?.slot : c.behavior?.part) === key);
         if (!holder) continue;
         const targets = iconSlotTargets(template, key);
         const names = { colour: targets.colour.name, disabledColour: targets.disabledColour.name, size: targets.size.name };
@@ -9808,6 +9808,15 @@ function managedTemplateOf(inst) {
     const binding = componentById(inst.sourceId)?.behavior;
     return binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) ?? null : null;
 }
+/** The instance's children and the children of its containers (a group frame of the anatomy): where its managed layers live. */
+function managedLayersOf(inst) {
+    const kids = doc.children(inst.id);
+    return [...kids, ...kids.filter(c => c.behavior?.group !== undefined).flatMap(c => doc.children(c.id))];
+}
+/** The layer a managed slot goes under: the instance's copy of the container it names, else the instance itself. */
+function containerOf(inst, group) {
+    return group === undefined ? inst : doc.children(inst.id).find(c => c.behavior?.group === group) ?? inst;
+}
 /** The instance's managed text and control layers, by slot id. */
 function managedTextLayersOf(inst, template) {
     return doc.children(inst.id).filter(c => c.behavior?.slot !== undefined && template.anatomy.some(s => s.id === c.behavior.slot && s.kind !== 'icon'));
@@ -9831,14 +9840,16 @@ function syncInstance(inst) {
             else if (managedTextSlotOf(inst, op.slot)) {
                 // A managed text layer holds the text its prop kept; the layer is new, the content is not (see managedTextLayer).
                 const template = managedTemplateOf(inst);
-                const n = doc.add(managedTextLayer(template, op.slot, resolveProps(template, inst.behavior?.props ?? {}), { id: uid(), parentId: inst.id }));
+                const holder = containerOf(inst, op.parent);
+                const n = doc.add(managedTextLayer(template, op.slot, resolveProps(template, inst.behavior?.props ?? {}), { id: uid(), parentId: holder.id }));
                 remeasureText(n);
-                placeAmongChildren(inst, n, op.index);
+                placeAmongChildren(holder, n, op.index);
             }
             else {
-                const n = doc.add(node('frame', { parentId: inst.id, name: op.slot, w: 16, h: 16, gap: 0, clip: false, behavior: managedBehavior(op.slot) }));
+                const holder = containerOf(inst, op.parent);
+                const n = doc.add(node('frame', { parentId: holder.id, name: op.slot, w: 16, h: 16, gap: 0, clip: false, behavior: managedBehavior(op.slot) }));
                 setSlotIcon(n, op.component ?? null);
-                placeAmongChildren(inst, n, op.index);
+                placeAmongChildren(holder, n, op.index);
             }
         }
         if (ops.length) {
@@ -9989,7 +10000,7 @@ function applyLiteralFields(inst) {
             remeasureText(n);
     }
     // A managed slot that shows while its value is set (the clear icon) is shown or hidden as the value changes.
-    for (const layer of doc.children(inst.id)) {
+    for (const layer of managedLayersOf(inst)) {
         if (layer.behavior?.slot === undefined) continue;
         const shown = slotShown(template, layer.behavior.slot, props);
         if (layer.visible !== shown) {

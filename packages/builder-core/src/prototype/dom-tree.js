@@ -319,7 +319,7 @@ function renderTemplate(n, template, parent, scope) {
         }
         else if (slot.managed) {
             // The slot's own layer draws the icon its nested instance holds.
-            const layer = scope.childrenOf(n.id).find(c => c.behavior?.slot === slot.id);
+            const layer = below(n.id).find(c => c.behavior?.slot === slot.id);
             for (const def of slotDefsOf(template, slot.id)) {
                 if (!iconDefOn(def, props)) continue;
                 if (def.placement && !placementsOfDef(template, def, slot.id).includes(String(props[def.placement]))) continue;

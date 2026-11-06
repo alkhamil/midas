@@ -280,21 +280,26 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
         if (!slotWanted(template, slot.id, resolved) || subtree.some(n => n.behavior?.slot === slot.id))
             continue;
         const stub = { id: `slot-${slot.id}`, name: slot.id };
+        // A slot inside a container of the anatomy hangs under the instance's copy of that container.
+        const holder = slot.parent === undefined ? root : out.find(n => n.behavior?.group === slot.parent) ?? root;
         if (slot.kind !== 'icon') {
-            stubs.push({ anatomy: template.anatomy.indexOf(slot), node: managedTextLayer(template, slot.id, resolved, { id: id(stub), parentId: root.id }) });
+            stubs.push({ anatomy: template.anatomy.indexOf(slot), node: managedTextLayer(template, slot.id, resolved, { id: id(stub), parentId: holder.id }) });
             continue;
         }
-        stubs.push({ anatomy: template.anatomy.indexOf(slot), node: { ...LAYER, id: id(stub), name: slot.id, type: 'frame', parentId: root.id, sourceId: undefined, isInstance: false, component: false, overrides: {}, visible: slotShown(template, slot.id, resolved), w: 16, h: 16, layout: 'none', fills: [], layoutSizingH: sizedSlot(template, slot.id), layoutSizingV: sizedSlot(template, slot.id), behavior: { version: BEHAVIOR_DATA_VERSION, slot: slot.id } } });
+        stubs.push({ anatomy: template.anatomy.indexOf(slot), node: { ...LAYER, id: id(stub), name: slot.id, type: 'frame', parentId: holder.id, sourceId: undefined, isInstance: false, component: false, overrides: {}, visible: slotShown(template, slot.id, resolved), w: 16, h: 16, layout: 'none', fills: [], layoutSizingH: sizedSlot(template, slot.id), layoutSizingV: sizedSlot(template, slot.id), behavior: { version: BEHAVIOR_DATA_VERSION, slot: slot.id } } });
     }
     // Each slot goes where the anatomy puts it: before the label (and so before the spinner) when it precedes the label; after it, before
     // the first layer the anatomy puts later (the clear icon before the suffix text), else last. Slots are placed in anatomy order.
     const labelIndex = template.anatomy.findIndex(s => s.id === primarySlotOf(template));
-    const before = stubs.filter(s => s.anatomy < labelIndex).sort((a, b) => a.anatomy - b.anatomy).map(s => s.node);
+    // A slot in a container has no place among the root's layers: it follows them, under its container.
+    const inContainer = stubs.filter(s => template.anatomy[s.anatomy].parent !== undefined);
+    const rooted = stubs.filter(s => !inContainer.includes(s));
+    const before = rooted.filter(s => s.anatomy < labelIndex).sort((a, b) => a.anatomy - b.anatomy).map(s => s.node);
     const layers = [...before, ...out.slice(1)];
-    for (const stub of stubs.filter(s => s.anatomy >= labelIndex).sort((a, b) => a.anatomy - b.anatomy)) {
+    for (const stub of rooted.filter(s => s.anatomy >= labelIndex).sort((a, b) => a.anatomy - b.anatomy)) {
         layers.splice(indexAmongLaterSlots(template, stub.node.behavior.slot, layers), 0, stub.node);
     }
-    return [root, ...layers];
+    return [root, ...layers, ...inContainer.map(s => s.node)];
 }
 
 /**
