@@ -80,5 +80,16 @@
   "clear-icon-md": { "base": "Semantic/clearIconSizeMD" },
   "clear-icon-lg": { "base": "Semantic/clearIconSizeLG" },
   "clear-icon-xl": { "base": "Semantic/clearIconSizeXL" },
-  "clear-hover": { "base": "Semantic/colorTextSecondary" }
+  "clear-hover": { "base": "Semantic/colorTextSecondary" },
+  "box-size": { "base": "Semantic/controlInteractiveSize" },
+  "indicator-size": { "base": "Semantic/controlIndicatorSize" },
+  "switch-height": { "base": "Semantic/switchTrackHeight" },
+  "switch-height-sm": { "base": "Semantic/switchTrackHeightSM" },
+  "switch-min-width": { "base": "Semantic/switchTrackMinWidth" },
+  "switch-min-width-sm": { "base": "Semantic/switchTrackMinWidthSM" },
+  "switch-handle": { "base": "Semantic/switchHandleSize" },
+  "switch-handle-sm": { "base": "Semantic/switchHandleSizeSM" },
+  "switch-padding": { "base": "Semantic/switchPadding" },
+  "track-off": { "base": "Semantic/colorTextDisabled" },
+  "track-off-hover": { "base": "Semantic/colorTextTertiary" }
 }

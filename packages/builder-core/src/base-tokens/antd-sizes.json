@@ -57,5 +57,14 @@
   "clearIconSizeLG": { "collection": "Semantic", "from": "fontSizeLG", "offset": -2, "value": 14, "primitive": "size/14", "derived": true, "source": "the clear icon is the icon size (fontSizeLG 16) minus 2" },
   "clearIconSizeXL": { "collection": "Semantic", "from": "fontSizeXL", "offset": -2, "value": 18, "primitive": "size/18", "derived": true, "source": "the clear icon is the icon size (fontSizeXL 20) minus 2" },
   "lineWidth": { "collection": "Semantic", "value": 1, "primitive": "stroke/1", "derived": false, "source": "components/theme/themes/seed.ts: lineWidth" },
-  "controlOutlineWidth": { "collection": "Semantic", "value": 2, "primitive": "stroke/2", "derived": false, "source": "components/theme/util/alias.ts: controlOutlineWidth (Midas keeps its own default of 2, independent of lineWidth)" }
+  "controlOutlineWidth": { "collection": "Semantic", "value": 2, "primitive": "stroke/2", "derived": false, "source": "components/theme/util/alias.ts: controlOutlineWidth (Midas keeps its own default of 2, independent of lineWidth)" },
+  "controlInteractiveSize": { "collection": "Semantic", "value": 16, "primitive": "size/16", "derived": false, "source": "components/checkbox/style/index.ts and components/radio/style/index.ts: controlInteractiveSize" },
+  "controlIndicatorSize": { "collection": "Semantic", "value": 8, "primitive": "size/8", "derived": false, "source": "the checkbox dash and the radio dot: controlInteractiveSize - 8 (components/radio/style/index.ts: dotSize)" },
+  "switchTrackHeight": { "collection": "Semantic", "value": 22, "primitive": "size/22", "derived": false, "source": "components/switch/style/index.ts: trackHeight" },
+  "switchTrackHeightSM": { "collection": "Semantic", "value": 16, "primitive": "size/16", "derived": false, "source": "components/switch/style/index.ts: trackHeightSM" },
+  "switchTrackMinWidth": { "collection": "Semantic", "value": 44, "primitive": "size/44", "derived": false, "source": "components/switch/style/index.ts: trackMinWidth" },
+  "switchTrackMinWidthSM": { "collection": "Semantic", "value": 28, "primitive": "size/28", "derived": false, "source": "components/switch/style/index.ts: trackMinWidthSM" },
+  "switchHandleSize": { "collection": "Semantic", "value": 18, "primitive": "size/18", "derived": false, "source": "components/switch/style/index.ts: handleSize = trackHeight - 4" },
+  "switchHandleSizeSM": { "collection": "Semantic", "value": 12, "primitive": "size/12", "derived": false, "source": "components/switch/style/index.ts: handleSizeSM = trackHeightSM - 4" },
+  "switchPadding": { "collection": "Semantic", "value": 2, "primitive": "padding/2", "derived": false, "source": "components/switch/style/index.ts: trackPadding" }
 }

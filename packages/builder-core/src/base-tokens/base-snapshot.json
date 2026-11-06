@@ -3909,6 +3909,187 @@
       }
     },
     {
+      "collection": "Semantic",
+      "name": "controlInteractiveSize",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/16"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/16"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "controlIndicatorSize",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/8"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/8"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "size/22",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 22
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "switchTrackHeight",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/22"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/22"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "switchTrackHeightSM",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/16"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/16"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "switchTrackMinWidth",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/44"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/44"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "switchTrackMinWidthSM",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/28"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/28"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "switchHandleSize",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/18"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/18"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "switchHandleSizeSM",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/12"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/12"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "switchPadding",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "padding/2"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "padding/2"
+          }
+        }
+      }
+    },
+    {
       "collection": "Primitives",
       "name": "shadow/none",
       "type": "effect",
@@ -4308,6 +4489,16 @@
       "Semantic/clearIconSizeXL",
       "Semantic/lineWidth",
       "Semantic/controlOutlineWidth",
+      "Semantic/controlInteractiveSize",
+      "Semantic/controlIndicatorSize",
+      "Primitives/size/22",
+      "Semantic/switchTrackHeight",
+      "Semantic/switchTrackHeightSM",
+      "Semantic/switchTrackMinWidth",
+      "Semantic/switchTrackMinWidthSM",
+      "Semantic/switchHandleSize",
+      "Semantic/switchHandleSizeSM",
+      "Semantic/switchPadding",
       "Primitives/shadow/none",
       "Primitives/shadow/secondary",
       "Semantic/boxShadowNone",
@@ -4393,6 +4584,10 @@
       {
         "name": "Semantic/clearIconSizeXL",
         "reason": "extrapolated antd size (the clear icon is the icon size (fontSizeXL 20) minus 2)"
+      },
+      {
+        "name": "Primitives/size/22",
+        "reason": "antd size step 22 (no JSON match; components/switch/style/index.ts: trackHeight)"
       }
     ],
     "needsValue": [],

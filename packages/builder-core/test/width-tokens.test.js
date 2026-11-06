@@ -48,10 +48,10 @@ test('the snapshot holds both Semantic widths, aliasing the stroke primitives in
     assert.equal(valueOf('controlOutlineWidth'), 2);
 });
 
-test('the snapshot holds the Semantic items the templates read: 106', () => {
+test('the snapshot holds the Semantic items the templates read: 115', () => {
     const plan = planFromSnapshot(BASE_SNAPSHOT);
     const per = {};
     for (const i of plan.items) per[i.collection] = (per[i.collection] || 0) + 1;
-    assert.deepEqual(per, { Primitives: 205, Typography: 31, Semantic: 106 });
-    assert.equal(plan.items.length, 342);
+    assert.deepEqual(per, { Primitives: 206, Typography: 31, Semantic: 115 });
+    assert.equal(plan.items.length, 352);
 });
