@@ -9819,9 +9819,9 @@ function managedLayersOf(inst) {
 function containerOf(inst, group) {
     return group === undefined ? inst : doc.children(inst.id).find(c => c.behavior?.group === group) ?? inst;
 }
-/** The instance's managed text and control layers, by slot id. */
+/** The instance's managed text, control and glyph layers, by slot id (a glyph lives inside its box container, not on the root). */
 function managedTextLayersOf(inst, template) {
-    return doc.children(inst.id).filter(c => c.behavior?.slot !== undefined && template.anatomy.some(s => s.id === c.behavior.slot && s.kind !== 'icon'));
+    return doc.descendants(inst.id).filter(c => c.behavior?.slot !== undefined && template.anatomy.some(s => s.id === c.behavior.slot && s.kind !== 'icon'));
 }
 /** Whether a managed slot of an instance is a text or control layer (not an icon frame). */
 function managedTextSlotOf(inst, slot) {
