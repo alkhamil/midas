@@ -17,7 +17,7 @@ export const FORM_ITEM = {
     anatomy: [
         { id: 'labelBox', kind: 'frame', layout: 'horizontal' },
         // The required mark sits before the label, shown while `required` is on.
-        { id: 'requiredMark', kind: 'text', optional: true, parent: 'labelBox', typography: 'label', shownWhen: { prop: 'required', is: true } },
+        { id: 'requiredMark', kind: 'text', optional: true, managed: true, parent: 'labelBox', typography: 'label', shownWhen: { prop: 'required', is: true } },
         { id: 'label', kind: 'text', parent: 'labelBox', typography: 'label' },
     ],
     icons: [],

@@ -24,7 +24,7 @@ test('FormItem is a registered template, valid on its own: a label, no icon slot
     assert.ok(formItem, 'registered');
     assert.deepEqual(validateTemplateSchema(formItem, { templateIds: new Set(TEMPLATES.keys()) }), []);
     assert.deepEqual(formItem.slots.map(s => [s.id, s.accepts, s.onlyAccepts, s.layout]), [['control', ['input'], true, 'vertical']]);
-    assert.deepEqual(layerSpecsOf(formItem).map(s => [s.key, s.role]), [['root', 'root'], ['labelBox', 'group'], ['requiredMark', 'text'], ['label', 'text'], ['control', 'content']]);
+    assert.deepEqual(layerSpecsOf(formItem).map(s => [s.key, s.role]), [['root', 'root'], ['labelBox', 'group'], ['requiredMark', 'slot'], ['label', 'text'], ['control', 'content']]);
 });
 
 test('the generator builds the master: a vertical root, the label bound to its tokens, and the control slot with its property', () => {
@@ -32,7 +32,7 @@ test('the generator builds the master: a vertical root, the label bound to its t
     const out = build(f);
     assert.equal(f.layout, 'vertical');
     assert.deepEqual(out.problems, []);
-    assert.deepEqual(out.created.map(n => n.name), ['labelBox', 'requiredMark', 'label', 'Control']);
+    assert.deepEqual(out.created.map(n => n.name), ['labelBox', 'label', 'Control']);
     const label = out.created.find(n => n.name === 'label');
     assert.ok(label.vars.typography, 'the label follows labelTypography');
     const control = out.created.find(n => n.propBind?.slot === 'control');

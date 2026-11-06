@@ -10,6 +10,7 @@ import { applyTemplateToFrame, instanceOf, layerSpecsOf } from '../src/behavior-
 import { generateComponent } from '../src/behavior-engine/codegen.js';
 import { instancePanel } from '../src/behavior-engine/panel.js';
 import { resolveProps } from '../src/behavior-engine/instance-props.js';
+import { planManagedTextBindings, applyBindTokens } from '../src/behavior-engine/bind-tokens.js';
 import { toDomTree } from '../src/prototype/dom-tree.js';
 import { diagnoseDocument } from '../src/behavior-engine/diagnostics.js';
 import { formItemModel } from '../../../scripts/form-item-model.mjs';
@@ -40,12 +41,12 @@ test('the generator builds a vertical master: the label box (mark and label in i
     assert.equal(f.layout, 'vertical');
     assert.deepEqual(out.problems, []);
     const by = Object.fromEntries(out.created.map(n => [n.name, n]));
-    assert.deepEqual(out.created.map(n => n.name), ['labelBox', 'requiredMark', 'label', 'Control']);
+    assert.deepEqual(out.created.map(n => n.name), ['labelBox', 'label', 'Control']);
     assert.equal(by.label.parentId, by.labelBox.id);
-    assert.equal(by.requiredMark.visible, false, 'no mark while required is off');
+    assert.equal(('requiredMark' in by), false, 'no mark layer while required is off: it is added, not hidden');
     assert.equal(by.Control.layoutSizingH, 'fill');
     assert.ok(by.label.vars.typography, 'the label follows its typography');
-    assert.ok(by.requiredMark.vars['fills.0'], 'the mark has its own colour variable');
+    assert.ok(boundMark().vars['fills.0'], 'the mark has its own colour variable');
 });
 
 test('Behavior lists required, layout and labelGap, and labelWidth only in Horizontal', () => {
@@ -62,6 +63,14 @@ function instance(props) {
     const created = build(f).created;
     const [root, ...copies] = instanceOf(fi, f, created, props, { id: src => `i-${src}`, varModes: { [model.ids.size]: 'md' } });
     return { f, created, root, copies };
+}
+
+function boundMark() {
+    const mark = instance({ required: true }).copies.find(n => n.name === 'requiredMark');
+    const layers = [{ key: 'requiredMark', node: mark }];
+    const props = resolveProps(fi, { required: true });
+    applyBindTokens(layers, planManagedTextBindings({ template: fi, binding: model.binding, props, layers, variables }).ops);
+    return mark;
 }
 
 test('the canvas: an instance has the layout and the gap the props say, the label box its width, the mark shown while required', () => {
