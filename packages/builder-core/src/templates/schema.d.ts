@@ -8,7 +8,9 @@ export interface AnatomySlot {
     kind: 'text' | 'control' | 'icon';
     /** Optional slots may be absent on an instance. */
     optional?: boolean;
-    /** Managed slots are inserted and removed by Behavior from the instance's props. */
+    /** The condition under which a text or control slot is shown (a managed one: wanted on the instance). */
+    shownWhen?: Condition;
+    /** Managed slots are inserted and removed by Behavior from the instance's props. A managed text or control slot is optional, needs a `shownWhen`, and is a layer of an instance only. */
     managed?: boolean;
     /** A managed icon slot that is on every instance: its icon def has no `show` switch and the slot is not optional. */
     alwaysVisible?: boolean;

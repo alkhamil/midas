@@ -95,7 +95,7 @@ function shownWhenProblems(schema, props) {
     const out = [];
     for (const slot of Array.isArray(schema.anatomy) ? schema.anatomy : []) {
         if (!isPlainObject(slot) || slot.shownWhen === undefined) continue;
-        if (slot.kind !== 'text') out.push(`anatomy slot "${slot.id}" has shownWhen but is not a text slot`);
+        if (slot.kind !== 'text' && slot.kind !== 'control') out.push(`anatomy slot "${slot.id}" has shownWhen but is not a text slot`);
         out.push(...conditionProblems(slot.shownWhen, props, `anatomy slot "${slot.id}" shownWhen`));
     }
     return out;
@@ -144,7 +144,9 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
             if (!holder || holder.kind !== 'frame') out.push(`anatomy slot "${slot.id}" has the parent "${slot.parent}", which is not a frame slot`);
             else if (slot.kind === 'frame') out.push(`frame slot "${slot.id}" cannot sit inside another frame slot`);
         }
-        if (slot.managed && slot.kind !== 'icon') out.push(`anatomy slot "${slot.id}" is managed but not an icon`);
+        if (slot.managed && !['icon', 'text', 'control'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" is managed but not an icon, text or control slot`);
+        // A managed text or control layer is made and removed from the props: the schema says when its instance layer is wanted.
+        if (slot.managed && slot.kind !== 'icon' && slot.shownWhen === undefined) out.push(`managed ${slot.kind} slot "${slot.id}" needs a shownWhen`);
         // An always visible icon slot is on every instance: it has no switch, so it is the one managed slot that is not optional.
         if (slot.alwaysVisible !== undefined && typeof slot.alwaysVisible !== 'boolean') out.push(`anatomy slot "${slot.id}" alwaysVisible must be true or false`);
         if (slot.alwaysVisible === true) {
@@ -153,7 +155,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
         }
         else if (slot.managed && !slot.optional) out.push(`managed anatomy slot "${slot.id}" must be optional`);
     }
-    const text = anatomy.filter(s => isPlainObject(s) && (s.kind === 'text' || s.kind === 'control') && !s.optional);
+    const text = anatomy.filter(s => isPlainObject(s) && (s.kind === 'text' || s.kind === 'control') && (!s.optional || s.id === schema.primarySlot));
     const shown = anatomy.filter(s => isPlainObject(s) && s.alwaysVisible === true && s.kind === 'icon' && s.managed);
     if (text.length === 0 && shown.length === 0 && !(Array.isArray(schema.slots) && schema.slots.length > 0)) out.push('anatomy needs a required text or control slot, an always visible icon slot, or a content slot');
 
@@ -305,7 +307,7 @@ function iconProblems(schema, allTokens) {
     const icons = schema.icons ?? [];
     if (!Array.isArray(icons)) return ['icons must be a list'];
     const props = isPlainObject(schema.props) ? schema.props : {};
-    const managed = (Array.isArray(schema.anatomy) ? schema.anatomy : []).filter(s => isPlainObject(s) && s.managed).map(s => s.id);
+    const managed = (Array.isArray(schema.anatomy) ? schema.anatomy : []).filter(s => isPlainObject(s) && s.managed && s.kind === 'icon').map(s => s.id);
     const out = [];
     // A managed slot is drawn from its definition: one that no definition names would never show.
     const named = new Set(icons.flatMap(icon => isPlainObject(icon) ? [icon.slot, ...(isPlainObject(props[icon.placement]?.slots) ? Object.values(props[icon.placement].slots).flat() : [])] : []));
@@ -448,7 +450,7 @@ function partTokenProblems(schema, allTokens) {
 function primarySlotProblems(schema) {
     const declared = schema.primarySlot;
     const anatomy = Array.isArray(schema.anatomy) ? schema.anatomy.filter(isPlainObject) : [];
-    const hasText = anatomy.some(s => (s.kind === 'text' || s.kind === 'control') && !s.optional);
+    const hasText = anatomy.some(s => (s.kind === 'text' || s.kind === 'control') && (!s.optional || s.managed));
     if (Array.isArray(declared)) return declared.length > 1 ? ['primarySlot is declared more than once'] : ['primarySlot must name one anatomy slot'];
     if (declared === undefined) return hasText ? ['primarySlot is missing: name the text part a fresh instance shows'] : [];
     if (typeof declared !== 'string') return ['primarySlot must name one anatomy slot'];
