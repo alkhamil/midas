@@ -59,7 +59,9 @@ Button and FormItem keep `label`; the Input's text part is `value` (anatomy id, 
 
 Verified by unit tests (builder-core): the validator (`managed-text-schema`), the planner (`managed-text-plan`), `instanceOf` (`managed-text-instance`), the binder (`managed-text-bindings`), and the Input end to end (`input-managed-text`: one text node on a fresh Input, layers on demand, text kept across a toggle, a complete master, Play and the export).
 
-**Not verified without a browser:** the studio wiring (layer creation and removal on a prop change, instance-level binding, the literal-field target) is in `midas.js`, which the studio tests do not import; the canvas drawing of a freshly made text layer (typography, measuring); canvas = Play = export parity; and the browser suites (strict parity, export parity, affix, input-live, parts), which assert the old node structure in places and need editing before they can pass.
+The studio wiring is covered indirectly (`apps/studio/test/managedTextWiring.test.js`): `midas.js` needs a browser to load, so the test reads its source (what `syncInstance` calls, in which order; the literal-field target key) and replays the same builder-core sequence over a plain node list (a layer made on a toggle, bound, written from its prop, removed and made again).
+
+**Not verified without a browser:** `midas.js` itself running (the `doc` calls, `remeasureText`, the undo step, the toast on a missing icon variable); the canvas drawing of a freshly made text layer (typography, measuring); canvas = Play = export parity; and the browser suites (strict parity, export parity, affix, input-live, parts), which assert the old node structure in places and need editing before they can pass.
 
 ## 7. History
 
