@@ -10,7 +10,7 @@ export const SWITCH = {
     id: 'switch',
     name: 'Switch',
     isControl: true,
-    element: { tag: 'button', attrs: { type: 'button', role: 'switch' }, disabledState: 'disabled', blockClickProps: [] },
+    element: { tag: 'button', attrs: { type: 'button', role: 'switch', tabindex: '0' }, disabledState: 'disabled', blockClickProps: [] },
     anatomy: [
         { id: 'handle', kind: 'frame', layout: 'horizontal' },
     ],
@@ -25,11 +25,11 @@ export const SWITCH = {
         disabled: { source: 'literal', type: 'boolean', default: false },
     },
     tokens: {
-        fromSize: ['trackHeight', 'trackWidth', 'trackPadding', 'handleSize', 'radiusFull', 'track-bg', 'track-bg-checked', 'track-bg-disabled', 'handle-bg'],
+        fromSize: ['trackHeight', 'trackWidth', 'trackPadding', 'handleSize', 'radiusFull', 'track-bg', 'track-bg-checked', 'track-bg-disabled', 'track-bg-hover', 'track-bg-focus', 'handle-bg'],
     },
     tokenKinds: {
         trackHeight: 'length', trackWidth: 'length', trackPadding: 'length', handleSize: 'length', radiusFull: 'length',
-        'track-bg': 'color', 'track-bg-checked': 'color', 'track-bg-disabled': 'color', 'handle-bg': 'color',
+        'track-bg': 'color', 'track-bg-checked': 'color', 'track-bg-disabled': 'color', 'track-bg-hover': 'color', 'track-bg-focus': 'color', 'handle-bg': 'color',
     },
     tokenRoles: {
         trackHeight: { small: 'switch-height-sm', default: 'switch-height' },
@@ -37,7 +37,7 @@ export const SWITCH = {
         trackPadding: 'switch-padding',
         handleSize: { small: 'switch-handle-sm', default: 'switch-handle' },
         radiusFull: 'radius-full',
-        'track-bg': 'track-off', 'track-bg-checked': 'brand', 'track-bg-disabled': 'border', 'handle-bg': 'solid-text',
+        'track-bg': 'track-off', 'track-bg-checked': 'brand', 'track-bg-disabled': 'border', 'track-bg-hover': 'track-off-hover', 'track-bg-focus': 'track-off-hover', 'handle-bg': 'solid-text',
     },
     // Checked swaps the track colour; Disabled is declared last, so it wins over Checked.
     persistentStates: {
@@ -46,8 +46,12 @@ export const SWITCH = {
     },
     // A click turns Checked on and off.
     toggle: { prop: 'checked' },
-    previewStates: {},
-    statePseudo: { checked: '[data-checked]', disabled: ':disabled' },
+    // Hover and focus darken the off track while nothing replaces it (the checked look wins). The focus ring itself is not drawn.
+    previewStates: {
+        hover: { 'track-bg': 'track-bg-hover' },
+        focus: { 'track-bg': 'track-bg-focus' },
+    },
+    statePseudo: { hover: ':hover', focus: ':focus-visible', checked: '[data-checked]', disabled: ':disabled' },
     parts: [],
     playOnly: [],
     display: {

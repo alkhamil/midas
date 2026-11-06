@@ -207,9 +207,6 @@ export function displayProblems(template) {
     return out;
 }
 
-/** The base tokens a preview-only state may change. Size, padding and radius are not colours, so a preview state never changes them. */
-export const COLOUR_TOKENS = ['bg', 'fg', 'border', 'outline-color'];
-
 /**
  * The node variable keys (`vars`) a mapped property is bound through in the editor. One property can take more than one key
  * (an icon's size binds both width and height). `paddingX` and `paddingY` use the editor's paired padding keys.

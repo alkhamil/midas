@@ -1,4 +1,4 @@
-import { COLOUR_TOKENS, NODE_FIELDS, STATE_ATTRIBUTE, displayProblems, stateAttributesOf, targetKindOf } from './display.js';
+import { NODE_FIELDS, STATE_ATTRIBUTE, displayProblems, stateAttributesOf, targetKindOf } from './display.js';
 
 const LITERAL_TYPES = ['boolean', 'string', 'number', 'enum', 'iconComponent'];
 
@@ -262,7 +262,7 @@ function stateProblems(schema, allTokens, props) {
         if (state in (persistent || {})) out.push(`state "${state}" is declared as both persistent and preview-only`);
         if (!isPlainObject(overrides)) { out.push(`preview state "${state}" must be an object`); continue; }
         for (const [base, stateToken] of Object.entries(overrides)) {
-            if (!COLOUR_TOKENS.includes(base)) out.push(`preview state "${state}" changes "${base}", but preview states change colours only (${COLOUR_TOKENS.join(', ')})`);
+            if (schema.tokenKinds?.[base] !== 'color') out.push(`preview state "${state}" changes "${base}", but preview states change colours only (a token of kind color)`);
             if (!allTokens.includes(/** @type {string} */ (stateToken))) out.push(`preview state "${state}" maps "${base}" to "${stateToken}", which is not a token`);
         }
     }

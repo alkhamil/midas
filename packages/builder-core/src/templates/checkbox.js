@@ -20,7 +20,7 @@ export const CHECKBOX = {
     primarySlot: 'label',
     // What Generate Design System builds the demo instance with: a label that reads.
     sampleProps: { label: 'Checkbox label' },
-    element: { tag: 'label', attrs: { role: 'checkbox' }, disabledState: 'disabled', blockClickProps: [] },
+    element: { tag: 'label', attrs: { role: 'checkbox', tabindex: '0' }, disabledState: 'disabled', blockClickProps: [] },
     anatomy: [
         { id: 'box', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center' },
         { id: 'check', kind: 'icon', managed: true, alwaysVisible: true, parent: 'box' },
@@ -46,15 +46,15 @@ export const CHECKBOX = {
         disabled: { source: 'literal', type: 'boolean', default: false },
     },
     tokens: {
-        fromSize: ['box-bg', 'box-border', 'box-bg-checked', 'box-border-checked', 'box-bg-disabled', 'box-border-disabled', 'boxSize', 'boxRadius', 'borderWidth', 'checkSize', 'indicatorSize', 'gap', 'labelTypography', 'check-fg', 'dash-fg', 'glyph-fg-disabled', 'fg', 'fg-disabled'],
+        fromSize: ['box-bg', 'box-border', 'box-bg-checked', 'box-border-checked', 'box-border-hover', 'box-border-focus', 'box-bg-disabled', 'box-border-disabled', 'boxSize', 'boxRadius', 'borderWidth', 'checkSize', 'indicatorSize', 'gap', 'labelTypography', 'check-fg', 'dash-fg', 'glyph-fg-disabled', 'fg', 'fg-disabled'],
     },
     tokenKinds: {
-        'box-bg': 'color', 'box-border': 'color', 'box-bg-checked': 'color', 'box-border-checked': 'color', 'box-bg-disabled': 'color', 'box-border-disabled': 'color',
+        'box-bg': 'color', 'box-border': 'color', 'box-bg-checked': 'color', 'box-border-checked': 'color', 'box-border-hover': 'color', 'box-border-focus': 'color', 'box-bg-disabled': 'color', 'box-border-disabled': 'color',
         boxSize: 'length', boxRadius: 'length', borderWidth: 'length', checkSize: 'length', indicatorSize: 'length', gap: 'length', labelTypography: 'typography',
         'check-fg': 'color', 'dash-fg': 'color', 'glyph-fg-disabled': 'color', fg: 'color', 'fg-disabled': 'color',
     },
     tokenRoles: {
-        'box-bg': 'bg', 'box-border': 'border', 'box-bg-checked': 'brand', 'box-border-checked': 'brand', 'box-bg-disabled': 'bg-disabled', 'box-border-disabled': 'border',
+        'box-bg': 'bg', 'box-border': 'border', 'box-bg-checked': 'brand', 'box-border-checked': 'brand', 'box-border-hover': 'brand', 'box-border-focus': 'brand', 'box-bg-disabled': 'bg-disabled', 'box-border-disabled': 'border',
         boxSize: 'box-size', boxRadius: 'radius-sm', borderWidth: 'border-width', checkSize: 'icon-sm', indicatorSize: 'indicator-size', gap: 'gap', labelTypography: { xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
         'check-fg': 'bg', 'dash-fg': 'brand', 'glyph-fg-disabled': 'fg-disabled', fg: 'fg', 'fg-disabled': 'fg-disabled',
     },
@@ -67,8 +67,12 @@ export const CHECKBOX = {
     },
     // A click turns Checked on and off and ends Indeterminate.
     toggle: { prop: 'checked', clears: 'indeterminate' },
-    previewStates: {},
-    statePseudo: { checked: '[data-checked]', indeterminate: '[data-indeterminate]', disabled: ':disabled' },
+    // Hover and focus draw the box border in the brand colour while nothing replaces it (the checked look wins, as a persistent state does over a preview).
+    previewStates: {
+        hover: { 'box-border': 'box-border-hover' },
+        focus: { 'box-border': 'box-border-focus' },
+    },
+    statePseudo: { hover: ':hover', focus: ':focus-visible', checked: '[data-checked]', indeterminate: '[data-indeterminate]', disabled: ':disabled' },
     parts: [],
     playOnly: [],
     display: {

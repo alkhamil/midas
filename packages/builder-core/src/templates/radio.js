@@ -18,7 +18,7 @@ export const RADIO = {
     primarySlot: 'label',
     // What Generate Design System builds the demo instance with: a label that reads.
     sampleProps: { label: 'Radio label' },
-    element: { tag: 'label', attrs: { role: 'radio' }, disabledState: 'disabled', blockClickProps: [] },
+    element: { tag: 'label', attrs: { role: 'radio', tabindex: '0' }, disabledState: 'disabled', blockClickProps: [] },
     anatomy: [
         { id: 'box', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center' },
         { id: 'dot', kind: 'icon', managed: true, alwaysVisible: true, parent: 'box' },
@@ -40,15 +40,15 @@ export const RADIO = {
         disabled: { source: 'literal', type: 'boolean', default: false },
     },
     tokens: {
-        fromSize: ['box-bg', 'box-border', 'box-border-checked', 'box-bg-disabled', 'box-border-disabled', 'boxSize', 'boxRadius', 'borderWidth', 'indicatorSize', 'gap', 'labelTypography', 'dot-fg', 'dot-fg-disabled', 'fg', 'fg-disabled'],
+        fromSize: ['box-bg', 'box-border', 'box-border-checked', 'box-border-hover', 'box-border-focus', 'box-bg-disabled', 'box-border-disabled', 'boxSize', 'boxRadius', 'borderWidth', 'indicatorSize', 'gap', 'labelTypography', 'dot-fg', 'dot-fg-disabled', 'fg', 'fg-disabled'],
     },
     tokenKinds: {
-        'box-bg': 'color', 'box-border': 'color', 'box-border-checked': 'color', 'box-bg-disabled': 'color', 'box-border-disabled': 'color',
+        'box-bg': 'color', 'box-border': 'color', 'box-border-checked': 'color', 'box-border-hover': 'color', 'box-border-focus': 'color', 'box-bg-disabled': 'color', 'box-border-disabled': 'color',
         boxSize: 'length', boxRadius: 'length', borderWidth: 'length', indicatorSize: 'length', gap: 'length', labelTypography: 'typography',
         'dot-fg': 'color', 'dot-fg-disabled': 'color', fg: 'color', 'fg-disabled': 'color',
     },
     tokenRoles: {
-        'box-bg': 'bg', 'box-border': 'border', 'box-border-checked': 'brand', 'box-bg-disabled': 'bg-disabled', 'box-border-disabled': 'border',
+        'box-bg': 'bg', 'box-border': 'border', 'box-border-checked': 'brand', 'box-border-hover': 'brand', 'box-border-focus': 'brand', 'box-bg-disabled': 'bg-disabled', 'box-border-disabled': 'border',
         boxSize: 'box-size', boxRadius: 'radius-full', borderWidth: 'border-width', indicatorSize: 'indicator-size', gap: 'gap',
         labelTypography: { xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl', default: 'text-base' },
         'dot-fg': 'brand', 'dot-fg-disabled': 'fg-disabled', fg: 'fg', 'fg-disabled': 'fg-disabled',
@@ -60,8 +60,12 @@ export const RADIO = {
     },
     // A click selects the radio; it does not unselect it.
     toggle: { prop: 'checked', once: true },
-    previewStates: {},
-    statePseudo: { checked: '[data-checked]', disabled: ':disabled' },
+    // Hover and focus draw the box border in the brand colour while nothing replaces it (the checked look wins, as a persistent state does over a preview).
+    previewStates: {
+        hover: { 'box-border': 'box-border-hover' },
+        focus: { 'box-border': 'box-border-focus' },
+    },
+    statePseudo: { hover: ':hover', focus: ':focus-visible', checked: '[data-checked]', disabled: ':disabled' },
     parts: [],
     playOnly: [],
     display: {

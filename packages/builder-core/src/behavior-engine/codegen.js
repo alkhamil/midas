@@ -198,7 +198,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     const { tag, attrs: tagAttrs, disabledState, blockClickProps } = template.element;
     const dims = variableProps(template).map(([prop]) => prop);
     const attrs = [
-        ...Object.entries(tagAttrs).map(([key, value]) => `${key}="${value}"`),
+        ...Object.entries(tagAttrs).map(([key, value]) => `${key === 'tabindex' ? 'tabIndex' : key}="${value}"`),
         slotted ? `className={['${template.id}', className].filter(Boolean).join(' ')}` : `className="${template.id}"`,
         ...(slotted ? ['ref={ref}', varsExpr ? `style={{ ...${varsExpr}, ...style } as CSSProperties}` : 'style={style}'] : varsExpr ? [`style={${varsExpr}}`] : []),
         ...(template.interaction?.wave ? ['data-wave'] : []),
@@ -563,7 +563,9 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
             const noDisabled = wrapperTarget ? ':not(:has(:disabled))' : `:not(${pseudoOf(template, disabledState)})`;
             const guard = state === disabledState ? '' : `${noDisabled}${blockedGuard}`;
             if (!Object.keys(delta).length) continue;
-            const sels = !wrapperTarget ? [`${selector}${pseudo}${guard}`]
+            // A preview state does not apply while a state the root says as an attribute replaces the tokens it changes (the checked look wins over hover).
+            const replaced = persistent ? '' : stateAttributesOf(template).filter(a => Object.keys(template.persistentStates[a.state].tokens).some(base => Object.hasOwn(template.previewStates[state] ?? {}, base))).map(a => `:not(${template.statePseudo[a.state]})`).join('');
+            const sels = !wrapperTarget ? [`${selector}${pseudo}${replaced}${guard}`]
                 : state === disabledState ? [`${selector}:has(:disabled)`]
                 : pseudo === ':focus' || pseudo === ':focus-visible' ? [`${selector}:has(:focus-visible)${guard}`, `${selector}:focus-within${guard}`]
                 : [`${selector}${pseudo}${guard}`];
