@@ -490,6 +490,15 @@ function motionRules(template) {
     if (motion.press) {
         const { key, token, prop, grow } = motion.press;
         out.push(`.${template.id}:active${notDis} .${template.id}-${key} {\n  ${prop}: calc(var(${cssVarOf(template.id, token)}) + ${grow});\n}\n`);
+        const slide = motion.slide;
+        if (slide && slide.key === key) {
+            // A slid handle grows toward the inside: while pressed and slid it widens leftwards,
+            // so its far edge stays on the padding (more specific than the press rule, so it wins).
+            const attr = stateAttributesOf(template).find(x => x.prop === slide.prop)?.attr;
+            const v = t => `var(${cssVarOf(template.id, t)})`;
+            const travel = slide.travel;
+            out.push(`.${template.id}[${attr}]:active${notDis} .${template.id}-${key} {\n  ${prop}: calc(var(${cssVarOf(template.id, token)}) + ${grow});\n  transform: translateX(calc(${v(travel.track)} - ${v(travel.handle)} - 2 * ${v(travel.padding)} - ${grow}));\n}\n`);
+        }
     }
     return out;
 }

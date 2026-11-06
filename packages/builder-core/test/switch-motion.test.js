@@ -47,6 +47,10 @@ test('the handle grows 4px while pressed', () => {
     assert.match(css(), /\.switch:active:not\(:disabled\) \.switch-handle \{\s*width: calc\(var\(--switch-handle-size\) \+ 4px\);\s*\}/s);
 });
 
+test('a slid handle grows toward the inside: pressed and checked widens leftwards to the padding', () => {
+    assert.match(css(), /\.switch\[data-checked\]:active:not\(:disabled\) \.switch-handle \{\s*width: calc\(var\(--switch-handle-size\) \+ 4px\);\s*transform: translateX\(calc\(var\(--switch-track-width\) - var\(--switch-handle-size\) - 2 \* var\(--switch-track-padding\) - 4px\)\);\s*\}/s);
+});
+
 test('a disabled switch does not animate', () => {
     const text = css();
     assert.match(text, /\.switch:disabled \{\s*transition: none;\s*\}/s);
