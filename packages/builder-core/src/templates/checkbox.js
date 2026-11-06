@@ -3,16 +3,12 @@ import { DEFAULT_SIZE_MODE, SIZE_MODES } from './size-modes.js';
 /** @typedef {import('./schema.js').TemplateSchema} TemplateSchema */
 
 // Checkbox: a box and, beside it, its label. The box is a container of the anatomy (a group frame): it draws the one border, the fill, the radius and its size,
-// and holds the checkmark (checked) or the square (indeterminate), each a managed icon slot of its own. The label is a managed text layer, made while the text
+// and holds the checkmark (checked) or the square (indeterminate), each a built-in glyph (a managed layer made while its state is on). The label is a managed text layer, made while the text
 // is not empty and the switch is on; the text stays in its prop. Checked and Indeterminate exclude each other, and the box reads the checked tokens only while
-// checked (Disabled is declared last, so it wins). The glyph slots are on the instance from the start and drawn only while their state holds (showWhen), so Play can
-// show them on a click. Structure follows Ant Design (components/checkbox: checked, indeterminate, disabled); values are tokens.
+// checked (Disabled is declared last, so it wins). Structure follows Ant Design (components/checkbox: checked, indeterminate, disabled); values are tokens.
 
 /** The accent colour of a Color mode: default is the text colour, primary the brand colour, danger the error colour (Button's Color roles). */
 const ACCENT = { default: 'text', primary: 'brand', danger: 'danger' };
-
-const CHECK = { colour: 'check-fg', disabledColour: 'glyph-fg-disabled', size: 'checkSize' };
-const SQUARE = { colour: 'dash-fg', disabledColour: 'glyph-fg-disabled', size: 'indicatorSize' };
 
 /** @type {TemplateSchema} */
 export const CHECKBOX = {
@@ -26,14 +22,12 @@ export const CHECKBOX = {
     element: { tag: 'label', attrs: { role: 'checkbox', tabindex: '0' }, disabledState: 'disabled', blockClickProps: [] },
     anatomy: [
         { id: 'box', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center' },
-        { id: 'check', kind: 'icon', managed: true, alwaysVisible: true, parent: 'box' },
-        { id: 'indeterminate', kind: 'icon', managed: true, alwaysVisible: true, parent: 'box' },
+        // The glyphs are built-in outlines (see glyphs.js), not icons: each is a managed layer made while its state is on, drawn in a colour token at a token's size.
+        { id: 'check', kind: 'glyph', glyph: 'checkmark', parent: 'box', optional: true, managed: true, shownWhen: { prop: 'checked', is: true } },
+        { id: 'indeterminate', kind: 'glyph', glyph: 'dash', parent: 'box', optional: true, managed: true, shownWhen: { prop: 'indeterminate', is: true } },
         { id: 'label', kind: 'text', optional: true, managed: true, typography: 'label', shownWhen: { all: [{ prop: 'hasLabel', is: true }, { prop: 'label', empty: false }] } },
     ],
-    icons: [
-        { showWhen: 'checked', slot: 'check', component: 'checkIcon', role: 'check', label: 'Check icon', tokens: CHECK },
-        { showWhen: 'indeterminate', slot: 'indeterminate', component: 'indeterminateIcon', role: 'indeterminate', label: 'Indeterminate icon', tokens: SQUARE },
-    ],
+    icons: [],
     // The row is left aligned and centred: the box and the label sit on one line.
     rootAlign: 'center',
     rootPrimaryAlign: 'start',
@@ -44,9 +38,7 @@ export const CHECKBOX = {
         // The Size collection holds sizes and typography only. The antd box has one size, so only the label's type follows the mode.
         size: { source: 'variable', collection: 'Size', modes: SIZE_MODES, defaultMode: DEFAULT_SIZE_MODE, standard: true },
         checked: { source: 'literal', type: 'boolean', default: false, exclusiveWith: 'indeterminate' },
-        checkIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'checked', is: true }, remembered: true },
         indeterminate: { source: 'literal', type: 'boolean', default: false, exclusiveWith: 'checked' },
-        indeterminateIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'indeterminate', is: true }, remembered: true },
         hasLabel: { source: 'literal', type: 'boolean', default: true },
         label: { source: 'literal', type: 'string', default: 'Checkbox', node: { key: 'label', field: 'text' }, visibleIf: { prop: 'hasLabel', is: true }, remembered: true },
         disabled: { source: 'literal', type: 'boolean', default: false },
@@ -70,7 +62,7 @@ export const CHECKBOX = {
         checked: { prop: 'checked', tokens: { 'box-bg': 'box-bg-checked', 'box-border': 'box-border-checked' } },
         // Indeterminate swaps no token (the box keeps its colours, the square is the mark); it is a state so the root says it as an attribute.
         indeterminate: { prop: 'indeterminate', tokens: {} },
-        disabled: { prop: 'disabled', tokens: { 'box-bg': 'box-bg-disabled', 'box-border': 'box-border-disabled', fg: 'fg-disabled' } },
+        disabled: { prop: 'disabled', tokens: { 'box-bg': 'box-bg-disabled', 'box-border': 'box-border-disabled', fg: 'fg-disabled', 'check-fg': 'glyph-fg-disabled', 'dash-fg': 'glyph-fg-disabled' } },
     },
     // A click turns Checked on and off and ends Indeterminate.
     toggle: { prop: 'checked', clears: 'indeterminate' },
@@ -85,8 +77,8 @@ export const CHECKBOX = {
     display: {
         root: { gap: 'gap' },
         box: { fill: 'box-bg', stroke: 'box-border', strokeWidth: 'borderWidth', radius: 'boxRadius', size: 'boxSize' },
-        check: { size: CHECK.size },
-        indeterminate: { size: SQUARE.size },
+        check: { fill: 'check-fg', size: 'checkSize' },
+        indeterminate: { fill: 'dash-fg', size: 'indicatorSize' },
         label: { fill: 'fg', typography: 'labelTypography' },
     },
     events: [{ name: 'onClick', exposeAsTrigger: true }],

@@ -46,7 +46,7 @@ test('the per-template Create buttons and their handlers are gone; the Template 
 test('the bundle makes the icons before the templates, from the core set, and the editor reads the default icon from the same definition', () => {
     for (const call of ['planIcons(', 'iconNodes(', 'ICONS_SECTION', 'sectionFor(root, ICONS_SECTION)']) assert.ok(bundle.includes(call), call);
     assert.ok(bundle.indexOf('planIcons(') < bundle.indexOf('for (const template of plan.order)'), 'icons first, so the default icon exists when the masters are completed');
-    assert.ok(/function defaultIconId\(\) \{\s*return iconResolverOf\(doc\.data\.pages\)/.test(src), 'one definition of the default icon: the resolver, which falls back to the first icon');
+    assert.ok(/function defaultIconId\(\) \{\s*return defaultIconOf\(doc\.data\.pages\)/.test(src), 'one definition of the default icon');
     assert.ok(bundle.includes('counts.icons++') && bundle.includes('counts.iconsPresent'), 'the toast counts the icons');
     assert.ok(!bundle.includes("'Icon/"), 'no icon name in the bundle code: the set is core data');
 });

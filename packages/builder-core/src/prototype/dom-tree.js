@@ -11,6 +11,7 @@
 // auto layout, image fills on vector layers and effects with no DOM form (glass).
 import { TEMPLATES, variableProps } from '../behavior-engine/registry.js';
 import { cssVarOf } from '../behavior-engine/tokens.js';
+import { glyphPathD } from '../behavior-engine/glyphs.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { componentNameOf, generateComponent, SPIN_ANIMATION } from '../behavior-engine/codegen.js';
@@ -320,6 +321,10 @@ function renderTemplate(n, template, parent, scope) {
                 else out.push({ tag: 'span', nodeId: slot.id === primarySlotOf(template) ? labelEntry?.node?.id : undefined, attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
             }
         }
+        else if (slot.kind === 'glyph') {
+            // A glyph is drawn from its definition (the export's markup), always; the stylesheet shows it while the root's state attribute is on.
+            out.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style: {}, html: `<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="${glyphPathD(slot.glyph)}" fill="currentColor" /></svg>`, children: [] });
+        }
         else if (slot.managed) {
             // The slot's own layer draws the icon its nested instance holds.
             const layer = below(n.id).find(c => c.behavior?.slot === slot.id);
@@ -327,12 +332,11 @@ function renderTemplate(n, template, parent, scope) {
                 if (!iconDefOn(def, props)) continue;
                 if (def.placement && !placementsOfDef(template, def, slot.id).includes(String(props[def.placement]))) continue;
                 // A slot that hides while its value is empty (the clear icon) is kept and hidden, so Play shows it as the value is typed.
-                // A slot that shows only while a state holds (the checkmark while checked) is kept and hidden the same way: the root's attribute for that state decides.
-                const hidden = (def.hideWhenEmpty !== undefined && String(props[def.hideWhenEmpty] ?? '') === '') || (def.showWhen !== undefined && props[def.showWhen] !== true);
+                const hidden = def.hideWhenEmpty !== undefined && String(props[def.hideWhenEmpty] ?? '') === '';
                 const el = layer && renderNode(hidden ? { ...layer, visible: true } : layer, n, scope, true);
                 if (!el) continue;
                 const { position, left, top, width, height, ...style } = el.style;
-                out.push({ ...el, attrs: { ...el.attrs, class: `${template.id}-${slot.id}`, ...(def.hideWhenEmpty !== undefined ? { 'data-role': slot.id, hidden } : {}), ...(def.showWhen !== undefined ? { hidden, 'data-show-attr': stateAttributesOf(template).find(a => a.prop === def.showWhen).attr } : {}) }, style });
+                out.push({ ...el, attrs: { ...el.attrs, class: `${template.id}-${slot.id}`, ...(def.hideWhenEmpty !== undefined ? { 'data-role': slot.id, hidden } : {}) }, style });
                 break;
             }
         }

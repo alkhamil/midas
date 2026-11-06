@@ -10,8 +10,6 @@ import { DEFAULT_SIZE_MODE, SIZE_MODES } from './size-modes.js';
 /** The accent colour of a Color mode: default is the text colour, primary the brand colour, danger the error colour (Button's Color roles). */
 const ACCENT = { default: 'text', primary: 'brand', danger: 'danger' };
 
-const DOT = { colour: 'dot-fg', disabledColour: 'dot-fg-disabled', size: 'indicatorSize' };
-
 /** @type {TemplateSchema} */
 export const RADIO = {
     id: 'radio',
@@ -24,12 +22,11 @@ export const RADIO = {
     element: { tag: 'label', attrs: { role: 'radio', tabindex: '0' }, disabledState: 'disabled', blockClickProps: [] },
     anatomy: [
         { id: 'box', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center' },
-        { id: 'dot', kind: 'icon', managed: true, alwaysVisible: true, parent: 'box' },
+        // The dot is a built-in outline (see glyphs.js), not an icon: a managed layer made while Checked is on, drawn in a colour token at a token's size.
+        { id: 'dot', kind: 'glyph', glyph: 'dot', parent: 'box', optional: true, managed: true, shownWhen: { prop: 'checked', is: true } },
         { id: 'label', kind: 'text', optional: true, managed: true, typography: 'label', shownWhen: { all: [{ prop: 'hasLabel', is: true }, { prop: 'label', empty: false }] } },
     ],
-    icons: [
-        { showWhen: 'checked', slot: 'dot', component: 'dotIcon', role: 'dot', label: 'Dot icon', tokens: DOT },
-    ],
+    icons: [],
     // The row is left aligned and centred: the box and the label sit on one line.
     rootAlign: 'center',
     rootPrimaryAlign: 'start',
@@ -40,7 +37,6 @@ export const RADIO = {
         // The Size collection holds sizes and typography only; the antd box has one size, so only the label's type follows the mode.
         size: { source: 'variable', collection: 'Size', modes: SIZE_MODES, defaultMode: DEFAULT_SIZE_MODE, standard: true },
         checked: { source: 'literal', type: 'boolean', default: false },
-        dotIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'checked', is: true }, remembered: true },
         hasLabel: { source: 'literal', type: 'boolean', default: true },
         label: { source: 'literal', type: 'string', default: 'Radio', node: { key: 'label', field: 'text' }, visibleIf: { prop: 'hasLabel', is: true }, remembered: true },
         disabled: { source: 'literal', type: 'boolean', default: false },
@@ -63,7 +59,7 @@ export const RADIO = {
     // Checked recolours the border; Disabled is declared last, so it wins over Checked. The dot colours are the icon slot's own tokens.
     persistentStates: {
         checked: { prop: 'checked', tokens: { 'box-border': 'box-border-checked' } },
-        disabled: { prop: 'disabled', tokens: { 'box-bg': 'box-bg-disabled', 'box-border': 'box-border-disabled', fg: 'fg-disabled' } },
+        disabled: { prop: 'disabled', tokens: { 'box-bg': 'box-bg-disabled', 'box-border': 'box-border-disabled', fg: 'fg-disabled', 'dot-fg': 'dot-fg-disabled' } },
     },
     // A click selects the radio; it does not unselect it.
     toggle: { prop: 'checked', once: true },
@@ -78,7 +74,7 @@ export const RADIO = {
     display: {
         root: { gap: 'gap' },
         box: { fill: 'box-bg', stroke: 'box-border', strokeWidth: 'borderWidth', radius: 'boxRadius', size: 'boxSize' },
-        dot: { size: DOT.size },
+        dot: { fill: 'dot-fg', size: 'indicatorSize' },
         label: { fill: 'fg', typography: 'labelTypography' },
     },
     events: [{ name: 'onClick', exposeAsTrigger: true }],

@@ -74,7 +74,7 @@ test('the roles are on the roots and Play and the export carry the toggle and ar
 import { applyToggle } from '../src/prototype/toggle.js';
 
 /** An element-like object: attributes, a style, descendants, and a hidden flag. */
-function fake(attrs, glyphs = []) {
+function fake(attrs) {
     const map = new Map(Object.entries(attrs));
     return {
         style: {},
@@ -82,24 +82,19 @@ function fake(attrs, glyphs = []) {
         hasAttribute: name => map.has(name),
         setAttribute: (name, value) => map.set(name, String(value)),
         removeAttribute: name => map.delete(name),
-        querySelectorAll: () => glyphs,
         has: name => map.has(name),
         get: name => map.get(name),
     };
 }
-const glyph = (showAttr, hidden) => { const map = new Map([['data-show-attr', showAttr]]); return { hidden, getAttribute: name => map.get(name) ?? null }; };
 
-test('a click on a checkbox sets checked, ends indeterminate, updates aria-checked and shows the glyphs of the states that hold', () => {
-    const check = glyph('data-checked', true), square = glyph('data-indeterminate', false);
-    const root = fake({ 'data-toggle': 'data-checked', 'data-toggle-clears': 'data-indeterminate', 'data-indeterminate': '', 'aria-checked': 'mixed' }, [check, square]);
+test('a click on a checkbox sets checked, ends indeterminate and updates aria-checked (the glyphs follow from the attributes, in the stylesheet)', () => {
+    const root = fake({ 'data-toggle': 'data-checked', 'data-toggle-clears': 'data-indeterminate', 'data-indeterminate': '', 'aria-checked': 'mixed' });
     assert.equal(applyToggle(root), true);
     assert.ok(root.has('data-checked') && !root.has('data-indeterminate'));
     assert.equal(root.get('aria-checked'), 'true');
-    assert.deepEqual([check.hidden, square.hidden], [false, true]);
     applyToggle(root);
     assert.ok(!root.has('data-checked'));
     assert.equal(root.get('aria-checked'), 'false');
-    assert.equal(check.hidden, true);
 });
 
 test('a click on a radio selects it and a second click leaves it selected', () => {

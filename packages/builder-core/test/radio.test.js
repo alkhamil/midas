@@ -3,7 +3,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
-import { ICON_SET, iconRolesOf } from '../src/behavior-engine/icon-set.js';
 import { planAnatomy } from '../src/behavior-engine/anatomy.js';
 import { resolveProps } from '../src/behavior-engine/instance-props.js';
 import { generateComponent } from '../src/behavior-engine/codegen.js';
@@ -19,7 +18,7 @@ test('Radio is a registered form control whose primary slot is the label; it has
     assert.ok(radio);
     assert.equal(radio.isControl, true);
     assert.equal(radio.primarySlot, 'label');
-    assert.deepEqual(Object.keys(radio.props), ['color', 'size', 'checked', 'dotIcon', 'hasLabel', 'label', 'disabled']);
+    assert.deepEqual(Object.keys(radio.props), ['color', 'size', 'checked', 'hasLabel', 'label', 'disabled']);
 });
 
 test('a fresh instance shows ONE text node: the label; the label is never lost on a toggle', () => {
@@ -29,16 +28,6 @@ test('a fresh instance shows ONE text node: the label; the label is never lost o
     assert.equal(planAnatomy(radio, resolveProps(radio, { label: 'Option A', hasLabel: false }), layers).filter(op => op.op === 'remove').length, 1);
     assert.deepEqual(texts({ label: 'Option A', hasLabel: false }), []);
     assert.equal(instanceFor(model, { label: 'Option A', hasLabel: true }).find(n => n.name === 'label').text, 'Option A');
-});
-
-test('the dot is a managed icon slot inside the box, on the instance from the start and drawn while checked', () => {
-    const nodes = instanceFor(model, { checked: true });
-    const box = nodes.find(n => n.behavior?.group === 'box');
-    assert.equal(nodes.find(n => n.behavior?.slot === 'dot').parentId, box.id);
-    assert.equal(instanceFor(model, {}).find(n => n.behavior?.slot === 'dot').visible, false, 'present but hidden while unchecked');
-    assert.equal(nodes.find(n => n.behavior?.slot === 'dot').visible, true);
-    assert.deepEqual(ICON_SET.filter(e => e.role === 'dot').map(e => e.name), ['dot']);
-    assert.deepEqual(iconRolesOf([radio]), ['dot']);
 });
 
 test('the box is round, bound to its tokens, and the one border-drawing element', () => {

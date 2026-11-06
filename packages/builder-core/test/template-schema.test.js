@@ -175,7 +175,7 @@ test('a shownWhen names a real literal prop, with a condition the prop can hold'
     assert.match(validateTemplateSchema(wrongKind).join('\n'), /with "empty", which needs a string prop and a boolean/);
     const notText = clone(INPUT);
     notText.anatomy.find(s => s.id === 'prefixIcon').shownWhen = { prop: 'hasPrefix', is: true };
-    assert.match(validateTemplateSchema(notText).join('\n'), /anatomy slot "prefixIcon" has shownWhen but is not a text slot/);
+    assert.match(validateTemplateSchema(notText).join('\n'), /anatomy slot "prefixIcon" has shownWhen but is not a text, control or glyph slot/);
 });
 
 test('remembered is a boolean on a prop a visibleIf hides, and is refused elsewhere', () => {

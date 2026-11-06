@@ -8,6 +8,7 @@ import { NODE_PROPERTIES, LOADING_OPACITY, canvasPartsOf, fieldWritersOf, placeh
 import { pathCommands, svgPathD } from '../geometry/shapes.js';
 import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js';
 import { cssVarOf, splitColor, tokenValueOf } from './tokens.js';
+import { glyphPathD } from './glyphs.js';
 import { rootLayoutOf, labelLayoutOf, flexOf, flowSizing } from './layout.js';
 import { labelEntryOf } from './layers.js';
 import { managedTextLayer } from './template-master.js';
@@ -108,6 +109,9 @@ function placeholderCondition(template, control) {
     return `String(${control.value} ?? "") === ""${control.readonly ? ` && ${control.readonly} !== true` : ''} ? ${control.placeholder} : undefined`;
 }
 
+/** The element of a glyph slot: a span of the slot's class holding the definition's outline as an SVG, in currentColor. */
+export const glyphJsx = (template, slot) => `<span className="${template.id}-${slot.id}"><svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="${glyphPathD(slot.glyph)}" fill="currentColor" /></svg></span>`;
+
 function componentSource(template, name, problems, partWidthOf = part => part.arc.width) {
     const params = Object.entries(template.props).map(([prop, def]) => (def.source === 'variable' ? prop : `${prop} = ${JSON.stringify(def.default)}`));
     for (const event of template.events) {
@@ -163,6 +167,10 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             if (!sidedAfterPlaced && !slot.parent) { out.push(...sidedAfter); sidedAfterPlaced = true; }
             if (isControl) out.push(...controlPartsJsx());
         }
+        else if (slot.kind === 'glyph') {
+            // A glyph is drawn from its definition, always: the stylesheet shows it while its state attribute is on (see glyphRules), so Play and the export need no layer.
+            out.push(glyphJsx(template, slot));
+        }
         else if (slot.managed) {
             const defs = slotDefsOf(template, slot.id);
             if (!defs.length) problems.push({ slot: slot.id, reason: 'unsupported-slot' });
@@ -174,7 +182,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
                     ...canvasPartsOf(template).filter(part => part.replaces === slot.id).map(part => `${part.shownWhen.prop} !== true`),
                     ...canvasPartsOf(template).filter(part => part.side).flatMap(part => Object.entries(template.props[part.side].slots ?? {}).filter(([, mapped]) => [mapped].flat().includes(slot.id)).map(([value]) => `!(${part.shownWhen.prop} === true && ${part.side} === "${value}")`)),
                 ];
-                out.push(`{${[...(def.show !== undefined ? [def.show] : []), ...(def.showWhen !== undefined ? [def.showWhen] : []), ...(def.hideWhenEmpty !== undefined ? [`${def.hideWhenEmpty} !== ''`] : []), ...(cond ? [cond] : []), ...replacedBy].join(' && ')} && <span className="${template.id}-${slot.id}">{${def.component}}</span>}`);
+                out.push(`{${[...(def.show !== undefined ? [def.show] : []), ...(def.hideWhenEmpty !== undefined ? [`${def.hideWhenEmpty} !== ''`] : []), ...(cond ? [cond] : []), ...replacedBy].join(' && ')} && <span className="${template.id}-${slot.id}">{${def.component}}</span>}`);
             }
         }
         else problems.push({ slot: slot.id, reason: 'unsupported-slot' });
@@ -309,7 +317,7 @@ function displayRules(template, master, childrenOf, geometry) {
     // and in Play. A canvas part matches by marker, an affix text by name; a key with no layer keeps the label layout.
     // A managed text slot has no layer on the master: it lays out as the layer an instance gets (it fills when its slot says so, else it hugs).
     const managedEntry = key => {
-        const slot = template.anatomy.find(s => s.id === key && s.managed && s.kind !== 'icon');
+        const slot = template.anatomy.find(s => s.id === key && s.managed && s.kind !== 'icon' && s.kind !== 'glyph');
         return slot ? { node: managedTextLayer(template, key, resolveProps(template, {}), { id: key, parentId: master.id }), parent: master } : undefined;
     };
     const entryFor = key => under.find(({ node: c }) => c.behavior?.part === key)
@@ -321,7 +329,7 @@ function displayRules(template, master, childrenOf, geometry) {
         // The root lays its label and its icon slots out like the canvas auto layout frame. Play draws the same rules
         // with display:flex (a real element in its parent's layout); the export is inline-flex so a hug Button keeps its
         // natural width. The label keeps its own width and alignment from its layer.
-        const decls = key === 'root'
+        const decls = kind === 'glyph' ? ['  display: block;\n', '  flex-shrink: 0;\n'] : key === 'root'
             ? ['  display: inline-flex;\n', '  box-sizing: border-box;\n', ...cssDecls(rootLayoutOf(master, 0)), ...(master.layoutSizingH === 'fixed' && master.vars?.w === undefined && master.w > 0 ? [`  width: ${master.w}px;\n`] : [])]
             : kind === 'text' ? cssDecls(labelLayoutOf(entryFor(key)?.node, entryFor(key)?.parent ?? master)) : [];
         if (key === 'root' && template.outline) {
@@ -497,6 +505,19 @@ ${cssDecls({ ...flexOf(node, 0), ...sizing }).join('')}}
 }
 
 /**
+ * The rule that hides each glyph while its state attribute is off: the glyph is always in the markup, and the root's attribute (`data-checked`) decides.
+ * @param {any} template
+ * @returns {string[]}
+ */
+function glyphRules(template) {
+    const attrs = stateAttributesOf(template);
+    return template.anatomy.filter(slot => slot.kind === 'glyph').map(slot => `.${template.id}:not([${attrs.find(a => a.prop === slot.shownWhen.prop).attr}]) .${template.id}-${slot.id} {
+  display: none;
+}
+`);
+}
+
+/**
  * The rule of each content slot's element: the slot frame's own auto layout and flow sizing, the canvas rules (a missing frame is laid out as its schema
  * says, so the export still draws; Diagnostics report the missing frame). Nothing of the icon rules (size, colour) applies to slot content.
  * @param {any} template
@@ -579,7 +600,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     blocks.push(...iconHoverRules(template), ...blockedRules(template));
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
-    blocks.push(...fieldRules(template), ...groupRules(template, master, childrenOf), ...slotRules(template, master, childrenOf));
+    blocks.push(...fieldRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
     if (template.interaction) blocks.push(reducedMotion(template));
     return blocks.join('\n');
 }

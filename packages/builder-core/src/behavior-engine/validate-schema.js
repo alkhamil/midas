@@ -1,3 +1,4 @@
+import { GLYPHS } from './glyphs.js';
 import { NODE_FIELDS, STATE_ATTRIBUTE, displayProblems, stateAttributesOf, targetKindOf } from './display.js';
 
 const LITERAL_TYPES = ['boolean', 'string', 'number', 'enum', 'iconComponent'];
@@ -95,7 +96,7 @@ function shownWhenProblems(schema, props) {
     const out = [];
     for (const slot of Array.isArray(schema.anatomy) ? schema.anatomy : []) {
         if (!isPlainObject(slot) || slot.shownWhen === undefined) continue;
-        if (slot.kind !== 'text' && slot.kind !== 'control') out.push(`anatomy slot "${slot.id}" has shownWhen but is not a text slot`);
+        if (slot.kind !== 'text' && slot.kind !== 'control' && slot.kind !== 'glyph') out.push(`anatomy slot "${slot.id}" has shownWhen but is not a text, control or glyph slot`);
         out.push(...conditionProblems(slot.shownWhen, props, `anatomy slot "${slot.id}" shownWhen`));
     }
     return out;
@@ -133,7 +134,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
         if (!isPlainObject(slot) || !isName(slot.id)) { out.push('anatomy slot has no id'); continue; }
         if (seen.has(slot.id)) out.push(`duplicate anatomy slot "${slot.id}"`);
         seen.add(slot.id);
-        if (!['text', 'control', 'icon', 'frame'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" has unknown kind "${slot.kind}"`);
+        if (!['text', 'control', 'icon', 'frame', 'glyph'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" has unknown kind "${slot.kind}"`);
         if (slot.kind === 'frame') {
             if (slot.layout !== 'horizontal' && slot.layout !== 'vertical') out.push(`frame slot "${slot.id}" layout must be horizontal or vertical`);
             if (slot.optional || slot.managed) out.push(`frame slot "${slot.id}" cannot be optional or managed`);
@@ -145,7 +146,15 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
             if (!holder || holder.kind !== 'frame') out.push(`anatomy slot "${slot.id}" has the parent "${slot.parent}", which is not a frame slot`);
             else if (slot.kind === 'frame') out.push(`frame slot "${slot.id}" cannot sit inside another frame slot`);
         }
-        if (slot.managed && !['icon', 'text', 'control'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" is managed but not an icon, text or control slot`);
+        if (slot.managed && !['icon', 'text', 'control', 'glyph'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" is managed but not an icon, text, control or glyph slot`);
+        // A glyph is a built-in outline drawn in a box: managed, shown by a state the root says as an attribute (so Play and the export need no layer).
+        if (slot.kind === 'glyph') {
+            if (!Object.hasOwn(GLYPHS, slot.glyph)) out.push(`glyph slot "${slot.id}" names the glyph "${slot.glyph}", which is not a built-in glyph`);
+            if (slot.managed !== true || slot.optional !== true) out.push(`glyph slot "${slot.id}" must be managed and optional`);
+            const cond = slot.shownWhen;
+            const state = isPlainObject(cond) && cond.is === true && typeof cond.prop === 'string' && isPlainObject(schema.props) && schema.props[cond.prop]?.type === 'boolean' && stateAttributesOf(schema).some(a => a.prop === cond.prop);
+            if (!state) out.push(`glyph slot "${slot.id}" needs a shownWhen of { prop, is: true } on a boolean prop that a state with an attribute follows`);
+        }
         // A managed text or control layer is made and removed from the props: the schema says when its instance layer is wanted.
         if (slot.managed && slot.kind !== 'icon' && slot.shownWhen === undefined) out.push(`managed ${slot.kind} slot "${slot.id}" needs a shownWhen`);
         // An always visible icon slot is on every instance: it has no switch, so it is the one managed slot that is not optional.
@@ -325,8 +334,6 @@ function iconProblems(schema, allTokens) {
         if (always) { if (icon.show !== undefined) out.push(`${tag} shows an alwaysVisible slot, so it has no show switch`); }
         else if (!show || show.source !== 'literal' || show.type !== 'boolean') out.push(`${tag} show "${icon.show}" is not a boolean prop`);
         if (!component || component.source !== 'literal' || component.type !== 'iconComponent') out.push(`${tag} component "${icon.component}" is not an icon prop`);
-        // `showWhen` names a boolean prop that is a persistent state the root says as an attribute, so the export and Play follow it without the engine.
-        if (icon.showWhen !== undefined && !(props[icon.showWhen]?.source === 'literal' && props[icon.showWhen]?.type === 'boolean' && stateAttributesOf(schema).some(a => a.prop === icon.showWhen))) out.push(`${tag} showWhen "${icon.showWhen}" is not a boolean prop that a state with an attribute follows`);
         if (icon.hideWhenEmpty !== undefined && (props[icon.hideWhenEmpty]?.source !== 'literal' || props[icon.hideWhenEmpty]?.type !== 'string')) out.push(`${tag} hideWhenEmpty "${icon.hideWhenEmpty}" is not a string prop`);
         if (icon.placement !== undefined) {
             const placement = props[icon.placement];

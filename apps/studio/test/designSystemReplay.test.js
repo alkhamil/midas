@@ -52,7 +52,7 @@ test('every master is on the Design System page with the layers its template bui
     }
 });
 
-test('every demo instance holds the box, the handle and the glyph layers, and the label its sample props ask for', () => {
+test('every demo instance holds the box and the handle and the label its sample props ask for, and no glyph layer while no state is on', () => {
     const { doc, page } = generate();
     for (const template of TEMPLATES.values()) {
         const master = masterOf(page, template);
@@ -60,7 +60,7 @@ test('every demo instance holds the box, the handle and the glyph layers, and th
         assert.ok(demo, `${template.id} has a demo instance`);
         const layers = doc.descendants(demo.id);
         for (const slot of template.anatomy.filter(s => s.kind === 'frame')) assert.ok(layers.some(n => n.behavior?.group === slot.id), `${template.id} demo holds ${slot.id}`);
-        for (const slot of template.anatomy.filter(s => s.kind === 'icon' && s.alwaysVisible)) assert.ok(layers.some(n => n.behavior?.slot === slot.id), `${template.id} demo holds ${slot.id}`);
+        for (const slot of template.anatomy.filter(s => s.kind === 'glyph')) assert.ok(!layers.some(n => n.behavior?.slot === slot.id), `${template.id} demo has no ${slot.id} while it is off`);
         if (template.sampleProps?.label) assert.equal(layers.find(n => n.behavior?.slot === 'label')?.text, template.sampleProps.label, `${template.id} demo label`);
     }
 });

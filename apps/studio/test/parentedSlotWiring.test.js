@@ -27,3 +27,10 @@ test('an insert op goes under the container it names, and the other steps look t
     assert.ok(body('applyIconSlotBindings').includes('managedLayersOf(inst).find('), 'the icon pass finds a holder inside a container');
     assert.ok(body('applyLiteralFields').includes('managedLayersOf(inst)'), 'the visibility loop covers them');
 });
+
+test('a managed glyph is made as a vector layer, not an icon frame, and only a text layer is measured', () => {
+    const sync = body('syncInstance');
+    assert.ok(sync.includes('managedSlotLayer('), 'the layer comes from the slot kind: text, control or glyph');
+    assert.ok(sync.includes("if (n.type === 'text') remeasureText(n)"), 'a vector layer has no text to measure');
+    assert.ok(!src.includes('iconResolverOf'), 'no icon role resolver: a glyph is not an icon');
+});

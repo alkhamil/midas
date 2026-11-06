@@ -30,6 +30,7 @@ export * from './behavior-engine/typography.js';
 export * from './behavior-engine/typography-edit.js';
 export * from './behavior-engine/template-master.js';
 export * from './behavior-engine/display.js';
+export * from './behavior-engine/glyphs.js';
 export * from './behavior-engine/instance-vars.js';
 export * from './behavior-engine/layers.js';
 export * from './behavior-engine/edits.js';

@@ -32,6 +32,11 @@ export const NODE_PROPERTIES = {
     icon: {
         size: { kind: 'length', css: ['width', 'height'] },
     },
+    // A glyph (the Checkbox's checkmark): a vector drawn filled in the CSS colour (currentColor), of a token's size on both axes.
+    glyph: {
+        fill: { kind: 'color', css: 'color' },
+        size: { kind: 'length', css: ['width', 'height'] },
+    },
     // An arc part (the spinner) is an SVG drawn with `currentColor`: its colour is the CSS colour, and it is the icon size wide and high.
     arc: {
         stroke: { kind: 'color', css: 'color' },
@@ -106,7 +111,7 @@ export const targetKindOf = (template, key) => {
     const kind = slot ?? part;
     if (!kind) return null;
     if (part?.arc) return 'arc';
-    return kind.kind === 'icon' ? 'icon' : kind.kind === 'frame' ? 'frame' : 'text';
+    return kind.kind === 'icon' ? 'icon' : kind.kind === 'frame' ? 'frame' : kind.kind === 'glyph' ? 'glyph' : 'text';
 };
 
 /** The text a counter part shows: the value's length, and `/ max` when the template has a maximum. */

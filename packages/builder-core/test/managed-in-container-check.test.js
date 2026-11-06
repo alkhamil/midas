@@ -16,7 +16,7 @@ function documentOf(template, props, mutate = nodes => nodes) {
     return { variables: model.variables, pages: [{ id: 'p', name: 'Page', nodes: mutate([model.frame, ...model.created, ...nodes]) }] };
 }
 
-test('an instance with its glyphs in the box passes, unchecked and checked, for Checkbox and Radio', () => {
+test('an instance with its glyph in the box passes, unchecked and checked, for Checkbox and Radio', () => {
     for (const id of ['checkbox', 'radio']) for (const props of [{}, { checked: true }, { checked: true, label: 'x' }])
         assert.equal(behaviorProblem(documentOf(TEMPLATES.get(id), props)), null, `${id} ${JSON.stringify(props)}`);
 });
@@ -27,7 +27,7 @@ test('a checked instance whose glyph is shown by a switch (not kept) passes too'
 });
 
 test('a glyph the props ask for that is missing from the box is still refused, and so is one that sits outside any instance', () => {
-    const missing = documentOf(TEMPLATES.get('checkbox'), {}, nodes => nodes.filter(n => n.behavior?.slot !== 'check'));
+    const missing = documentOf(TEMPLATES.get('checkbox'), { checked: true }, nodes => nodes.filter(n => n.behavior?.slot !== 'check'));
     assert.match(behaviorProblem(missing).problem, /managed layer "check" is missing/);
     const stray = documentOf(TEMPLATES.get('checkbox'), {}, nodes => [...nodes, { id: 'p-root', name: 'Frame', type: 'frame', parentId: null }, { id: 'stray', name: 'check', type: 'frame', parentId: 'p-root', behavior: { version: 2, slot: 'check' } }]);
     assert.match(behaviorProblem(stray).problem, /outside an instance/);

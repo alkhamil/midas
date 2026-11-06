@@ -4,6 +4,7 @@
 // creates only what is missing; user layers are never deleted or restyled. Bindings go through the existing planner (planBindTokens),
 // so a generated master is bound the same way a hand-bound one is. An instance is a copy of its master's subtree with the part
 // visibility and text its props say (partWrites, literalFields), which is what the canvas and Play draw.
+import { glyphFields } from './glyphs.js';
 import { canvasPartsOf, conditionHolds, literalFields, nodeFieldPatch, partWrites } from './display.js';
 import { planBindTokens, applyBindTokens } from './bind-tokens.js';
 import { resolveProps } from './instance-props.js';
@@ -24,7 +25,7 @@ export function slotWanted(template, slotId, resolved) {
 export function slotShown(template, slotId, resolved) {
     const anatomy = template.anatomy.find(s => s.id === slotId);
     if (anatomy?.managed && anatomy.kind !== 'icon') return slotWanted(template, slotId, resolved);
-    return slotWanted(template, slotId, resolved) && slotDefsOf(template, slotId).some(def => iconDefOn(def, resolved) && (def.hideWhenEmpty === undefined || String(resolved[def.hideWhenEmpty] ?? '') !== '') && (def.showWhen === undefined || resolved[def.showWhen] === true));
+    return slotWanted(template, slotId, resolved) && slotDefsOf(template, slotId).some(def => iconDefOn(def, resolved) && (def.hideWhenEmpty === undefined || String(resolved[def.hideWhenEmpty] ?? '') !== ''));
 }
 
 /** The vertical sizing of a root that binds a height token: fixed, so the Size height is the box; any other root hugs its content. */
@@ -58,7 +59,7 @@ export function layerSpecsOf(template) {
         }
         if (!placed && slot.kind === 'text' || slot.kind === 'control') { specs.push(...framed); placed = true; }
         // A managed slot (an icon frame, or a text layer) is a layer of the instance only, made while its props ask for it (instanceOf); a master holds none.
-        if (slot.kind === 'icon' || slot.managed) specs.push({ key: slot.id, role: 'slot', type: slot.kind === 'icon' ? 'frame' : 'text', behavior: { slot: slot.id }, optional: true });
+        if (slot.kind === 'icon' || slot.managed) specs.push({ key: slot.id, role: 'slot', type: slot.kind === 'icon' ? 'frame' : slot.kind === 'glyph' ? 'path' : 'text', behavior: { slot: slot.id }, optional: true });
         // An optional text slot (an affix) is marked, so it is not the label and does not claim an existing text layer when a master is built.
         else specs.push({ key: slot.id, role: control?.slot === slot.id ? 'control' : 'text', type: 'text', optional: !!slot.optional, ...(slot.parent ? { parentKey: slot.parent } : {}), ...(slot.optional ? { behavior: { text: slot.id } } : {}) });
         if (slot.kind === 'control' && !textedPlaced) { specs.push(...texted); textedPlaced = true; }
@@ -241,7 +242,25 @@ export function managedTextLayer(template, slotId, resolved, { id, parentId }) {
 }
 
 /**
- * An instance of a master: a copy of its subtree with the instance\'s own props. Each part copy takes its visibility and text from the
+ * The layer an instance holds for a managed glyph slot: a vector layer with the glyph's outline (not an instance of anything), bound afterwards to its colour and
+ * size tokens. It exists while the slot's state holds; Play and the export draw the same outline from the definition.
+ * @param {any} template
+ * @param {string} slotId
+ * @param {Record<string, unknown>} resolved the instance's resolved props
+ * @param {{ id: string, parentId: string }} at
+ */
+export function managedGlyphLayer(template, slotId, resolved, { id, parentId }) {
+    const slot = template.anatomy.find(s => s.id === slotId);
+    return { ...LAYER, id, name: slotId, parentId, w: 16, h: 16, ...glyphFields(slot.glyph), fills: solid('#20202a'), layoutSizingH: 'fixed', layoutSizingV: 'fixed', visible: slotShown(template, slotId, resolved), sourceId: undefined, isInstance: false, component: false, overrides: {}, behavior: { version: BEHAVIOR_DATA_VERSION, slot: slotId } };
+}
+
+/** The layer an instance holds for a managed text, control or glyph slot (see managedTextLayer and managedGlyphLayer). */
+export function managedSlotLayer(template, slotId, resolved, at) {
+    return template.anatomy.find(s => s.id === slotId)?.kind === 'glyph' ? managedGlyphLayer(template, slotId, resolved, at) : managedTextLayer(template, slotId, resolved, at);
+}
+
+/**
+ * An instance of a master: a copy of its master's subtree with the instance\'s own props. Each part copy takes its visibility and text from the
  * template\'s writes for the props (partWrites) and each literal prop writes its node field (literalFields), so the copy draws what the
  * props say on the canvas and in Play. Returns the copied nodes, the instance root first.
  * @param {any} template
@@ -283,7 +302,7 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
         // A slot inside a container of the anatomy hangs under the instance's copy of that container.
         const holder = slot.parent === undefined ? root : out.find(n => n.behavior?.group === slot.parent) ?? root;
         if (slot.kind !== 'icon') {
-            stubs.push({ anatomy: template.anatomy.indexOf(slot), node: managedTextLayer(template, slot.id, resolved, { id: id(stub), parentId: holder.id }) });
+            stubs.push({ anatomy: template.anatomy.indexOf(slot), node: managedSlotLayer(template, slot.id, resolved, { id: id(stub), parentId: holder.id }) });
             continue;
         }
         stubs.push({ anatomy: template.anatomy.indexOf(slot), node: { ...LAYER, id: id(stub), name: slot.id, type: 'frame', parentId: holder.id, sourceId: undefined, isInstance: false, component: false, overrides: {}, visible: slotShown(template, slot.id, resolved), w: 16, h: 16, layout: 'none', fills: [], layoutSizingH: sizedSlot(template, slot.id), layoutSizingV: sizedSlot(template, slot.id), behavior: { version: BEHAVIOR_DATA_VERSION, slot: slot.id } } });

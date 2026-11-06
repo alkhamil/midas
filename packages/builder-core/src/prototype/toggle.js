@@ -12,9 +12,9 @@ export function nextToggle(state, { once, clears = false }) {
 
 /**
  * A click on a toggle control's root (Play): flips the state attributes the root carries, as `nextToggle` says, and brings the rest of the DOM in line with them:
- * aria-checked, the alignment attribute and style of a root that moves its content (a Switch's handle), and the glyphs that show while a state holds. Nothing happens
+ * aria-checked, and the alignment attribute and style of a root that moves its content (a Switch's handle). The glyphs need nothing: the stylesheet shows them from the state attributes. Nothing happens
  * while the root is disabled. The root says what to flip in data attributes (see dom-tree.js), so no template is read here.
- * @param {{ getAttribute(n: string): string | null, hasAttribute(n: string): boolean, setAttribute(n: string, v: string): void, removeAttribute(n: string): void, style: Record<string, string>, querySelectorAll(s: string): Iterable<{ hidden: boolean, getAttribute(n: string): string | null }> }} root
+ * @param {{ getAttribute(n: string): string | null, hasAttribute(n: string): boolean, setAttribute(n: string, v: string): void, removeAttribute(n: string): void, style: Record<string, string> }} root
  * @returns {boolean} whether the root is a toggle that took the click
  */
 export function applyToggle(root) {
@@ -32,6 +32,5 @@ export function applyToggle(root) {
         root.setAttribute(align, side);
         root.style.justifyContent = `flex-${side}`;
     }
-    for (const el of root.querySelectorAll('[data-show-attr]')) el.hidden = !root.hasAttribute(el.getAttribute('data-show-attr'));
     return true;
 }

@@ -1,9 +1,8 @@
 // Checkbox: a box (a group frame that draws the one border) holding a managed checkmark or square, and a managed label. Props checked, indeterminate,
-// disabled; every visual value is a token; the glyphs are managed icon slots inside the box.
+// disabled; every visual value is a token; the glyphs are built-in glyph layers inside the box (see glyph-slot.test.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
-import { ICON_SET, iconRolesOf } from '../src/behavior-engine/icon-set.js';
 import { planAnatomy } from '../src/behavior-engine/anatomy.js';
 import { resolveProps } from '../src/behavior-engine/instance-props.js';
 import { generateComponent } from '../src/behavior-engine/codegen.js';
@@ -37,20 +36,9 @@ test('the label is never lost on a toggle: it is removed and made again from the
     assert.deepEqual(names({ hasLabel: true, label: '' }, 'text'), [], 'an empty label asks for no layer');
 });
 
-test('the checkmark and the square are managed icon slots inside the box, on the instance from the start and drawn only while their state holds', () => {
-    const glyphs = props => instanceFor(model, props).filter(n => ['check', 'indeterminate'].includes(n.behavior?.slot));
-    const inBox = props => { const nodes = instanceFor(model, props), box = nodes.find(n => n.behavior?.group === 'box'); return nodes.filter(n => n.behavior?.slot === 'check').map(n => n.parentId === box.id); };
-    assert.deepEqual(glyphs({}).map(n => [n.name, n.visible]), [['check', false], ['indeterminate', false]], 'present but hidden while neither state holds');
-    assert.deepEqual(glyphs({ checked: true }).map(n => [n.name, n.visible]), [['check', true], ['indeterminate', false]]);
-    assert.deepEqual(inBox({ checked: true }), [true], 'the checkmark hangs under the box');
-    assert.deepEqual(glyphs({ indeterminate: true }).map(n => [n.name, n.visible]), [['check', false], ['indeterminate', true]]);
+test('Checked and Indeterminate exclude each other', () => {
     assert.equal(checkbox.props.checked.exclusiveWith, 'indeterminate');
     assert.equal(checkbox.props.indeterminate.exclusiveWith, 'checked');
-});
-
-test('the icon set holds the checkmark and the square, each the default of its role', () => {
-    assert.deepEqual(ICON_SET.filter(e => ['check', 'indeterminate'].includes(e.role)).map(e => e.name), ['check', 'square']);
-    assert.deepEqual(iconRolesOf([checkbox]), ['check', 'indeterminate']);
 });
 
 test('the master is the root and the box only, centred, with no diagnostics error and no part missing', () => {

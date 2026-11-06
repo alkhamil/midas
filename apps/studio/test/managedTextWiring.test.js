@@ -26,7 +26,7 @@ test('every name midas.js imports from builder-core is exported by it', () => {
 test('syncInstance: makes a text layer for an insert of a managed text slot, then binds, then writes the literal fields', () => {
     const sync = body('syncInstance');
     assert.ok(sync.includes('managedTextSlotOf(inst, op.slot)'), 'an insert of a text or control slot takes the text path');
-    assert.ok(sync.indexOf('managedTextLayer(') < sync.indexOf("node('frame'"), 'the text layer is made before the icon frame fallback');
+    assert.ok(sync.indexOf('managedSlotLayer(') < sync.indexOf("node('frame'"), 'the text layer is made before the icon frame fallback');
     const order = ['applyStateBindings(', 'applyManagedTextBindings(', 'applyLiteralFields(', 'applyIconSlotBindings('].map(call => sync.indexOf(call));
     assert.ok(order.every(at => at >= 0), 'each step is called');
     assert.deepEqual([...order].sort((a, b) => a - b), order, 'state bindings, managed text bindings, literal fields, icon bindings, in that order');
