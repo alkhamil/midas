@@ -22,10 +22,9 @@ test('a loading instance draws the spinner and dims on the canvas', () => {
     doc.refresh();
     const master = page.nodes.find(n => n.component && n.behavior?.templateId === 'switch');
     assert.ok(master, 'switch master exists');
-    const spinnerMaster = doc.descendants(master.id).find(n => n.behavior?.part === 'spinner');
-    assert.ok(spinnerMaster, 'master holds the spinner part');
-    assert.equal(spinnerMaster.parentId, doc.descendants(master.id).find(n => n.behavior?.group === 'handle').id, 'spinner hangs under the handle copy');
-    const copies = core.instanceOf(sw, master, doc.descendants(master.id), { loading: true }, { id: () => replay.stubs.uid(), varModes: {} });
+    assert.equal(doc.descendants(master.id).find(n => n.behavior?.part === 'spinner'), undefined, 'master holds no spinner while loading is off');
+    const copies = core.instanceOf(sw, master, doc.descendants(master.id), { loading: true }, { id: () => replay.stubs.uid(), varModes: {}, variables: doc.data.variables });
+    assert.equal(copies.find(n => n.behavior?.part === 'spinner')?.parentId, copies.find(n => n.behavior?.group === 'handle')?.id, 'the instance spinner hangs under the handle copy');
     copies[0].parentId = page.id;
     for (const n of copies) doc.add(n);
     doc.refresh();

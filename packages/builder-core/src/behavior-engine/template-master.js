@@ -61,7 +61,7 @@ export function layerSpecsOf(template) {
         }
         if (!placed && slot.kind === 'text' || slot.kind === 'control') { specs.push(...framed); placed = true; }
         // A managed slot (an icon frame, or a text layer) is a layer of the instance only, made while its props ask for it (instanceOf); a master holds none.
-        if (slot.kind === 'icon' || slot.managed) specs.push({ key: slot.id, role: 'slot', type: slot.kind === 'icon' ? 'frame' : slot.kind === 'glyph' ? 'path' : 'text', behavior: { slot: slot.id }, optional: true });
+        if (slot.kind === 'icon' || slot.managed) specs.push({ key: slot.id, role: 'slot', type: slot.kind === 'icon' ? 'frame' : slot.kind === 'glyph' ? 'path' : 'text', behavior: { slot: slot.id }, optional: true, ...(slot.parent ? { parentKey: slot.parent } : {}) });
         // An optional text slot (an affix) is marked, so it is not the label and does not claim an existing text layer when a master is built.
         else specs.push({ key: slot.id, role: control?.slot === slot.id ? 'control' : 'text', type: 'text', optional: !!slot.optional, ...(slot.parent ? { parentKey: slot.parent } : {}), ...(slot.optional ? { behavior: { text: slot.id } } : {}) });
         if (slot.kind === 'control' && !textedPlaced) { specs.push(...texted); textedPlaced = true; }
@@ -176,7 +176,13 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
         // A managed icon slot is an instance layer only; an optional text slot is a master layer, shown by its condition (see instanceOf).
         if (spec.role === 'slot') continue;
         const node = nodeOf(spec, template, binding, idOf, holder.id);
-        // A part or affix text a condition shows only for a prop that is off at its default starts hidden, as an instance of the master draws it (partWrites).
+        // A conditional part (the spinner, a shown placeholder, a required mark) is an instance layer while its condition is off
+        // at the sample props: the master holds none, and an instance makes one while the condition holds. Anything else is built as before.
+        if ((spec.role === 'part' || spec.role === 'text') && spec.part?.shownWhen !== undefined) {
+            const wanted = partWrites(template, defaults).find(w => w.key === spec.key && w.field === 'visible');
+            if (!wanted || wanted.value !== true) continue;
+        }
+        // An affix text a condition shows only for a prop that is off at its default starts hidden, as an instance of the master draws it (partWrites).
         if (spec.role === 'part' || spec.role === 'text') {
             const written = partWrites(template, defaults).find(w => w.key === spec.key && w.field === 'visible');
             if (written) node.visible = written.value === true;
@@ -257,6 +263,18 @@ export function managedGlyphLayer(template, slotId, resolved, { id, parentId }) 
     return { ...LAYER, id, name: slotId, parentId, w: 16, h: 16, ...glyphFields(slot.glyph), fills: solid('#20202a'), layoutSizingH: 'fixed', layoutSizingV: 'fixed', visible: slotShown(template, slotId, resolved), sourceId: undefined, isInstance: false, component: false, overrides: {}, behavior: { version: BEHAVIOR_DATA_VERSION, slot: slotId } };
 }
 
+/**
+ * The layer an instance holds for a conditional canvas part (the spinner while loading): a copy of the part spec's
+ * node, not of a master layer (a master holds none while the condition is off). Existence is visibility.
+ */
+export function managedPartLayer(template, partId, resolved, { id, parentId }) {
+    const spec = layerSpecsOf(template).find(sp => sp.key === partId && sp.part);
+    const node = { ...nodeOf(spec, template, null, () => id, parentId), visible: true, sourceId: undefined, isInstance: false, component: false, overrides: {} };
+    const text = partWrites(template, resolved).find(w => w.key === partId && w.field === 'text');
+    if (text && 'text' in node) node.text = text.value;
+    return node;
+}
+
 /** The layer an instance holds for a managed text, control or glyph slot (see managedTextLayer and managedGlyphLayer). */
 export function managedSlotLayer(template, slotId, resolved, at) {
     return template.anatomy.find(s => s.id === slotId)?.kind === 'glyph' ? managedGlyphLayer(template, slotId, resolved, at) : managedTextLayer(template, slotId, resolved, at);
@@ -272,7 +290,7 @@ export function managedSlotLayer(template, slotId, resolved, at) {
  * @param {Record<string, unknown>} props the instance\'s stored props
  * @param {{ id: (src: string) => string, varModes?: Record<string, string> }} opts
  */
-export function instanceOf(template, master, subtree, props, { id, varModes = {} }) {
+export function instanceOf(template, master, subtree, props, { id, varModes = {}, variables } = {}) {
     const resolved = resolveProps(template, props);
     const writes = [...literalFields(template, resolved), ...partWrites(template, resolved)];
     const ids = new Map([[master.id, id(master.id)], ...subtree.map(n => [n.id, id(n.id)])]);
@@ -284,6 +302,9 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
     const out = [root];
     for (const n of subtree) {
         // A part copy takes its visibility and text from the writes for its key; a text layer takes the text its prop writes.
+        // A conditional part the props hide is not copied (parts are leaves): the instance makes it while they show it (see below).
+        const skipped = n.behavior?.part !== undefined && (template.parts ?? []).some(p => p.id === n.behavior.part && p.shownWhen !== undefined) && !subtree.some(c => c.parentId === n.id) && writes.find(w => w.key === n.behavior.part && w.field === 'visible')?.value !== true;
+        if (skipped) continue;
         const next = copy(n, ids.get(n.parentId ?? master.id));
         const key = n.behavior?.part ?? n.name;
         const visible = writes.find(w => w.key === key && w.field === 'visible');
@@ -293,6 +314,20 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
         const text = writes.find(w => w.key === key && w.field === 'text');
         if (text && 'text' in next) next.text = text.value;
         out.push(next);
+    }
+    // A part on a side sits before the label on the start side and after it on the end side (the spinner, by iconPlacement).
+    // A conditional part the props show (the spinner while loading) that no master layer copies is made on the instance;
+    // a container part hangs under the instance's copy of its container. It is placed with the sided parts below.
+    for (const part of canvasPartsOf(template)) {
+        if (part.shownWhen === undefined || out.some(n => n.behavior?.part === part.id)) continue;
+        if (partWrites(template, resolved).find(w => w.key === part.id && w.field === 'visible')?.value !== true) continue;
+        const holder = part.parent === undefined ? root : out.find(n => n.behavior?.group === part.parent) ?? root;
+        const node = managedPartLayer(template, part.id, resolved, { id: id(`part-${part.id}`), parentId: holder.id });
+        out.push(node);
+        if (variables !== undefined) {
+            const plan = planBindTokens({ template, binding: { variables: master.behavior?.variables ?? {} }, layers: [{ key: part.id, node }], variables });
+            applyBindTokens([{ key: part.id, node }], plan.ops);
+        }
     }
     // A part on a side sits before the label on the start side and after it on the end side (the spinner, by iconPlacement).
     out.splice(1, out.length - 1, ...placeSidedParts(template, out.slice(1), resolved));

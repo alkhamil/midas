@@ -74,7 +74,7 @@ export class FakeDoc {
 /** The functions of midas.js the replay runs, in no particular order (function declarations hoist). */
 const FUNCTIONS = [
     'runDesignSystem', 'buildDesignSystemPage', 'sectionFor', 'nodeFromSpec', 'fixMaster', 'placeDemoInstance', 'applyTemplateNodes', 'pageMasterLayers', 'bindMasterTokens', 'applyAutoFixPlan',
-    'syncInstance', 'anatomyPlanOf', 'managedLayersOf', 'containerOf', 'managedTextLayersOf', 'managedTextSlotOf', 'managedTemplateOf', 'placeAmongChildren', 'depthFirstOf',
+    'syncInstance', 'syncParts', 'anatomyPlanOf', 'managedLayersOf', 'containerOf', 'managedTextLayersOf', 'managedTextSlotOf', 'managedTemplateOf', 'placeAmongChildren', 'depthFirstOf',
     'applyStateBindings', 'stateBindingsOf', 'copyPairsOf', 'instanceLabelOf', 'applyManagedTextBindings', 'applyLiteralFields', 'partLayersOf', 'groupLayersOf',
     'textSlotLayersOf', 'applyIconSlotBindings', 'setIconVars', 'iconVariableId', 'iconOfSlot', 'setSlotIcon', 'placeIconInSlot', 'defaultIconId', 'onPage', 'componentById',
     'instancesOf', 'pageOfNode', 'varStore', 'varColl', 'isAutoLayout', 'repairBoundStroke', 'rootSpec', 'designSystemSummary', 'remeasureText',

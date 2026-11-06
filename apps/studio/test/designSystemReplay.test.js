@@ -48,7 +48,17 @@ test('every master is on the Design System page with the layers its template bui
         assert.ok(master, `${template.id} has a master`);
         const names = doc.descendants(master.id).map(n => n.name);
         for (const slot of template.anatomy.filter(s => s.kind === 'frame')) assert.ok(names.includes(slot.id), `${template.id} master holds ${slot.id}`);
-        for (const part of template.parts ?? []) if (part.canvas !== false) assert.ok(names.includes(part.id), `${template.id} master holds ${part.id}`);
+        // The parts the sample props show, by the same writes the generator builds masters from.
+        const shown = new Set(core.partWrites(template, core.resolveProps(template, template.sampleProps ?? {})).filter(w => w.field === 'visible' && w.value === true).map(w => w.key));
+        for (const part of template.parts ?? []) {
+            if (part.canvas === false) continue;
+            // A conditional part off at the sample props is an instance layer, made while its condition holds.
+            if (part.shownWhen !== undefined && !shown.has(part.id)) {
+                assert.ok(!names.includes(part.id), `${template.id} master holds no ${part.id} while it is off`);
+                continue;
+            }
+            assert.ok(names.includes(part.id), `${template.id} master holds ${part.id}`);
+        }
     }
 });
 

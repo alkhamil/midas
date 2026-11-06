@@ -1,4 +1,4 @@
-// The value wins over the placeholder. With a value the placeholder is hidden; with none the placeholder shows and the value layer is hidden
+// The value wins over the placeholder. With a value the placeholder layer is removed; with none the placeholder shows and the value layer is removed
 // and takes no space. A schema-level rule on the control, the reverse of `hideWhenEmpty`: `hidePlaceholderWhenFilled`. All four combinations
 // (value and placeholder, each filled or empty) on the canvas (layer visibility from the props), in Play and in the export.
 import { test } from 'node:test';
@@ -47,7 +47,7 @@ for (const combo of COMBOS) {
         const layer = name => copies.find(c => c.name === name);
         // An empty value has no layer at all (the value is a managed layer): absent and hidden look the same on the canvas.
         assert.equal(layer('value') !== undefined && layer('value').visible !== false, combo.valueShown, 'the instance\'s value layer');
-        assert.equal(layer('placeholder').visible !== false, combo.placeholderShown, 'the instance\'s placeholder layer');
+        assert.equal(layer('placeholder') !== undefined && layer('placeholder').visible !== false, combo.placeholderShown, 'the instance\'s placeholder layer');
     });
 
     test(`Play, ${combo.name}: the input holds the value, and the placeholder only while the value is empty and the placeholder has text`, () => {
@@ -62,11 +62,11 @@ for (const combo of COMBOS) {
     });
 }
 
-test('Play never shows the placeholder over a value, even if the placeholder layer was left visible', () => {
+test('Play never shows the placeholder over a value: a filled value removes the placeholder layer', () => {
     const frame = { id: 'master', name: 'Input', type: 'frame', parentId: null, x: 0, y: 0, w: 200, h: 32, fills: [], layout: 'horizontal', component: true };
     const made = applyTemplateToFrame(input, { frame, children: [], binding: model.binding, variables, idOf });
     const copies = instanceOf(input, frame, made.created, { value: 'Hello', placeholder: 'Search' }, { id: idOf });
-    copies.find(c => c.name === 'placeholder').visible = true;
+    assert.equal(copies.find(c => c.name === 'placeholder'), undefined, 'no placeholder layer while the value is filled');
     const { root } = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [frame, ...made.created, ...copies] }], variables }, copies[0].id);
     assert.equal(root.children.find(c => c.tag === 'input').attrs.placeholder, undefined, 'the value wins');
 });

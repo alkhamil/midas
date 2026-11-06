@@ -81,4 +81,4 @@ export function modelFor(template) {
     return { template, variables, binding: frame.behavior, frame, created: layers };
 }
 
-export const instanceFor = (model, props) => instanceOf(model.template, model.frame, model.created, props, { id: key => `i-${key}-${++seq}` });
+export const instanceFor = (model, props) => instanceOf(model.template, model.frame, model.created, props, { id: key => `i-${key}-${++seq}`, variables: model.variables });

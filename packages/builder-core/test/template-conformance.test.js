@@ -5,7 +5,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
 import { applyTemplateToFrame, instanceOf } from '../src/behavior-engine/template-master.js';
-import { canvasPartsOf } from '../src/behavior-engine/display.js';
+import { canvasPartsOf, conditionHolds } from '../src/behavior-engine/display.js';
+import { resolveProps } from '../src/behavior-engine/instance-props.js';
 import { diagnoseDocument } from '../src/behavior-engine/diagnostics.js';
 import { buttonModel } from '../../../scripts/button-model.mjs';
 import { inputModel } from '../../../scripts/input-model.mjs';
@@ -43,10 +44,15 @@ const MODELS = {
 let seq = 0;
 const idOf = key => `c-${key}-${++seq}`;
 
-/** The layers a master must have: every anatomy slot that is not a managed icon slot (an affix text included), and every canvas part. Managed icon slots are instance layers. */
+/** A conditional part (the spinner) off at the sample props is an instance layer, made while its condition holds. */
+const conditionalParts = template => {
+    const resolved = resolveProps(template, template.sampleProps ?? {});
+    return new Set(canvasPartsOf(template).filter(part => part.shownWhen !== undefined && !conditionHolds(part.shownWhen, resolved)).map(part => part.id));
+};
+/** The layers a master must have: every anatomy slot that is not a managed icon slot (an affix text included), and every unconditional canvas part. Managed slots and conditional parts are instance layers. */
 const requiredKeys = template => [
     ...template.anatomy.filter(slot => !slot.managed && slot.kind !== 'icon').map(slot => slot.id),
-    ...canvasPartsOf(template).map(part => part.id),
+    ...canvasPartsOf(template).filter(part => !conditionalParts(template).has(part.id)).map(part => part.id),
     ...(template.slots ?? []).map(slot => slot.id),
 ];
 /** Whether a layer is the one a key stands for: by name, as a canvas part, or as the content slot the key names. */
@@ -113,6 +119,11 @@ for (const template of TEMPLATES.values()) {
         const doc = nodes => ({ variables, pages: [{ name: 'p', nodes: [frame, ...nodes] }] });
         const missing = (nodes) => diagnoseDocument(doc(nodes)).filter(f => f.code === 'part-missing');
         assert.deepEqual(missing(first.created), [], 'a generated master is complete');
+        // A template whose layers are all instance layers (an icon slot, a conditional part) has no required master layer to remove.
+        if (requiredKeys(template).length === 0) {
+            assert.deepEqual(applyTemplateToFrame(template, { frame, children: first.created, binding, variables, idOf }).created, [], 'a second run creates nothing');
+            return;
+        }
         const user = { id: 'user-layer', name: 'Note', type: 'frame', parentId: 'master', text: 'kept' };
         const required = requiredKeys(template)[requiredKeys(template).length - 1];
         const without = first.created.filter(n => !isLayerOf(n, required));

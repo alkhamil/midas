@@ -10,7 +10,7 @@ import ROLES from '../base-tokens/roles.json' with { type: 'json' };
 import { resolveProps } from './instance-props.js';
 import { resolveMode } from './modes.js';
 import { planStateBindings } from './state-bindings.js';
-import { VARIABLE_KEYS } from './display.js';
+import { VARIABLE_KEYS, partWrites } from './display.js';
 import { strokePaintMissing } from '../geometry/shapes.js';
 import { dimensionOfGroup } from './validate-schema.js';
 import { masterLayersOf } from './layers.js';
@@ -177,9 +177,12 @@ export function diagnoseDocument(doc) {
         if (!template) continue;
         // A layer the template requires (a non-optional anatomy slot, or a canvas part) that the master lacks: Auto Fix has the generator add it.
         const present = new Set(masterLayersByKey(template, m, nodes).map(l => l.key));
+        const sampleShown = new Set(partWrites(template, resolveProps(template, template.sampleProps ?? {})).filter(w => w.field === 'visible' && w.value === true).map(w => w.key));
         for (const spec of layerSpecsOf(template).slice(1)) {
-            // A managed icon slot is a layer of an instance only; every other layer of the template (an affix text included) is the master's.
+            // A managed icon slot is a layer of an instance only; a conditional part hidden at the sample props is an instance layer too.
+            // Every other layer of the template (an affix text included) is the master's.
             if (spec.role === 'slot' || present.has(spec.key)) continue;
+            if ((spec.role === 'part' || spec.role === 'text') && spec.part?.shownWhen !== undefined && !sampleShown.has(spec.key)) continue;
             out.push({ severity: 'warning', code: 'part-missing', node: m.name, nodeId: m.id, layer: spec.key, message: `${m.name}: the ${spec.key} layer is missing: ${template.name} needs it. Auto Fix adds it.` });
         }
         const known = new Set(items.map(i => i.id));

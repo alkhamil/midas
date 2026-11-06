@@ -151,17 +151,18 @@ test('a second run adds nothing: no variable, no master, no node', () => {
     assert.equal(firstDifference(before, doc), null, 'the document is what it was');
 });
 
-test('a master the designer changed is completed, not replaced: a deleted part comes back, the rest stays', () => {
+test('a master the designer changed is completed, not replaced: a deleted required layer comes back, a conditional part stays an instance layer', () => {
     const doc = fresh();
     run(doc);
     const master = doc.nodes.find(n => n.behavior?.templateId === 'button');
-    const spinner = doc.nodes.find(n => n.parentId === master.id && n.behavior?.part === 'spinner');
+    const label = doc.nodes.find(n => n.parentId === master.id && n.type === 'text' && !n.behavior?.part && !n.behavior?.slot);
     master.name = 'My Button';
-    doc.nodes.splice(doc.nodes.indexOf(spinner), 1);
+    doc.nodes.splice(doc.nodes.indexOf(label), 1);
     const again = run(doc);
     assert.equal(again.counts.created, 0, 'no second master');
     assert.equal(master.name, 'My Button', 'the designer name is kept');
-    assert.ok(doc.nodes.some(n => n.parentId === master.id && n.behavior?.part === 'spinner'), 'the missing part is back');
+    assert.ok(doc.nodes.some(n => n.parentId === master.id && n.type === 'text' && !n.behavior?.part && !n.behavior?.slot), 'the missing label is back');
+    assert.ok(!doc.nodes.some(n => n.parentId === master.id && n.behavior?.part === 'spinner'), 'no spinner on the master while loading is off');
     assert.equal(doc.nodes.filter(n => n.behavior?.templateId === 'button').length, 1);
 });
 

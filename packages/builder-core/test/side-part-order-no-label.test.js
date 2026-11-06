@@ -35,7 +35,7 @@ test('Button keeps its order: the spinner before the label for start, after it f
     const names = (placement, loading) => instanceOf(BUTTON, master, sub, { hasIcon: true, iconPlacement: placement, loading }, { id: s => `i-${s}` }).slice(1).map(n => n.name);
     assert.deepEqual(names('start', true), ['spinner', 'label']);
     assert.deepEqual(names('end', true), ['label', 'spinner']);
-    assert.deepEqual(names('start', false), ['iconStart', 'spinner', 'label']);
-    assert.deepEqual(names('end', false), ['label', 'spinner', 'iconEnd']);
+    assert.deepEqual(names('start', false), ['iconStart', 'label']);
+    assert.deepEqual(names('end', false), ['label', 'iconEnd']);
     assert.deepEqual(sidedPartOrder(TEMPLATES.get('input'), [{ id: 'l', type: 'text' }, { id: 's', type: 'ellipse', behavior: { part: 'spinner' } }], {}), ['l', 's']);
 });

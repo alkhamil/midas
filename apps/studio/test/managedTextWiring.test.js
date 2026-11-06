@@ -102,9 +102,9 @@ const itemNamed = name => variables.items.find(i => i.name === name).id;
 
 test('a toggle makes the layer, a second sync changes nothing, and an edit of the text reaches the layer', () => {
     const state = newInstance({});
-    assert.deepEqual(names(sync(state)), ['placeholder']);
+    assert.deepEqual(names(sync(state)), [], 'no placeholder text, no layer');
     edit(state, { hasPrefix: true, prefixText: 'Rp' });
-    assert.deepEqual(names(state), ['prefixText', 'placeholder']);
+    assert.deepEqual(names(state), ['prefixText']);
     const before = state.layers.map(n => n.id);
     sync(state);
     assert.deepEqual(state.layers.map(n => n.id), before, 'a second sync makes and removes nothing');
@@ -130,7 +130,7 @@ test('a layer removed by its toggle comes back with the text the prop kept, boun
     const state = newInstance({});
     edit(state, { hasSuffix: true, suffixText: '.com' });
     edit(state, { hasSuffix: false });
-    assert.deepEqual(names(state), ['placeholder'], 'removed, not hidden');
+    assert.deepEqual(names(state), [], 'removed, not hidden');
     edit(state, { hasSuffix: true });
     const back = state.layers.find(n => n.name === 'suffixText');
     assert.equal(back.text, '.com');

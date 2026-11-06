@@ -32,12 +32,10 @@ test('a demo instance built from the sample props shows the same placeholder and
     assert.equal(placeholder.visible, true);
 });
 
-test('a template without sampleProps is built as before', () => {
+test('a template without sampleProps builds no conditional part: the placeholder is an instance layer', () => {
     const template = structuredClone(input);
     delete template.sampleProps;
-    const placeholder = build(template).created.find(n => n.name === 'placeholder');
-    assert.equal(placeholder.visible, false);
-    assert.equal(placeholder.text, '');
+    assert.equal(build(template).created.find(n => n.name === 'placeholder'), undefined);
 });
 
 test('the validator refuses sampleProps that name no literal prop, or a value of the wrong type', () => {

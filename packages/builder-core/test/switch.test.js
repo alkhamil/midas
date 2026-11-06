@@ -22,8 +22,8 @@ test('Switch is a registered form control with managed text and icon slots: chec
     assert.ok(sw.anatomy.some(s => s.kind === 'icon'), 'managed icon slots');
 });
 
-test('the master is the track, the handle and the spinner; a fresh instance shows no text node', () => {
-    assert.deepEqual(model.created.map(n => n.name), ['handle', 'spinner']);
+test('the master is the track and the handle; a fresh instance shows no text node and no spinner', () => {
+    assert.deepEqual(model.created.map(n => n.name), ['handle']);
     assert.equal(instanceFor(model, {}).filter(n => n.type === 'text').length, 0);
     const doc = { variables: model.variables, pages: [{ name: 'p', nodes: [model.frame, ...model.created] }] };
     assert.deepEqual(diagnoseDocument(doc).filter(f => f.severity === 'error' || f.code === 'part-missing'), []);

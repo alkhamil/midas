@@ -1,5 +1,6 @@
-// The part generator: a master is built from the schema (every anatomy slot and canvas part is a layer), bound through the existing
-// planner, applied to a frame without duplicating what is there, and an instance copies the master with the props it is given.
+// The part generator: a master is built from the schema (every required slot and unconditional canvas part is a layer; managed slots
+// and conditional parts are instance layers), bound through the existing planner, applied to a frame without duplicating what is
+// there, and an instance copies the master with the props it is given.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
@@ -19,8 +20,7 @@ test('applying a Button template to a frame creates its label and spinner, binds
     const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
     const frame = { id: 'f1', name: 'Button', type: 'frame', parentId: null, fills: [] };
     const out = applyTemplateToFrame(TEMPLATES.get('button'), { frame, children: [], binding: { variables: { variant: model.ids.variant, color: model.ids.color, size: model.ids.size } }, variables: variablesOf(model), idOf: counter() });
-    assert.deepEqual(out.created.map(n => n.name), ['spinner', 'label']);
-    assert.equal(out.created.find(n => n.name === 'spinner').type, 'ellipse');
+    assert.deepEqual(out.created.map(n => n.name), ['label'], 'the spinner is an instance layer while loading is off');
     assert.deepEqual(out.problems, []);
     assert.equal(frame.behavior.templateId, 'button');
     assert.ok(out.created.find(n => n.name === 'label').vars.typography, 'the label is bound to its typography variable');
@@ -33,7 +33,7 @@ test('applying the same template again creates nothing (idempotent)', () => {
     const first = applyTemplateToFrame(TEMPLATES.get('button'), { frame, children: [], binding, variables: variablesOf(model), idOf: counter() });
     const second = applyTemplateToFrame(TEMPLATES.get('button'), { frame, children: [...first.created], binding, variables: variablesOf(model), idOf: counter() });
     assert.deepEqual(second.created, []);
-    assert.equal(second.matched.length, 2);
+    assert.equal(second.matched.length, 1);
 });
 
 test('a frame with a user text layer keeps it: the label is matched, not duplicated', () => {

@@ -30,7 +30,7 @@ function master() {
 const childrenOf = layers => id => layers.filter(n => n.parentId === id);
 /** An instance of the master with the props and modes, sized as the editor sizes it (a square of `box`). */
 function instance({ frame, created }, props = {}, varModes = modes('default', 'square', 'md'), box = 32) {
-    const nodes = instanceOf(template, frame, created, props, { id: src => `i-${src}`, varModes });
+    const nodes = instanceOf(template, frame, created, props, { id: src => `i-${src}`, varModes, variables });
     Object.assign(nodes[0], { parentId: 'stage', x: 10, y: 10, w: box, h: box });
     return nodes;
 }
@@ -62,8 +62,7 @@ test('the master is a fixed square bound to the Size height, the Shape radius, t
     assert.deepEqual([m.frame.layoutSizingH, m.frame.layoutSizingV], ['fixed', 'fixed']);
     assert.deepEqual(m.frame.vars, { 'fills.0': 'v-bg', stroke: 'v-border', strokeWidth: 's-borderWidth', radius: 'sh-shape-radius', w: 's-height', h: 's-height', effects: 't-shadow' });
     assert.deepEqual([m.frame.counterAlign, m.frame.primaryAlign], ['center', 'center']);
-    assert.deepEqual(m.created.map(n => n.name), ['spinner'], 'the spinner part is the only master layer');
-    assert.equal(m.created[0].visible, false);
+    assert.deepEqual(m.created.map(n => n.name), [], 'no master layers: the icon is an instance slot and the spinner is conditional');
     assert.ok(!m.created.some(n => n.type === 'text'));
 });
 
@@ -108,12 +107,14 @@ test('loading: the spinner takes the icon place at 0.65 opacity, exclusive with 
     const m = master();
     const nodes = instance(m, { loading: true });
     assert.equal(nodes[0].opacity, 0.65);
-    assert.equal(nodes.find(n => n.behavior?.part === 'spinner').visible, true);
+    const spin = nodes.find(n => n.behavior?.part === 'spinner');
+    assert.equal(spin.visible, true);
+    for (const key of Object.values(spin.vars ?? {})) assert.ok(model.items.some(i => i.id === key), `spinner binding ${key} is a variable`);
     assert.equal(slotShown(template, 'icon', { loading: true }), false);
     assert.equal(slotShown(template, 'icon', { loading: false }), true);
     const rest = instance(m, {});
     assert.equal(rest[0].opacity, 1);
-    assert.equal(rest.find(n => n.behavior?.part === 'spinner').visible, false);
+    assert.equal(rest.find(n => n.behavior?.part === 'spinner'), undefined, 'no spinner layer while loading is off');
     const loadingMaster = { behavior: model.binding, type: 'frame' };
     const next = setInstanceValue({ behavior: { props: { disabled: true } } }, loadingMaster, 'loading', true);
     assert.deepEqual([next.props.loading, next.props.disabled], [true, false]);

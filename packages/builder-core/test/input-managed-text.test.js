@@ -1,4 +1,4 @@
-// The Input's text layers on demand (docs/input-managed-text.md): a fresh Input has ONE text node, the placeholder; the value, the affix texts
+// The Input's text layers on demand (docs/input-managed-text.md): a fresh Input has no text node until a prop asks for one; the value, the affix texts
 // and the counter are made when the matching prop turns on and removed when it stops asking, the text a designer typed stays in its prop, and
 // Play and the export draw the control from the props whether or not a value layer exists.
 import { test } from 'node:test';
@@ -22,22 +22,22 @@ const made = applyTemplateToFrame(input, { frame, children: [], binding: model.b
 const copies = props => instanceOf(input, frame, made.created, props, { id: idOf });
 const texts = props => copies(props).filter(n => n.type === 'text').map(n => n.name);
 
-test('a fresh Input master and instance show ONE text node: the placeholder', () => {
+test('a fresh Input master shows the sample placeholder; an instance shows it only while its own placeholder text is set', () => {
     assert.deepEqual(made.created.filter(n => n.type === 'text').map(n => n.name), ['placeholder']);
-    assert.deepEqual(texts({}), ['placeholder']);
+    assert.deepEqual(texts({}), [], 'no placeholder text, no layer');
     assert.deepEqual(texts({ placeholder: 'Search' }), ['placeholder']);
 });
 
 test('each text layer is made when its prop turns on, in order, carrying its text', () => {
-    assert.deepEqual(texts({ value: 'Hi' }), ['placeholder', 'value']);
-    assert.deepEqual(texts({ value: 'Hi', showCount: true, maxLength: 10 }), ['placeholder', 'value', 'count']);
-    assert.deepEqual(texts({ value: 'Hi', hasPrefix: true, prefixText: 'Rp', hasSuffix: true, suffixText: '.com' }), ['prefixText', 'placeholder', 'value', 'suffixText']);
+    assert.deepEqual(texts({ value: 'Hi' }), ['value']);
+    assert.deepEqual(texts({ value: 'Hi', showCount: true, maxLength: 10 }), ['value', 'count']);
+    assert.deepEqual(texts({ value: 'Hi', hasPrefix: true, prefixText: 'Rp', hasSuffix: true, suffixText: '.com' }), ['prefixText', 'value', 'suffixText']);
     const all = copies({ value: 'Hi', showCount: true, maxLength: 10, hasPrefix: true, prefixText: 'Rp' });
     assert.equal(all.find(n => n.name === 'value').text, 'Hi');
     assert.equal(all.find(n => n.name === 'count').text, '2 / 10');
     assert.equal(all.find(n => n.name === 'prefixText').text, 'Rp');
-    assert.deepEqual(texts({ hasPrefix: true, prefixText: '' }), ['placeholder'], 'a switch on with no text asks for no layer');
-    assert.deepEqual(texts({ hasPrefix: true, prefixKind: 'icon', prefixText: 'Rp' }), ['placeholder'], 'the Icon kind asks for no text layer');
+    assert.deepEqual(texts({ hasPrefix: true, prefixText: '' }), [], 'a switch on with no text asks for no layer');
+    assert.deepEqual(texts({ hasPrefix: true, prefixKind: 'icon', prefixText: 'Rp' }), [], 'the Icon kind asks for no text layer');
 });
 
 test('turning a prop off removes the layer and turning it on again makes it with the text that was kept', () => {
