@@ -25,7 +25,7 @@ test('Play draws an Icon Button, whose template name has a space', () => {
     const variables = { collections: model.collections, items: model.items };
     const master = { id: 'm', name: 'Icon Button', type: 'frame', parentId: null, fills: [], x: 400, y: 0 };
     const { created } = applyTemplateToFrame(template, { frame: master, children: [], binding: { variables: model.binding.variables }, variables, idOf: key => `m-${key}` });
-    const instance = instanceOf(template, master, created, {}, { id: src => `i-${src}`, varModes: { [model.ids.variant]: 'default', [model.ids.shape]: 'square', [model.ids.size]: 'md' } });
+    const instance = instanceOf(template, master, created, {}, { id: src => `i-${src}`, varModes: { [model.ids.variant]: 'outlined', [model.ids.color]: 'primary', [model.ids.type]: 'default', [model.ids.shape]: 'square', [model.ids.size]: 'md' } });
     instance[0].parentId = 'stage';
     const stage = { id: 'stage', name: 'Stage', type: 'frame', parentId: null, x: 0, y: 0, w: 300, h: 200, fills: [] };
     const { root, problems } = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [stage, master, ...created, ...instance] }], variables }, 'stage');

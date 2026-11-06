@@ -1,5 +1,5 @@
-// Icon Button: one swappable icon and no text. Variant (default | float), Shape (square | circle, independent), Size (a square box of the Size height), the
-// states of Button (hover, pressed, focus, disabled, loading) and the float elevation as a token. The canvas node tree is the source; Play and the export derive from it.
+// Icon Button: one swappable icon and no text. Variant and Color are Button's (the same modes and roles), Size (a square box of the Size height), Type (default | float:
+// visual only, the elevation as a token) and Shape (square | circle, independent), the states of Button (hover, pressed, focus, disabled, loading). The canvas node tree is the source; Play and the export derive from it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { BUILT_IN_TEMPLATES } from '../src/behavior-engine/registry.js';
@@ -16,10 +16,10 @@ import { iconButtonModel } from '../../../scripts/icon-button-model.mjs';
 const template = BUILT_IN_TEMPLATES.get('icon-button');
 const model = iconButtonModel();
 const variables = { collections: model.collections, items: model.items };
-const { variant, shape, size } = model.ids;
-/** The instance's mode per collection (varModes), and per dimension (what the token resolver takes). */
-const modes = (v, s, z) => ({ [variant]: v, [shape]: s, [size]: z });
-const picked = (v, s, z) => ({ variant: v, shape: s, size: z });
+const { variant, color, shape, size, type } = model.ids;
+/** The instance's mode per collection (varModes: type, shape, size; Variant and Color stay outlined and primary), and per dimension (what the token resolver takes). */
+const modes = (t, s, z) => ({ [variant]: 'outlined', [color]: 'primary', [type]: t, [shape]: s, [size]: z });
+const picked = (t, s, z) => ({ variant: 'outlined', color: 'primary', type: t, shape: s, size: z });
 
 /** A master built by the generator, with its layers. */
 function master() {
@@ -45,18 +45,22 @@ test('the template is registered, valid, not a form control, and made of one alw
     assert.ok(!('hasIcon' in template.props) && !('label' in template.props), 'no icon switch and no label');
 });
 
-test('Variant is default | float, Shape is square | circle and defaults to square, Size is xs to xl', () => {
-    assert.deepEqual(template.props.variant.modes, ['default', 'float']);
+test('Variant and Color come from Button, Type is default | float, Shape is square | circle and defaults to square, Size is xs to xl', () => {
+    const button = BUILT_IN_TEMPLATES.get('button');
+    assert.deepEqual(template.props.variant, button.props.variant);
+    assert.deepEqual(template.props.color, button.props.color);
+    assert.deepEqual(template.props.type.modes, ['default', 'float']);
+    assert.equal(template.props.type.defaultMode, 'default');
     assert.deepEqual(template.props.shape.modes, ['square', 'circle']);
     assert.equal(template.props.shape.defaultMode, 'square');
     assert.deepEqual(template.props.size.modes, ['xs', 'sm', 'md', 'lg', 'xl']);
-    assert.notEqual(template.props.variant.collection, template.props.shape.collection, 'the Shape is its own collection: the Variant does not decide it');
+    assert.notEqual(template.props.type.collection, template.props.shape.collection, 'the Shape is its own collection: the Type does not decide it');
 });
 
 test('the master is a fixed square bound to the Size height, the Shape radius, the border and the shadow tokens, with no text layer', () => {
     const m = master();
     assert.deepEqual([m.frame.layoutSizingH, m.frame.layoutSizingV], ['fixed', 'fixed']);
-    assert.deepEqual(m.frame.vars, { 'fills.0': 'v-bg', stroke: 'v-border', strokeWidth: 's-borderWidth', radius: 'sh-radius', w: 's-height', h: 's-height', effects: 'v-shadow' });
+    assert.deepEqual(m.frame.vars, { 'fills.0': 'v-bg', stroke: 'v-border', strokeWidth: 's-borderWidth', radius: 'sh-shape-radius', w: 's-height', h: 's-height', effects: 't-shadow' });
     assert.deepEqual([m.frame.counterAlign, m.frame.primaryAlign], ['center', 'center']);
     assert.deepEqual(m.created.map(n => n.name), ['spinner'], 'the spinner part is the only master layer');
     assert.equal(m.created[0].visible, false);
@@ -72,8 +76,8 @@ test('an instance holds the icon slot, shown, with no label; a second planner ru
     assert.deepEqual(plan.ops, [{ op: 'insert', slot: 'icon', index: 0, component: 'ic1' }]);
 });
 
-test('the Shape picks the radius and the Variant does not: every pairing of the two resolves on its own', () => {
-    const radius = (v, s, z = 'md') => resolveTokens(template, model.binding, picked(v, s, z), variables).vars['--icon-button-radius'];
+test('the Shape picks the radius and the Type does not: every pairing of the two resolves on its own', () => {
+    const radius = (v, s, z = 'md') => resolveTokens(template, model.binding, picked(v, s, z), variables).vars['--icon-button-shape-radius'];
     assert.equal(radius('default', 'square'), '6px');
     assert.equal(radius('float', 'square'), '6px', 'float stays a square until the Shape says circle');
     assert.equal(radius('default', 'circle'), '9999px');
@@ -91,11 +95,11 @@ test('the box is the Size height on both axes, from the same token as Button', (
     assert.equal(template.display.root.size, 'height');
 });
 
-test('default draws the border, float has none and an elevation; the shadow is a token in both', () => {
+test('Type is visual only: float adds the elevation and nothing else; the shadow is a token in both', () => {
     const tokens = v => resolveTokens(template, model.binding, picked(v, 'square', 'md'), variables).vars;
     assert.equal(tokens('default')['--icon-button-shadow'], 'none');
-    assert.equal(tokens('default')['--icon-button-border'], '#18181b');
-    assert.equal(tokens('float')['--icon-button-border'], '#00000000', 'a transparent border: the box keeps its geometry');
+    assert.equal(tokens('float')['--icon-button-border'], tokens('default')['--icon-button-border'], 'the border follows the Variant and the Color, not the Type');
+    assert.equal(tokens('float')['--icon-button-bg'], tokens('default')['--icon-button-bg']);
     assert.equal(tokens('float')['--icon-button-shadow'], '0px 6px 16px 0px #00000014, 0px 3px 6px -4px #0000001f, 0px 9px 28px 8px #0000000d');
     assert.equal(template.display.root.strokeWidth, 'borderWidth', 'the border width is the Semantic/lineWidth token for both');
 });
@@ -116,9 +120,9 @@ test('loading: the spinner takes the icon place at 0.65 opacity, exclusive with 
     assert.deepEqual(setInstanceValue({ behavior: { props: { loading: true } } }, loadingMaster, 'disabled', true).props, { disabled: true, loading: false });
 });
 
-test('the panel lists the icon and no icon switch, shape beside variant and size', () => {
+test('the panel lists Variant, Color, Size and Type like Button, then Shape and the icon, with no icon switch', () => {
     const rows = instancePanel({ behavior: { props: {} } }, { behavior: model.binding }, model.collections, {}).rows;
-    assert.deepEqual(rows.map(r => r.prop), ['variant', 'shape', 'size', 'icon', 'loading', 'disabled']);
+    assert.deepEqual(rows.map(r => r.prop), ['variant', 'color', 'size', 'type', 'shape', 'icon', 'loading', 'disabled']);
     assert.equal(rows.find(r => r.prop === 'icon').kind, 'icon');
 });
 
@@ -132,7 +136,7 @@ test('the ring: the outline starts at the border, drawn inside it with no gap, f
 test('the export: a fixed square host that draws its own border, radius and shadow, with no positioning, no text and no icon switch', () => {
     const files = exported(master());
     const root = /\.icon-button \{[^}]*\}/s.exec(files['IconButton.css'])[0];
-    for (const rule of ['width: var(--icon-button-height);', 'height: var(--icon-button-height);', 'border-radius: var(--icon-button-radius);', 'box-shadow: var(--icon-button-shadow);', 'border-color: var(--icon-button-border);', 'border-width: 1px;', 'background-color: var(--icon-button-bg);']) assert.ok(root.includes(rule), rule);
+    for (const rule of ['width: var(--icon-button-height);', 'height: var(--icon-button-height);', 'border-radius: var(--icon-button-shape-radius);', 'box-shadow: var(--icon-button-shadow);', 'border-color: var(--icon-button-border);', 'border-width: 1px;', 'background-color: var(--icon-button-bg);']) assert.ok(root.includes(rule), rule);
     assert.ok(!/position:\s*(fixed|absolute|sticky)/.test(root), 'float is visual only');
     assert.ok(!/padding-(inline|block)|padding:/.test(root), 'no padding: the icon is centred');
     assert.match(files['IconButton.jsx'], /\{loading !== true && <span className="icon-button-icon">\{icon\}<\/span>\}/);
@@ -152,10 +156,10 @@ test('a circle is a circle on a square box on every surface: the radius is clamp
     const stage = { id: 'stage', name: 'Stage', type: 'frame', parentId: null, x: 0, y: 0, w: 300, h: 200, fills: [] };
     const { styles } = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [stage, m.frame, ...m.created, ...nodes] }], variables }, 'stage');
     const play = styles;
-    const circle = /\.icon-button\[data-variant="default"\]\[data-shape="circle"\]\[data-size="md"\] \{[^}]*\}/s.exec(play)[0];
-    assert.match(circle, /--icon-button-radius: 9999px;/);
+    const circle = /\.icon-button\[data-variant="outlined"\]\[data-color="primary"\]\[data-size="md"\]\[data-type="default"\]\[data-shape="circle"\] \{[^}]*\}/s.exec(play)[0];
+    assert.match(circle, /--icon-button-shape-radius: 9999px;/);
     assert.match(circle, /--icon-button-height: 32px;/, 'a square box: width and height are the one token');
     assert.equal(play, exported(m)['IconButton.css'], 'Play writes the stylesheet the export writes');
-    assert.match(play, /\.icon-button \{[^}]*border-radius: var\(--icon-button-radius\);[^}]*\}/s);
+    assert.match(play, /\.icon-button \{[^}]*border-radius: var\(--icon-button-shape-radius\);[^}]*\}/s);
     assert.ok(!/min\(|clamp\(/.test(play), 'no second clamp: the browser does it');
 });

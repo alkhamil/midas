@@ -1,12 +1,16 @@
 import { ICON_PART_DISPLAY, ICON_TOKENS } from './icon-slots.js';
-import { DEFAULT_SIZE_MODE, SIZE_MODES } from './size-modes.js';
 import { BUTTON } from './button.js';
 
 /** @typedef {import('./schema.js').TemplateSchema} TemplateSchema */
 
-// The button that holds one icon and no text. Its box is a square (the Size height on both axes); its radius comes from the Shape (a circle is the
-// full radius, a square the Size radius), independent of the Variant. The float variant is visual only: an elevation shadow and no border, never a
-// position. The Size, outline, border and disabled tokens are Button's, read from the same roles.
+// The button that holds one icon and no text. Its box is a square (the Size height on both axes); its radius comes from the Shape (a circle is the full radius,
+// a square the Size radius). Variant, Color and Size are Button's own (same modes, same tokens and roles), so the panel and the variables are Button's. Type is
+// visual only: Float adds an elevation shadow and nothing else, never a position.
+
+/** The Size tokens an Icon Button reads: Button's own (the box is the Size height on both axes, the square radius is the Size radius). */
+const SIZE_TOKENS = ['height', 'radius', 'iconSize', 'borderWidth', 'outlineWidth'];
+/** The entries of an object for some keys. */
+const pick = (object, keys) => Object.fromEntries(keys.map(key => [key, object[key]]));
 
 /** @type {TemplateSchema} */
 export const ICON_BUTTON = {
@@ -20,47 +24,30 @@ export const ICON_BUTTON = {
     // The click wave is Button's: the host's ::after ring inherits the host radius, so it follows the Shape; wave-color is its colour.
     interaction: { focus: 'outline', wave: true },
     props: {
-        variant: { source: 'variable', collection: 'Variant', modes: ['default', 'float'] },
+        // Variant and Color are Button's, with the same modes and the same roles: the box, the icon colour and the states follow them as a Button's do.
+        variant: BUTTON.props.variant,
+        color: BUTTON.props.color,
+        size: BUTTON.props.size,
+        // Type is visual only: Default has no elevation, Float has the shadow token. It never moves the button.
+        type: { source: 'variable', collection: 'Type', modes: ['default', 'float'], defaultMode: 'default' },
         shape: { source: 'variable', collection: 'Shape', modes: ['square', 'circle'], defaultMode: 'square' },
-        size: { source: 'variable', collection: 'Size', modes: SIZE_MODES, defaultMode: DEFAULT_SIZE_MODE, standard: true },
         icon: { source: 'literal', type: 'iconComponent', default: null },
         loading: { source: 'literal', type: 'boolean', default: false, exclusiveWith: 'disabled', clearsPreview: true, node: { key: 'root', field: 'opacity' } },
         disabled: { source: 'literal', type: 'boolean', default: false, exclusiveWith: 'loading', clearsPreview: true },
     },
     tokens: {
-        fromSize: ['height', 'radiusSquare', 'iconSize', 'borderWidth', 'outlineWidth'],
-        fromShape: ['radius'],
-        fromVariant: ['bg', 'fg', 'border', 'shadow', 'bg-hover', 'fg-hover', 'border-hover', 'bg-active', 'fg-active', 'border-active', 'bg-disabled', 'fg-disabled', 'outline-color', 'outline-color-active', 'wave-color'],
+        fromSize: SIZE_TOKENS,
+        fromShape: ['shapeRadius'],
+        fromType: ['shadow'],
+        fromVariant: BUTTON.tokens.fromVariant,
+        fromColor: BUTTON.tokens.fromColor,
     },
-    tokenKinds: {
-        height: 'length', radiusSquare: 'length', radius: 'length', iconSize: 'length', borderWidth: 'length', outlineWidth: 'length',
-        bg: 'color', fg: 'color', border: 'color', shadow: 'effect', 'bg-hover': 'color', 'fg-hover': 'color', 'border-hover': 'color',
-        'bg-active': 'color', 'fg-active': 'color', 'border-active': 'color', 'bg-disabled': 'color', 'fg-disabled': 'color', 'outline-color': 'color', 'outline-color-active': 'color', 'wave-color': 'color',
-    },
+    tokenKinds: { ...pick(BUTTON.tokenKinds, [...SIZE_TOKENS, ...BUTTON.tokens.fromVariant, ...BUTTON.tokens.fromColor]), shapeRadius: 'length', shadow: 'effect' },
     tokenRoles: {
-        height: BUTTON.tokenRoles.height,
-        radiusSquare: BUTTON.tokenRoles.radius,
+        ...pick(BUTTON.tokenRoles, [...SIZE_TOKENS, ...BUTTON.tokens.fromVariant, ...BUTTON.tokens.fromColor]),
         // The Shape picks the radius: the full radius for a circle, the Size radius for a square (followed through the Size collection).
-        radius: { circle: 'radius-full', square: './radiusSquare', default: './radiusSquare' },
-        iconSize: BUTTON.tokenRoles.iconSize,
-        borderWidth: 'border-width',
-        outlineWidth: 'outline-width',
-        bg: { default: 'bg', float: 'bg' },
-        fg: { default: 'text', float: 'text' },
-        border: { default: 'text', float: 'transparent' },
+        shapeRadius: { circle: 'radius-full', square: './radius', default: './radius' },
         shadow: { default: 'shadow-none', float: 'shadow-float' },
-        'bg-hover': { default: 'bg', float: 'bg-subtle' },
-        'fg-hover': { default: 'brand-hover', float: 'brand-hover' },
-        'border-hover': { default: 'brand-hover', float: 'transparent' },
-        'bg-active': { default: 'bg', float: 'bg-subtle' },
-        'fg-active': { default: 'brand-active', float: 'brand-active' },
-        'border-active': { default: 'brand-active', float: 'transparent' },
-        'bg-disabled': 'bg-disabled',
-        'fg-disabled': 'fg-disabled',
-        'outline-color': 'outline-transparent',
-        'outline-color-active': 'outline',
-        // The ring is drawn in the colour the content has: the border of the default variant is that colour, the float variant has no border.
-        'wave-color': { default: 'text', float: 'text' },
     },
     // The spinner takes the icon's place while loading, drawn in the icon's colour and size (the same part as Button's, with no side to put it on).
     parts: [
@@ -87,7 +74,7 @@ export const ICON_BUTTON = {
     rootAlign: 'center',
     rootPrimaryAlign: 'center',
     display: {
-        root: { fill: 'bg', stroke: 'border', strokeWidth: 'borderWidth', radius: 'radius', size: 'height', shadow: 'shadow' },
+        root: { fill: 'bg', stroke: 'border', strokeWidth: 'borderWidth', radius: 'shapeRadius', size: 'height', shadow: 'shadow' },
         icon: { size: ICON_TOKENS.size },
         spinner: ICON_PART_DISPLAY,
     },

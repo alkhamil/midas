@@ -45,7 +45,7 @@ function documentWith(props) {
     const variables = { collections: model.collections, items: model.items };
     const frame = { id: 'm', name: 'IconButton', type: 'frame', parentId: null, component: true, fills: [], x: 400, y: 0 };
     const { created } = applyTemplateToFrame(iconButton, { frame, children: [], binding: { variables: model.binding.variables }, variables, idOf: key => `m-${key}` });
-    const nodes = instanceOf(iconButton, frame, created, props, { id: src => `i-${src}`, varModes: { [model.ids.variant]: 'default', [model.ids.shape]: 'square', [model.ids.size]: 'md' } });
+    const nodes = instanceOf(iconButton, frame, created, props, { id: src => `i-${src}`, varModes: { [model.ids.variant]: 'outlined', [model.ids.color]: 'primary', [model.ids.type]: 'default', [model.ids.shape]: 'square', [model.ids.size]: 'md' } });
     nodes[0].parentId = 'stage';
     const slot = nodes.find(n => n.behavior?.slot === 'icon');
     const plan = planInstanceAnatomy({ binding: { templateId: 'icon-button' }, masterRoot: { isAutoLayout: true }, masterTree: [{ id: 'm', type: 'frame' }], stored: props, children: [{ id: slot.id, slot: 'icon', name: 'icon', component: null }] });

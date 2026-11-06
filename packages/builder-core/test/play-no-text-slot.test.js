@@ -10,9 +10,9 @@ import { iconButtonModel } from '../../../scripts/icon-button-model.mjs';
 const template = BUILT_IN_TEMPLATES.get('icon-button');
 const model = iconButtonModel();
 const variables = { collections: model.collections, items: model.items };
-const { variant, shape, size } = model.ids;
-/** The instance's mode per collection (varModes), and per dimension (what the token resolver takes). */
-const modes = (v, s, z) => ({ [variant]: v, [shape]: s, [size]: z });
+const { variant, color, shape, size, type } = model.ids;
+/** The instance's mode per collection (varModes): Type, Shape and Size; Variant and Color stay outlined and primary. */
+const modes = (t, s, z) => ({ [variant]: 'outlined', [color]: 'primary', [type]: t, [shape]: s, [size]: z });
 
 /** A master built by the generator, with its layers. */
 function master() {
@@ -37,7 +37,7 @@ function played(m, nodes, extra = {}) {
 test('Play: the host is the template, the icon shows at rest, the spinner while loading, and the box is the instance square', () => {
     const m = master();
     const rest = played(m, instance(m, {}, modes('float', 'circle', 'md'))).el;
-    assert.deepEqual([rest.attrs.class, rest.attrs['data-variant'], rest.attrs['data-shape'], rest.attrs['data-size']], ['icon-button', 'float', 'circle', 'md']);
+    assert.deepEqual([rest.attrs.class, rest.attrs['data-variant'], rest.attrs['data-color'], rest.attrs['data-type'], rest.attrs['data-shape'], rest.attrs['data-size']], ['icon-button', 'outlined', 'primary', 'float', 'circle', 'md']);
     assert.deepEqual(rest.children.map(c => c.attrs.class), ['icon-button-icon']);
     assert.deepEqual([rest.style.width, rest.style.height], ['32px', '32px']);
     const busy = played(m, instance(m, { loading: true })).el;

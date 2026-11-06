@@ -36,9 +36,9 @@ test('the schema turns the wave on and holds the wave-color token the ring is dr
     assert.ok(template.playOnly.some(p => p.id === 'wave'), 'the wave is a play-only behaviour the canvas does not draw');
 });
 
-test('the wave is a colour per Variant, resolved for both', () => {
-    for (const v of ['default', 'float']) {
-        const vars = resolveTokens(template, model.binding, { variant: v, shape: 'square', size: 'md' }, variables).vars;
+test('the wave is a colour per Variant, resolved for every Variant and for both Types', () => {
+    for (const [v, t] of [['outlined', 'default'], ['solid', 'default'], ['outlined', 'float'], ['filled', 'float']]) {
+        const vars = resolveTokens(template, model.binding, { variant: v, color: 'primary', type: t, shape: 'square', size: 'md' }, variables).vars;
         assert.match(vars['--icon-button-wave-color'], /^#[0-9a-f]{6}/, v);
     }
 });
@@ -68,25 +68,25 @@ test('the ring follows the Shape: it inherits the host radius, and a circle host
     assert.match(ring, /inset: 0;/, 'the ring is the host box');
     assert.match(ring, /border-radius: inherit;/, 'and the host radius, not a rounded square of its own');
     assert.ok(!/min\(|clamp\(/.test(ring));
-    const rule = (shape, size) => new RegExp(`\\.icon-button\\[data-variant="default"\\]\\[data-shape="${shape}"\\]\\[data-size="${size}"\\] \\{[^}]*\\}`, 's').exec(css)[0];
-    assert.match(rule('circle', 'md'), /--icon-button-radius: 9999px;/);
-    assert.match(rule('square', 'md'), /--icon-button-radius: 6px;/);
-    assert.match(css, /\.icon-button \{[^}]*border-radius: var\(--icon-button-radius\);/s);
+    const rule = (shape, size) => new RegExp(`\\.icon-button\\[data-variant="outlined"\\]\\[data-color="primary"\\]\\[data-size="${size}"\\]\\[data-type="default"\\]\\[data-shape="${shape}"\\] \\{[^}]*\\}`, 's').exec(css)[0];
+    assert.match(rule('circle', 'md'), /--icon-button-shape-radius: 9999px;/);
+    assert.match(rule('square', 'md'), /--icon-button-shape-radius: 6px;/);
+    assert.match(css, /\.icon-button \{[^}]*border-radius: var\(--icon-button-shape-radius\);/s);
 });
 
 /** The instance drawn in Play: its element. */
-function played(props, variant = 'default', shape = 'circle') {
-    const nodes = instanceOf(template, frame, created, props, { id: src => `i-${src}`, varModes: { [model.ids.variant]: variant, [model.ids.shape]: shape, [model.ids.size]: 'md' } });
+function played(props, type = 'default', shape = 'circle') {
+    const nodes = instanceOf(template, frame, created, props, { id: src => `i-${src}`, varModes: { [model.ids.variant]: 'outlined', [model.ids.color]: 'primary', [model.ids.type]: type, [model.ids.shape]: shape, [model.ids.size]: 'md' } });
     Object.assign(nodes[0], { parentId: 'stage', x: 10, y: 10, w: 32, h: 32 });
     const stage = { id: 'stage', name: 'Stage', type: 'frame', parentId: null, x: 0, y: 0, w: 300, h: 200, fills: [] };
     const { root, styles } = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [stage, frame, ...created, ...nodes] }], variables }, 'stage');
     return { el: root.children.find(c => c.nodeId === nodes[0].id), styles };
 }
 
-test('Play marks both variants as wave hosts, with the stylesheet the export writes', () => {
-    for (const variant of ['default', 'float']) {
-        const { el, styles } = played({}, variant);
-        assert.equal(el.attrs['data-wave'], '', variant);
+test('Play marks both types as wave hosts, with the stylesheet the export writes', () => {
+    for (const type of ['default', 'float']) {
+        const { el, styles } = played({}, type);
+        assert.equal(el.attrs['data-wave'], '', type);
         assert.equal(el.attrs['data-blocked'], undefined);
         assert.equal(styles, css, 'Play writes the export stylesheet');
     }
