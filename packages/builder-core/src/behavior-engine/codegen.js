@@ -386,6 +386,10 @@ function displayRules(template, master, childrenOf, geometry) {
         const selector = key === 'root' ? `.${template.id}` : `.${template.id}-${key}`;
         const rule = `${selector} {\n${decls.join('')}}\n`;
         if (controlOf(template)?.slot === key && props.placeholder) return `${rule}${selector}::placeholder {\n  color: var(${cssVarOf(template.id, props.placeholder)});\n}\n`;
+        // A glyph draws its outline as an inline svg: without a display of its own it sits on the text
+        // baseline, so the strut pushes it below the span centre on every font. As a block it fills the
+        // centred span exactly, and the ink (centred in its own space) lands centred.
+        if (kind === 'glyph') return `${rule}${selector} svg {\n  display: block;\n}\n`;
         return rule;
     }).filter(Boolean);
 }
