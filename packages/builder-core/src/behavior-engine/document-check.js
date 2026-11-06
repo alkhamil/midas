@@ -51,7 +51,7 @@ function checkPages(doc, arrived) {
             if (arrived && masterMissing) continue; // deferred until the master's page arrives
             if (isInstance && n.behavior && 'props' in n.behavior) checkInstance(n, nodes, collections, page.name);
             if (isInstance) checkAnatomy(n, nodes, children, page.name);
-            if (isArrived && n.behavior && 'slot' in n.behavior && !nodes.get(n.parentId)?.isInstance) throw behaviorError(n, 'a managed layer sits outside an instance', page.name);
+            if (isArrived && n.behavior && 'slot' in n.behavior && !insideInstance(n, nodes)) throw behaviorError(n, 'a managed layer sits outside an instance', page.name);
         }
     }
 }
@@ -112,6 +112,27 @@ function descendantsOf(id, children) {
 }
 
 /**
+ * Whether a managed layer sits inside an instance: its parent is one, or a container of the anatomy (a group frame) whose parent is one (the checkmark in the box).
+ * @param {any} n a managed layer
+ * @param {Map<string, any>} nodes every node of the document by id
+ */
+function insideInstance(n, nodes) {
+    const parent = nodes.get(n.parentId);
+    return !!parent && (parent.isInstance === true || (parent.behavior?.group !== undefined && nodes.get(parent.parentId)?.isInstance === true));
+}
+
+/**
+ * The layers the anatomy plan looks at for an instance: its children and the children of its containers, where a slot named for a container lives.
+ * @param {any} n an instance
+ * @param {Map<string | null, any[]>} children
+ * @returns {any[]}
+ */
+function managedChildren(n, children) {
+    const kids = children.get(n.id) || [];
+    return [...kids, ...kids.filter(c => c.behavior?.group !== undefined).flatMap(c => children.get(c.id) || [])];
+}
+
+/**
  * The managed layers of an instance must match its values: present iff hasIcon, the right slot, the right position.
  * Nothing is repaired; the first mismatch fails the file. A master without a label layer or auto layout is not checked.
  * @param {any} n an instance
@@ -128,7 +149,7 @@ function checkAnatomy(n, nodes, children, page) {
         // A flipped instance root stores its children back to front: the planner places icons at the visual start and end.
         flip: !!n.layoutFlip,
         stored: n.behavior?.props,
-        children: (children.get(n.id) || []).map(c => ({
+        children: managedChildren(n, children).map(c => ({
             id: c.id, slot: c.behavior?.slot ?? null, name: c.name,
             // A slot shows the icon its nested instance is an instance of (null for the placeholder).
             component: c.behavior && 'slot' in c.behavior ? (children.get(c.id) || []).find(x => x.isInstance && x.sourceId)?.sourceId ?? null : undefined,
