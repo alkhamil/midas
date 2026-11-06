@@ -116,7 +116,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     }
     const slotted = (template.slots ?? []).length > 0;
     // The props that write a gap or a width reach the stylesheet as custom properties on the root (a width of none is not set); a layout is a data attribute.
-    const varPairs = fieldWritersOf(template).filter(w => w.field !== 'layout').map(w => {
+    const varPairs = fieldWritersOf(template).filter(w => w.field === 'gap' || w.field === 'width').map(w => {
         const none = template.props[w.prop].default === null ? `${w.prop} == null ? undefined : ` : '';
         return `'--${template.id}-${w.prop}': ${none}\`\${${w.prop}}px\``;
     });
@@ -208,6 +208,8 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         // A persistent state the stylesheet selects as an attribute (`[data-checked]`) is written from its prop.
         ...stateAttributesOf(template).map(({ attr, prop }) => `${attr}={${prop} || undefined}`),
         ...fieldWritersOf(template).filter(w => w.field === 'layout').map(w => `data-${w.prop}={${w.prop}}`),
+        // A prop that aligns the row's content to the end says which end as a data attribute (a Switch's handle).
+        ...fieldWritersOf(template).filter(w => w.field === 'primaryAlign').map(w => `data-${w.prop}-align={${w.prop} ? "end" : "start"}`),
         // Only some elements have a `disabled` attribute; any other root says it with aria-disabled (and the schema's state pseudo selects on it).
         ...(ctl ? [] : [DISABLEABLE.has(tag) ? `disabled={${disabledProp}}` : `aria-disabled={${disabledProp} || undefined}`]),
         // A root whose click a prop blocks says so, so the loading rule (see blockedRules) matches in Play and in the export alike.
@@ -461,6 +463,8 @@ function fieldRules(template) {
             const fill = (option, id) => `.${template.id}[data-${prop}="${option}"] .${template.id}-${id} {\n${option === 'horizontal' ? '  flex: 1 1 0;\n  min-width: 0px;\n  align-self: auto;' : '  flex: none;\n  align-self: stretch;'}\n}\n`;
             return template.props[prop].options.flatMap(option => [direction(option), ...fills.map(id => fill(option, id))]);
         }
+        // A prop that aligns the content to the end: one rule per side, selected on the data attribute the root carries.
+        if (field === 'primaryAlign') return ['start', 'end'].map(side => `.${template.id}[data-${prop}-align="${side}"]${target} {\n  justify-content: flex-${side};\n}\n`);
         const own = key === 'root' ? `.${template.id}` : `.${template.id}-${key}`;
         return [`${own} {
   ${field === 'gap' ? `gap: var(--${template.id}-${prop})` : `width: var(--${template.id}-${prop}, auto)`};

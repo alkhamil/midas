@@ -51,7 +51,7 @@ export const NODE_PROPERTIES = {
 export const LOADING_OPACITY = 0.65;
 
 export const NODE_FIELDS = {
-    frame: { visible: { kind: 'boolean' }, layout: { kind: 'enum', options: ['horizontal', 'vertical'] }, gap: { kind: 'number' }, width: { kind: 'number' }, opacity: { kind: 'boolean', values: { true: LOADING_OPACITY } } },
+    frame: { visible: { kind: 'boolean' }, primaryAlign: { kind: 'boolean', values: { true: 'end', false: 'start' } }, layout: { kind: 'enum', options: ['horizontal', 'vertical'] }, gap: { kind: 'number' }, width: { kind: 'number' }, opacity: { kind: 'boolean', values: { true: LOADING_OPACITY } } },
     text: { text: { kind: 'string' }, visible: { kind: 'boolean' }, width: { kind: 'number' } },
     arc: { visible: { kind: 'boolean' } },
 };
@@ -281,6 +281,7 @@ export function fieldStyleOf(template, props) {
     const attrs = {}, vars = {};
     for (const { prop, field } of nodeWritersOf(template)) {
         if (field === 'layout') attrs[`data-${prop}`] = String(props[prop]);
+        else if (field === 'primaryAlign') attrs[`data-${prop}-align`] = NODE_FIELDS.frame.primaryAlign.values[String(props[prop] === true)];
         else if ((field === 'gap' || field === 'width') && props[prop] != null) vars[`--${template.id}-${prop}`] = `${props[prop]}px`;
     }
     return { attrs, vars };
@@ -291,5 +292,5 @@ export function fieldStyleOf(template, props) {
  * @param {import('../templates/schema.js').TemplateSchema} template
  */
 export function fieldWritersOf(template) {
-    return nodeWritersOf(template).filter(({ field }) => ['layout', 'gap', 'width'].includes(field));
+    return nodeWritersOf(template).filter(({ field }) => ['layout', 'gap', 'width', 'primaryAlign'].includes(field));
 }
