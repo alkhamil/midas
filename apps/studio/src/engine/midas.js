@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, ICONS_SECTION, defaultIconOf, iconNodes, planIcons, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, managedTextLayer, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, pathSegments, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
+import { nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, ICONS_SECTION, defaultIconOf, iconNodes, planIcons, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, managedTextLayer, planManagedTextBindings, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, textColorTokenOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, pathSegments, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { slotRowHtml } from './slotRow.js';
 import { openPlay } from './play.js';
@@ -9803,20 +9803,24 @@ function setIconVars(n, bound) {
     // A slot bound to the size variable is that size on both axes: fixed, never hug (also on a slot bound before this rule).
     if (fixBoundAxes(n) || !unchanged) doc.touch(n);
 }
-/**
- * Brings an instance's managed layers in line with its values: removes, moves, inserts (one plan). Must run inside a transaction.
- * Returns the reason when sync did nothing (the master has no auto layout or no text layer), else null.
- */
 /** The template an instance's master binds, or null. */
 function managedTemplateOf(inst) {
     const binding = componentById(inst.sourceId)?.behavior;
     return binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) ?? null : null;
+}
+/** The instance's managed text and control layers, by slot id. */
+function managedTextLayersOf(inst, template) {
+    return doc.children(inst.id).filter(c => c.behavior?.slot !== undefined && template.anatomy.some(s => s.id === c.behavior.slot && s.kind !== 'icon'));
 }
 /** Whether a managed slot of an instance is a text or control layer (not an icon frame). */
 function managedTextSlotOf(inst, slot) {
     const def = managedTemplateOf(inst)?.anatomy.find(s => s.id === slot);
     return !!def && def.kind !== 'icon';
 }
+/**
+ * Brings an instance's managed layers in line with its values: removes, moves, inserts (one plan). Must run inside a transaction.
+ * Returns the reason when sync did nothing (the master has no auto layout or no text layer), else null.
+ */
 function syncInstance(inst) {
     const { ops, reason } = anatomyPlanOf(inst);
     onPage(pageOfNode(inst.id)?.id, () => {
@@ -9842,6 +9846,7 @@ function syncInstance(inst) {
             doc.touch(inst);
         }
         applyStateBindings(inst, stateBindingsOf(inst));
+        applyManagedTextBindings(inst);
         applyLiteralFields(inst);
         const missingIconVars = applyIconSlotBindings(inst);
         if (missingIconVars.length) toast(`The icon needs ${missingIconVars.join(' and ')}.`);
@@ -9964,7 +9969,7 @@ function applyLiteralFields(inst) {
     const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
     if (!template) return;
     const { label } = instanceLabelOf(inst, master);
-    const managedText = Object.fromEntries(doc.children(inst.id).filter(c => c.behavior?.slot !== undefined && template.anatomy.some(s => s.id === c.behavior.slot && s.kind !== 'icon')).map(c => [c.behavior.slot, c]));
+    const managedText = Object.fromEntries(managedTextLayersOf(inst, template).map(c => [c.behavior.slot, c]));
     const target = { root: inst, label, ...partLayersOf(inst, master), ...groupLayersOf(inst, master), ...textSlotLayersOf(inst, master, template), ...managedText };
     const props = resolveProps(template, inst.behavior?.props ?? {});
     for (const { key, field, value } of [...literalFields(template, props), ...partWrites(template, props)]) {
@@ -10009,6 +10014,19 @@ function stateBindingsOf(inst) {
     const layers = [{ key: 'root', instance: { id: inst.id, vars: inst.vars }, master: { vars: master.vars } }];
     if (label) layers.push({ key: template.primarySlot, instance: { id: label.id, vars: label.vars }, master: { vars: masterLabel.vars } });
     return planStateBindings({ template, binding, props: resolveProps(template, inst.behavior?.props ?? {}), layers, variables: varStore() }).ops;
+}
+/**
+ * Binds an instance's managed text layers to the template's token variables (fill, typography, the state's colour): the master has no layer
+ * for them to copy from, so the instance's own layer carries the bindings (see planManagedTextBindings).
+ */
+function applyManagedTextBindings(inst) {
+    const master = componentById(inst.sourceId), binding = master?.behavior;
+    const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
+    if (!template) return;
+    const layers = managedTextLayersOf(inst, template).map(node => ({ key: node.behavior.slot, node }));
+    if (!layers.length) return;
+    const { ops } = planManagedTextBindings({ template, binding, props: resolveProps(template, inst.behavior?.props ?? {}), layers, variables: varStore() });
+    for (const n of applyBindTokens(layers, ops)) doc.touch(n);
 }
 /** Writes the derived bindings. A layer whose value is null loses that binding; a layer left with none loses its vars. */
 function applyStateBindings(inst, ops) {
