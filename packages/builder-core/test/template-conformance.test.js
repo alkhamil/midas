@@ -19,6 +19,7 @@ const generated = id => () => { const m = modelFor(TEMPLATES.get(id)); return { 
 /** The variable model and binding each registered template is checked with. */
 const MODELS = {
     checkbox: generated('checkbox'),
+    switch: generated('switch'),
     button: () => {
         const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
         return { variables: { collections: model.collections, items: model.items }, binding: { variables: { variant: model.ids.variant, color: model.ids.color, size: model.ids.size } } };

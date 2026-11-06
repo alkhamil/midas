@@ -102,10 +102,10 @@ const icon = doc => doc.nodes.find(n => n.id === defaultIconOf([{ nodes: doc.nod
 test('the run builds a master for every registered template, in dependency order, each with its demo instance', () => {
     const doc = fresh();
     const { counts, plan } = run(doc);
-    assert.deepEqual(plan.order.map(t => t.id), ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox']);
-    assert.equal(counts.created, 6);
+    assert.deepEqual(plan.order.map(t => t.id), ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch']);
+    assert.equal(counts.created, 7);
     const masters = doc.nodes.filter(n => n.component && n.behavior?.templateId);
-    assert.deepEqual(masters.map(m => m.behavior.templateId), ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox']);
+    assert.deepEqual(masters.map(m => m.behavior.templateId), ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch']);
     for (const template of BUILT_IN_TEMPLATES.values()) {
         const master = masters.find(m => m.behavior.templateId === template.id);
         assert.ok(doc.nodes.some(n => n.isInstance && n.sourceId === master.id), `${template.id} has a demo instance`);
@@ -148,7 +148,7 @@ test('a second run adds nothing: no variable, no master, no node', () => {
     assert.equal(again.counts.icons, 0);
     assert.equal(again.counts.iconsPresent, 3);
     assert.equal(again.counts.created, 0);
-    assert.equal(again.counts.present, 6);
+    assert.equal(again.counts.present, 7);
     assert.equal(firstDifference(before, doc), null, 'the document is what it was');
 });
 
