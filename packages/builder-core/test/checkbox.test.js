@@ -37,13 +37,13 @@ test('the label is never lost on a toggle: it is removed and made again from the
     assert.deepEqual(names({ hasLabel: true, label: '' }, 'text'), [], 'an empty label asks for no layer');
 });
 
-test('the checkmark and the square are managed icon slots inside the box, exclusive with each other', () => {
+test('the checkmark and the square are managed icon slots inside the box, on the instance from the start and drawn only while their state holds', () => {
     const glyphs = props => instanceFor(model, props).filter(n => ['check', 'indeterminate'].includes(n.behavior?.slot));
     const inBox = props => { const nodes = instanceFor(model, props), box = nodes.find(n => n.behavior?.group === 'box'); return nodes.filter(n => n.behavior?.slot === 'check').map(n => n.parentId === box.id); };
-    assert.deepEqual(glyphs({}).map(n => n.name), []);
-    assert.deepEqual(glyphs({ checked: true }).map(n => n.name), ['check']);
+    assert.deepEqual(glyphs({}).map(n => [n.name, n.visible]), [['check', false], ['indeterminate', false]], 'present but hidden while neither state holds');
+    assert.deepEqual(glyphs({ checked: true }).map(n => [n.name, n.visible]), [['check', true], ['indeterminate', false]]);
     assert.deepEqual(inBox({ checked: true }), [true], 'the checkmark hangs under the box');
-    assert.deepEqual(glyphs({ indeterminate: true }).map(n => n.name), ['indeterminate']);
+    assert.deepEqual(glyphs({ indeterminate: true }).map(n => [n.name, n.visible]), [['check', false], ['indeterminate', true]]);
     assert.equal(checkbox.props.checked.exclusiveWith, 'indeterminate');
     assert.equal(checkbox.props.indeterminate.exclusiveWith, 'checked');
 });

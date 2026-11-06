@@ -31,11 +31,12 @@ test('a fresh instance shows ONE text node: the label; the label is never lost o
     assert.equal(instanceFor(model, { label: 'Option A', hasLabel: true }).find(n => n.name === 'label').text, 'Option A');
 });
 
-test('the dot is a managed icon slot inside the box, shown while checked', () => {
+test('the dot is a managed icon slot inside the box, on the instance from the start and drawn while checked', () => {
     const nodes = instanceFor(model, { checked: true });
     const box = nodes.find(n => n.behavior?.group === 'box');
     assert.equal(nodes.find(n => n.behavior?.slot === 'dot').parentId, box.id);
-    assert.ok(!instanceFor(model, {}).some(n => n.behavior?.slot === 'dot'));
+    assert.equal(instanceFor(model, {}).find(n => n.behavior?.slot === 'dot').visible, false, 'present but hidden while unchecked');
+    assert.equal(nodes.find(n => n.behavior?.slot === 'dot').visible, true);
     assert.deepEqual(ICON_SET.filter(e => e.role === 'dot').map(e => e.name), ['dot']);
     assert.deepEqual(iconRolesOf([radio]), ['dot']);
 });

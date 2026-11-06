@@ -1,4 +1,4 @@
-import { COLOUR_TOKENS, NODE_FIELDS, STATE_ATTRIBUTE, displayProblems, targetKindOf } from './display.js';
+import { COLOUR_TOKENS, NODE_FIELDS, STATE_ATTRIBUTE, displayProblems, stateAttributesOf, targetKindOf } from './display.js';
 
 const LITERAL_TYPES = ['boolean', 'string', 'number', 'enum', 'iconComponent'];
 
@@ -324,6 +324,8 @@ function iconProblems(schema, allTokens) {
         if (always) { if (icon.show !== undefined) out.push(`${tag} shows an alwaysVisible slot, so it has no show switch`); }
         else if (!show || show.source !== 'literal' || show.type !== 'boolean') out.push(`${tag} show "${icon.show}" is not a boolean prop`);
         if (!component || component.source !== 'literal' || component.type !== 'iconComponent') out.push(`${tag} component "${icon.component}" is not an icon prop`);
+        // `showWhen` names a boolean prop that is a persistent state the root says as an attribute, so the export and Play follow it without the engine.
+        if (icon.showWhen !== undefined && !(props[icon.showWhen]?.source === 'literal' && props[icon.showWhen]?.type === 'boolean' && stateAttributesOf(schema).some(a => a.prop === icon.showWhen))) out.push(`${tag} showWhen "${icon.showWhen}" is not a boolean prop that a state with an attribute follows`);
         if (icon.hideWhenEmpty !== undefined && (props[icon.hideWhenEmpty]?.source !== 'literal' || props[icon.hideWhenEmpty]?.type !== 'string')) out.push(`${tag} hideWhenEmpty "${icon.hideWhenEmpty}" is not a string prop`);
         if (icon.placement !== undefined) {
             const placement = props[icon.placement];

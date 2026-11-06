@@ -324,11 +324,12 @@ function renderTemplate(n, template, parent, scope) {
                 if (!iconDefOn(def, props)) continue;
                 if (def.placement && !placementsOfDef(template, def, slot.id).includes(String(props[def.placement]))) continue;
                 // A slot that hides while its value is empty (the clear icon) is kept and hidden, so Play shows it as the value is typed.
-                const hidden = def.hideWhenEmpty !== undefined && String(props[def.hideWhenEmpty] ?? '') === '';
+                // A slot that shows only while a state holds (the checkmark while checked) is kept and hidden the same way: the root's attribute for that state decides.
+                const hidden = (def.hideWhenEmpty !== undefined && String(props[def.hideWhenEmpty] ?? '') === '') || (def.showWhen !== undefined && props[def.showWhen] !== true);
                 const el = layer && renderNode(hidden ? { ...layer, visible: true } : layer, n, scope, true);
                 if (!el) continue;
                 const { position, left, top, width, height, ...style } = el.style;
-                out.push({ ...el, attrs: { ...el.attrs, class: `${template.id}-${slot.id}`, ...(def.hideWhenEmpty !== undefined ? { 'data-role': slot.id, hidden } : {}) }, style });
+                out.push({ ...el, attrs: { ...el.attrs, class: `${template.id}-${slot.id}`, ...(def.hideWhenEmpty !== undefined ? { 'data-role': slot.id, hidden } : {}), ...(def.showWhen !== undefined ? { hidden, 'data-show-attr': stateAttributesOf(template).find(a => a.prop === def.showWhen).attr } : {}) }, style });
                 break;
             }
         }

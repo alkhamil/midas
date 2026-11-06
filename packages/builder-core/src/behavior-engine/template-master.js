@@ -24,7 +24,7 @@ export function slotWanted(template, slotId, resolved) {
 export function slotShown(template, slotId, resolved) {
     const anatomy = template.anatomy.find(s => s.id === slotId);
     if (anatomy?.managed && anatomy.kind !== 'icon') return slotWanted(template, slotId, resolved);
-    return slotWanted(template, slotId, resolved) && slotDefsOf(template, slotId).some(def => iconDefOn(def, resolved) && (def.hideWhenEmpty === undefined || String(resolved[def.hideWhenEmpty] ?? '') !== ''));
+    return slotWanted(template, slotId, resolved) && slotDefsOf(template, slotId).some(def => iconDefOn(def, resolved) && (def.hideWhenEmpty === undefined || String(resolved[def.hideWhenEmpty] ?? '') !== '') && (def.showWhen === undefined || resolved[def.showWhen] === true));
 }
 
 /** The vertical sizing of a root that binds a height token: fixed, so the Size height is the box; any other root hugs its content. */

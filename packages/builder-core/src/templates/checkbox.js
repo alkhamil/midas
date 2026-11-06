@@ -5,7 +5,8 @@ import { DEFAULT_SIZE_MODE, SIZE_MODES } from './size-modes.js';
 // Checkbox: a box and, beside it, its label. The box is a container of the anatomy (a group frame): it draws the one border, the fill, the radius and its size,
 // and holds the checkmark (checked) or the square (indeterminate), each a managed icon slot of its own. The label is a managed text layer, made while the text
 // is not empty and the switch is on; the text stays in its prop. Checked and Indeterminate exclude each other, and the box reads the checked tokens only while
-// checked (Disabled is declared last, so it wins). Structure follows Ant Design (components/checkbox: checked, indeterminate, disabled); values are tokens.
+// checked (Disabled is declared last, so it wins). The glyph slots are on the instance from the start and drawn only while their state holds (showWhen), so Play can
+// show them on a click. Structure follows Ant Design (components/checkbox: checked, indeterminate, disabled); values are tokens.
 
 const CHECK = { colour: 'check-fg', disabledColour: 'glyph-fg-disabled', size: 'checkSize' };
 const SQUARE = { colour: 'dash-fg', disabledColour: 'glyph-fg-disabled', size: 'indicatorSize' };
@@ -22,13 +23,13 @@ export const CHECKBOX = {
     element: { tag: 'label', attrs: {}, disabledState: 'disabled', blockClickProps: [] },
     anatomy: [
         { id: 'box', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center' },
-        { id: 'check', kind: 'icon', optional: true, managed: true, parent: 'box' },
-        { id: 'indeterminate', kind: 'icon', optional: true, managed: true, parent: 'box' },
+        { id: 'check', kind: 'icon', managed: true, alwaysVisible: true, parent: 'box' },
+        { id: 'indeterminate', kind: 'icon', managed: true, alwaysVisible: true, parent: 'box' },
         { id: 'label', kind: 'text', optional: true, managed: true, typography: 'label', shownWhen: { all: [{ prop: 'hasLabel', is: true }, { prop: 'label', empty: false }] } },
     ],
     icons: [
-        { show: 'checked', slot: 'check', component: 'checkIcon', role: 'check', label: 'Check icon', tokens: CHECK },
-        { show: 'indeterminate', slot: 'indeterminate', component: 'indeterminateIcon', role: 'indeterminate', label: 'Indeterminate icon', tokens: SQUARE },
+        { showWhen: 'checked', slot: 'check', component: 'checkIcon', role: 'check', label: 'Check icon', tokens: CHECK },
+        { showWhen: 'indeterminate', slot: 'indeterminate', component: 'indeterminateIcon', role: 'indeterminate', label: 'Indeterminate icon', tokens: SQUARE },
     ],
     // The row is left aligned and centred: the box and the label sit on one line.
     rootAlign: 'center',
@@ -60,10 +61,12 @@ export const CHECKBOX = {
     // Checked swaps the box colours; Disabled is declared last, so it wins over Checked. The glyph colours are the icon slots' own tokens.
     persistentStates: {
         checked: { prop: 'checked', tokens: { 'box-bg': 'box-bg-checked', 'box-border': 'box-border-checked' } },
+        // Indeterminate swaps no token (the box keeps its colours, the square is the mark); it is a state so the root says it as an attribute.
+        indeterminate: { prop: 'indeterminate', tokens: {} },
         disabled: { prop: 'disabled', tokens: { 'box-bg': 'box-bg-disabled', 'box-border': 'box-border-disabled', fg: 'fg-disabled' } },
     },
     previewStates: {},
-    statePseudo: { checked: '[data-checked]', disabled: ':disabled' },
+    statePseudo: { checked: '[data-checked]', indeterminate: '[data-indeterminate]', disabled: ':disabled' },
     parts: [],
     playOnly: [],
     display: {

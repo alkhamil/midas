@@ -21,11 +21,11 @@ export const RADIO = {
     element: { tag: 'label', attrs: {}, disabledState: 'disabled', blockClickProps: [] },
     anatomy: [
         { id: 'box', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center' },
-        { id: 'dot', kind: 'icon', optional: true, managed: true, parent: 'box' },
+        { id: 'dot', kind: 'icon', managed: true, alwaysVisible: true, parent: 'box' },
         { id: 'label', kind: 'text', optional: true, managed: true, typography: 'label', shownWhen: { all: [{ prop: 'hasLabel', is: true }, { prop: 'label', empty: false }] } },
     ],
     icons: [
-        { show: 'checked', slot: 'dot', component: 'dotIcon', role: 'dot', label: 'Dot icon', tokens: DOT },
+        { showWhen: 'checked', slot: 'dot', component: 'dotIcon', role: 'dot', label: 'Dot icon', tokens: DOT },
     ],
     // The row is left aligned and centred: the box and the label sit on one line.
     rootAlign: 'center',
