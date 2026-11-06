@@ -203,6 +203,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
     out.push(...shownWhenProblems(schema, props || {}));
     out.push(...focusTargetProblems(schema));
     out.push(...interactionProblems(schema));
+    out.push(...motionProblems(schema, allTokens));
     out.push(...toggleProblems(schema));
     out.push(...nodeProblems(schema));
     out.push(...outlineProblems(schema));
@@ -602,6 +603,69 @@ function outlineProblems(schema) {
     // A stale width is refused loudly, never silently ignored (old templates fail to open until it is removed).
     if ('width' in o) return ['outline.width is no longer read: remove it and bind the outline-width token instead.'];
     return ['offset'].filter(k => typeof o[k] !== 'number' || o[k] < 0).map(k => `outline ${k} must be a number of px, 0 or more`);
+}
+
+/**
+ * Problems in the motion behaviour: colour transitions, glyph draw-in appearances, the sliding
+ * handle and the press grow. Durations and easings are schema data (they have no variable type),
+ * keys name the display mapping, states name persistent states the root says as an attribute.
+ * @param {any} schema
+ * @param {string[]} allTokens
+ * @returns {string[]}
+ */
+const CSS_TIME = /^\d+(\.\d+)?m?s$/;
+const CSS_EASE = /^(linear|ease|ease-in|ease-out|ease-in-out|step-start|step-end|steps\([^)]*\)|cubic-bezier\([^)]*\))$/;
+const CSS_PROP = /^[a-z-]+$/;
+const CSS_LENGTH = /^\d+(\.\d+)?px$/;
+function motionProblems(schema, allTokens) {
+    const motion = schema.motion;
+    if (motion === undefined) return [];
+    if (!isPlainObject(motion)) return ['motion must be an object'];
+    const out = [];
+    const keys = ['root', ...Object.keys(schema.display ?? {})];
+    const attributed = new Set(stateAttributesOf(schema).map(a => a.state));
+    const time = (what, value) => { if (typeof value !== 'string' || !CSS_TIME.test(value)) out.push(`motion ${what} must be a CSS duration (0.3s)`); };
+    const ease = (what, value) => { if (typeof value !== 'string' || !CSS_EASE.test(value)) out.push(`motion ${what} must be a CSS easing (ease-in-out or cubic-bezier(...))`); };
+    for (const t of motion.transitions ?? []) {
+        const where = `motion transition "${t?.key ?? '?'}"`;
+        if (!isPlainObject(t)) { out.push('motion transitions must be objects'); continue; }
+        if (!keys.includes(t.key)) out.push(`${where} names "${t.key}", which is not root or a display key`);
+        if (!Array.isArray(t.props) || !t.props.length || !t.props.every(p => typeof p === 'string' && CSS_PROP.test(p))) out.push(`${where} props must be a non-empty list of CSS properties`);
+        time(`${where} duration`, t.duration);
+        ease(`${where} timing`, t.timing);
+        if (t.delay !== undefined) time(`${where} delay`, t.delay);
+    }
+    for (const a of motion.appearances ?? []) {
+        const where = `motion appearance "${a?.key ?? '?'}"`;
+        if (!isPlainObject(a)) { out.push('motion appearances must be objects'); continue; }
+        if (!keys.includes(a.key)) out.push(`${where} names "${a.key}", which is not root or a display key`);
+        if (!Array.isArray(a.states) || !a.states.length || !a.states.every(s => attributed.has(s))) out.push(`${where} states must name persistent states the root says as an attribute`);
+        if (!isPlainObject(a.from) || !Object.keys(a.from).length || !Object.entries(a.from).every(([p, v]) => CSS_PROP.test(p) && typeof v === 'string' && v !== '')) out.push(`${where} from must be CSS declarations`);
+        time(`${where} duration`, a.duration);
+        ease(`${where} timing`, a.timing);
+        if (a.delay !== undefined) time(`${where} delay`, a.delay);
+    }
+    if (motion.slide !== undefined) {
+        const s = motion.slide, where = 'motion slide';
+        if (!isPlainObject(s)) out.push(`${where} must be an object`);
+        else {
+            if (!keys.includes(s.key)) out.push(`${where} names "${s.key}", which is not root or a display key`);
+            const prop = isPlainObject(schema.props) ? schema.props[s.prop] : null;
+            if (!prop || prop.source !== 'literal' || prop.type !== 'boolean') out.push(`${where} prop "${s.prop}" must be a boolean literal prop`);
+            for (const side of ['track', 'handle', 'padding']) if (!allTokens.includes(s.travel?.[side])) out.push(`${where} travel ${side} "${s.travel?.[side]}" is not a token`);
+        }
+    }
+    if (motion.press !== undefined) {
+        const p = motion.press, where = 'motion press';
+        if (!isPlainObject(p)) out.push(`${where} must be an object`);
+        else {
+            if (!keys.includes(p.key)) out.push(`${where} names "${p.key}", which is not root or a display key`);
+            if (!allTokens.includes(p.token)) out.push(`${where} token "${p.token}" is not a token`);
+            if (typeof p.prop !== 'string' || !CSS_PROP.test(p.prop)) out.push(`${where} prop must be a CSS property`);
+            if (typeof p.grow !== 'string' || !CSS_LENGTH.test(p.grow)) out.push(`${where} grow must be a CSS length in px`);
+        }
+    }
+    return out;
 }
 
 /**

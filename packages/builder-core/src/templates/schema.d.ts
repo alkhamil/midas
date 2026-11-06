@@ -153,6 +153,64 @@ export interface EventDef {
     exposeAsTrigger: boolean;
 }
 
+/** A colour transition of one element: CSS properties eased over a duration (antd motion). */
+export interface MotionTransition {
+    /** `root` or an anatomy slot the display mapping names. */
+    key: string;
+    /** CSS properties the transition covers (`background-color`, `border-color`, `transform`, `width`). */
+    props: string[];
+    /** CSS duration (`0.3s`). */
+    duration: string;
+    /** CSS easing (`ease-in-out` or `cubic-bezier(...)`). */
+    timing: string;
+    /** CSS delay (`0.1s`), absent for none. */
+    delay?: string;
+}
+
+/** A glyph draw-in: while one of the states holds, the element plays a scale/fade entrance. */
+export interface MotionAppearance {
+    /** The glyph slot the animation plays on. */
+    key: string;
+    /** Persistent states (each with a root attribute) that play it. */
+    states: string[];
+    /** The entrance start: CSS declarations the `from` frame holds (`transform`, `opacity`). */
+    from: Record<string, string>;
+    /** CSS duration, easing and delay of the entrance. */
+    duration: string;
+    timing: string;
+    delay?: string;
+}
+
+/** The sliding handle: the checked prop moves it across the track by transform (Play/export only). */
+export interface MotionSlide {
+    /** The handle slot. */
+    key: string;
+    /** The boolean prop that slides it (its root attribute selects the slid rule). */
+    prop: string;
+    /** The tokens the travel derives from: `track - handle - 2 * padding`, read as CSS variables. */
+    travel: { track: string; handle: string; padding: string };
+}
+
+/** The press grow: while pressed the handle widens by a fixed amount (Play/export only). */
+export interface MotionPress {
+    /** The handle slot. */
+    key: string;
+    /** The size token the width grows from. */
+    token: string;
+    /** The CSS property the grow writes (`width`). */
+    prop: string;
+    /** The grow amount (`4px`). */
+    grow: string;
+}
+
+/** Motion behaviour of a template: transitions, appearances, at most one slide and one press grow. */
+export interface MotionDef {
+    transitions?: MotionTransition[];
+    appearances?: MotionAppearance[];
+    slide?: MotionSlide;
+    press?: MotionPress;
+}
+
 export interface TemplateSchema {
     id: string;
     name: string;
@@ -175,6 +233,10 @@ export interface TemplateSchema {
     /** Interaction behaviour, antd parity: `focus` is the ring kind (`halo` switches the ring on focus as well as
      * focus-visible, `outline` on focus-visible only), `wave` shows the click wave. Data only. */
     interaction?: { focus: 'outline' | 'halo'; wave: boolean };
+    /** Motion behaviour, antd parity (timings and easings only): colour transitions, glyph draw-in
+     * appearances, the sliding handle and the press grow. Data only: the engine emits Play/export CSS
+     * from it (the canvas stays static), never literals of its own. */
+    motion?: MotionDef;
     props: Record<string, PropDef>;
     tokens: TokenGroups;
     tokenKinds: Record<string, TokenKind>;

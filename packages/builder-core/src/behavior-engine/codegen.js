@@ -448,13 +448,58 @@ function waveRules(template) {
 }
 
 /**
- * Reduced motion kills the focus transition and the wave. Emitted per template with interaction behaviour.
+ * Reduced motion kills the focus transition, the wave and template motion. Emitted per template with interaction or motion behaviour.
  * @param {import('../templates/schema.js').TemplateSchema} template
  */
+/**
+ * The motion rules of a template, from its schema `motion` (antd timings and easings only): colour
+ * transitions, glyph draw-in appearances, the sliding handle and the press grow. Play and the export
+ * share them; the canvas never reads them. A disabled root neither transitions nor plays an appearance.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ * @returns {string[]}
+ */
+function motionRules(template) {
+    const motion = template.motion;
+    if (!motion) return [];
+    const out = [];
+    const dis = pseudoOf(template, template.element.disabledState);
+    const notDis = `:not(${dis})`;
+    const selOf = key => key === 'root' ? `.${template.id}` : `.${template.id}-${key}`;
+    for (const t of motion.transitions ?? []) {
+        const sel = selOf(t.key);
+        out.push(`${sel} {\n  transition: ${t.props.map(p => `${p} ${t.duration} ${t.timing}${t.delay ? ` ${t.delay}` : ''}`).join(', ')};\n}\n`);
+        // A control taking the disabled state swaps colours with no transition, so the swap is instant.
+        out.push(`${t.key === 'root' ? `.${template.id}${dis}` : `.${template.id}${dis} ${sel}`} {\n  transition: none;\n}\n`);
+    }
+    for (const a of motion.appearances ?? []) {
+        const name = `midas-${template.id}-${a.key}-in`;
+        out.push(`@keyframes ${name} {\n  from {\n${Object.entries(a.from).map(([p, v]) => `    ${p}: ${v};`).join('\n')}\n  }\n}\n`);
+        const roots = a.states.map(s => `.${template.id}[${stateAttributesOf(template).find(x => x.state === s)?.attr}]${notDis} .${template.id}-${a.key}`);
+        out.push(`${roots.join(', ')} {\n  animation: ${name} ${a.duration} ${a.timing}${a.delay ? ` ${a.delay}` : ''};\n}\n`);
+    }
+    if (motion.slide) {
+        const { key, prop, travel } = motion.slide;
+        const attr = stateAttributesOf(template).find(x => x.prop === prop)?.attr;
+        const v = t => `var(${cssVarOf(template.id, t)})`;
+        out.push(`.${template.id} .${template.id}-${key} {\n  transform: translateX(0);\n}\n`);
+        // The resting end position stays where the canvas puts it (track - handle - padding), but reached
+        // by transform so the travel animates; this overrides the align-end rule above (same specificity, later wins).
+        out.push(`.${template.id}[${attr}] {\n  justify-content: flex-start;\n}\n`);
+        out.push(`.${template.id}[${attr}] .${template.id}-${key} {\n  transform: translateX(calc(${v(travel.track)} - ${v(travel.handle)} - 2 * ${v(travel.padding)}));\n}\n`);
+    }
+    if (motion.press) {
+        const { key, token, prop, grow } = motion.press;
+        out.push(`.${template.id}:active${notDis} .${template.id}-${key} {\n  ${prop}: calc(var(${cssVarOf(template.id, token)}) + ${grow});\n}\n`);
+    }
+    return out;
+}
 function reducedMotion(template) {
     const sel = `.${template.id}`;
     const wave = template.interaction?.wave ? `\n  ${sel}[data-wave-on]::after {\n    animation: none;\n  }` : '';
-    return `@media (prefers-reduced-motion: reduce) {\n  ${sel} {\n    transition: none;\n  }${wave}\n}\n`;
+    const dis2 = `:not(${pseudoOf(template, template.element.disabledState)})`;
+    const motion = template.motion ? [...(template.motion.transitions ?? []).map(t => `\n  ${t.key === 'root' ? sel : `${sel}-${t.key}`} {\n    transition: none;\n  }`),
+        ...(template.motion.appearances ?? []).map(a => `\n  ${a.states.map(s => `${sel}[${stateAttributesOf(template).find(x => x.state === s)?.attr}]${dis2} ${sel}-${a.key}`).join(', ')} {\n    animation: none;\n  }`)] : [];
+    return `@media (prefers-reduced-motion: reduce) {\n  ${sel} {\n    transition: none;\n  }${wave}${motion.join('')}\n}\n`;
 }
 
 /**
@@ -600,8 +645,8 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     blocks.push(...iconHoverRules(template), ...blockedRules(template));
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
-    blocks.push(...fieldRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
-    if (template.interaction) blocks.push(reducedMotion(template));
+    blocks.push(...fieldRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
+    if (template.interaction || template.motion) blocks.push(reducedMotion(template));
     return blocks.join('\n');
 }
 
