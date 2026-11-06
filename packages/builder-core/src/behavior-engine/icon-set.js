@@ -10,7 +10,7 @@ export const ICON_PREFIX = 'Icon/';
 const SIZE = 24;
 /** The control distance of a bezier circle, for a radius of 10: radius times 0.5523. */
 const K = 5.523;
-const at = (x, y, inX, inY, outX, outY) => ({ x, y, in: { x: inX, y: inY }, out: { x: outX, y: outY } });
+const at = (x, y, inX, inY, outX, outY) => (inX === undefined ? { x, y } : { x, y, in: { x: inX, y: inY }, out: { x: outX, y: outY } });
 
 /**
  * The icons the bundle creates. `role` is the need they fill (`default`: the icon every slot takes until the designer chooses one), `points` the closed outline
@@ -50,6 +50,23 @@ export function defaultIconOf(pages) {
         if (icon) return icon.id;
     }
     return null;
+}
+
+/**
+ * The icon each role starts with in this file: a function from a role to the id of the file's component named for it (the set's entry of that role), else the
+ * default icon, else null. The one definition the editor and the bundle read, as for the default icon.
+ * @param {{ nodes?: any[] }[]} pages
+ * @param {typeof ICON_SET} [set]
+ * @returns {(role: string) => string | null}
+ */
+export function iconResolverOf(pages, set = ICON_SET) {
+    const byName = new Map();
+    for (const page of pages) for (const n of page.nodes ?? []) if (n.component === true && typeof n.name === 'string' && !byName.has(n.name)) byName.set(n.name, n.id);
+    const fallback = defaultIconOf(pages);
+    return role => {
+        const entry = set.find(e => e.role === role);
+        return (entry && byName.get(ICON_PREFIX + entry.name)) ?? fallback;
+    };
 }
 
 /**

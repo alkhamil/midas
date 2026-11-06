@@ -93,11 +93,13 @@ function iconDefShown(template, def, values) {
  * @param {TemplateSchema} template
  * @param {Record<string, unknown> | null} prev the instance's stored props before the edit; null when the instance is being created (nothing was shown before)
  * @param {Record<string, unknown>} next the stored props after it
- * @param {string | null} defaultIcon the id of the default icon, or null when the document has none
+ * @param {string | null | ((role: string) => string | null)} defaultIcon the id of the default icon, or null when the document has none; or the resolver of a role to its icon (see iconResolverOf)
  * @returns {Record<string, string>} prop name to icon id
  */
 export function newlyShownIconDefaults(template, prev, next, defaultIcon) {
     if (!defaultIcon) return {};
+    // A resolver gives the icon of a role (an icon def says its `role`, `default` when it says none); an id is the default icon for every slot.
+    const iconOf = def => (typeof defaultIcon === 'function' ? defaultIcon(def.role ?? 'default') : defaultIcon);
     const before = prev === null ? null : resolveProps(template, /** @type {any} */ (prev)), after = resolveProps(template, /** @type {any} */ (next));
     /** @type {Record<string, string>} */
     const writes = {};
@@ -105,11 +107,11 @@ export function newlyShownIconDefaults(template, prev, next, defaultIcon) {
         if (!def.component) continue;
         // An always visible slot is never switched on: it takes the default icon while none was ever chosen (no stored value), and an icon cleared on purpose (stored null) stays cleared.
         if (def.show === undefined) {
-            if ((prev === null || prev[def.component] === undefined) && next[def.component] == null) writes[def.component] = defaultIcon;
+            if ((prev === null || prev[def.component] === undefined) && next[def.component] == null) { const icon = iconOf(def); if (icon) writes[def.component] = icon; }
             continue;
         }
         if ((before !== null && iconDefShown(template, def, before)) || !iconDefShown(template, def, after)) continue;
-        if (after[def.component] == null) writes[def.component] = defaultIcon;
+        if (after[def.component] == null) { const icon = iconOf(def); if (icon) writes[def.component] = icon; }
     }
     return writes;
 }
