@@ -22,13 +22,10 @@ test('the Button master starts with its spinner hidden: loading is off', () => {
     assert.equal(layers.label.visible, true);
 });
 
-test('the Input master starts with its counter and placeholder hidden (no count, no placeholder text yet) and its affix texts hidden', () => {
+test('the Input master is its placeholder only, hidden while there is no placeholder text; the value, affix texts and counter are instance layers', () => {
     const layers = build(TEMPLATES.get('input'), inputModel());
-    assert.equal(layers.count.visible, false, 'showCount is off');
+    assert.deepEqual(Object.keys(layers), ['placeholder']);
     assert.equal(layers.placeholder.visible, false, 'no placeholder text');
-    assert.equal(layers.prefixText.visible, false);
-    assert.equal(layers.suffixText.visible, false);
-    assert.equal(layers.value.visible, true, 'the value layer stays: the master is never blank');
 });
 
 test('a part whose condition holds at the defaults stays visible; a template with no parts is unaffected', () => {

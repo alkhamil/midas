@@ -21,7 +21,7 @@ test('every registered template declares its parts and its play-only behaviours,
 });
 
 test('a part is on the canvas unless its contract says otherwise', () => {
-    assert.deepEqual(canvasPartsOf(INPUT).map(p => p.id), ['placeholder', 'count']);
+    assert.deepEqual(canvasPartsOf(INPUT).map(p => p.id), ['placeholder']);
     assert.deepEqual(canvasPartsOf(BUTTON).map(p => p.id), ['spinner']);
 });
 

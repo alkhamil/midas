@@ -45,7 +45,8 @@ for (const combo of COMBOS) {
         const made = applyTemplateToFrame(input, { frame, children: [], binding: model.binding, variables, idOf });
         const copies = instanceOf(input, frame, made.created, { value: combo.value, placeholder: combo.placeholder }, { id: idOf });
         const layer = name => copies.find(c => c.name === name);
-        assert.equal(layer('value').visible !== false, combo.valueShown, 'the instance\'s value layer');
+        // An empty value has no layer at all (the value is a managed layer): absent and hidden look the same on the canvas.
+        assert.equal(layer('value') !== undefined && layer('value').visible !== false, combo.valueShown, 'the instance\'s value layer');
         assert.equal(layer('placeholder').visible !== false, combo.placeholderShown, 'the instance\'s placeholder layer');
     });
 

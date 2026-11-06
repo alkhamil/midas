@@ -46,13 +46,12 @@ test('a frame with a user text layer keeps it: the label is matched, not duplica
     assert.equal(user.text, 'Save', 'the user layer is not restyled or renamed');
 });
 
-test('an Input master holds every part as a layer, and an instance shows the parts its props switch on', () => {
+test('an Input master holds the placeholder only, and an instance has the layers its props switch on', () => {
     const model = inputModel({ ids: { variant: 'c-input-variant', status: 'c-input-status', size: 'c-input-size', semantic: 'c-input-semantic' }, prefix: 'in-' });
     const frame = { id: 'inp', name: 'Input', type: 'frame', parentId: null, fills: [] };
     const out = applyTemplateToFrame(TEMPLATES.get('input'), { frame, children: [], binding: { variables: { variant: model.ids.variant, status: model.ids.status, size: model.ids.size } }, variables: variablesOf(model), idOf: counter() });
     const names = out.created.map(n => n.name);
-    for (const part of ['value', 'placeholder', 'count']) assert.ok(names.includes(part), `${part} is a layer`);
-    assert.ok(!names.includes('clear'), 'the clear icon is a managed slot: the instance holds its layer');
+    assert.deepEqual(names, ['placeholder'], 'the value, the counter and the affix texts are instance layers, like the clear icon');
     const template = TEMPLATES.get('input');
     const instance = instanceOf(template, frame, out.created, { value: '', allowClear: false, showCount: false }, { id: counter() });
     assert.equal(instance.find(n => n.name === 'clear'), undefined, 'no clear layer with allowClear off');
@@ -61,4 +60,7 @@ test('an Input master holds every part as a layer, and an instance shows the par
     const empty = instanceOf(template, frame, out.created, { value: '', allowClear: true, showCount: false }, { id: counter() });
     assert.equal(empty.find(n => n.name === 'clear').visible, false, 'clear is kept and hidden with an empty value');
     assert.equal(shown.find(n => n.name === 'count').text, '9 / 10', 'count shows the length of the value');
+    assert.equal(shown.find(n => n.name === 'value').text, 'Kopi Kita', 'the value layer carries the value');
+    assert.equal(instance.find(n => n.name === 'value'), undefined, 'no value layer while the value is empty');
+    assert.equal(instance.find(n => n.name === 'count'), undefined, 'no counter layer while Show count is off');
 });

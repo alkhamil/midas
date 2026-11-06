@@ -25,10 +25,11 @@ export const INPUT = {
     // (a managed icon slot, swappable like Button's). Only one of the two shows for a side; the clear icon sits before the suffix.
     anatomy: [
         { id: 'prefixIcon', kind: 'icon', optional: true, managed: true },
-        { id: 'prefixText', kind: 'text', optional: true, typography: 'addon', shownWhen: { all: [...sideShown('Prefix', 'text').all, { prop: 'prefixText', empty: false }] } },
-        { id: 'value', kind: 'control', typography: 'value', fill: true },
+        { id: 'prefixText', kind: 'text', optional: true, managed: true, typography: 'addon', shownWhen: { all: [...sideShown('Prefix', 'text').all, { prop: 'prefixText', empty: false }] } },
+        { id: 'value', kind: 'control', optional: true, managed: true, typography: 'value', fill: true, shownWhen: { prop: 'value', empty: false } },
+        { id: 'count', kind: 'text', optional: true, managed: true, typography: 'count', shownWhen: { prop: 'showCount', is: true }, text: { counter: { value: 'value', max: 'maxLength' } } },
         { id: 'clear', kind: 'icon', optional: true, managed: true },
-        { id: 'suffixText', kind: 'text', optional: true, typography: 'addon', shownWhen: { all: [...sideShown('Suffix', 'text').all, { prop: 'suffixText', empty: false }] } },
+        { id: 'suffixText', kind: 'text', optional: true, managed: true, typography: 'addon', shownWhen: { all: [...sideShown('Suffix', 'text').all, { prop: 'suffixText', empty: false }] } },
         { id: 'suffixIcon', kind: 'icon', optional: true, managed: true },
     ],
     // The managed icon slots: the prefix icon, the suffix icon and the clear icon.
@@ -135,10 +136,10 @@ export const INPUT = {
     // The CSS pseudo-class each state is written as.
     statePseudo: { disabled: ':disabled', hover: ':hover', focus: ':focus', 'focus-visible': ':focus-visible' },
     // The parts the canvas draws beside the value: each is a node in the master and in every instance, shown by its own condition.
-    // The text part `count` shows the value's length (see counterLabel). Play renders each part from its node.
+    // The placeholder is the one text layer of a master; the value, the affix texts and the counter (which shows the value's length, see
+    // counterLabel) are managed layers of an instance, made while their props ask for them. Play renders each from its node.
     parts: [
         { id: 'placeholder', kind: 'text', fill: true, shownWhen: { prop: 'placeholder', empty: false }, typography: 'placeholder' },
-        { id: 'count', kind: 'text', shownWhen: { prop: 'showCount', is: true }, text: { counter: { value: 'value', max: 'maxLength' } }, typography: 'count' },
     ],
     // What Play draws without a node, and why. The static end state of each is on the canvas through the props above.
     playOnly: [

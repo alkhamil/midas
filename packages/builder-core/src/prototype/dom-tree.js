@@ -260,7 +260,7 @@ function renderTemplate(n, template, parent, scope) {
     if (template.element.blockClickProps.some(prop => props[prop] === true)) attrs['data-blocked'] = true;
     const children = [];
     // The label's layer and its parent, for the label's own width and alignment (see layout.js).
-    const labelEntry = labelEntryOf(n.id, scope.childrenOf, n);
+    const labelEntry = labelEntryOf(n.id, scope.childrenOf, n, primarySlotOf(template));
     // Every layer below the instance, for the slots a container holds (an affix text can sit inside one).
     const below = id => scope.childrenOf(id).flatMap(c => [c, ...below(c.id)]);
     // The frame parts (the Button's spinner) sit before the text, as the master draws them; a template with no text slot draws them after its slots (as the export does).
@@ -302,8 +302,6 @@ function renderTemplate(n, template, parent, scope) {
                 if (control.minlength && props[control.minlength] != null) inputAttrs.minLength = String(props[control.minlength]);
                 if (stateOn(template, template.element.disabledState, props)) inputAttrs.disabled = true;
                 out.push({ tag: 'input', attrs: inputAttrs, style, children: [] });
-                const counter = partElement(n, 'count', scope);
-                if (counter) out.push({ ...counter, attrs: { ...counter.attrs, 'data-role': 'count' } });
             }
             else {
                 drawFrameParts(out);
@@ -311,7 +309,8 @@ function renderTemplate(n, template, parent, scope) {
                     // An optional text slot (an affix) is drawn from its own layer, as the canvas draws it: shown while the layer is, with the text it holds.
                     const layer = below(n.id).find(c => c.name === slot.id && c.type === 'text');
                     const el = layer && layer.visible !== false ? renderNode(layer, scope.byId.get(layer.parentId) ?? n, scope, false) : null;
-                    if (el) out.push(el);
+                    // The counter is the text of its own layer, marked so Play can update it as the value is typed.
+                    if (el) out.push(slot.text?.counter ? { ...el, attrs: { ...el.attrs, 'data-role': 'count' } } : el);
                 }
                 else out.push({ tag: 'span', nodeId: slot.id === primarySlotOf(template) ? labelEntry?.node?.id : undefined, attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
             }

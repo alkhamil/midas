@@ -233,7 +233,7 @@ export function masterLayersByKey(template, frame, nodes) {
  */
 export function managedTextLayer(template, slotId, resolved, { id, parentId }) {
     const spec = layerSpecsOf(template).find(sp => sp.key === slotId);
-    const text = literalFields(template, resolved).find(w => w.key === slotId && w.field === 'text');
+    const text = [...literalFields(template, resolved), ...partWrites(template, resolved)].find(w => w.key === slotId && w.field === 'text');
     return { ...nodeOf(spec, template, null, () => id, parentId), ...(text ? { text: text.value } : {}), visible: slotShown(template, slotId, resolved), sourceId: undefined, isInstance: false, component: false, overrides: {} };
 }
 

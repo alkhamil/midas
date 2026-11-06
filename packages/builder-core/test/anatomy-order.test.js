@@ -43,19 +43,19 @@ test('the generator keeps a shown clear last when there is no suffix text', () =
     assert.equal(order.at(-1), 'clear');
 });
 
-/** The layers of an Input instance as the editor passes them to the plan: the generated ones, with names and slots. */
+/** The layers of an Input instance as the editor passes them to the plan: the generated ones except the icon slots, with names and slot markers (the text layers are managed). */
 function children(props) {
     const frame = { id: 'master', name: input.name, type: 'frame', parentId: null, fills: [] };
     const made = applyTemplateToFrame(input, { frame, children: [], binding, variables, idOf });
     return instanceOf(input, frame, made.created, props, { id: idOf }).slice(1)
-        .filter(n => n.behavior?.slot === undefined)
-        .map(n => ({ id: n.id, slot: null, name: n.name, component: null }));
+        .filter(n => !(n.behavior?.slot !== undefined && n.type === 'frame'))
+        .map(n => ({ id: n.id, slot: n.behavior?.slot ?? null, name: n.name, component: null }));
 }
 
 test('the plan inserts the clear icon before the suffix text, whatever the layers around it', () => {
     const values = resolveProps(input, { ...BOTH });
     const layers = children(BOTH);
-    const names = layers.map(l => l.name);
+    const names = layers.map(l => l.slot ?? l.name);
     const ops = planAnatomy(input, values, layers);
     const insert = ops.find(op => op.op === 'insert' && op.slot === 'clear');
     assert.ok(insert, 'a clear layer is inserted');
@@ -65,7 +65,7 @@ test('the plan inserts the clear icon before the suffix text, whatever the layer
 test('the plan moves a clear icon that sits after the suffix text to before it', () => {
     const values = resolveProps(input, { ...BOTH });
     const layers = children(BOTH);
-    const at = layers.findIndex(l => l.name === 'suffixText');
+    const at = layers.findIndex(l => l.slot === 'suffixText');
     const stored = [...layers.slice(0, at + 1), { id: 'clear-1', slot: 'clear', name: 'clear', component: null }, ...layers.slice(at + 1)];
     const move = planAnatomy(input, values, stored).find(op => op.op === 'move' && op.id === 'clear-1');
     assert.ok(move, 'the clear layer moves');
@@ -75,7 +75,7 @@ test('the plan moves a clear icon that sits after the suffix text to before it',
 test('the plan leaves a clear icon that is already before the suffix text where it is', () => {
     const values = resolveProps(input, { ...BOTH });
     const layers = children(BOTH);
-    const at = layers.findIndex(l => l.name === 'suffixText');
+    const at = layers.findIndex(l => l.slot === 'suffixText');
     const stored = [...layers.slice(0, at), { id: 'clear-1', slot: 'clear', name: 'clear', component: null }, ...layers.slice(at)];
     assert.deepEqual(planAnatomy(input, values, stored).filter(op => op.op === 'move' || op.op === 'insert'), []);
 });
@@ -88,16 +88,16 @@ const inputDoc = layers => ({
     variables: { collections: variables.collections },
     pages: [{ id: 'p1', nodes: [
         inputMaster,
-        { id: 'mValue', name: 'value', type: 'text', parentId: 'in' },
+        { id: 'mPlaceholder', name: 'placeholder', type: 'text', parentId: 'in', behavior: { version: 2, part: 'placeholder' } },
         { id: 'i1', name: 'Amount', type: 'frame', isInstance: true, sourceId: 'in', behavior: { version: 2, props: { hasSuffix: true, suffixText: '.com', allowClear: true, value: 'Hello' } } },
-        ...layers.map(([name, slot]) => ({ id: `l-${name}`, name, type: slot ? 'frame' : 'text', parentId: 'i1', ...(slot ? { behavior: { version: 2, slot } } : {}) })),
+        ...layers.map(([name, slot]) => ({ id: `l-${name}`, name, type: slot === 'clear' ? 'frame' : 'text', parentId: 'i1', behavior: { version: 2, slot } })),
     ] }],
 });
 
 test('a file opens when its Input holds the clear icon before the suffix text', () => {
-    assert.doesNotThrow(() => assertBehaviorData(inputDoc([['value'], ['clear', 'clear'], ['suffixText']])));
+    assert.doesNotThrow(() => assertBehaviorData(inputDoc([['value', 'value'], ['clear', 'clear'], ['suffixText', 'suffixText']])));
 });
 
 test('a file does not open when its Input holds the clear icon after the suffix text', () => {
-    assert.throws(() => assertBehaviorData(inputDoc([['value'], ['suffixText'], ['clear', 'clear']])), /clear/);
+    assert.throws(() => assertBehaviorData(inputDoc([['value', 'value'], ['suffixText', 'suffixText'], ['clear', 'clear']])), /clear/);
 });

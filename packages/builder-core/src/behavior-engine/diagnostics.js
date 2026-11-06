@@ -161,7 +161,7 @@ export function diagnoseDocument(doc) {
             out.push({ severity: 'error', code: 'token-unresolved', node: inst.name, nodeId: inst.id, token: u.token, reason: u.reason, message: `${inst.name}: token "${u.token}" is unresolved (${u.reason}).` });
         }
         // A managed icon slot the props show holds an icon when one is chosen; an empty one keeps its box and draws nothing, and is reported.
-        for (const slot of childrenOf(inst.id).filter(c => c.behavior?.slot !== undefined)) {
+        for (const slot of childrenOf(inst.id).filter(c => c.behavior?.slot !== undefined && c.type !== 'text')) {
             if (childrenOf(slot.id).length) continue;
             out.push({ severity: 'warning', code: 'icon-slot-empty', node: inst.name, nodeId: inst.id, slot: slot.behavior.slot, message: `${inst.name}: the ${slot.behavior.slot} icon slot is empty: no icon is chosen.` });
         }

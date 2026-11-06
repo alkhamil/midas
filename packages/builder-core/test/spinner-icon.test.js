@@ -48,8 +48,8 @@ test('a part with icon tokens must name tokens of the template, and only a frame
     missing.parts[0].tokens = { colour: 'fg', disabledColour: 'fg-disabled', size: 'nope' };
     assert.match(validateTemplateSchema(missing).join('\n'), /part "spinner" size token "nope" is not a token/);
     const text = clone(INPUT);
-    text.parts.find(p => p.id === 'count').tokens = ICON_TOKENS;
-    assert.match(validateTemplateSchema(text).join('\n'), /part "count" has icon tokens but is not a frame part/);
+    text.parts.find(p => p.id === 'placeholder').tokens = ICON_TOKENS;
+    assert.match(validateTemplateSchema(text).join('\n'), /part "placeholder" has icon tokens but is not a frame part/);
 });
 
 /** A fresh Button master and its spinner part layer. */

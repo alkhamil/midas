@@ -10,6 +10,7 @@ import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js
 import { cssVarOf, splitColor, tokenValueOf } from './tokens.js';
 import { rootLayoutOf, labelLayoutOf, flexOf, flowSizing } from './layout.js';
 import { labelEntryOf } from './layers.js';
+import { managedTextLayer } from './template-master.js';
 import { modeOfStyleKey } from './variant-style.js';
 
 // Motion constants (antd seed): the focus ring animates in and out; the click wave expands and fades. Durations and
@@ -147,6 +148,8 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     const sidedAfter = framed.filter(part => part.side).map(part => framePartJsx(part, `${part.side} === "end"`));
     const emitSlot = (slot, out) => {
         if (slot.kind === 'text' || slot.kind === 'control') {
+            // The counter is written after the control it counts (controlPartsJsx), which is where the anatomy puts it.
+            if (slot.text?.counter) return;
             if (!framePlaced && !slot.parent) { out.push(...framed.filter(part => !part.side).map(part => framePartJsx(part)), ...framed.filter(part => part.side).map(part => framePartJsx(part, `${part.side} !== "end"`))); framePlaced = true; }
             const isControl = controlOf(template)?.slot === slot.id;
             const control = controlOf(template);
@@ -155,7 +158,8 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             const label = control && control.slot === slot.id
                 ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderCondition(template, control)}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''} disabled={${disabledProp}} />`
                 : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
-            out.push(slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
+            // The control is always written: the input holds the value and the placeholder whether or not the canvas has a layer for them.
+            out.push(isControl ? label : slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
             if (!sidedAfterPlaced && !slot.parent) { out.push(...sidedAfter); sidedAfterPlaced = true; }
             if (isControl) out.push(...controlPartsJsx());
         }
@@ -297,8 +301,14 @@ function displayRules(template, master, childrenOf, geometry) {
     const under = at(master.id, master);
     // A text part lays out from its own layer: only the value/label fills the row, the rest hug, as on the canvas
     // and in Play. A canvas part matches by marker, an affix text by name; a key with no layer keeps the label layout.
+    // A managed text slot has no layer on the master: it lays out as the layer an instance gets (it fills when its slot says so, else it hugs).
+    const managedEntry = key => {
+        const slot = template.anatomy.find(s => s.id === key && s.managed && s.kind !== 'icon');
+        return slot ? { node: managedTextLayer(template, key, resolveProps(template, {}), { id: key, parentId: master.id }), parent: master } : undefined;
+    };
     const entryFor = key => under.find(({ node: c }) => c.behavior?.part === key)
         ?? under.find(({ node: c }) => c.type === 'text' && c.name === key && !c.behavior?.part && !c.behavior?.slot)
+        ?? managedEntry(key)
         ?? entry;
     return Object.entries(template.display).map(([key, props]) => {
         const kind = targetKindOf(template, key);

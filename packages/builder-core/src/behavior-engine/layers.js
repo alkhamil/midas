@@ -9,17 +9,19 @@ import { layoutOrder } from '../geometry/autolayout.js';
  * @param {(id: string) => any[]} childrenOf
  * @param {any} [parent] the frame `id` hangs under: the parent of a top-level hit, or the frame itself when it is known
  * (a flipped auto layout frame is read back to front, so its visual-first text differs from its stored-first one)
+ * @param {string | null} [primary] the template's primary text part: an instance's managed text layer is the label only when it is the
+ * primary one (a master holds no managed layer, so a master needs none)
  * @returns {{ node: any, parent: any } | null}
  */
-export function labelEntryOf(id, childrenOf, parent = null) {
+export function labelEntryOf(id, childrenOf, parent = null, primary = null) {
     const kids = parent && parent.id === id ? layoutOrder(parent, childrenOf(id)) : childrenOf(id);
     for (const c of kids) {
         // A canvas part is a text layer too (placeholder, count, clear), but the label is the value layer only.
         if (c.type === 'text') {
-            if (!c.behavior?.part && !c.behavior?.text) return { node: c, parent };
+            if (!c.behavior?.part && !c.behavior?.text && (c.behavior?.slot === undefined || c.behavior.slot === primary)) return { node: c, parent };
             continue;
         }
-        const found = labelEntryOf(c.id, childrenOf, c);
+        const found = labelEntryOf(c.id, childrenOf, c, primary);
         if (found) return found;
     }
     return null;

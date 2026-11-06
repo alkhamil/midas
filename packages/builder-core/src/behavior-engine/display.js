@@ -138,6 +138,8 @@ export function partWrites(template, props) {
     // A text slot with a condition is a layer shown while it holds (an affix text, shown with its switch and a non-empty text).
     for (const slot of template.anatomy) {
         if (slot.shownWhen) out.push({ key: slot.id, field: 'visible', value: conditionHolds(slot.shownWhen, props) });
+        // A counter slot shows the value's length, as a counter part does.
+        if (slot.text?.counter) out.push({ key: slot.id, field: 'text', value: counterLabel(props[slot.text.counter.value], props[slot.text.counter.max]) });
     }
     return out;
 }

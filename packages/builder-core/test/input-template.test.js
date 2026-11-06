@@ -149,7 +149,8 @@ test('Play draws the clear icon from its managed slot, kept and hidden while the
     assert.equal(off.children.some(c => c.attrs?.['data-role'] === 'clear'), false, 'no clear icon without Allow Clear');
 });
 
-test('a new, a matched and a rebound master carry identical placeholder and count bindings', () => {
+// The master holds the placeholder only: the value, the affix texts and the counter are instance layers (managed text) and are bound there.
+test('a new, a matched and a rebound master carry identical placeholder bindings', () => {
     let n = 0;
     const idOf = key => `n-${key}-${++n}`;
     const blankFrame = () => ({ id: `f-${++n}`, name: 'Input', type: 'frame', parentId: null, component: true, layout: 'horizontal', gap: 0, padding: 0, x: 0, y: 0, w: 200, h: 40, fills: [], layoutSizingH: 'hug', layoutSizingV: 'hug' });
@@ -159,28 +160,26 @@ test('a new, a matched and a rebound master carry identical placeholder and coun
     const created = applyTemplateToFrame(INPUT, { frame: blankFrame(), children: [], binding: model.binding, variables, idOf });
     const createdVars = varsByName(created.created);
     assert.deepEqual(createdVars.placeholder, { 'fills.0': 'v-placeholder', typography: 's-placeholderTypography' });
-    assert.deepEqual(createdVars.count, { 'fills.0': 'v-placeholder', typography: 's-countTypography' });
+    assert.deepEqual(Object.keys(createdVars), ['placeholder'], 'the placeholder is the one text layer of a master');
     // The typography lives in the Size collection, the color in the Variant collection.
     const collectionOf = id => variables.collections.find(c => c.id === variables.items.find(i => i.id === id).collectionId).name;
     assert.equal(collectionOf('s-placeholderTypography'), 'Input Size');
-    assert.equal(collectionOf('s-countTypography'), 'Input Size');
     assert.equal(collectionOf('v-placeholder'), 'Input Variant');
     // Bind-frame: the generator on a frame that already holds a text layer.
     const frame2 = blankFrame(), existing = [textLayer(frame2)];
     const bound = applyTemplateToFrame(INPUT, { frame: frame2, children: existing, binding: model.binding, variables, idOf });
     const createdVars2 = varsByName(bound.created);
     assert.deepEqual(createdVars2.placeholder, createdVars.placeholder);
-    assert.deepEqual(createdVars2.count, createdVars.count);
-    // The pre-existing text layer is matched as the label and bound the same way.
-    const labelHit = bound.matched.find(m => m.key === 'value');
-    assert.deepEqual(existing.find(e => e.id === labelHit.nodeId).vars, createdVars.value);
+    // A pre-existing text layer is not the value: the value is an instance layer, so the layer is kept as it is, unmatched and unbound.
+    assert.equal(bound.matched.length, 0);
+    assert.equal(existing[0].vars, undefined);
     // Bind-component: the generator's layer list over an unbound master, then the bind plan.
     const frame3 = blankFrame();
     const made = applyTemplateToFrame(INPUT, { frame: frame3, children: [], binding: model.binding, variables, idOf });
     const nodes = [frame3, ...made.created];
     for (const node of nodes) delete node.vars;
     const layers = masterLayersByKey(INPUT, frame3, nodes);
-    assert.deepEqual(layers.map(l => l.key).sort(), ['count', 'placeholder', 'prefixText', 'root', 'suffixText', 'value']);
+    assert.deepEqual(layers.map(l => l.key).sort(), ['placeholder', 'root']);
     const planned = planBindTokens({ template: INPUT, binding: model.binding, layers, variables });
     assert.deepEqual(planned.problems, []);
     applyBindTokens(layers, planned.ops);
