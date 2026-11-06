@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { previewOf, canvasColorsOf, textColorTokenOf } from '../src/behavior-engine/preview.js';
+import { previewOf, canvasColorsOf, previewStateOf } from '../src/behavior-engine/preview.js';
 import { resolveProps } from '../src/behavior-engine/instance-props.js';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
 import { buttonModel } from '../../../scripts/button-model.mjs';
@@ -103,12 +103,10 @@ test('the canvas preview never carries a text colour', () => {
     }
 });
 
-test('the text colour token is the one the label layer draws its fill with', () => {
-    assert.equal(textColorTokenOf(button), 'fg');
-});
-
-test('a template with no label fill has no text colour token', () => {
-    assert.equal(textColorTokenOf({ ...button, display: { ...button.display, label: {} } }), null);
+test('a preview state the template declares is shown, any other is Default', () => {
+    assert.equal(previewStateOf(button, 'hover'), 'hover');
+    assert.equal(previewStateOf(button, 'default'), 'default');
+    assert.equal(previewStateOf({ ...button, previewStates: {} }, 'hover'), 'default');
 });
 
 test('a bound stroke resolves its state colours: border, border-hover and border-active', () => {

@@ -2,7 +2,6 @@
 // instance's props (disabled, ...) and win over a preview-only state (hover, active, focus), which is studio-side only. A state
 // token that does not resolve is reported by the resolver and left out: it is never replaced by the base token.
 import { resolveTokens, cssVarOf } from './tokens.js';
-import { primarySlotOf } from './anatomy.js';
 
 /**
  * The state an instance is in: every persistent state whose prop is true (their tokens merged), else the preview-only state asked
@@ -80,11 +79,12 @@ export function canvasColorsOf(template, binding, modes, variables, props, previ
 }
 
 /**
- * The state token that is the text colour of a template: the token the label layer's fill is driven by. The canvas never draws it
- * in a preview; the Preview section shows it read-only with a note.
+ * The preview state to show for a template: the one asked for when the template declares it, else Default (a state left selected on another template is not
+ * an error here).
  * @param {import('../templates/schema.js').TemplateSchema} template
- * @returns {string | null}
+ * @param {string} state
+ * @returns {string}
  */
-export function textColorTokenOf(template) {
-    return template.display?.[primarySlotOf(template)]?.fill ?? null;
+export function previewStateOf(template, state) {
+    return state === 'default' || Object.hasOwn(template.previewStates, state) ? state : 'default';
 }

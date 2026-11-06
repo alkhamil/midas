@@ -121,7 +121,7 @@ function instanceHtml(panel, esc, findings, preview, expanded = false) {
     const literal = panel.rows.filter(r => r.kind === 'literal' || r.kind === 'icon');
     const props = literal.filter(r => !r.slot).map(r => literalRow(r, esc)).join('');
     const slots = literal.filter(r => r.slot).map(r => literalRow(r, esc)).join('');
-    const state = preview ? `<select data-bp="preview" aria-label="Preview state">${PREVIEW_STATES.map(([id, label]) => `<option value="${id}" ${id === preview.state ? 'selected' : ''}>${label}</option>`).join('')}</select>` : '';
+    const state = preview ? `<select data-bp="preview" aria-label="Preview state">${PREVIEW_STATES.filter(([id]) => id === 'default' || (preview.available ?? PREVIEW_STATES.map(([s]) => s)).includes(id)).map(([id, label]) => `<option value="${id}" ${id === preview.state ? 'selected' : ''}>${label}</option>`).join('')}</select>` : '';
     return block('Collections', variable, esc)
         + block('Props', props, esc)
         + block('Slots', slots, esc)
