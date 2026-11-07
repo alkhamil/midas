@@ -46,7 +46,8 @@ test('the validator holds a container to its rules: a layout, children that name
     assert.match(problems([box, mark, { ...label, parent: 'label' }]), /anatomy slot "label" has the parent "label", which is not a frame slot/);
     assert.match(problems([box, { id: 'x', kind: 'frame', layout: 'vertical', parent: 'labelBox' }, mark, label]), /frame slot "x" cannot sit inside another frame slot/);
     assert.match(validateTemplateSchema(withAnatomy([{ ...box }, { ...label, parent: undefined }])).join('\n'), /frame slot "labelBox" holds no slot/);
-    assert.match(problems([{ ...box, optional: true }, mark, label]), /frame slot "labelBox" cannot be optional or managed/);
+    assert.match(problems([{ ...box, optional: true }, mark, label]), /frame slot "labelBox" cannot be optional/);
+    assert.doesNotMatch(problems([{ ...box, managed: true, shownWhen: { prop: 'label', empty: false } }, { ...mark, parent: 'labelBox' }, label]), /cannot be/, 'a managed conditional container is allowed');
 });
 
 test('the layers of the template: the box, then the slots inside it (each naming its parent), then the content slot', () => {
@@ -140,4 +141,60 @@ test('the export writes the box as one element around its children, with the box
     const tsx = files['BoxItem.tsx'];
     assert.match(tsx, /<div className="boxitem-labelBox">\n\s*\{\(required === true\) && <span className="boxitem-requiredMark">\{requiredMark\}<\/span>\}\n\s*<span className="boxitem-label">\{label\}<\/span>\n\s*<\/div>/);
     assert.match(files['BoxItem.css'], /\.boxitem-labelBox \{\n(?:.*\n)*?\s*flex-direction: row;/);
+});
+
+/** A box that only shows while its text prop is not empty: a managed conditional container holding a managed text slot. */
+const COND = (() => {
+    const t = structuredClone(FORM_ITEM);
+    t.id = 'condbox';
+    t.name = 'CondBox';
+    t.anatomy = [
+        { id: 'innerOn', kind: 'frame', layout: 'horizontal', managed: true, shownWhen: { prop: 'innerText', empty: false } },
+        { id: 'innerText', kind: 'text', managed: true, parent: 'innerOn', typography: 'label', shownWhen: { prop: 'innerText', empty: false } },
+    ];
+    t.props.innerText = { source: 'literal', type: 'string', default: '', node: { key: 'innerText', field: 'text' } };
+    for (const key of Object.keys(t.props)) { if (t.props[key].source !== 'variable' && key !== 'innerText') delete t.props[key]; }
+    t.slots = [];
+    t.control = undefined;
+    t.display = { innerText: { fill: 'fg', typography: 'labelTypography' } };
+    t.persistentStates = {};
+    t.previewStates = {};
+    return t;
+})();
+TEMPLATES.set(COND.id, COND);
+
+/** A CondBox instance, as Play reads it. */
+function condItem(props) {
+    const f = frame();
+    let k = 0;
+    const created = applyTemplateToFrame(COND, { frame: f, children: [], binding: { variables: model.binding.variables }, variables, idOf: key => 'c-' + key + '-' + (++seq) }).created;
+    const [root, ...copies] = instanceOf(COND, f, created, props, { id: () => 'i-' + (++k) });
+    const inst = { ...root, id: 'inst', x: 0, y: 0, w: 200, h: 60 };
+    const kids = copies.map(n => (n.parentId === root.id ? { ...n, parentId: 'inst' } : n));
+    return { pages: [{ id: 'p', name: 'Screens', nodes: [f, ...created, inst, ...kids] }], variables };
+}
+
+test('Play draws a conditional container only while its condition holds', () => {
+    const withText = toDomTree(condItem({ innerText: 'Hi' }), 'inst').root;
+    assert.ok(withText.children.some(c => c.attrs?.class === 'condbox-innerOn'), 'the box element');
+    const without = toDomTree(condItem({}), 'inst').root;
+    assert.ok(!without.children.some(c => c.attrs?.class === 'condbox-innerOn'), 'no box while the text is empty');
+});
+
+
+test('the export draws a conditional container only while its condition holds, around its text', () => {
+    const f = frame();
+    const created = applyTemplateToFrame(COND, { frame: f, children: [], binding: { variables: model.binding.variables }, variables, idOf: key => 'c-' + key + '-' + (++seq) }).created;
+    const nodes = [f, ...created];
+    const childrenOf = id => nodes.filter(n => n.parentId === id);
+    const { files, problems: issues } = generateComponent(COND, model.binding, variables, 'CondBox', f, childrenOf);
+    assert.deepEqual(issues, []);
+    assert.match(files['CondBox.jsx'], /\{\(String\(innerText \?\? ""\) !== ""\) && <div className="condbox-innerOn">/);
+});
+
+test('part-missing does not ask for a conditional container that is off at the sample props', () => {
+    const f = frame();
+    const created = applyTemplateToFrame(COND, { frame: f, children: [], binding: { variables: model.binding.variables }, variables, idOf: key => 'c-' + key + '-' + (++seq) }).created;
+    const doc = nodes => ({ variables, pages: [{ name: 'p', nodes: [{ ...f, behavior: { version: 2, templateId: 'condbox', variables: model.binding.variables } }, ...nodes] }] });
+    assert.deepEqual(diagnoseDocument(doc(created)).filter(x => x.code === 'part-missing').map(x => x.layer), []);
 });

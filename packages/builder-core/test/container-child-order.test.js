@@ -3,6 +3,8 @@
 // Switch spinner under the handle) is not a direct child of the instance: it must not move
 // a root slot's index, or every slot after the container lands one short, the backstop
 // sees a permanent move ("wrong position") and rolls the edit back, so nothing renders.
+// A managed text side is a container plus its text: the plan inserts the box among the
+// direct children and the text inside it (see switch-children.test.js).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
@@ -19,25 +21,25 @@ const masterTree = [{ id: 'x', type: 'frame' }];
 /** Children as the document check sees them: the instance's children plus a container's, with the holder of each. */
 const kids = (...list) => list.map(([id, slot, name, parent]) => ({ id, slot, name, ...(parent === undefined ? {} : { parent }) }));
 
-test('a text slot after a container inserts among the direct children, not after its content', () => {
-    // Root holds the handle; the spinner hangs under the handle. The unchecked text goes last among the direct children.
+test('a text side after a container inserts its box among the direct children, the text inside it', () => {
+    // Root holds the handle; the spinner hangs under the handle. The unchecked box goes last among the direct children.
     const children = kids(['handle', null, 'handle'], ['spinner', null, 'spinner', 'handle']);
     const { ops, reason } = planInstanceAnatomy({ binding, masterRoot, masterTree, stored: { checked: false, uncheckedKind: 'text', uncheckedChildren: 'x' }, children });
     assert.equal(reason, undefined);
-    assert.deepEqual(ops, [{ op: 'insert', slot: 'uncheckedChildren', index: 1 }]);
+    assert.deepEqual(ops, [{ op: 'insert', slot: 'innerOff', index: 1 }, { op: 'insert', slot: 'uncheckedChildren', index: 0, parent: 'innerOff' }]);
 });
 
 test('the inserted text layer converges: no move, no wrong-position backstop', () => {
-    const children = kids(['handle', null, 'handle'], ['uc', 'uncheckedChildren', 'uncheckedChildren'], ['spinner', null, 'spinner', 'handle']);
+    const children = kids(['handle', null, 'handle'], ['inner', 'innerOff', 'innerOff'], ['uc', 'uncheckedChildren', 'uncheckedChildren', 'inner'], ['spinner', null, 'spinner', 'handle']);
     const { ops, reason } = planInstanceAnatomy({ binding, masterRoot, masterTree, stored: { checked: false, uncheckedKind: 'text', uncheckedChildren: 'x' }, children });
     assert.equal(reason, undefined);
-    assert.deepEqual(ops, [], 'direct [handle, uncheckedChildren] is settled');
+    assert.deepEqual(ops, [], '[handle, innerOff holding the text] is settled');
 });
 
-test('a text slot before the container still inserts first', () => {
+test('a text side before the container still inserts first', () => {
     const children = kids(['handle', null, 'handle'], ['spinner', null, 'spinner', 'handle']);
     const { ops } = planInstanceAnatomy({ binding, masterRoot, masterTree, stored: { checked: true, checkedKind: 'text', checkedChildren: 'Test' }, children });
-    assert.deepEqual(ops, [{ op: 'insert', slot: 'checkedChildren', index: 0 }]);
+    assert.deepEqual(ops, [{ op: 'insert', slot: 'innerOn', index: 0 }, { op: 'insert', slot: 'checkedChildren', index: 0, parent: 'innerOn' }]);
 });
 
 test('the behaviour backstop names the expected and the actual index', () => {

@@ -52,11 +52,11 @@ test('the icon defs gate on state and kind, with a component, label and tokens',
     assert.deepEqual(sw.display.checkedIcon, { size: 'iconSize' });
 });
 
-test('managed layers order text before the handle when checked and after it when unchecked', () => {
+test('managed layers order the text box before the handle when checked and after it when unchecked', () => {
     for (const [props, want] of [
-        [{ checked: true, checkedKind: 'text', checkedChildren: 'on' }, ['checkedChildren', 'handle']],
+        [{ checked: true, checkedKind: 'text', checkedChildren: 'on' }, ['innerOn', 'handle']],
         [{ checked: true, checkedKind: 'icon', checkedIcon: 'Icon/check' }, ['checkedIcon', 'handle']],
-        [{ checked: false, uncheckedKind: 'text', uncheckedChildren: 'off' }, ['handle', 'uncheckedChildren']],
+        [{ checked: false, uncheckedKind: 'text', uncheckedChildren: 'off' }, ['handle', 'innerOff']],
         [{ checked: false, uncheckedKind: 'icon', uncheckedIcon: 'Icon/close' }, ['handle', 'uncheckedIcon']],
     ]) {
         const model = modelFor(sw);
@@ -68,16 +68,17 @@ test('managed layers order text before the handle when checked and after it when
 
 test('typed text and icons survive toggling the state and switching the kind', () => {
     const model = modelFor(sw);
+    const textOf = nodes => nodes.find(n => n.behavior?.slot === 'checkedChildren')?.text;
     let nodes = instanceFor(model, { checked: true, checkedKind: 'text', checkedChildren: 'on' });
-    assert.equal(childrenOf(nodes, nodes[0].id).find(n => n.behavior?.slot === 'checkedChildren').text, 'on');
+    assert.equal(textOf(nodes), 'on');
     // Toggling off removes the layer but keeps the prop; toggling on restores the same text.
     nodes = instanceFor(model, { checked: false, checkedKind: 'text', checkedChildren: 'on' });
-    assert.equal(childrenOf(nodes, nodes[0].id).some(n => n.behavior?.slot === 'checkedChildren'), false);
+    assert.equal(nodes.some(n => n.behavior?.slot === 'checkedChildren'), false);
     nodes = instanceFor(model, { checked: true, checkedKind: 'text', checkedChildren: 'on' });
-    assert.equal(childrenOf(nodes, nodes[0].id).find(n => n.behavior?.slot === 'checkedChildren').text, 'on');
+    assert.equal(textOf(nodes), 'on');
     // An icon kind keeps the text prop; switching back restores the text layer.
     nodes = instanceFor(model, { checked: true, checkedKind: 'icon', checkedChildren: 'on', checkedIcon: 'Icon/check' });
-    assert.equal(childrenOf(nodes, nodes[0].id).some(n => n.behavior?.slot === 'checkedChildren'), false);
+    assert.equal(nodes.some(n => n.behavior?.slot === 'checkedChildren'), false);
 });
 
 test('an icon show naming a missing or non-boolean prop is refused', () => {
@@ -126,10 +127,10 @@ test('Play draws the canvas text layer opposite the handle; the export rule name
         const { root, styles } = playTree(model, nodes);
         const swEl = elementsOf(root).find(({ el }) => el.attrs?.class === 'switch');
         const kids = swEl.el.children;
-        const at = kids.findIndex(c => c.tag === 'span' && c.text === text);
-        assert.ok(at !== -1, `Play draws the text "${text}"`);
+        const box = kids.find(c => c.children?.some(k => k.tag === 'span' && k.text === text));
+        assert.ok(box, `Play draws the text "${text}" inside its box`);
         assert.equal(kids.findIndex(c => c.attrs?.class === 'switch-handle') === 0, handleFirst, `handle ${handleFirst ? 'first' : 'last'} for ${JSON.stringify(props)}`);
-        assert.equal((at === 0) !== handleFirst, true, `text sits opposite the handle for ${JSON.stringify(props)}`);
+        assert.equal((kids.indexOf(box) === 0) !== handleFirst, true, `text sits opposite the handle for ${JSON.stringify(props)}`);
         assert.ok(styles.includes(`.switch-${layer.behavior.slot}`), 'Play reads the same rule the export writes');
     }
     for (const [props, iconClass, handleFirst] of [

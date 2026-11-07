@@ -118,7 +118,8 @@ function descendantsOf(id, children) {
  */
 function insideInstance(n, nodes) {
     const parent = nodes.get(n.parentId);
-    return !!parent && (parent.isInstance === true || (parent.behavior?.group !== undefined && nodes.get(parent.parentId)?.isInstance === true));
+    // A managed layer may sit in a container of the anatomy, group-marked on a master or slot-marked on an instance: either way what counts is the holder.
+    return !!parent && (parent.isInstance === true || ((parent.behavior?.group !== undefined || parent.behavior?.slot !== undefined) && insideInstance(parent, nodes)));
 }
 
 /**
@@ -136,7 +137,8 @@ function checkAnatomy(n, nodes, children, page) {
     const kids = children.get(n.id) || [];
     const layers = [
         ...kids.map(c => ({ node: c })),
-        ...kids.filter(c => c.behavior?.group !== undefined).flatMap(c => (children.get(c.id) || []).map(g => ({ node: g, parent: c.behavior.group }))),
+        // A conditional container is an instance layer marked by its slot, not its group: its content counts all the same.
+        ...kids.filter(c => c.behavior?.group !== undefined || c.behavior?.slot !== undefined).flatMap(c => (children.get(c.id) || []).map(g => ({ node: g, parent: c.behavior.group ?? c.behavior.slot }))),
     ].map(({ node: c, parent }) => ({
         id: c.id, slot: c.behavior?.slot ?? null, name: c.name,
         ...(parent === undefined ? {} : { parent }),

@@ -163,6 +163,8 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
     const holders = new Map([['root', frame]]);
     for (const spec of specs.slice(1)) {
         const holder = holders.get(spec.parentKey ?? 'root');
+        // A slot parented under a container the master does not hold (a conditional one, off at the sample) has nothing to match: it is an instance layer.
+        if (holder === undefined) continue;
         // The layers to match are the holder's children (the frame's own, for a layer with no container).
         const pool = children.filter(c => (c.parentId ?? frame.id) === holder.id);
         const hit = spec.optional && spec.role === 'text' ? pool.find(c => !claimed.has(c.id) && c.behavior?.text === spec.key) : matchOf(spec, pool, claimed);
@@ -175,6 +177,8 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
         }
         // A managed icon slot is an instance layer only; an optional text slot is a master layer, shown by its condition (see instanceOf).
         if (spec.role === 'slot') continue;
+        // A conditional container is an instance layer while its condition is off at the sample props: the master holds none.
+        if (spec.role === 'group' && spec.slot?.shownWhen !== undefined && !conditionHolds(spec.slot.shownWhen, defaults)) continue;
         const node = nodeOf(spec, template, binding, idOf, holder.id);
         // A conditional part (the spinner, a shown placeholder, a required mark) is an instance layer while its condition is off
         // at the sample props: the master holds none, and an instance makes one while the condition holds. Anything else is built as before.
@@ -275,9 +279,21 @@ export function managedPartLayer(template, partId, resolved, { id, parentId }) {
     return node;
 }
 
-/** The layer an instance holds for a managed text, control or glyph slot (see managedTextLayer and managedGlyphLayer). */
+/** The layer an instance holds for a managed frame container: the group's frame, marked as the slot (a master holds none while the condition is off). */
+export function managedContainerLayer(template, slotId, resolved, { id, parentId }) {
+    const spec = layerSpecsOf(template).find(sp => sp.key === slotId);
+    const node = nodeOf(spec, template, null, () => id, parentId);
+    node.behavior = { version: BEHAVIOR_DATA_VERSION, slot: slotId };
+    node.visible = slotShown(template, slotId, resolved);
+    return { ...node, sourceId: undefined, isInstance: false, component: false, overrides: {} };
+}
+
+/** The layer an instance holds for a managed text, control, glyph or frame slot (see managedTextLayer, managedGlyphLayer and managedContainerLayer). */
 export function managedSlotLayer(template, slotId, resolved, at) {
-    return template.anatomy.find(s => s.id === slotId)?.kind === 'glyph' ? managedGlyphLayer(template, slotId, resolved, at) : managedTextLayer(template, slotId, resolved, at);
+    const kind = template.anatomy.find(s => s.id === slotId)?.kind;
+    if (kind === 'glyph') return managedGlyphLayer(template, slotId, resolved, at);
+    if (kind === 'frame') return managedContainerLayer(template, slotId, resolved, at);
+    return managedTextLayer(template, slotId, resolved, at);
 }
 
 /**
@@ -300,7 +316,11 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
     const fieldWrites = writes.filter(w => !['visible', 'text'].includes(w.field));
     for (const w of fieldWrites.filter(w => w.key === 'root')) Object.assign(root, nodeFieldPatch(w.field, w.value, root.type));
     const out = [root];
+    // A conditional container the props hide leaves no master copy on the instance (what it holds goes with it, so nothing dangles).
+    const shownWhenOf = id => template.anatomy.find(s => s.id === id)?.shownWhen;
+    const hiddenGroups = new Set(subtree.filter(n => n.behavior?.group !== undefined && shownWhenOf(n.behavior.group) !== undefined && !conditionHolds(shownWhenOf(n.behavior.group), resolved)).map(n => n.id));
     for (const n of subtree) {
+        if (hiddenGroups.has(n.id) || hiddenGroups.has(n.parentId)) continue;
         // A part copy takes its visibility and text from the writes for its key; a text layer takes the text its prop writes.
         // A conditional part the props hide is not copied (parts are leaves): the instance makes it while they show it (see below).
         const skipped = n.behavior?.part !== undefined && (template.parts ?? []).some(p => p.id === n.behavior.part && p.shownWhen !== undefined) && !subtree.some(c => c.parentId === n.id) && writes.find(w => w.key === n.behavior.part && w.field === 'visible')?.value !== true;
@@ -333,17 +353,20 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
     out.splice(1, out.length - 1, ...placeSidedParts(template, out.slice(1), resolved));
     // A managed slot the props show, that the subtree does not hold, is created on the instance (its frame is empty; the icon is content).
     const stubs = [];
+    const stubBySlot = new Map();
     for (const slot of template.anatomy.filter(s => s.kind === 'icon' || s.managed)) {
         if (!slotWanted(template, slot.id, resolved) || subtree.some(n => n.behavior?.slot === slot.id))
             continue;
         const stub = { id: `slot-${slot.id}`, name: slot.id };
-        // A slot inside a container of the anatomy hangs under the instance's copy of that container.
-        const holder = slot.parent === undefined ? root : out.find(n => n.behavior?.group === slot.parent) ?? root;
+        // A slot inside a container of the anatomy hangs under the instance's copy of that container: the master's copy, or the stub made earlier in this loop.
+        const holder = slot.parent === undefined ? root : out.find(n => n.behavior?.group === slot.parent) ?? stubBySlot.get(slot.parent) ?? root;
         if (slot.kind !== 'icon') {
             stubs.push({ anatomy: template.anatomy.indexOf(slot), node: managedSlotLayer(template, slot.id, resolved, { id: id(stub), parentId: holder.id }) });
+            stubBySlot.set(slot.id, stubs[stubs.length - 1].node);
             continue;
         }
         stubs.push({ anatomy: template.anatomy.indexOf(slot), node: { ...LAYER, id: id(stub), name: slot.id, type: 'frame', parentId: holder.id, sourceId: undefined, isInstance: false, component: false, overrides: {}, visible: slotShown(template, slot.id, resolved), w: 16, h: 16, layout: 'none', fills: [], layoutSizingH: sizedSlot(template, slot.id), layoutSizingV: sizedSlot(template, slot.id), behavior: { version: BEHAVIOR_DATA_VERSION, slot: slot.id } } });
+        stubBySlot.set(slot.id, stubs[stubs.length - 1].node);
     }
     // Each slot goes where the anatomy puts it: before the label (and so before the spinner) when it precedes the label; after it, before
     // the first layer the anatomy puts later (the clear icon before the suffix text), else last. Slots are placed in anatomy order.

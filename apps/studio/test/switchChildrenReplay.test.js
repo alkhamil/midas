@@ -67,16 +67,18 @@ for (const [props, slot, text, size] of CASES) {
         // The backstop sees no problem and no toast reports one: the edit is not rolled back.
         assert.equal(core.behaviorProblem(doc.data, {}), null, 'backstop converges');
         assert.deepEqual(replay.toasts.filter(t => /not applied/i.test(t)), [], 'no rollback toast');
-        // Canvas: the managed layer exists with its content, opposite the handle.
+        // Canvas: the managed layer exists with its content, opposite the handle (text sits in its box).
         const kids = doc.children(inst.id);
-        const layer = kids.find(n => n.behavior?.slot === slot);
+        const layer = doc.descendants(inst.id).find(n => n.behavior?.slot === slot);
         assert.ok(layer, `canvas holds ${slot}`);
         if (text !== null) assert.equal(layer.text, text, 'the layer shows the typed text');
         assert.equal(layer.visible !== false, true, 'the layer is shown');
-        const order = kids.map(n => n.behavior?.slot ?? (n.behavior?.group === 'handle' ? 'handle' : n.name));
-        const at = order.indexOf(slot), handle = order.indexOf('handle');
+        const topKey = n => n.behavior?.slot ?? (n.behavior?.group === 'handle' ? 'handle' : n.name);
+        const holder = kids.find(n => n.id === layer.id || doc.descendants(n.id).some(d => d.id === layer.id));
+        const order = kids.map(topKey);
+        const at = order.indexOf(topKey(holder)), handle = order.indexOf('handle');
         assert.ok(at !== -1 && handle !== -1, `order is [${order}]`);
-        assert.equal(at < handle, props.checked === true, `text ${props.checked ? 'before' : 'after'} the handle`);
+        assert.equal(at < handle, props.checked === true, `child ${props.checked ? 'before' : 'after'} the handle`);
         // The layer is bound to its tokens and hugs; the track hugs with the token minimum.
         if (text !== null) assert.ok(layer.vars?.['fills.0'], 'text colour is bound');
         assert.equal(inst.layoutSizingH, 'hug', 'the track hugs its content');
@@ -91,7 +93,7 @@ for (const [props, slot, text, size] of CASES) {
         const classes = swEl.children.map(c => c.attrs?.class ?? (c.text ? 'text' : ''));
         const cls = `switch-${slot}`;
         if (text !== null) {
-            const atPlay = swEl.children.findIndex(c => c.text === text);
+            const atPlay = swEl.children.findIndex(c => (c.children || []).some(k => k.text === text));
             assert.ok(atPlay !== -1, `Play draws "${text}"`);
             assert.equal(atPlay < classes.indexOf('switch-handle'), props.checked === true, 'Play order matches canvas');
         } else {

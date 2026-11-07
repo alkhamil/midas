@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { isManagedLayer, isSlotIconInstance, managedRefusal, managedPasteRefusal } from '../src/behavior-engine/managed-layers.js';
 import { behaviorProblem } from '../src/behavior-engine/document-check.js';
 import { detachBehavior } from '../src/behavior-engine/data.js';
+import { TEMPLATES } from '../src/behavior-engine/registry.js';
+import { modelFor, instanceFor } from './helpers/box-template.js';
 
 const managed = (slot, extra = {}) => ({ id: `icon-${slot}`, name: slot, type: 'frame', behavior: { version: 2, slot }, ...extra });
 const plain = { id: 'label', name: 'Label', type: 'text' };
@@ -77,4 +79,12 @@ test('only the icon instance a managed slot holds is engine-sized', () => {
     assert.equal(isSlotIconInstance(nested, { type: 'frame' }), false);
     assert.equal(isSlotIconInstance(nested, null), false);
     assert.equal(isSlotIconInstance(null, slot), false);
+});
+
+test('a managed text inside its slot-marked box passes the backstop on open', () => {
+    const sw = TEMPLATES.get('switch');
+    const model = modelFor(sw);
+    const nodes = instanceFor(model, { checked: true, checkedKind: 'text', checkedChildren: 'on' });
+    const doc = { variables: model.variables, pages: [{ id: 'p', name: 'S', nodes: [model.frame, ...model.created, ...nodes] }] };
+    assert.equal(behaviorProblem(doc), null);
 });

@@ -4090,6 +4090,63 @@
       }
     },
     {
+      "collection": "Semantic",
+      "name": "switchInnerPadNear",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/4"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/4"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "switchInnerPadFarSM",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/4"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/4"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "switchInnerPadFar",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/7"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "size/7"
+          }
+        }
+      }
+    },
+    {
       "collection": "Primitives",
       "name": "shadow/none",
       "type": "effect",
@@ -4499,6 +4556,9 @@
       "Semantic/switchHandleSize",
       "Semantic/switchHandleSizeSM",
       "Semantic/switchPadding",
+      "Semantic/switchInnerPadNear",
+      "Semantic/switchInnerPadFarSM",
+      "Semantic/switchInnerPadFar",
       "Primitives/shadow/none",
       "Primitives/shadow/secondary",
       "Semantic/boxShadowNone",

@@ -10,7 +10,7 @@ import { toDomTree } from '../src/prototype/dom-tree.js';
 import { isDisabledTarget } from '../src/prototype/events.js';
 import { LOADING_OPACITY } from '../src/behavior-engine/display.js';
 import { modelFor, instanceFor } from './helpers/box-template.js';
-import { elementsOf } from './helpers/play-compute.js';
+import { computed, elementsOf } from './helpers/play-compute.js';
 
 const sw = TEMPLATES.get('switch');
 const button = TEMPLATES.get('button');
@@ -64,7 +64,7 @@ test('Play shows the spinner and treats loading as disabling the click', () => {
     const nodes = instanceFor(model, { loading: true });
     const frame = { id: 'top', name: 'Top', type: 'frame', parentId: null, layout: 'vertical', x: 0, y: 0, w: 400, h: 400, fills: [], layoutSizingH: 'hug', layoutSizingV: 'hug' };
     nodes[0].parentId = 'top';
-    const { root, problems } = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [frame, model.frame, ...model.created, ...nodes] }], variables: model.variables }, 'top');
+    const { root, styles, problems } = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [frame, model.frame, ...model.created, ...nodes] }], variables: model.variables }, 'top');
     assert.deepEqual(problems, []);
     const found = elementsOf(root);
     const swEl = found.find(({ el }) => el.attrs?.class === 'switch');
@@ -73,5 +73,10 @@ test('Play shows the spinner and treats loading as disabling the click', () => {
     const spinner = found.find(({ el, chain }) => typeof el.html === 'string' && el.html.includes('<svg') && chain.includes(handle.el));
     assert.ok(spinner, 'spinner element inside the handle');
     assert.equal(spinner.el.style.animation, 'midas-spin 1s linear infinite', 'Play spins the arc (the export draws it at rest)');
+    assert.equal(spinner.el.attrs.class, 'switch-spinner', 'the part carries the template part class, like the export');
+    const css = styles;
+    const track = computed(css, swEl.chain)['background-color'];
+    const colour = computed(css, spinner.chain).color;
+    assert.equal(colour, track, 'the spinner paints in the track colour, not the root text white');
     assert.ok(isDisabledTarget({ attrs: swEl.el.attrs }, []), 'a loading root is a disabled click target');
 });

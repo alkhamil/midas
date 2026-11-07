@@ -47,7 +47,12 @@ test('every master is on the Design System page with the layers its template bui
         const master = masterOf(page, template);
         assert.ok(master, `${template.id} has a master`);
         const names = doc.descendants(master.id).map(n => n.name);
-        for (const slot of template.anatomy.filter(s => s.kind === 'frame')) assert.ok(names.includes(slot.id), `${template.id} master holds ${slot.id}`);
+        const sample = core.resolveProps(template, template.sampleProps ?? {});
+        for (const slot of template.anatomy.filter(s => s.kind === 'frame')) {
+            // A conditional container off at the sample props is an instance layer, made while its condition holds.
+            if (slot.shownWhen !== undefined && !core.slotWanted(template, slot.id, sample)) continue;
+            assert.ok(names.includes(slot.id), `${template.id} master holds ${slot.id}`);
+        }
         // The parts the sample props show, by the same writes the generator builds masters from.
         const shown = new Set(core.partWrites(template, core.resolveProps(template, template.sampleProps ?? {})).filter(w => w.field === 'visible' && w.value === true).map(w => w.key));
         for (const part of template.parts ?? []) {
@@ -69,7 +74,11 @@ test('every demo instance holds the box and the handle and the label its sample 
         const demo = page.nodes.find(n => n.isInstance && n.sourceId === master.id);
         assert.ok(demo, `${template.id} has a demo instance`);
         const layers = doc.descendants(demo.id);
-        for (const slot of template.anatomy.filter(s => s.kind === 'frame')) assert.ok(layers.some(n => n.behavior?.group === slot.id), `${template.id} demo holds ${slot.id}`);
+        const sample = core.resolveProps(template, template.sampleProps ?? {});
+        for (const slot of template.anatomy.filter(s => s.kind === 'frame')) {
+            if (slot.shownWhen !== undefined && !core.slotWanted(template, slot.id, sample)) continue;
+            assert.ok(layers.some(n => n.behavior?.group === slot.id), `${template.id} demo holds ${slot.id}`);
+        }
         for (const slot of template.anatomy.filter(s => s.kind === 'glyph')) assert.ok(!layers.some(n => n.behavior?.slot === slot.id), `${template.id} demo has no ${slot.id} while it is off`);
         if (template.sampleProps?.label) assert.equal(layers.find(n => n.behavior?.slot === 'label')?.text, template.sampleProps.label, `${template.id} demo label`);
     }

@@ -26,6 +26,53 @@ test('applying a Button template to a frame creates its label and spinner, binds
     assert.ok(out.created.find(n => n.name === 'label').vars.typography, 'the label is bound to its typography variable');
 });
 
+test('a conditional container is a master layer only while its condition holds at the sample props', () => {
+    const mini = on => ({
+        id: 'mini', name: 'Mini',
+        props: { on: { source: 'literal', type: 'boolean', default: false } },
+        ...(on ? { sampleProps: { on: true } } : {}),
+        anatomy: [{ id: 'box', kind: 'frame', layout: 'horizontal', shownWhen: { prop: 'on', is: true } }],
+        tokens: {}, tokenKinds: {}, tokenRoles: {}, display: {},
+    });
+    const build = template => {
+        const frame = { id: 'f1', name: 'Mini', type: 'frame', parentId: null, fills: [] };
+        return applyTemplateToFrame(template, { frame, children: [], binding: { variables: {} }, variables: { collections: [], items: [] }, idOf: counter() });
+    };
+    assert.deepEqual(build(mini(false)).created.map(n => n.name), [], 'no box while the condition is off');
+    assert.deepEqual(build(mini(true)).created.map(n => n.name), ['box'], 'the box is built while the condition holds');
+});
+
+test('an instance holds a conditional container as a frame layer marked by slot while its condition holds', () => {
+    const template = {
+        id: 'mini', name: 'Mini',
+        props: { on: { source: 'literal', type: 'boolean', default: false } },
+        anatomy: [{ id: 'box', kind: 'frame', layout: 'horizontal', managed: true, shownWhen: { prop: 'on', is: true } }],
+        tokens: {}, tokenKinds: {}, tokenRoles: {}, display: {},
+    };
+    const frame = { id: 'f1', name: 'Mini', type: 'frame', parentId: null, fills: [] };
+    const made = applyTemplateToFrame(template, { frame, children: [], binding: { variables: {} }, variables: { collections: [], items: [] }, idOf: counter() });
+    const out = instanceOf(template, frame, made.created, { on: true }, { id: counter() });
+    const box = out.find(n => n.behavior?.slot === 'box');
+    assert.ok(box, 'the instance holds the box as a managed layer');
+    assert.equal(box.type, 'frame', 'the box is a frame, not a text layer');
+});
+
+test('an instance drops the master copy of a conditional container while its condition fails', () => {
+    const template = {
+        id: 'mini', name: 'Mini',
+        props: { on: { source: 'literal', type: 'boolean', default: false } },
+        sampleProps: { on: true },
+        anatomy: [{ id: 'box', kind: 'frame', layout: 'horizontal', managed: true, shownWhen: { prop: 'on', is: true } }],
+        tokens: {}, tokenKinds: {}, tokenRoles: {}, display: {},
+    };
+    const frame = { id: 'f1', name: 'Mini', type: 'frame', parentId: null, fills: [] };
+    const made = applyTemplateToFrame(template, { frame, children: [], binding: { variables: {} }, variables: { collections: [], items: [] }, idOf: counter() });
+    assert.deepEqual(made.created.map(n => n.name), ['box'], 'the master holds the box while the sample shows it');
+    const out = instanceOf(template, frame, made.created, { on: false }, { id: counter() });
+    assert.ok(!out.some(n => n.behavior?.group === 'box'), 'no box copy while the condition fails');
+});
+
+
 test('applying the same template again creates nothing (idempotent)', () => {
     const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
     const frame = { id: 'f1', name: 'Button', type: 'frame', parentId: null, fills: [] };

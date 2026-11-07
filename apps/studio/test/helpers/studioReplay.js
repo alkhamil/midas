@@ -5,7 +5,8 @@
 import fs from 'node:fs';
 import * as core from '@midas/builder-core';
 
-const src = fs.readFileSync(new URL('../../src/engine/midas.js', import.meta.url), 'utf8');
+// midas.js is CRLF on disk; the slicer below matches LF-only boundaries.
+const src = fs.readFileSync(new URL('../../src/engine/midas.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
 /** The source of a top-level function declaration of midas.js, cut at its closing brace on a line of its own (or the one-line form). */
 function sliceFunction(name) {

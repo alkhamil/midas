@@ -16,6 +16,9 @@ const WANT = {
     switchHandleSize: ['switch-handle', 18],
     switchHandleSizeSM: ['switch-handle-sm', 12],
     switchPadding: ['switch-padding', 2],
+    switchInnerPadNear: ['switch-inner-pad-near', 4],
+    switchInnerPadFarSM: ['switch-inner-pad-far-sm', 4],
+    switchInnerPadFar: ['switch-inner-pad-far', 7],
 };
 const item = (collection, name) => BASE_SNAPSHOT.items.find(i => i.collection === collection && i.name === name);
 

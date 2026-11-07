@@ -190,6 +190,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         }
         else problems.push({ slot: slot.id, reason: 'unsupported-slot' });
     };
+    // A conditional container draws only while its condition holds, like its text does.
     // A container is one element of the template's class around the slots that name it, in anatomy order; its layout is the box frame's own (see boxRules).
     for (const slot of template.anatomy.filter(s => !s.parent)) {
         if (slot.kind !== 'frame') { emitSlot(slot, children); continue; }
@@ -197,7 +198,8 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         for (const child of template.anatomy.filter(c => c.parent === slot.id)) emitSlot(child, inner);
         for (const part of parented(slot.id)) inner.push(framePartJsx(part));
         const indented = inner.map(line => line.split('\n').map(l => '  ' + l).join('\n')).join('\n');
-        children.push(`<div className="${template.id}-${slot.id}">\n${indented}\n</div>`);
+        const div = `<div className="${template.id}-${slot.id}">\n${indented}\n</div>`;
+        children.push(slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${div}}` : div);
     }
     if (!framePlaced) children.push(...rooted.filter(part => !part.side).map(part => framePartJsx(part)));
     // A content slot is an element of the component, after the other layers in schema order: drawn when its prop holds something, always with showEmpty.
@@ -626,8 +628,8 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
             // other states are guarded by `:not(:has(:disabled))`. Plain `:focus`, `:focus-visible` and
             // `:disabled` never match the wrapper, so no dead rule is emitted for them.
             const wrapperTarget = template.focusTarget === 'wrapper';
-            // A click-blocking prop held hides every other state, like disabled does.
-            const blockedGuard = (template.element.blockClickProps?.length ?? 0) ? ':not([data-blocked])' : '';
+            // A click-blocking prop held hides the interaction states, like disabled does; a persistent state it carries (a checked Switch that loads) still applies, as the canvas binds it.
+            const blockedGuard = !persistent && (template.element.blockClickProps?.length ?? 0) ? ':not([data-blocked])' : '';
             const noDisabled = wrapperTarget ? ':not(:has(:disabled))' : `:not(${pseudoOf(template, disabledState)})`;
             const guard = state === disabledState ? '' : `${noDisabled}${blockedGuard}`;
             if (!Object.keys(delta).length) continue;

@@ -14,18 +14,19 @@ const body = name => {
 test('managedLayersOf lists the instance\'s children and the children of its containers', () => {
     const fn = body('managedLayersOf');
     assert.ok(fn.includes('doc.children(inst.id)') && fn.includes('behavior?.group'));
+    assert.ok(fn.includes("behavior?.slot") && fn.includes("kind === 'frame'"), 'a slot-marked frame container counts as a container; an icon slot does not');
 });
 
 test('the anatomy plan is given every managed layer, containers included', () => {
-    assert.ok(body('anatomyPlanOf').includes('managedLayersOf(inst).map('));
+    assert.ok(body('anatomyPlanOf').includes('managedLayersOf(inst, managedTemplateOf(inst)).map('));
 });
 
 test('an insert op goes under the container it names, and the other steps look through the containers', () => {
     const sync = body('syncInstance');
     assert.ok(sync.includes('op.parent'), 'the insert op names its container');
     assert.ok(sync.includes('containerOf(inst, op.parent)'));
-    assert.ok(body('applyIconSlotBindings').includes('managedLayersOf(inst).find('), 'the icon pass finds a holder inside a container');
-    assert.ok(body('applyLiteralFields').includes('managedLayersOf(inst)'), 'the visibility loop covers them');
+    assert.ok(body('applyIconSlotBindings').includes('managedLayersOf(inst, template).find('), 'the icon pass finds a holder inside a container');
+    assert.ok(body('applyLiteralFields').includes('managedLayersOf(inst, template)'), 'the visibility loop covers them');
 });
 
 test('a managed glyph is made as a vector layer, not an icon frame, and only a text layer is measured', () => {

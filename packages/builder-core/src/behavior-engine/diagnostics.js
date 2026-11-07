@@ -10,7 +10,7 @@ import ROLES from '../base-tokens/roles.json' with { type: 'json' };
 import { resolveProps } from './instance-props.js';
 import { resolveMode } from './modes.js';
 import { planStateBindings } from './state-bindings.js';
-import { VARIABLE_KEYS, partWrites } from './display.js';
+import { VARIABLE_KEYS, conditionHolds, partWrites } from './display.js';
 import { strokePaintMissing } from '../geometry/shapes.js';
 import { dimensionOfGroup } from './validate-schema.js';
 import { masterLayersOf } from './layers.js';
@@ -183,6 +183,7 @@ export function diagnoseDocument(doc) {
             // Every other layer of the template (an affix text included) is the master's.
             if (spec.role === 'slot' || present.has(spec.key)) continue;
             if ((spec.role === 'part' || spec.role === 'text') && spec.part?.shownWhen !== undefined && !sampleShown.has(spec.key)) continue;
+            if (spec.role === 'group' && spec.slot?.shownWhen !== undefined && !conditionHolds(spec.slot.shownWhen, resolveProps(template, template.sampleProps ?? {}))) continue;
             out.push({ severity: 'warning', code: 'part-missing', node: m.name, nodeId: m.id, layer: spec.key, message: `${m.name}: the ${spec.key} layer is missing: ${template.name} needs it. Auto Fix adds it.` });
         }
         const known = new Set(items.map(i => i.id));

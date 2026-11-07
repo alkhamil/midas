@@ -34,3 +34,23 @@ export function applyToggle(root) {
     }
     return true;
 }
+
+/**
+ * A click on a toggle control's root in Play: flips the state like applyToggle, and glides each child the flip moved
+ * (a Switch's handle) from its old spot to its new one. Justification cannot transition, so the travel is a FLIP
+ * animation over the template's 0.2s ease-in-out; children that did not move (glyphs, icons) animate nothing.
+ * Reduced motion skips the glide. Returns what applyToggle returns.
+ * @param {{ getAttribute(n: string): string | null, hasAttribute(n: string): boolean, setAttribute(n: string, v: string): void, removeAttribute(n: string): void, style: Record<string, string>, children?: { getBoundingClientRect?: () => { left: number }, animate?: (frames: object[], opts: object) => void }[], ownerDocument?: { defaultView?: { matchMedia?: (query: string) => { matches: boolean } } | null } | null }} root
+ * @returns {boolean} whether the root is a toggle that took the click
+ */
+export function flipToggle(root) {
+    // Element.children is an HTMLCollection, which has no map: copy it into an array first.
+    const before = new Map(Array.from(root.children ?? []).map(el => [el, el.getBoundingClientRect?.().left ?? 0]));
+    if (!applyToggle(root)) return false;
+    if (root.ownerDocument?.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return true;
+    for (const [el, x] of before) {
+        const dx = x - (el.getBoundingClientRect?.().left ?? 0);
+        if (dx !== 0 && typeof el.animate === 'function') el.animate([{ transform: `translateX(${dx}px)` }, { transform: 'translateX(0px)' }], { duration: 200, easing: 'ease-in-out' });
+    }
+    return true;
+}

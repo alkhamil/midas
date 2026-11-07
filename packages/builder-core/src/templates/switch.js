@@ -17,10 +17,12 @@ export const SWITCH = {
     isControl: true,
     element: { tag: 'button', attrs: { type: 'button', role: 'switch', tabindex: '0' }, disabledState: 'disabled', blockClickProps: ['loading'] },
     anatomy: [
-        { id: 'checkedChildren', kind: 'text', optional: true, managed: true, typography: 'text', shownWhen: { all: [{ prop: 'checked', is: true }, { prop: 'checkedKind', is: 'text' }, { prop: 'checkedChildren', empty: false }] } },
+        { id: 'innerOn', kind: 'frame', layout: 'horizontal', managed: true, shownWhen: { all: [{ prop: 'checked', is: true }, { prop: 'checkedKind', is: 'text' }, { prop: 'checkedChildren', empty: false }] } },
+        { id: 'checkedChildren', kind: 'text', optional: true, managed: true, parent: 'innerOn', typography: 'text', shownWhen: { all: [{ prop: 'checked', is: true }, { prop: 'checkedKind', is: 'text' }, { prop: 'checkedChildren', empty: false }] } },
         { id: 'checkedIcon', kind: 'icon', optional: true, managed: true },
         { id: 'handle', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center' },
-        { id: 'uncheckedChildren', kind: 'text', optional: true, managed: true, typography: 'text', shownWhen: { all: [{ prop: 'checked', is: false }, { prop: 'uncheckedKind', is: 'text' }, { prop: 'uncheckedChildren', empty: false }] } },
+        { id: 'innerOff', kind: 'frame', layout: 'horizontal', managed: true, shownWhen: { all: [{ prop: 'checked', is: false }, { prop: 'uncheckedKind', is: 'text' }, { prop: 'uncheckedChildren', empty: false }] } },
+        { id: 'uncheckedChildren', kind: 'text', optional: true, managed: true, parent: 'innerOff', typography: 'text', shownWhen: { all: [{ prop: 'checked', is: false }, { prop: 'uncheckedKind', is: 'text' }, { prop: 'uncheckedChildren', empty: false }] } },
         { id: 'uncheckedIcon', kind: 'icon', optional: true, managed: true },
     ],
     // Checked and unchecked children: a text slot or a managed icon slot per state (antd allows an icon
@@ -58,10 +60,10 @@ export const SWITCH = {
     },
     tokens: {
         fromColor: ['track-bg', 'track-bg-checked', 'track-bg-disabled', 'track-bg-hover', 'track-bg-focus', 'handle-bg', 'wave-color'],
-        fromSize: ['trackHeight', 'trackWidth', 'trackPadding', 'handleSize', 'radiusFull', 'iconSize', 'textTypography'],
+        fromSize: ['trackHeight', 'trackWidth', 'trackPadding', 'handleSize', 'radiusFull', 'iconSize', 'textTypography', 'innerPadNear', 'innerPadFar'],
     },
     tokenKinds: {
-        trackHeight: 'length', trackWidth: 'length', trackPadding: 'length', handleSize: 'length', radiusFull: 'length', iconSize: 'length', textTypography: 'typography',
+        trackHeight: 'length', trackWidth: 'length', trackPadding: 'length', handleSize: 'length', radiusFull: 'length', iconSize: 'length', textTypography: 'typography', innerPadNear: 'length', innerPadFar: 'length',
         'track-bg': 'color', 'track-bg-checked': 'color', 'track-bg-disabled': 'color', 'track-bg-hover': 'color', 'track-bg-focus': 'color', 'handle-bg': 'color', 'wave-color': 'color',
     },
     tokenRoles: {
@@ -72,6 +74,8 @@ export const SWITCH = {
         radiusFull: 'radius-full',
         iconSize: { small: 'icon-sm', default: 'icon-md' },
         textTypography: { small: 'text-sm', default: 'text-sm' },
+        innerPadNear: 'switch-inner-pad-near',
+        innerPadFar: { small: 'switch-inner-pad-far-sm', default: 'switch-inner-pad-far' },
         'track-bg': 'track-off', 'track-bg-checked': ACCENT, 'track-bg-disabled': 'border', 'track-bg-hover': 'track-off-hover', 'track-bg-focus': 'track-off-hover', 'handle-bg': 'solid-text', 'wave-color': ACCENT,
     },
     // Checked swaps the track colour; Disabled is declared last, so it wins over Checked.
@@ -107,6 +111,8 @@ export const SWITCH = {
     ],
     display: {
         root: { fill: 'track-bg', radius: 'radiusFull', height: 'trackHeight', minWidth: 'trackWidth', paddingX: 'trackPadding', paddingY: 'trackPadding' },
+        innerOn: { paddingStart: 'innerPadFar', paddingEnd: 'innerPadNear' },
+        innerOff: { paddingStart: 'innerPadNear', paddingEnd: 'innerPadFar' },
         handle: { fill: 'handle-bg', radius: 'radiusFull', size: 'handleSize' },
         spinner: { stroke: 'track-bg', size: 'iconSize' },
         checkedChildren: { fill: 'handle-bg', typography: 'textTypography' },

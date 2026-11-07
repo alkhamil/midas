@@ -9673,7 +9673,7 @@ function anatomyPlanOf(inst) {
                 // The planner orders a root slot among the root's direct children: a layer hanging
                 // under a container carries its container, so its content never moves a root index.
                 const groupOf = new Map(doc.children(inst.id).filter(c => c.behavior?.group !== undefined).map(c => [c.id, c.behavior.group]));
-                return managedLayersOf(inst).map(c => ({ id: c.id, slot: c.behavior?.slot ?? null, name: c.name, component: iconOfSlot(c), ...(groupOf.get(c.parentId) === undefined ? {} : { parent: groupOf.get(c.parentId) }) }));
+                return managedLayersOf(inst, managedTemplateOf(inst)).map(c => ({ id: c.id, slot: c.behavior?.slot ?? null, name: c.name, component: iconOfSlot(c), ...(groupOf.get(c.parentId) === undefined ? {} : { parent: groupOf.get(c.parentId) }) }));
             })(),
         });
     });
@@ -9766,7 +9766,7 @@ function applyIconSlotBindings(inst) {
     // Every layer that follows the icon tokens, through one function: a managed slot (its size, and the colour of each layer of the icon it
     // holds) and a part that holds the tokens itself (the spinner: its size and its own stroke colour).
     for (const { key, kind } of iconBoundKeysOf(template)) {
-        const holder = managedLayersOf(inst).find(c => (kind === 'slot' ? c.behavior?.slot : c.behavior?.part) === key);
+        const holder = managedLayersOf(inst, template).find(c => (kind === 'slot' ? c.behavior?.slot : c.behavior?.part) === key);
         if (!holder) continue;
         const targets = iconSlotTargets(template, key);
         const names = { colour: targets.colour.name, disabledColour: targets.disabledColour.name, size: targets.size.name };
@@ -9815,14 +9815,17 @@ function managedTemplateOf(inst) {
     const binding = componentById(inst.sourceId)?.behavior;
     return binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) ?? null : null;
 }
-/** The instance's children and the children of its containers (a group frame of the anatomy): where its managed layers live. */
-function managedLayersOf(inst) {
+/** The instance's children and the children of its containers (a group frame, or a slot-marked frame container holding its text): where its managed layers live. */
+function managedLayersOf(inst, template) {
+    // An icon slot's nested instance is read through the slot (see iconOfSlot), never descended into.
+    const isContainer = c => c.behavior?.group !== undefined || (c.behavior?.slot !== undefined && template?.anatomy.some(s => s.id === c.behavior.slot && s.kind === 'frame'));
     const kids = doc.children(inst.id);
-    return [...kids, ...kids.filter(c => c.behavior?.group !== undefined).flatMap(c => doc.children(c.id))];
+    return [...kids, ...kids.filter(isContainer).flatMap(c => doc.children(c.id))];
 }
 /** The layer a managed slot goes under: the instance's copy of the container it names, else the instance itself. */
 function containerOf(inst, group) {
-    return group === undefined ? inst : doc.children(inst.id).find(c => c.behavior?.group === group) ?? inst;
+    // An instance holds a conditional container as a slot layer (its master holds none while the condition is off).
+    return group === undefined ? inst : doc.children(inst.id).find(c => c.behavior?.group === group || c.behavior?.slot === group) ?? inst;
 }
 /** The instance's managed text, control and glyph layers, by slot id (a glyph lives inside its box container, not on the root). */
 function managedTextLayersOf(inst, template) {
@@ -10049,7 +10052,7 @@ function applyLiteralFields(inst) {
             remeasureText(n);
     }
     // A managed slot that shows while its value is set (the clear icon) is shown or hidden as the value changes.
-    for (const layer of managedLayersOf(inst)) {
+    for (const layer of managedLayersOf(inst, template)) {
         if (layer.behavior?.slot === undefined) continue;
         const shown = slotShown(template, layer.behavior.slot, props);
         if (layer.visible !== shown) {

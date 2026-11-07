@@ -44,9 +44,9 @@ test('a managed text slot must be optional and must say when it is wanted', () =
     assert.match(problems(withSlot({ shownWhen: { prop: 'nope', empty: false } })), /anatomy slot "note" shownWhen/);
 });
 
-test('a managed frame is still refused, and alwaysVisible needs an icon slot', () => {
+test('a managed frame must not be optional, and alwaysVisible needs an icon slot', () => {
     assert.match(problems(withSlot({ alwaysVisible: true })), /alwaysVisible needs a managed icon slot/);
-    assert.match(problems(withSlot({ kind: 'frame', layout: 'vertical' })), /frame slot "note" cannot be optional or managed/);
+    assert.match(problems(withSlot({ kind: 'frame', layout: 'vertical' })), /frame slot "note" cannot be optional/);
 });
 
 test('an icon def cannot name a managed text slot', () => {
@@ -59,6 +59,6 @@ test('the primary slot may be managed: a template with no required text slot is 
     assert.deepEqual(validateTemplateSchema(only), []);
 });
 
-test('a managed slot that is not text, control or icon is still refused', () => {
-    assert.match(problems(withSlot({ kind: 'frame', layout: 'vertical', optional: undefined })), /cannot be optional or managed/);
+test('a managed frame names when it shows', () => {
+    assert.match(problems(withSlot({ kind: 'frame', layout: 'vertical', optional: undefined, shownWhen: undefined })), /is managed but unconditional/);
 });

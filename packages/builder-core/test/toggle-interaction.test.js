@@ -71,7 +71,7 @@ test('the roles are on the roots and Play and the export carry the toggle and ar
 });
 
 // ---- applyToggle: the DOM step, over a plain element-like object ----
-import { applyToggle } from '../src/prototype/toggle.js';
+import { applyToggle, flipToggle } from '../src/prototype/toggle.js';
 
 /** An element-like object: attributes, a style, descendants, and a hidden flag. */
 function fake(attrs) {
@@ -120,4 +120,38 @@ test('a disabled control and an element with no toggle ignore the click', () => 
         assert.ok(!root.has('data-checked'));
     }
     assert.equal(applyToggle(fake({})), false);
+});
+
+test('a switch click glides the handle: the child that moved animates from its old spot', () => {
+    const calls = [];
+    let n = 0;
+    const mover = { getBoundingClientRect: () => ({ left: n++ === 0 ? 10 : 50 }), animate: (frames, opts) => calls.push([frames, opts]) };
+    const root = { ...fake({ 'data-toggle': 'data-checked', 'data-checked-align': 'start', 'aria-checked': 'false' }), children: [mover] };
+    assert.equal(flipToggle(root), true);
+    assert.deepEqual(calls.length, 1);
+    assert.deepEqual(calls[0][0], [{ transform: 'translateX(-40px)' }, { transform: 'translateX(0px)' }]);
+    assert.equal(calls[0][1].duration, 200);
+});
+
+test('a click that moves nothing animates nothing; reduced motion skips the glide', () => {
+    const still = { getBoundingClientRect: () => ({ left: 10 }), animate: () => { throw new Error('no animation expected'); } };
+    assert.equal(flipToggle({ ...fake({ 'data-toggle': 'data-checked', 'aria-checked': 'false' }), children: [still] }), true);
+    let m = 0;
+    const mover = { getBoundingClientRect: () => ({ left: m++ === 0 ? 10 : 50 }), animate: () => { throw new Error('no animation expected'); } };
+    const reduced = { ...fake({ 'data-toggle': 'data-checked', 'data-checked-align': 'start', 'aria-checked': 'false' }), children: [mover], ownerDocument: { defaultView: { matchMedia: () => ({ matches: true }) } } };
+    assert.equal(flipToggle(reduced), true);
+});
+
+test('a disabled toggle glides nothing and returns false', () => {
+    assert.equal(flipToggle({ ...fake({ 'data-toggle': 'data-checked', disabled: '' }), children: [] }), false);
+});
+
+test('flipToggle works on a real DOM children collection, which has no map', () => {
+    let n = 0;
+    const mover = { getBoundingClientRect: () => ({ left: n++ === 0 ? 10 : 50 }), animate: () => {} };
+    // An HTMLCollection is array-like: indexed with a length, but no map.
+    const collection = { 0: mover, length: 1 };
+    const root = { ...fake({ 'data-toggle': 'data-checked', 'data-checked-align': 'start', 'aria-checked': 'false' }), children: collection };
+    assert.equal(flipToggle(root), true);
+    assert.ok(root.has('data-checked'), 'the click flips the state even though children has no map');
 });

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { validateTemplateSchema } from '../src/behavior-engine/validate-schema.js';
 import { BUTTON } from '../src/templates/button.js';
 import { INPUT } from '../src/templates/input.js';
+import { SWITCH } from '../src/templates/switch.js';
 
 const clone = o => structuredClone(o);
 
@@ -175,7 +176,13 @@ test('a shownWhen names a real literal prop, with a condition the prop can hold'
     assert.match(validateTemplateSchema(wrongKind).join('\n'), /with "empty", which needs a string prop and a boolean/);
     const notText = clone(INPUT);
     notText.anatomy.find(s => s.id === 'prefixIcon').shownWhen = { prop: 'hasPrefix', is: true };
-    assert.match(validateTemplateSchema(notText).join('\n'), /anatomy slot "prefixIcon" has shownWhen but is not a text, control or glyph slot/);
+    assert.match(validateTemplateSchema(notText).join('\n'), /anatomy slot "prefixIcon" has shownWhen but is not a text, control, glyph or frame slot/);
+});
+
+test('a frame container may gate on a shownWhen (a conditional container)', () => {
+    const cond = clone(SWITCH);
+    cond.anatomy.find(s => s.id === 'handle').shownWhen = { prop: 'checked', is: true };
+    assert.deepEqual(validateTemplateSchema(cond).filter(m => /shownWhen/.test(m)), []);
 });
 
 test('remembered is a boolean on a prop a visibleIf hides, and is refused elsewhere', () => {

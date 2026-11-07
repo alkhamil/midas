@@ -87,7 +87,7 @@ function conditionProblems(cond, props, where) {
 }
 
 /**
- * Problems in the `shownWhen` of the anatomy slots: only a text slot has one, and its condition must hold on the template's props.
+ * Problems in the `shownWhen` of the anatomy slots: only a text, control, glyph or frame-container slot has one, and its condition must hold on the template's props.
  * @param {any} schema
  * @param {Record<string, any>} props
  * @returns {string[]}
@@ -96,7 +96,7 @@ function shownWhenProblems(schema, props) {
     const out = [];
     for (const slot of Array.isArray(schema.anatomy) ? schema.anatomy : []) {
         if (!isPlainObject(slot) || slot.shownWhen === undefined) continue;
-        if (slot.kind !== 'text' && slot.kind !== 'control' && slot.kind !== 'glyph') out.push(`anatomy slot "${slot.id}" has shownWhen but is not a text, control or glyph slot`);
+        if (slot.kind !== 'text' && slot.kind !== 'control' && slot.kind !== 'glyph' && slot.kind !== 'frame') out.push(`anatomy slot "${slot.id}" has shownWhen but is not a text, control, glyph or frame slot`);
         out.push(...conditionProblems(slot.shownWhen, props, `anatomy slot "${slot.id}" shownWhen`));
     }
     return out;
@@ -137,7 +137,8 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
         if (!['text', 'control', 'icon', 'frame', 'glyph'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" has unknown kind "${slot.kind}"`);
         if (slot.kind === 'frame') {
             if (slot.layout !== 'horizontal' && slot.layout !== 'vertical') out.push(`frame slot "${slot.id}" layout must be horizontal or vertical`);
-            if (slot.optional || slot.managed) out.push(`frame slot "${slot.id}" cannot be optional or managed`);
+            if (slot.optional) out.push(`frame slot "${slot.id}" cannot be optional`);
+            if (slot.managed && slot.shownWhen === undefined) out.push(`frame slot "${slot.id}" is managed but unconditional: a managed container names when it shows`);
             // A container that holds nothing is a drawn box when the display maps it (a Switch's handle).
             if (!anatomy.some(c => isPlainObject(c) && c.parent === slot.id) && !drawnBox(schema, slot.id)) out.push(`frame slot "${slot.id}" holds no slot`);
         }
@@ -146,7 +147,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
             if (!holder || holder.kind !== 'frame') out.push(`anatomy slot "${slot.id}" has the parent "${slot.parent}", which is not a frame slot`);
             else if (slot.kind === 'frame') out.push(`frame slot "${slot.id}" cannot sit inside another frame slot`);
         }
-        if (slot.managed && !['icon', 'text', 'control', 'glyph'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" is managed but not an icon, text, control or glyph slot`);
+        if (slot.managed && !['icon', 'text', 'control', 'glyph', 'frame'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" is managed but not an icon, text, control, glyph or frame slot`);
         // A glyph is a built-in outline drawn in a box: managed, shown by a state the root says as an attribute (so Play and the export need no layer).
         if (slot.kind === 'glyph') {
             if (!Object.hasOwn(GLYPHS, slot.glyph)) out.push(`glyph slot "${slot.id}" names the glyph "${slot.glyph}", which is not a built-in glyph`);
@@ -163,7 +164,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
             if (!(slot.kind === 'icon' && slot.managed)) out.push(`anatomy slot "${slot.id}" alwaysVisible needs a managed icon slot`);
             if (slot.optional) out.push(`alwaysVisible slot "${slot.id}" cannot be optional`);
         }
-        else if (slot.managed && !slot.optional) out.push(`managed anatomy slot "${slot.id}" must be optional`);
+        else if (slot.managed && !slot.optional && slot.kind !== 'frame') out.push(`managed anatomy slot "${slot.id}" must be optional`);
     }
     const text = anatomy.filter(s => isPlainObject(s) && (s.kind === 'text' || s.kind === 'control') && (!s.optional || s.id === schema.primarySlot));
     const shown = anatomy.filter(s => isPlainObject(s) && s.alwaysVisible === true && s.kind === 'icon' && s.managed);

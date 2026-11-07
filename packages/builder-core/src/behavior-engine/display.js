@@ -15,6 +15,8 @@ export const NODE_PROPERTIES = {
         radius: { kind: 'length', css: 'border-radius' },
         paddingX: { kind: 'length', css: 'padding-inline' },
         paddingY: { kind: 'length', css: 'padding-block' },
+        paddingStart: { kind: 'length', css: 'padding-inline-start' },
+        paddingEnd: { kind: 'length', css: 'padding-inline-end' },
         gap: { kind: 'length', css: 'gap' },
         height: { kind: 'length', css: 'height' },
         // A fixed width from a token, bound through the w variable like the height through h.
@@ -228,6 +230,8 @@ export const VARIABLE_KEYS = {
     radius: ['radius'],
     paddingX: ['padH'],
     paddingY: ['padV'],
+    paddingStart: ['padL'],
+    paddingEnd: ['padR'],
     gap: ['gap'],
     fontSize: ['fontSize'],
     lineHeight: ['lineHeight'],

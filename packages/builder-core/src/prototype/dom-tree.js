@@ -19,7 +19,7 @@ import { controlOf, iconDefOn, placementsOfDef, primarySlotOf, slotDefsOf } from
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { repeatCount } from '../behavior-engine/slot-rules.js';
-import { ariaCheckedOf, canvasPartsOf, counterLabel, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
+import { ariaCheckedOf, canvasPartsOf, counterLabel, conditionHolds, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, shadowCss, svgNumber } from '../geometry/format.js';
@@ -77,10 +77,12 @@ function partLayerOf(n, id, scope) {
     return below(n.id).find(c => c.behavior?.part === id);
 }
 
-/** The element a canvas part draws, from its node: none when the part is hidden or the instance has no copy of it. */
-function partElement(n, id, scope) {
+/** The element a canvas part draws, from its node: none when the part is hidden or the instance has no copy of it. The element carries the template part class, so the part rules the export writes (a spinner's colour and size) apply in Play the same way. */
+function partElement(n, id, scope, cls) {
     const layer = partLayerOf(n, id, scope);
-    return layer ? renderNode(layer, n, scope, false) : null;
+    const el = layer ? renderNode(layer, n, scope, false) : null;
+    if (el && cls) el.attrs = { ...el.attrs, class: [el.attrs?.class, cls].filter(Boolean).join(' ') };
+    return el;
 }
 
 function renderNode(n, parent, scope, icon = false) {
@@ -276,7 +278,7 @@ function renderTemplate(n, template, parent, scope) {
         framePartsDrawn = true;
         for (const part of canvasPartsOf(template)) {
             if (part.kind !== 'frame' || part.parent) continue;
-            const el = partElement(n, part.id, scope);
+            const el = partElement(n, part.id, scope, `${template.id}-${part.id}`);
             if (!el) continue;
             if (part.spin) el.style.animation = SPIN_ANIMATION;
             out.push(el);
@@ -345,11 +347,12 @@ function renderTemplate(n, template, parent, scope) {
     // A container is one element of the template's class around the slots that name it, in anatomy order (the codegen writes the same).
     for (const slot of template.anatomy.filter(s => !s.parent)) {
         if (slot.kind !== 'frame') { emitSlot(slot, children); continue; }
-        const group = below(n.id).find(c => c.behavior?.group === slot.id);
+        if (slot.shownWhen !== undefined && !conditionHolds(slot.shownWhen, props)) continue;
+        const group = below(n.id).find(c => c.behavior?.group === slot.id) ?? below(n.id).find(c => c.behavior?.slot === slot.id);
         const inner = [];
         for (const child of template.anatomy.filter(c => c.parent === slot.id)) emitSlot(child, inner);
         for (const part of canvasPartsOf(template).filter(p => p.kind === 'frame' && p.parent === slot.id)) {
-            const el = partElement(n, part.id, scope);
+            const el = partElement(n, part.id, scope, `${template.id}-${part.id}`);
             if (!el) continue;
             if (part.spin) el.style.animation = SPIN_ANIMATION;
             inner.push(el);

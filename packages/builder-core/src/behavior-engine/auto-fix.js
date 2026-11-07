@@ -497,6 +497,25 @@ export function applyAutoFix(store, binding, autoFix, uid) {
             }
         }
     }
+    // A collection the file already had may carry modes the plan does not name (the fixture lineage's Base on
+    // Semantic): fill them from the plan's first mode, the default theme, never overwriting a value the file has.
+    for (const wanted of autoFix.plan.items) {
+        const cid = collIdOf[wanted.collectionIndex];
+        if (cid === undefined) continue;
+        const item = findItem(cid, wanted.name);
+        if (!item || item.type !== wanted.type) continue;
+        const coll = (store.collections || []).find(c => c.id === cid);
+        const planModes = Object.keys(wanted.values);
+        if (!coll || !planModes.length) continue;
+        const first = item.values[modeIdOf(coll, planModes[0])];
+        if (first === undefined || typeof first !== 'object') continue;
+        const planned = new Set(planModes.map(mode => modeIdOf(coll, mode)));
+        for (const m of coll.modes) {
+            if (planned.has(m.id) || item.values[m.id] !== undefined) continue;
+            item.values[m.id] = { ...first };
+            stats.aliases++;
+        }
+    }
     let bindings = 0;
     for (const [dim, name] of Object.entries(autoFix.bindingUpdates)) {
         // The plan resolves every update explicitly (a rebind moves a slot off another template's collection), so an

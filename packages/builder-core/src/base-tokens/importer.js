@@ -378,5 +378,30 @@ export function applyBasePlan(store, plan, uid) {
             }
         }
     }
+    fillUnplannedModes(store, plan, collByName, findItem, modeIdOf, stats);
     return stats;
+}
+/**
+ * A collection the file already had may carry modes the plan does not name (the fixture lineage's Base on
+ * Semantic). Those modes would stay valueless, and the default reading mode then resolves nothing: Play and the
+ * export drop every component whose chain reaches the item, while the canvas (which falls back across modes)
+ * draws it. Fill them from the plan's first mode, the default theme, never overwriting a value the file has.
+ */
+function fillUnplannedModes(store, plan, collByName, findItem, modeIdOf, stats) {
+    for (const wanted of plan.items) {
+        const coll = collByName.get(wanted.collection);
+        if (!coll) continue;
+        const planModes = Object.keys(wanted.values);
+        if (!planModes.length) continue;
+        const item = findItem(coll.id, wanted.name);
+        if (!item || item.type !== wanted.type) continue;
+        const first = item.values[modeIdOf(coll, planModes[0])];
+        if (first === undefined || typeof first !== 'object') continue;
+        const planned = new Set(planModes.map(mode => modeIdOf(coll, mode)));
+        for (const m of coll.modes) {
+            if (planned.has(m.id) || item.values[m.id] !== undefined) continue;
+            item.values[m.id] = { ...first };
+            stats.aliases++;
+        }
+    }
 }
