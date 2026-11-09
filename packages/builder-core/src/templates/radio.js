@@ -63,16 +63,16 @@ export const RADIO = {
     },
     // A click selects the radio; it does not unselect it.
     toggle: { prop: 'checked', once: true },
-    // Motion (antd, timings and easings only): the ring recolours over 0.3s; the dot scales in
-    // from 0 over 0.3s with the same ease. No click wave: the generic wave targets the host box,
+    // Motion (antd, timings and easings only): the ring recolours over 0.2s (ease); the dot scales in
+    // from 0 over 0.3s (motionEaseInOutCirc). No click wave: the generic wave targets the host box,
     // while this host is the label row, so it would ripple the row, not the circle. Play and the
     // export read it; the canvas stays static.
     motion: {
         transitions: [
-            { key: 'box', props: ['border-color'], duration: '0.3s', timing: 'cubic-bezier(0.78, 0.14, 0.15, 0.86)' },
+            { key: 'box', props: ['border-color'], duration: '0.2s', timing: 'ease' },
         ],
         appearances: [
-            { key: 'dot', states: ['checked'], from: { transform: 'scale(0)' }, duration: '0.3s', timing: 'cubic-bezier(0.78, 0.14, 0.15, 0.86)' },
+            { key: 'dot', states: ['checked'], from: { transform: 'scale(0)', opacity: '0' }, duration: '0.3s', timing: 'cubic-bezier(0.78, 0.14, 0.15, 0.86)' },
         ],
     },
     // Hover and focus draw the box border in the brand colour while nothing replaces it (the checked look wins, as a persistent state does over a preview).

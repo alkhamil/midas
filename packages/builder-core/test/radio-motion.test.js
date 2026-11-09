@@ -23,19 +23,19 @@ function css() {
 test('the schema declares the motion as data: border transition plus dot scale-in, and no wave', () => {
     assert.deepEqual(validateTemplateSchema(structuredClone(radio)).filter(p => /motion/i.test(p)), []);
     assert.deepEqual(radio.motion.transitions, [
-        { key: 'box', props: ['border-color'], duration: '0.3s', timing: 'cubic-bezier(0.78, 0.14, 0.15, 0.86)' },
+        { key: 'box', props: ['border-color'], duration: '0.2s', timing: 'ease' },
     ]);
     assert.equal(radio.motion.appearances.length, 1);
     assert.equal(radio.interaction, undefined, 'no wave: the generic wave would ripple the label row, not the circle');
 });
 
-test('the export transitions the ring colour over 0.3s with the antd ease', () => {
-    assert.match(css(), /\.radio-box \{\s*[^}]*transition: border-color 0\.3s cubic-bezier\(0\.78, 0\.14, 0\.15, 0\.86\);\s*[^}]*\}/s);
+test('the export transitions the ring colour over 0.2s (antd motionDurationMid, ease)', () => {
+    assert.match(css(), /\.radio-box \{\s*[^}]*transition: border-color 0\.2s ease;\s*[^}]*\}/s);
 });
 
 test('the dot scales in from 0 over 0.3s with the antd ease', () => {
     const text = css();
-    assert.match(text, /@keyframes midas-radio-dot-in \{\s*from \{\s*transform: scale\(0\);\s*\}\s*\}/s);
+    assert.match(text, /@keyframes midas-radio-dot-in \{\s*from \{\s*transform: scale\(0\);\s*opacity: 0;\s*\}\s*\}/s);
     assert.match(text, /\.radio\[data-checked\]:not\(\[aria-disabled="true"\]\) \.radio-dot \{\s*animation: midas-radio-dot-in 0\.3s cubic-bezier\(0\.78, 0\.14, 0\.15, 0\.86\) backwards;\s*\}/s);
 });
 
@@ -59,6 +59,6 @@ test('Play applies the same motion stylesheet as the export', () => {
     nodes[0].parentId = 'top';
     const { styles, problems } = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [frame, model.frame, ...model.created, ...nodes] }], variables: model.variables }, 'top');
     assert.deepEqual(problems, []);
-    assert.match(styles, /transition: border-color 0\.3s cubic-bezier\(0\.78, 0\.14, 0\.15, 0\.86\)/s);
+    assert.match(styles, /transition: border-color 0\.2s ease/s);
     assert.match(styles, /animation: midas-radio-dot-in 0\.3s cubic-bezier\(0\.78, 0\.14, 0\.15, 0\.86\) backwards;/s);
 });
