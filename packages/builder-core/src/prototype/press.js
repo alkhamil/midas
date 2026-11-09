@@ -57,3 +57,71 @@ export function applyPress(target) {
     write(AT_MAX_ATTR, max !== null && Number(next) >= max);
     return true;
 }
+
+/**
+ * The value a number input holds after it loses focus. The typed text commits when it is a number: clamped to the limits and written with the precision; an empty
+ * field is a valid empty value. Anything else is discarded and the last committed value comes back (empty when nothing was committed before). Self-contained, so the
+ * export embeds its source and runs the same logic as Play.
+ * @param {string} typed
+ * @param {string} committed the last committed valid value
+ * @param {{ min: number | null, max: number | null, precision: number | null }} limits
+ * @returns {string}
+ */
+export function commitNumber(typed, committed, { min, max, precision }) {
+    const text = String(typed).trim();
+    if (text === '') return '';
+    const n = Number(text);
+    if (!Number.isFinite(n)) return committed;
+    let next = n;
+    if (max !== null) next = Math.min(next, max);
+    if (min !== null) next = Math.max(next, min);
+    const places = precision !== null ? precision : (String(next).split('.')[1] ?? '').length;
+    return next.toFixed(places);
+}
+
+/**
+ * The height range of a text area inside its box: the box's computed min and max height (the tokens, as the browser resolved them) less the chrome around the field
+ * (padding, the footer row), so the box stays within its own limits.
+ * @param {{ minHeight: string, maxHeight: string }} box computed style of the box
+ * @param {number} boxHeight
+ * @param {number} fieldHeight
+ * @returns {{ min: number, max: number }}
+ */
+export function resizeLimits({ minHeight, maxHeight }, boxHeight, fieldHeight) {
+    const chrome = boxHeight - fieldHeight;
+    const px = text => (Number.isFinite(parseFloat(text)) ? parseFloat(text) : null);
+    const min = px(minHeight), max = px(maxHeight);
+    return { min: Math.max(0, (min ?? 0) - chrome), max: max === null ? Infinity : max - chrome };
+}
+
+/** The height a drag of `dy` px gives a field that was `height` tall, held within the limits. Vertical only. */
+export const resizeHeight = (height, dy, { min, max }) => Math.min(max, Math.max(min, height + dy));
+
+/**
+ * The start of a drag on a text area's resize handle. Null while the field is disabled. `move(y)` sets the field's height from the pointer's y.
+ * @param {{ offsetHeight: number, querySelector(sel: string): any }} box
+ * @param {number} startY
+ * @param {(el: any) => { minHeight: string, maxHeight: string }} computedOf
+ * @returns {{ move(y: number): void } | null}
+ */
+export function startResizeDrag(box, startY, computedOf) {
+    const field = box.querySelector('textarea');
+    if (!field || field.hasAttribute('disabled')) return null;
+    const from = field.offsetHeight, range = resizeLimits(computedOf(box), box.offsetHeight, from);
+    return { move: y => { field.style.height = `${resizeHeight(from, y - startY, range)}px`; } };
+}
+
+/**
+ * A click on the padding of a text box focuses its field, so the whole box acts as the field. A click on the field itself, on a pressable glyph (the resize handle has its
+ * own behaviour) or on a disabled field does nothing here.
+ * @param {{ closest(sel: string): any }} target
+ * @returns {boolean} whether the field took the focus
+ */
+export function forwardFocus(target) {
+    const box = target.closest?.('[data-field-box]');
+    if (!box || target.closest('input,textarea,[data-press]')) return false;
+    const field = box.querySelector('input,textarea');
+    if (!field || field.hasAttribute('disabled')) return false;
+    field.focus();
+    return true;
+}
