@@ -193,6 +193,16 @@ export const targetKindOf = (template, key) => {
 /** The text a counter part shows: the value's length, and `/ max` when the template has a maximum. */
 export const counterLabel = (value, max) => `${String(value ?? '').length}${max != null ? ` / ${max}` : ''}`;
 
+/** The text an overflow text shows: the count, or the limit and a plus once the count is above the limit (Badge's 99+). Never stored. */
+export const overflowLabel = (count, limit) => (count != null && Number(count) > Number(limit) ? `${limit}+` : String(count ?? ''));
+
+/** The text a derived text part or slot shows for these props, or undefined when it has none (a plain text). */
+function derivedTextOf(text, props) {
+    if (text?.counter) return counterLabel(props[text.counter.value], props[text.counter.max]);
+    if (text?.overflow) return overflowLabel(props[text.overflow.value], props[text.overflow.limit]);
+    return undefined;
+}
+
 /**
  * Whether a persistent state is on: its own prop is set, or the prop of a state that is an alias of it (`as`: Read only is the disabled state turned on by
  * its own prop). Every surface asks this one question.
@@ -256,13 +266,15 @@ export function partWrites(template, props) {
         // The value wins: a placeholder part is hidden while the value is not empty (control.hidePlaceholderWhenFilled).
         const outranked = part.id === placeholderPart && (valueFilled || readOnly);
         out.push({ key: part.id, field: 'visible', value: conditionHolds(part.shownWhen, props) && !outranked });
-        if (part.text?.counter) out.push({ key: part.id, field: 'text', value: counterLabel(props[part.text.counter.value], props[part.text.counter.max]) });
+        const partText = derivedTextOf(part.text, props);
+        if (partText !== undefined) out.push({ key: part.id, field: 'text', value: partText });
     }
     // A text slot with a condition is a layer shown while it holds (an affix text, shown with its switch and a non-empty text).
     for (const slot of template.anatomy) {
         if (slot.shownWhen) out.push({ key: slot.id, field: 'visible', value: conditionHolds(slot.shownWhen, props) });
-        // A counter slot shows the value's length, as a counter part does.
-        if (slot.text?.counter) out.push({ key: slot.id, field: 'text', value: counterLabel(props[slot.text.counter.value], props[slot.text.counter.max]) });
+        // A derived text slot shows its counter's length or its overflow label, as a derived part does.
+        const slotText = derivedTextOf(slot.text, props);
+        if (slotText !== undefined) out.push({ key: slot.id, field: 'text', value: slotText });
     }
     return out;
 }

@@ -142,6 +142,11 @@ function subcomponentLines(template, name) {
     return (template.subcomponents ?? []).flatMap(sub => ['', `${name}.${sub.name} = function ${sub.name}(props) {`, `  return <${name} {...props} ${Object.entries(sub.props).map(([key, value]) => `${key}=${JSON.stringify(value)}`).join(' ')} />;`, '};']);
 }
 
+/** The JSX of an overflow text: the limit and a plus above it, else the count (overflowLabel, as an expression of the props). */
+function overflowJsx({ value, limit }) {
+    return `{Number(${value}) > Number(${limit}) ? \`\${${limit}}+\` : (${value} ?? "")}`;
+}
+
 /** The counter of a slot that sits in a container: a span of its class showing the value's length (and the limit), while its condition holds. */
 function counterJsx(template, slot) {
     const { value, max } = slot.text.counter;
@@ -222,7 +227,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             // A control slot is an input holding the value prop (and the placeholder beside it), not a span.
             const label = control && control.slot === slot.id
                 ? `<${control.multiline ? (control.multiline.when ? 'Control' : 'textarea') : 'input'} className="${template.id}-${slot.id}" ${control.number ? `defaultValue={${control.value}} key={${control.value}} data-committed={${control.value}}` : `value={${control.value}}`}${control.placeholder ? ` placeholder={${placeholderCondition(template, control)}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''}${control.maskUnless ? ` type={${control.maskWhen ? `(${shownJsx(control.maskWhen)}) && !${control.maskUnless}` : `!${control.maskUnless}`} ? "password" : undefined}` : ''}${control.multiline ? ` rows={${control.multiline.when ? `(${shownJsx(control.multiline.when)}) ? ${control.multiline.rows} : undefined` : control.multiline.rows}}` : ''}${control.number ? ` min={${control.number.min} ?? undefined} max={${control.number.max} ?? undefined} step={${control.number.step}} onBlur={(e) => { const next = commitNumber(e.target.value, e.target.dataset.committed ?? "", { min: ${control.number.min} ?? null, max: ${control.number.max} ?? null, precision: ${control.number.precision} ?? null }); e.target.value = next; e.target.dataset.committed = next; onCommit?.(next); }}` : ''} disabled={${disabledProp}} />`
-                : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
+                : `<span className="${template.id}-${slot.id}">${slot.text?.overflow ? overflowJsx(slot.text.overflow) : `{${slot.id}}`}</span>`;
             // The control is always written: the input holds the value and the placeholder whether or not the canvas has a layer for them.
             out.push(isControl ? label : slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
             if (!sidedAfterPlaced && !slot.parent) { out.push(...sidedAfter); sidedAfterPlaced = true; }

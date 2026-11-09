@@ -19,7 +19,7 @@ import { controlOf, iconDefOn, placementsOfDef, primarySlotOf, slotDefsOf } from
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { repeatCount } from '../behavior-engine/slot-rules.js';
-import { attrOfProp, multilineOf, pressAttrsOf, ariaCheckedOf, canvasPartsOf, counterLabel, conditionHolds, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
+import { attrOfProp, multilineOf, pressAttrsOf, ariaCheckedOf, canvasPartsOf, conditionHolds, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, shadowCss, svgNumber } from '../geometry/format.js';
