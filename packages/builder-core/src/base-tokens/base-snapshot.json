@@ -4177,6 +4177,27 @@
     },
     {
       "collection": "Primitives",
+      "name": "shadow/handle",
+      "type": "effect",
+      "values": {
+        "Base": {
+          "literal": [
+            {
+              "type": "drop",
+              "visible": true,
+              "color": "#00230b",
+              "opacity": 0.2,
+              "x": 0,
+              "y": 2,
+              "blur": 4,
+              "spread": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
       "name": "shadow/secondary",
       "type": "effect",
       "values": {
@@ -4250,6 +4271,25 @@
           "alias": {
             "collection": "Primitives",
             "name": "shadow/secondary"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "boxShadowHandle",
+      "type": "effect",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "shadow/handle"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "shadow/handle"
           }
         }
       }
@@ -4575,13 +4615,16 @@
       "Semantic/switchHandleSize",
       "Semantic/switchHandleSizeSM",
       "Semantic/switchPadding",
+      "Semantic/glyphInset",
       "Semantic/switchInnerPadNear",
       "Semantic/switchInnerPadFarSM",
       "Semantic/switchInnerPadFar",
       "Primitives/shadow/none",
+      "Primitives/shadow/handle",
       "Primitives/shadow/secondary",
       "Semantic/boxShadowNone",
-      "Semantic/boxShadowSecondary"
+      "Semantic/boxShadowSecondary",
+      "Semantic/boxShadowHandle"
     ],
     "derived": [
       {
@@ -4615,7 +4658,6 @@
       {
         "name": "Semantic/paddingXxs",
         "reason": "extrapolated antd size (Button paddingInlineSM (8 - lineWidth) and Input paddingInlineSM agree; xs follows the SM component formula)"
-      "Semantic/glyphInset",
       },
       {
         "name": "Primitives/size/15",

@@ -216,6 +216,18 @@
   "Effects": {
     "primitives": {
       "shadow/none": [],
+      "shadow/handle": [
+        {
+          "type": "drop",
+          "visible": true,
+          "color": "#00230b",
+          "opacity": 0.2,
+          "x": 0,
+          "y": 2,
+          "blur": 4,
+          "spread": 0
+        }
+      ],
       "shadow/secondary": [
         {
           "type": "drop",
@@ -258,6 +270,11 @@
       "boxShadowSecondary": {
         "primitive": "shadow/secondary",
         "role": "antd boxShadowSecondary: the float elevation (three drop shadows)",
+        "derived": false
+      },
+      "boxShadowHandle": {
+        "primitive": "shadow/handle",
+        "role": "antd switch handleShadow: the handle's drop shadow",
         "derived": false
       }
     }
