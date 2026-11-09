@@ -822,6 +822,8 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
             for (const sel of sels) blocks.push(`${sel} {\n${declarations(delta)}}\n`);
         }
     }
+    // A hiding state takes the root out of Play and the export while it holds (the canvas keeps the node).
+    for (const [state, def] of Object.entries(template.persistentStates)) if (def.hide === true) blocks.push(`.${template.id}${pseudoOf(template, state)} {\n  display: none;\n}\n`);
     blocks.push(...iconHoverRules(template), ...blockedRules(template));
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));

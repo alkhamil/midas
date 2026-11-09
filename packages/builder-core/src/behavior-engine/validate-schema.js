@@ -290,6 +290,8 @@ function stateProblems(schema, allTokens, props) {
         const prop = props[def.prop];
         if (!prop || prop.source !== 'literal' || prop.type !== 'boolean') out.push(`persistent state "${state}" needs a boolean prop, not "${def.prop}"`);
         if (!isPlainObject(def.tokens)) { out.push(`persistent state "${state}" must name its tokens`); continue; }
+        // A hiding state hides the root in Play and the export: only an attribute state can, so a pseudo-class never hides on hover.
+        if (def.hide === true && !STATE_ATTRIBUTE.test(String(schema.statePseudo?.[state] ?? ''))) out.push(`persistent state "${state}" hides the root, so it must be an attribute state (statePseudo [data-…])`);
         if (def.as !== undefined) {
             const target = isPlainObject(persistent) ? persistent[def.as] : undefined;
             if (!isPlainObject(target)) out.push(`persistent state "${state}" is an alias of "${def.as}", which is not a persistent state`);
