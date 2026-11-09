@@ -299,6 +299,19 @@ export function managedSlotLayer(template, slotId, resolved, at) {
 }
 
 /**
+ * The container of a managed slot that a clone of the master carries is the instance's slot-marked frame, as instanceOf makes it: the master marks it as a group, which the
+ * copy of a master keeps no marker for, so without this the sync finds an unmarked frame and makes a second container. Changes the nodes in place.
+ * @param {any} template
+ * @param {{ behavior?: any }[]} nodes the instance's copied layers
+ */
+export function markManagedContainers(template, nodes) {
+    for (const n of nodes) {
+        const group = n.behavior?.group;
+        if (group !== undefined && template.anatomy.some(s => s.id === group && s.managed)) n.behavior = managedBehavior(group);
+    }
+}
+
+/**
  * An instance of a master: a copy of its master's subtree with the instance\'s own props. Each part copy takes its visibility and text from the
  * template\'s writes for the props (partWrites) and each literal prop writes its node field (literalFields), so the copy draws what the
  * props say on the canvas and in Play. Returns the copied nodes, the instance root first.

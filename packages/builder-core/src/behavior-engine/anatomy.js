@@ -275,11 +275,16 @@ export function planAnatomy(template, values, children, flip = false) {
     const working = (flip ? [...kept].reverse() : [...kept]).filter(c => c.slot === null ? c.parent == null : parentOf(c.slot) === undefined);
     let missing = queue.filter(w => parentOf(w.slot) === undefined && !working.some(c => c.slot === w.slot)).length;
     let front = 0;
+    // The layers of each container, by slot, so a slot is inserted among its siblings in anatomy order (a container holding three has them in the order the anatomy names).
+    const inside = new Map();
+    for (const c of kept) if (c.slot !== null && c.parent !== undefined) inside.set(c.parent, [...(inside.get(c.parent) ?? []), c.slot]);
     for (const w of queue) {
         const parent = parentOf(w.slot);
         if (parent !== undefined) {
             const held = kept.find(c => c.slot === w.slot);
-            if (!held) ops.push(w.component ? { op: 'insert', slot: w.slot, index: 0, parent, component: w.component } : { op: 'insert', slot: w.slot, index: 0, parent });
+            const siblings = inside.get(parent) ?? [];
+            const index = siblings.filter(s => s !== w.slot && slotIndex(s) < slotIndex(w.slot)).length;
+            if (!held) { inside.set(parent, [...siblings, w.slot]); ops.push(w.component ? { op: 'insert', slot: w.slot, index, parent, component: w.component } : { op: 'insert', slot: w.slot, index, parent }); }
             else if ((held.component ?? null) !== w.component) ops.push({ op: 'swap', id: held.id, component: w.component });
             continue;
         }
