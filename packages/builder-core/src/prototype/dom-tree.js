@@ -11,7 +11,7 @@
 // auto layout, image fills on vector layers and effects with no DOM form (glass).
 import { TEMPLATES, variableProps } from '../behavior-engine/registry.js';
 import { cssVarOf } from '../behavior-engine/tokens.js';
-import { glyphPathD } from '../behavior-engine/glyphs.js';
+import { glyphFillRuleAttr, glyphPathD } from '../behavior-engine/glyphs.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { componentNameOf, generateComponent, SPIN_ANIMATION } from '../behavior-engine/codegen.js';
@@ -338,7 +338,7 @@ function renderTemplate(n, template, parent, scope) {
         }
         else if (slot.kind === 'glyph') {
             // A glyph is drawn from its definition (the export's markup), always; the stylesheet shows it while the root's state attribute is on.
-            out.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}`, ...pressAttrsOf(template, slot.id) }, style: {}, html: `<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="${glyphPathD(slot.glyph)}" fill="currentColor" /></svg>`, children: [] });
+            out.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}`, ...pressAttrsOf(template, slot.id) }, style: {}, html: `<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="${glyphPathD(slot.glyph)}" fill="currentColor"${glyphFillRuleAttr(slot.glyph)} /></svg>`, children: [] });
         }
         else if (slot.managed) {
             // The slot's own layer draws the icon its nested instance holds.

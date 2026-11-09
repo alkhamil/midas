@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { INPUT } from '../src/templates/input.js';
 import { inputFamily } from '../src/templates/input-family.js';
-import { GLYPHS, glyphPathD } from '../src/behavior-engine/glyphs.js';
+import { GLYPHS, glyphFillRuleAttr, glyphPathD } from '../src/behavior-engine/glyphs.js';
 import { validateTemplateSchema } from '../src/behavior-engine/validate-schema.js';
 import { literalFields } from '../src/behavior-engine/display.js';
 import { resolveProps, setInstanceProp } from '../src/behavior-engine/instance-props.js';
@@ -43,13 +43,17 @@ test('the family helper clones the Input: its sizes, states and managed text are
 });
 
 test('the built-in glyphs of the family are closed outlines in the 24 space', () => {
-    for (const name of ['eye', 'eyeOff', 'chevronUp', 'chevronDown']) {
+    for (const name of ['eye', 'eyeOff', 'chevronUp', 'chevronDown', 'resizeHandle']) {
         assert.ok(GLYPHS[name], name);
         assert.ok(GLYPHS[name].points.length >= 3);
         assert.ok(GLYPHS[name].points.every(p => p.x >= 0 && p.x <= 24 && p.y >= 0 && p.y <= 24), `${name} stays in the box`);
         assert.match(glyphPathD(name), /^M/);
     }
     assert.notEqual(glyphPathD('eye'), glyphPathD('eyeOff'));
+    // The Solar Outline icons are even-odd outlines of several contours (the eye has its pupil ring); the markup says so.
+    for (const name of ['eye', 'eyeOff', 'chevronUp', 'chevronDown']) assert.equal(glyphFillRuleAttr(name), ' fill-rule="evenodd"', name);
+    assert.ok(GLYPHS.eye.contours.length >= 2, 'the eye has a ring and a pupil');
+    assert.equal(glyphFillRuleAttr('checkmark'), '', 'a plain polygon keeps the default rule');
     assert.notEqual(glyphPathD('chevronUp'), glyphPathD('chevronDown'));
 });
 

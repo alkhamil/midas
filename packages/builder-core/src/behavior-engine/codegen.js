@@ -8,7 +8,7 @@ import { NODE_PROPERTIES, LOADING_OPACITY, canvasPartsOf, fieldWritersOf, placeh
 import { pathCommands, svgPathD } from '../geometry/shapes.js';
 import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js';
 import { cssVarOf, splitColor, tokenValueOf } from './tokens.js';
-import { glyphPathD } from './glyphs.js';
+import { glyphFillRuleAttr, glyphPathD } from './glyphs.js';
 import { glyphTests } from './validate-schema.js';
 
 /** A camelCase name as kebab-case (the custom properties and data attributes a prop is written as). */
@@ -126,7 +126,7 @@ function pressHandlerJsx(template, slot) {
 }
 
 /** The element of a glyph slot: a span of the slot's class holding the definition's outline as an SVG, in currentColor. */
-export const glyphJsx = (template, slot) => `<span className="${template.id}-${slot.id}"${pressHandlerJsx(template, slot)}><svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="${glyphPathD(slot.glyph)}" fill="currentColor" /></svg></span>`;
+export const glyphJsx = (template, slot) => `<span className="${template.id}-${slot.id}"${pressHandlerJsx(template, slot)}><svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="${glyphPathD(slot.glyph)}" fill="currentColor"${glyphFillRuleAttr(slot.glyph)} /></svg></span>`;
 
 function componentSource(template, name, problems, partWidthOf = part => part.arc.width) {
     const params = Object.entries(template.props).filter(([, def]) => def.derived === undefined).map(([prop, def]) => (def.source === 'variable' ? prop : `${prop} = ${JSON.stringify(def.default)}`));

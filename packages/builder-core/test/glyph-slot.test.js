@@ -23,7 +23,7 @@ import { computed, elementsOf } from './helpers/play-compute.js';
 const GLYPH_SLOTS = { checkbox: [['check', 'checkmark', 'checked'], ['indeterminate', 'dash', 'indeterminate']], radio: [['dot', 'dot', 'checked']] };
 
 test('the built-in glyphs are closed outlines in a 24 x 24 space, and a path comes from each', () => {
-    assert.deepEqual(Object.keys(GLYPHS).sort(), ['checkmark', 'chevronDown', 'chevronUp', 'dash', 'dot', 'eye', 'eyeOff']);
+    assert.deepEqual(Object.keys(GLYPHS).sort(), ['checkmark', 'chevronDown', 'chevronUp', 'dash', 'dot', 'eye', 'eyeOff', 'resizeHandle']);
     for (const [name, glyph] of Object.entries(GLYPHS)) {
         assert.ok(glyph.points.length >= 3, name);
         assert.ok(glyph.points.every(p => p.x >= 0 && p.x <= 24 && p.y >= 0 && p.y <= 24), `${name} stays in its space`);
