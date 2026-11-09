@@ -185,7 +185,7 @@ export interface MotionAppearance {
     delay?: string;
 }
 
-/** The press grow: while pressed the handle widens by a fixed amount (Play/export only). */
+/** The press grow: while pressed the handle widens by a share of its size (Play/export only). */
 export interface MotionPress {
     /** The handle slot. */
     key: string;
@@ -193,8 +193,8 @@ export interface MotionPress {
     token: string;
     /** The CSS property the grow writes (`width`). */
     prop: string;
-    /** The grow amount (`4px`). */
-    grow: string;
+    /** The share of the token the size grows by (`0.3`: antd's `-30%` inset). */
+    growRatio: number;
 }
 
 /** Motion behaviour of a template: transitions, appearances, at most one slide and one press grow. */

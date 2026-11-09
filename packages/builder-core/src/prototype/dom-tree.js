@@ -401,7 +401,7 @@ function renderTemplate(n, template, parent, scope) {
     const hasStroke = strokeIsOn(shape);
     const known = new Set((scope.variables.items || []).map(i => i.id));
     const bound = hasStroke && shape.vars?.stroke != null && known.has(shape.vars.stroke);
-    const useSvg = hasStroke && customDash && !bound; const bw = typeof shape.strokeWidth === 'number' && shape.strokeWidth > 0 ? shape.strokeWidth : 0; const lineStyle = shape.strokeStyle === 'dash' ? 'dashed' : 'solid'; const clip = (shape.strokeStyle === 'dash' || (typeof shape.stroke === 'string' && shape.stroke.length > 7) || (shape.strokeOpacity ?? 1) < 1 || shape.strokeVisible === false) ? 'border-box' : 'padding-box';
+    const useSvg = hasStroke && customDash && !bound; const bw = typeof shape.strokeWidth === 'number' && shape.strokeWidth > 0 ? shape.strokeWidth : 0; const lineStyle = shape.strokeStyle === 'dash' ? 'dashed' : 'solid';
     // A bound stroke is always a CSS border (its colour follows the host's states); an unbound one with its own dash lengths is SVG.
     const strokeEl = hasStroke ? (customDash && !bound ? strokeOverlayEl(shape) : null) : null;
     if (strokeEl) children.push(strokeEl);
@@ -412,7 +412,7 @@ function renderTemplate(n, template, parent, scope) {
     const style = { display: ownSizingOf(n, 'h') === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...fields.vars, ...placement(n, parent, scope.responsive), ...rootLayoutOf(instanceLayoutOf(master, n), flowCount) };
     // The host draws its own border, and the box is positioned for it.
     if (hasStroke) {
-        Object.assign(style, useSvg ? { borderWidth: '0px', borderStyle: 'none', ...(template.display.root.paddingX ? { paddingInline: `var(${cssVarOf(template.id, template.display.root.paddingX)})` } : {}), ...(template.display.root.paddingY ? { paddingBlock: `var(${cssVarOf(template.id, template.display.root.paddingY)})` } : {}) } : (() => { const uniform = strokeSidesUniform(shape); if (!uniform) { const s = strokeSideWidths(shape); const per = {}; for (const [k, v] of [['Top', s.t], ['Right', s.r], ['Bottom', s.b], ['Left', s.l]]) { per[`border${k}Width`] = `${v}px`; per[`border${k}Style`] = v > 0 ? lineStyle : 'none'; if (!bound && v > 0) per[`border${k}Color`] = colorWithAlpha(shape.stroke, shape.strokeOpacity); } per.backgroundClip = 'border-box'; return per; } return bw > 0 ? { borderWidth: `${bw}px`, borderStyle: lineStyle, ...(bound ? {} : { borderColor: colorWithAlpha(shape.stroke, shape.strokeOpacity) }), backgroundClip: clip } : { borderWidth: '0px', borderStyle: 'none' }; })()); if (hasStroke && !style.position) style.position = 'relative';
+        Object.assign(style, useSvg ? { borderWidth: '0px', borderStyle: 'none', ...(template.display.root.paddingX ? { paddingInline: `var(${cssVarOf(template.id, template.display.root.paddingX)})` } : {}), ...(template.display.root.paddingY ? { paddingBlock: `var(${cssVarOf(template.id, template.display.root.paddingY)})` } : {}) } : (() => { const uniform = strokeSidesUniform(shape); if (!uniform) { const s = strokeSideWidths(shape); const per = {}; for (const [k, v] of [['Top', s.t], ['Right', s.r], ['Bottom', s.b], ['Left', s.l]]) { per[`border${k}Width`] = `${v}px`; per[`border${k}Style`] = v > 0 ? lineStyle : 'none'; if (!bound && v > 0) per[`border${k}Color`] = colorWithAlpha(shape.stroke, shape.strokeOpacity); } per.backgroundClip = 'border-box'; return per; } return bw > 0 ? { borderWidth: `${bw}px`, borderStyle: lineStyle, ...(bound ? {} : { borderColor: colorWithAlpha(shape.stroke, shape.strokeOpacity) }), backgroundClip: 'border-box' } : { borderWidth: '0px', borderStyle: 'none' }; })()); if (hasStroke && !style.position) style.position = 'relative';
     }
     return { tag: template.element.tag, nodeId: n.id, attrs, style, children };
 }
@@ -456,6 +456,8 @@ function placement(n, parent, responsive) {
         if (ownSizingOf(n, 'h') !== 'hug') style.width = `${n.w}px`;
         if (ownSizingOf(n, 'v') !== 'hug') style.height = `${n.h}px`;
     }
+    // A frame's own min and max sizes bound it, as on the canvas (a hug Switch track keeps its minimum width). An instance reads them from its class rule, which follows its mode.
+    if (!n.isInstance) for (const [css, v] of [['minWidth', n.minW], ['maxWidth', n.maxW], ['minHeight', n.minH], ['maxHeight', n.maxH]]) if (typeof v === 'number') style[css] = `${v}px`;
     const transform = transformOf(n);
     if (transform) style.transform = transform;
     return style;

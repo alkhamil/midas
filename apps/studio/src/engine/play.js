@@ -472,8 +472,9 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
             return;
         }
         if (e.ctrlKey || e.metaKey || e.altKey || typing(e)) return;
-        if (e.key === 'r' || e.key === 'R') restart();
-        if (e.key === 'z' || e.key === 'Z') cycleMode();
+        // Play owns these keys: preventDefault keeps a browser's own single-key shortcut (Opera maps Z to Back) from also acting.
+        if (e.key === 'r' || e.key === 'R') { e.preventDefault(); restart(); }
+        if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); cycleMode(); }
     }
 
     /** @param {KeyboardEvent} e */

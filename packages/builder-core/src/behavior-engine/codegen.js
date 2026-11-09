@@ -365,21 +365,11 @@ function shownJsx(cond) {
 function rootBorderWidthOf(master) {
     return typeof master.strokeWidth === 'number' && master.strokeWidth > 0 ? master.strokeWidth : 0;
 }
-function clipOf(master) {
-    if (master.strokeStyle === 'dash') return 'border-box';
-    if (master.strokeVisible === false) return 'border-box';
-    const split = typeof master.stroke === 'string' ? splitColor(master.stroke) : null;
-    const alpha = (split ? split.alpha / 100 : 1) * (master.strokeOpacity ?? 1);
-    if (alpha < 1) return 'border-box';
-    return 'padding-box';
-}
 function displayRules(template, master, childrenOf, geometry) {
     const tokens = Object.values(template.tokens).flat();
     const entry = labelEntryOf(master.id, childrenOf, master);
     // Every layer under the master with the frame that holds it, for the text part each display key draws from.
     const at = (id, parent) => (childrenOf(id) ?? []).flatMap(c => [{ node: c, parent }, ...at(c.id, c)]);
-    // A managed container has no layer on the master unless its condition holds at the sample props: it is laid out as the layer an instance gets.
-    const managedBox = key => (template.anatomy.some(s => s.id === key && s.managed && s.kind === 'frame') ? managedContainerLayer(template, key, resolveProps(template, {}), { id: key, parentId: master.id }) : undefined);
     const under = at(master.id, master);
     // A text part lays out from its own layer: only the value/label fills the row, the rest hug, as on the canvas
     // and in Play. A canvas part matches by marker, an affix text by name; a key with no layer keeps the label layout.
@@ -388,12 +378,12 @@ function displayRules(template, master, childrenOf, geometry) {
         const slot = template.anatomy.find(s => s.id === key && s.managed && s.kind !== 'icon' && s.kind !== 'glyph');
         return slot ? { node: managedTextLayer(template, key, resolveProps(template, {}), { id: key, parentId: master.id }), parent: master } : undefined;
     };
+    // A managed container has no layer on the master unless its condition holds at the sample props: it is laid out as the layer an instance gets.
+    const managedBox = key => (template.anatomy.some(s => s.id === key && s.managed && s.kind === 'frame') ? managedContainerLayer(template, key, resolveProps(template, {}), { id: key, parentId: master.id }) : undefined);
     const entryFor = key => under.find(({ node: c }) => c.behavior?.part === key)
         ?? under.find(({ node: c }) => c.type === 'text' && c.name === key && !c.behavior?.part && !c.behavior?.slot)
         ?? managedEntry(key)
         ?? entry;
-        // A container pinned to the right edge is out of the flow: the full height of the box, against its inside edge (the border is outside the padding box).
-        if (template.anatomy.find(s => s.id === key)?.edge === 'right') decls.push('  position: absolute;\n', '  top: 0;\n', '  right: 0;\n', '  bottom: 0;\n');
     return Object.entries(template.display).map(([key, props]) => {
         const kind = targetKindOf(template, key);
         // The root lays its label and its icon slots out like the canvas auto layout frame. Play draws the same rules
@@ -402,6 +392,8 @@ function displayRules(template, master, childrenOf, geometry) {
         const decls = kind === 'glyph' ? ['  display: block;\n', '  flex-shrink: 0;\n'] : key === 'root'
             ? ['  display: inline-flex;\n', '  box-sizing: border-box;\n', ...cssDecls(rootLayoutOf(master, 0)), ...(master.layoutSizingH === 'fixed' && master.vars?.w === undefined && master.w > 0 ? [`  width: ${master.w}px;\n`] : [])]
             : kind === 'text' ? cssDecls(labelLayoutOf(entryFor(key)?.node, entryFor(key)?.parent ?? master)) : [];
+        // A container pinned to the right edge is out of the flow: the full height of the box, against its inside edge (the border is outside the padding box).
+        if (template.anatomy.find(s => s.id === key)?.edge === 'right') decls.push('  position: absolute;\n', '  top: 0;\n', '  right: 0;\n', '  bottom: 0;\n');
         if (key === 'root' && template.outline) {
             // The outline width includes the border: the ring starts back at the border's inner edge (an inside stroke),
             // so the visible ring is the width minus the border with no gap. A border as wide as the outline leaves no ring.
@@ -411,6 +403,10 @@ function displayRules(template, master, childrenOf, geometry) {
             else decls.push(`  outline: ${geometry.outline}px solid var(${cssVarOf(template.id, 'outline-color')});\n`, `  outline-offset: ${template.outline.offset - geometry.border}px;\n`);
             decls.push(`  transition: ${FOCUS_TRANSITION};\n`);
         }
+        // A root with no focus ring of its own (Checkbox, Radio, Switch draw focus on the box border) must not show the browser's default one.
+        if (key === 'root' && !template.outline) decls.push('  outline: none;\n');
+        // A root that draws no border of its own (Switch is a button) must not show the browser's default button border.
+        if (key === 'root' && !('stroke' in (template.display.root ?? {}))) decls.push('  border: 0;\n');
         // The root draws its own border, so the children sit inside the compensated padding.
         if (key === 'root' && 'stroke' in (template.display.root ?? {})) { const w = rootBorderWidthOf(master); decls.push(`  border-width: ${w}px;\n`, `  border-style: ${w === 0 ? 'none' : lineStyleOf(master)};\n`);
         decls.push(`  background-clip: border-box;\n`); }
@@ -556,6 +552,10 @@ function motionRules(template) {
     }
     if (motion.press) {
         const { key, token, prop, growRatio } = motion.press;
+        out.push(`.${template.id}:active${notDis} .${template.id}-${key} {\n  ${prop}: calc(var(${cssVarOf(template.id, token)}) * ${1 + growRatio});\n}\n`);
+    }
+    return out;
+}
 /**
  * What a press on a container does to the look, for Play and the export (the canvas is static): the pointer cursor, the hover and pressed colour of the glyph inside it (tokens),
  * and, while its limit is reached (`blockedBy`, a state of the root), a muted half that takes no click. A disabled control changes nothing.
@@ -576,10 +576,6 @@ function pressRules(template) {
     return out;
 }
 
-        out.push(`.${template.id}:active${notDis} .${template.id}-${key} {\n  ${prop}: calc(var(${cssVarOf(template.id, token)}) * ${1 + growRatio});\n}\n`);
-    }
-    return out;
-}
 /**
  * The hover colour of a glyph (`hoverFill`, a colour token): Play and the export only, the canvas is static. A disabled control never changes it.
  * @param {any} template
@@ -610,15 +606,15 @@ function revealRules(template) {
     ];
 }
 
-        out.push(`.${template.id}:active${notDis} .${template.id}-${key} {\n  ${prop}: calc(var(${cssVarOf(template.id, token)}) + ${grow});\n}\n`);
-    }
-    return out;
-}
 function reducedMotion(template) {
     const sel = `.${template.id}`;
     const wave = template.interaction?.wave ? `\n  ${sel}[data-wave-on]::after {\n    animation: none;\n  }` : '';
     const dis2 = `:not(${pseudoOf(template, template.element.disabledState)})`;
     const motion = template.motion ? [...(template.motion.transitions ?? []).map(t => `\n  ${t.key === 'root' ? sel : `${sel}-${t.key}`} {\n    transition: none;\n  }`),
+        ...(template.motion.appearances ?? []).map(a => `\n  ${a.states.map(s => `${sel}[${stateAttributesOf(template).find(x => x.state === s)?.attr}]${dis2} ${sel}-${a.key}`).join(', ')} {\n    animation: none;\n  }`)] : [];
+    return `@media (prefers-reduced-motion: reduce) {\n  ${sel} {\n    transition: none;\n  }${wave}${motion.join('')}\n}\n`;
+}
+
 /**
  * The rules of a multiline control, scoped to the kind that has it (the root says it as a data attribute). The whole box acts as the field: the cursor is the text cursor over
  * it (not-allowed while disabled). The field fills the box in both directions, at least `rows` lines tall (rows x line height, tokens) and, with autoSize, between the min and max
@@ -643,10 +639,6 @@ function multilineRules(template) {
         `${root}${auto} .${id}-${slot} {\n  min-height: calc(var(--${id}-${kebabCase(ml.minRows)}, ${rows(ml.rows)}) * ${lineHeight});\n  max-height: ${height(rows(ml.maxRows))};\n}\n`,
         `${root}[data-${kebabCase(ml.resize)}="vertical"] .${id}-${slot} {\n  resize: vertical;\n}\n`,
     ];
-}
-
-        ...(template.motion.appearances ?? []).map(a => `\n  ${a.states.map(s => `${sel}[${stateAttributesOf(template).find(x => x.state === s)?.attr}]${dis2} ${sel}-${a.key}`).join(', ')} {\n    animation: none;\n  }`)] : [];
-    return `@media (prefers-reduced-motion: reduce) {\n  ${sel} {\n    transition: none;\n  }${wave}${motion.join('')}\n}\n`;
 }
 
 /**
@@ -676,11 +668,6 @@ function fieldRules(template) {
 }
 
 /**
-    // The layers of the master, at any depth (a container may sit in a container).
-    const below = id => (childrenOf(id) ?? []).flatMap(c => [c, ...below(c.id)]);
-    const held = below(master.id);
-    // A container the master does not hold is laid out as the layer an instance gets (alignment, sizing, strokes, pinned edge), not as a bare frame.
-    const layerOf = slot => held.find(c => c.behavior?.group === slot.id) ?? (slot.managed ? managedContainerLayer(template, slot.id, resolveProps(template, {}), { id: slot.id, parentId: master.id }) : { type: 'frame', layout: slot.layout, w: 0, h: 0, layoutSizingH: 'hug', layoutSizingV: 'hug' });
  * The rule of each container of the anatomy: the box frame's own auto layout and flow sizing, as the canvas lays it out (a missing frame is laid out as its
  * schema says). Its children are styled by their own rules.
  * @param {any} template
@@ -689,6 +676,11 @@ function fieldRules(template) {
  * @returns {string[]}
  */
 function groupRules(template, master, childrenOf) {
+    // The layers of the master, at any depth (a container may sit in a container).
+    const below = id => (childrenOf(id) ?? []).flatMap(c => [c, ...below(c.id)]);
+    const held = below(master.id);
+    // A container the master does not hold is laid out as the layer an instance gets (alignment, sizing, strokes, pinned edge), not as a bare frame.
+    const layerOf = slot => held.find(c => c.behavior?.group === slot.id) ?? (slot.managed ? managedContainerLayer(template, slot.id, resolveProps(template, {}), { id: slot.id, parentId: master.id }) : { type: 'frame', layout: slot.layout, w: 0, h: 0, layoutSizingH: 'hug', layoutSizingV: 'hug' });
     return template.anatomy.filter(slot => slot.kind === 'frame').map(slot => {
         const node = layerOf(slot);
         const holder = slot.parent === undefined ? master : layerOf(template.anatomy.find(x => x.id === slot.parent));
@@ -712,12 +704,12 @@ function glyphRules(template) {
     const attrOf = prop => attrs.find(a => a.prop === prop).attr;
     return template.anatomy.filter(slot => slot.kind === 'glyph').flatMap(slot => {
         const on = `.${template.id}`, glyph = `.${template.id}-${slot.id}`;
-        // A corner glyph is out of the flow, on the box's outer corner: the border is inside the padding box, so the offset is minus the border width (as the canvas, whose stroke is inside the box).
-        const corner = slot.corner === 'bottom-right' ? [`${glyph} {\n  position: absolute;\n  right: calc(-1 * var(${cssVarOf(template.id, template.display.root.strokeWidth)}));\n  bottom: calc(-1 * var(${cssVarOf(template.id, template.display.root.strokeWidth)}));\n}\n`] : [];
         // A glyph is hidden when any of its tests fails: a state that must be on fails without its attribute, one that must be off fails with it, an enum option fails
         // while the root says another.
         const fails = glyphTests(slot.shownWhen).map(t => typeof t.is === 'string' ? `${on}:not([${enumAttrOf(template, t.prop)}="${t.is}"]) ${glyph}` : t.is ? `${on}:not([${attrOf(t.prop)}]) ${glyph}` : `${on}[${attrOf(t.prop)}] ${glyph}`);
         const press = (template.press ?? []).find(p => p.slot === slot.id);
+        // A corner glyph is out of the flow, on the box's outer corner: the border is inside the padding box, so the offset is minus the border width (as the canvas, whose stroke is inside the box).
+        const corner = slot.corner === 'bottom-right' ? [`${glyph} {\n  position: absolute;\n  right: calc(-1 * var(${cssVarOf(template.id, template.display.root.strokeWidth)}));\n  bottom: calc(-1 * var(${cssVarOf(template.id, template.display.root.strokeWidth)}));\n}\n`] : [];
         return [`${fails.join(',\n')} {
   display: none;
 }

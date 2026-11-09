@@ -765,7 +765,7 @@ function motionProblems(schema, allTokens) {
             if (!keys.includes(p.key)) out.push(`${where} names "${p.key}", which is not root or a display key`);
             if (!allTokens.includes(p.token)) out.push(`${where} token "${p.token}" is not a token`);
             if (typeof p.prop !== 'string' || !CSS_PROP.test(p.prop)) out.push(`${where} prop must be a CSS property`);
-            if (typeof p.grow !== 'string' || !CSS_LENGTH.test(p.grow)) out.push(`${where} grow must be a CSS length in px`);
+            if (typeof p.growRatio !== 'number' || !(p.growRatio > 0)) out.push(`${where} growRatio must be a number above 0`);
         }
     }
     return out;
