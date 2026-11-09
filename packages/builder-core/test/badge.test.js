@@ -113,3 +113,11 @@ test('the guard: no zero-size or invisible node, no white literal, no part missi
     const doc = { variables: model.variables, pages: [{ name: 'p', nodes: [model.frame, ...model.created] }] };
     assert.deepEqual(diagnoseDocument(doc).filter(f => f.severity === 'error' || f.code === 'part-missing'), []);
 });
+
+test('a count prop shows in the Behavior panel only for the count type; the status label only for the status type', () => {
+    for (const prop of ['count', 'overflowCount', 'showZero']) {
+        assert.deepEqual(badge.props[prop].visibleIf, { prop: 'type', is: 'count' }, `${prop} applies to the count`);
+    }
+    assert.deepEqual(badge.props.label.visibleIf, { all: [{ prop: 'type', is: 'status' }, { prop: 'hasText', is: true }] });
+    assert.deepEqual(badge.props.hasText.visibleIf, { prop: 'type', is: 'status' });
+});

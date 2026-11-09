@@ -35,9 +35,9 @@ export const BADGE = {
         status: { source: 'variable', collection: 'Status', modes: STATUS_MODES, defaultMode: 'default' },
         size: { source: 'variable', collection: 'Size', modes: SIZE_MODES, defaultMode: DEFAULT_SIZE_MODE, standard: true },
         type: { source: 'literal', type: 'enum', options: ['count', 'dot', 'status'], default: 'count' },
-        count: { source: 'literal', type: 'number', default: 0 },
-        overflowCount: { source: 'literal', type: 'number', default: 99 },
-        showZero: { source: 'literal', type: 'boolean', default: false },
+        count: { source: 'literal', type: 'number', default: 0, visibleIf: { prop: 'type', is: 'count' } },
+        overflowCount: { source: 'literal', type: 'number', default: 99, visibleIf: { prop: 'type', is: 'count' } },
+        showZero: { source: 'literal', type: 'boolean', default: false, visibleIf: { prop: 'type', is: 'count' } },
         hasText: { source: 'literal', type: 'boolean', default: true, visibleIf: { prop: 'type', is: 'status' } },
         label: { source: 'literal', type: 'string', default: 'Status', node: { key: 'label', field: 'text' }, visibleIf: { all: [{ prop: 'type', is: 'status' }, { prop: 'hasText', is: true }] }, remembered: true },
         // A count of zero (a derived boolean, never stored): it holds at zero and below.
