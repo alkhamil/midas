@@ -66,16 +66,16 @@ export const CHECKBOX = {
     },
     // A click turns Checked on and off and ends Indeterminate.
     toggle: { prop: 'checked', clears: 'indeterminate' },
-    // Motion (antd, timings and easings only): the box recolours over 0.3s; the checkmark draws in
-    // with scale, rotate and opacity (0.1s ease-in-out after a 0.1s delay) and the dash scales in.
+    // Motion (antd, timings and easings only): the box recolours over 0.3s (ease); the checkmark draws in
+    // with scale, rotate and opacity (0.2s motionEaseOutBack after a 0.1s delay) and the dash scales in (0.1s motionEaseInBack).
     // Play and the export read it; the canvas stays static.
     motion: {
         transitions: [
-            { key: 'box', props: ['background-color', 'border-color'], duration: '0.3s', timing: 'cubic-bezier(0.78, 0.14, 0.15, 0.86)' },
+            { key: 'box', props: ['background-color', 'border-color'], duration: '0.3s', timing: 'ease' },
         ],
         appearances: [
-            { key: 'check', states: ['checked'], from: { transform: 'scale(0) rotate(-45deg)', opacity: '0' }, duration: '0.1s', timing: 'ease-in-out', delay: '0.1s' },
-            { key: 'indeterminate', states: ['indeterminate'], from: { transform: 'scale(0)' }, duration: '0.1s', timing: 'ease-in-out', delay: '0.1s' },
+            { key: 'check', states: ['checked'], from: { transform: 'scale(0) rotate(-45deg)', opacity: '0' }, duration: '0.2s', timing: 'cubic-bezier(0.12, 0.4, 0.29, 1.46)', delay: '0.1s' },
+            { key: 'indeterminate', states: ['indeterminate'], from: { transform: 'scale(0)' }, duration: '0.1s', timing: 'cubic-bezier(0.71, -0.46, 0.88, 0.6)' },
         ],
     },
     // Hover and focus draw the box border in the brand colour while nothing replaces it (the checked look wins, as a persistent state does over a preview).

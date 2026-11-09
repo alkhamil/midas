@@ -24,7 +24,7 @@ test('the schema declares the motion as data: box transition plus check and dash
     assert.deepEqual(validateTemplateSchema(structuredClone(checkbox)).filter(p => /motion/i.test(p)), []);
     assert.ok(checkbox.motion, 'checkbox declares motion');
     assert.deepEqual(checkbox.motion.transitions, [
-        { key: 'box', props: ['background-color', 'border-color'], duration: '0.3s', timing: 'cubic-bezier(0.78, 0.14, 0.15, 0.86)' },
+        { key: 'box', props: ['background-color', 'border-color'], duration: '0.3s', timing: 'ease' },
     ]);
     assert.equal(checkbox.motion.appearances.length, 2);
 });
@@ -38,15 +38,15 @@ test('bad motion is refused: unknown key, unknown state, bad duration', () => {
 
 test('the export transitions the box colours over 0.3s with the antd ease', () => {
     const text = css();
-    assert.match(text, /\.checkbox-box \{\s*[^}]*transition: background-color 0\.3s cubic-bezier\(0\.78, 0\.14, 0\.15, 0\.86\), border-color 0\.3s cubic-bezier\(0\.78, 0\.14, 0\.15, 0\.86\);/s);
+    assert.match(text, /\.checkbox-box \{\s*[^}]*transition: background-color 0\.3s ease, border-color 0\.3s ease;/s);
 });
 
 test('the checkmark draws in with scale, rotate and opacity; the dash scales in', () => {
     const text = css();
     assert.match(text, /@keyframes midas-checkbox-check-in \{\s*from \{\s*transform: scale\(0\) rotate\(-45deg\);\s*opacity: 0;\s*\}\s*\}/s);
-    assert.match(text, /\.checkbox\[data-checked\]:not\(\[aria-disabled="true"\]\) \.checkbox-check \{\s*animation: midas-checkbox-check-in 0\.1s ease-in-out 0\.1s backwards;\s*\}/s);
+    assert.match(text, /\.checkbox\[data-checked\]:not\(\[aria-disabled="true"\]\) \.checkbox-check \{\s*animation: midas-checkbox-check-in 0\.2s cubic-bezier\(0\.12, 0\.4, 0\.29, 1\.46\) 0\.1s backwards;\s*\}/s);
     assert.match(text, /@keyframes midas-checkbox-indeterminate-in \{\s*from \{\s*transform: scale\(0\);\s*\}\s*\}/s);
-    assert.match(text, /\.checkbox\[data-indeterminate\]:not\(\[aria-disabled="true"\]\) \.checkbox-indeterminate \{\s*animation: midas-checkbox-indeterminate-in 0\.1s ease-in-out 0\.1s backwards;\s*\}/s);
+    assert.match(text, /\.checkbox\[data-indeterminate\]:not\(\[aria-disabled="true"\]\) \.checkbox-indeterminate \{\s*animation: midas-checkbox-indeterminate-in 0\.1s cubic-bezier\(0\.71, -0\.46, 0\.88, 0\.6\) backwards;\s*\}/s);
 });
 
 test('a disabled checkbox does not animate: transitions are killed and the draw-in is guarded', () => {
@@ -71,6 +71,6 @@ test('Play applies the same motion stylesheet as the export', () => {
     nodes[0].parentId = 'top';
     const { styles, problems } = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [frame, model.frame, ...model.created, ...nodes] }], variables: model.variables }, 'top');
     assert.deepEqual(problems, []);
-    assert.match(styles, /transition: background-color 0\.3s cubic-bezier\(0\.78, 0\.14, 0\.15, 0\.86\)/s);
-    assert.match(styles, /animation: midas-checkbox-check-in 0\.1s ease-in-out 0\.1s backwards;/s);
+    assert.match(styles, /transition: background-color 0\.3s ease/s);
+    assert.match(styles, /animation: midas-checkbox-check-in 0\.2s cubic-bezier\(0\.12, 0\.4, 0\.29, 1\.46\) 0\.1s backwards;/s);
 });
