@@ -66,6 +66,7 @@
   "switchTrackMinWidthSM": { "collection": "Semantic", "value": 28, "primitive": "size/28", "derived": false, "source": "components/switch/style/index.ts: trackMinWidthSM" },
   "switchHandleSize": { "collection": "Semantic", "value": 18, "primitive": "size/18", "derived": false, "source": "components/switch/style/index.ts: handleSize = trackHeight - 4" },
   "switchHandleSizeSM": { "collection": "Semantic", "value": 12, "primitive": "size/12", "derived": false, "source": "components/switch/style/index.ts: handleSizeSM = trackHeightSM - 4" },
+  "glyphInset": { "collection": "Semantic", "value": 2, "primitive": "padding/2", "derived": false, "source": "Midas: how far a corner glyph (the text area's resize grip) sits in from the corner of its box; a general 2px inset, not Switch's trackPadding" },
   "switchPadding": { "collection": "Semantic", "value": 2, "primitive": "padding/2", "derived": false, "source": "components/switch/style/index.ts: trackPadding" },
   "switchInnerPadNear": { "collection": "Semantic", "value": 4, "primitive": "size/4", "derived": false, "source": "switch inner margin near the handle, both sizes: innerMaxMargin (handleSize + trackPadding * 3) minus trackPadding and handleSize" },
   "switchInnerPadFarSM": { "collection": "Semantic", "value": 4, "primitive": "size/4", "derived": false, "source": "switch inner margin far from the handle, small: innerMinMarginSM (handleSizeSM / 2) minus trackPadding" },

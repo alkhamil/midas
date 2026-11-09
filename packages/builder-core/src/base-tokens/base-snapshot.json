@@ -4091,6 +4091,25 @@
     },
     {
       "collection": "Semantic",
+      "name": "glyphInset",
+      "type": "number",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "padding/2"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "padding/2"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
       "name": "switchInnerPadNear",
       "type": "number",
       "values": {
@@ -4596,6 +4615,7 @@
       {
         "name": "Semantic/paddingXxs",
         "reason": "extrapolated antd size (Button paddingInlineSM (8 - lineWidth) and Input paddingInlineSM agree; xs follows the SM component formula)"
+      "Semantic/glyphInset",
       },
       {
         "name": "Primitives/size/15",

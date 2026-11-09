@@ -91,6 +91,7 @@
   "switch-handle-sm": { "base": "Semantic/switchHandleSizeSM" },
   "switch-padding": { "base": "Semantic/switchPadding" },
   "switch-inner-pad-near": { "base": "Semantic/switchInnerPadNear" },
+  "glyph-inset": { "base": "Semantic/glyphInset" },
   "switch-inner-pad-far-sm": { "base": "Semantic/switchInnerPadFarSM" },
   "switch-inner-pad-far": { "base": "Semantic/switchInnerPadFar" },
   "track-off": { "base": "Semantic/colorTextDisabled" },
