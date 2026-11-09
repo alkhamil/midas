@@ -19,7 +19,7 @@ export const TAG = {
     element: { tag: 'span', attrs: {}, blockClickProps: [] },
     anatomy: [
         { id: 'icon', kind: 'icon', optional: true, managed: true },
-        { id: 'label', kind: 'text', typography: 'label' },
+        { id: 'label', kind: 'text', optional: true, managed: true, typography: 'label', shownWhen: { prop: 'label', empty: false } },
         // The close is an icon in a box of its own: the dismiss press takes the box out.
         { id: 'closer', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center', managed: true, shownWhen: { prop: 'closable', is: true } },
         { id: 'close', kind: 'icon', parent: 'closer', optional: true, managed: true },
