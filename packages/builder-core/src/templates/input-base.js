@@ -60,8 +60,8 @@ export const INPUT_BASE = {
         value: { source: 'literal', type: 'string', default: '', node: { key: 'value', field: 'text' } },
         placeholder: { source: 'literal', type: 'string', default: '', node: { key: 'placeholder', field: 'text' } },
         // The limits are whole numbers, and null for no limit. minLength is never above maxLength (see instance-props.js).
-        maxLength: { source: 'literal', type: 'number', default: null },
         minLength: { source: 'literal', type: 'number', default: null, atMost: 'maxLength' },
+        maxLength: { source: 'literal', type: 'number', default: null },
         allowClear: { source: 'literal', type: 'boolean', default: false },
         clearIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'allowClear', is: true }, remembered: true },
         showCount: { source: 'literal', type: 'boolean', default: false },
