@@ -9,6 +9,8 @@ import { COLOR_PRESETS, presetRoleMap } from './color-presets.js';
 
 /** A Tag icon takes the text colour and the Size mode's icon size. Tag has no disabled state, so its disabled colour is the same text colour. */
 const TAG_ICON_TOKENS = { colour: 'fg', disabledColour: 'fg', size: 'iconSize' };
+/** The close is clickable: it recolours to the preset's solid colour on hover (Play and the export only). */
+const CLOSE_TOKENS = { ...TAG_ICON_TOKENS, hoverColour: 'color-solid' };
 
 /** @type {TemplateSchema} */
 export const TAG = {
@@ -26,7 +28,7 @@ export const TAG = {
     ],
     icons: [
         { show: 'hasIcon', slot: 'icon', component: 'icon', tokens: TAG_ICON_TOKENS },
-        { show: 'closable', slot: 'close', component: 'closeIcon', role: 'close', tokens: TAG_ICON_TOKENS },
+        { show: 'closable', slot: 'close', component: 'closeIcon', role: 'close', tokens: CLOSE_TOKENS },
     ],
     rootLayout: 'horizontal',
     rootAlign: 'center',
