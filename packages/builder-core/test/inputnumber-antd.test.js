@@ -10,7 +10,7 @@ import { previewOf } from '../src/behavior-engine/preview.js';
 import { resolveProps } from '../src/behavior-engine/instance-props.js';
 import { cssVarOf } from '../src/behavior-engine/tokens.js';
 import { toDomTree } from '../src/prototype/dom-tree.js';
-import { edgePosition } from '../src/behavior-engine/template-master.js';
+import { pinnedFrame } from '../src/behavior-engine/template-master.js';
 import { modelFor, instanceFor } from './helpers/box-template.js';
 import { computed, elementsOf } from './helpers/play-compute.js';
 
@@ -88,8 +88,8 @@ for (const size of SIZES) {
         // The canvas holds the same: the column pinned to the right edge, the full height inside the border, the halves fill x fill and centring their chevron.
         const stepper = nodes.find(n => n.name === 'stepper');
         assert.deepEqual([stepper.layoutPositioning, stepper.constraintH, stepper.constraintV], ['absolute', 'right', 'stretch']);
-        const at2 = edgePosition({ w: 343, h: height }, { w: width }, border);
-        assert.deepEqual([at2.x + width + border, at2.y, at2.h], [343, border, inner], 'the column touches the inside of the right border and spans the height inside it');
+        const at2 = pinnedFrame(number, number.anatomy.find(s => s.id === 'stepper'), { w: 343, h: height }, vars);
+        assert.deepEqual([at2.x + at2.w + border, at2.y, at2.h], [343, border, inner], 'the column touches the inside of the right border and spans the height inside it');
         for (const name of ['stepUpBox', 'stepDownBox']) {
             const n = nodes.find(x => x.name === name);
             assert.deepEqual([n.layoutSizingH, n.layoutSizingV, n.primaryAlign, n.counterAlign], ['fill', 'fill', 'center', 'center'], name);

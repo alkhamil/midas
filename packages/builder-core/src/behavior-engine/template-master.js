@@ -5,6 +5,7 @@
 // so a generated master is bound the same way a hand-bound one is. An instance is a copy of its master's subtree with the part
 // visibility and text its props say (partWrites, literalFields), which is what the canvas and Play draw.
 import { glyphFields } from './glyphs.js';
+import { cssVarOf } from './tokens.js';
 import { canvasPartsOf, conditionHolds, literalFields, nodeFieldPatch, partWrites } from './display.js';
 import { planBindTokens, applyBindTokens } from './bind-tokens.js';
 import { resolveProps } from './instance-props.js';
@@ -268,32 +269,34 @@ export function managedTextLayer(template, slotId, resolved, { id, parentId }) {
  * A glyph that sits in a corner of the box ignores the box's auto layout and its padding: the canvas's own mechanism, a layer that is absolutely positioned and pinned to the
  * right and bottom edges (Position in auto layout: Absolute, with constraints), so it stays in the corner as the box hugs its text.
  */
-export const EDGE_NODE = { layoutPositioning: 'absolute', constraintH: 'right', constraintV: 'stretch' };
-
-/**
- * Where a container pinned to the right edge sits in its box: against the right edge and the full height, inside the border (the stroke is inside the box, so the column starts
- * a border in), as the stylesheet's top, right and bottom of 0 on the padding box draw it.
- * @param {{ w: number, h: number }} box
- * @param {{ w: number }} layer
- * @param {number} border the box's stroke width
- * @returns {{ x: number, y: number, h: number }}
- */
-export const edgePosition = (box, layer, border) => ({ x: box.w - layer.w - border, y: border, h: box.h - 2 * border });
+export const EDGE_NODE = { layoutPositioning: 'absolute', constraintH: 'right', constraintV: 'stretch', layoutSizingH: 'fixed', layoutSizingV: 'fixed' };
 
 export const CORNER_NODE = { layoutPositioning: 'absolute', constraintH: 'right', constraintV: 'bottom' };
 
 /**
- * Where a corner glyph sits in its box: its right and bottom edges `inset` in from the box's (the stroke is inside the box, so these are the border's outer edges), as the
- * stylesheet's right and bottom of the inset minus the border width draw it.
+ * The frame of a layer pinned to its box (the handler column on the right edge, the grip in the corner) in the box's coordinates, from the box's size and the layer's own tokens
+ * (the resolved variables of the instance or the master). Taking the numbers from the tokens, not from the layer, is what makes it right the moment it is placed: the layer's own
+ * width and height are bound variables the document has not applied yet, and a box that hugs has not been laid out.
+ * @param {any} template
+ * @param {any} slot the anatomy slot
  * @param {{ w: number, h: number }} box
- * @param {{ w: number, h: number }} layer
- * @param {number} [inset] the gap to the corner, the glyph inset token in px
- * @returns {{ x: number, y: number }}
+ * @param {Record<string, string>} vars
+ * @returns {{ x: number, y: number, w: number, h: number } | null}
  */
-export const cornerPosition = (box, layer, inset = 0) => ({ x: box.w - layer.w - inset, y: box.h - layer.h - inset });
+export function pinnedFrame(template, slot, box, vars) {
+    const px = token => parseFloat(vars[cssVarOf(template.id, token)]) || 0;
+    const border = px(template.display.root.strokeWidth);
+    if (slot.edge === 'right') {
+        const w = px(template.display[slot.id].width);
+        return { x: box.w - w - border, y: border, w, h: box.h - 2 * border };
+    }
+    if (slot.corner === 'bottom-right') {
+        const size = px(template.display[slot.id].size), inset = slot.inset === undefined ? 0 : px(slot.inset);
+        return { x: box.w - size - inset, y: box.h - size - inset, w: size, h: size };
+    }
+    return null;
+}
 
-/** The inset of a corner glyph in px, from the resolved token variables of an instance (0 when the slot names none). */
-export const cornerInsetOf = (template, slot, vars) => (slot.inset === undefined ? 0 : parseFloat(vars[`--${template.id}-${slot.inset.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`)}`]) || 0);
 
 export function managedGlyphLayer(template, slotId, resolved, { id, parentId }) {
     const slot = template.anatomy.find(s => s.id === slotId);

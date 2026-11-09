@@ -57,9 +57,11 @@ test('Play wires the click-to-focus, the number commit on blur and the resize gr
     assert.ok(play.includes('getComputedStyle(el)'), 'the field limits are the computed min and max height (the tokens)');
 });
 
-test('applyLiteralFields places a pinned container and a corner glyph from the box size (edgePosition, cornerPosition), after the bindings', () => {
+test('the editor places the layers pinned to a box, on a master and an instance, from the box and their tokens (pinnedFrame), after the bindings', () => {
     const fields = body('applyLiteralFields');
-    assert.ok(fields.includes('edgePosition(inst, layer, inst.strokeWidth ?? 0)'), 'the handler column spans the box inside its border');
-    assert.ok(fields.includes('cornerPosition(inst, layer)'), 'the grip sits on the corner');
+    assert.ok(fields.includes('placePinned(inst, template, binding, props)'), 'an instance');
+    assert.ok(body('bindMasterTokens').includes('placePinned(master, template, binding,'), 'and a master');
+    const place = body('placePinned');
+    assert.ok(place.includes('pinnedFrame(template, slot, host, vars)') && place.includes('Object.assign(layer, at)'), 'x, y, w and h come from the tokens, not from the layer');
     assert.ok(midas.includes('const walk = id => { for (const c of doc.children(id)) { out.push(c); if (isContainer(c)) walk(c.id); } };'), 'the managed layers are found through nested containers');
 });

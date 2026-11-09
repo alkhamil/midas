@@ -28,6 +28,8 @@ export const INPUTNUMBER = inputFamily({
         props: [...CLEAR.props, ...COUNT.props, 'maxLength', 'minLength'],
         tokens: [...CLEAR.tokens.filter(t => t !== 'clearIconSize'), ...COUNT.tokens],
         playOnly: CLEAR.playOnly,
+        // The root's two sides are set apart: the end side keeps the text clear of the column while it is there.
+        display: { root: ['paddingX'] },
     },
     added: {
         isControl: true,
@@ -54,25 +56,30 @@ export const INPUTNUMBER = inputFamily({
         },
         // The chevrons are small (one clear-icon step below the Size), the column is a small control wide, the dividers a border thick. The arrows rest in the secondary text colour (antd
         // tertiary is not a base role) so the disabled arrow colour reads as different; a hovered half takes the brand colour, a pressed one its active colour.
-        tokens: { fromSize: ['stepIconSize', 'stepWidth'], fromVariant: ['step-up-fg', 'step-down-fg', 'step-fg-disabled', 'step-hover-fg', 'step-active-fg', 'step-border', 'step-bg'] },
+        tokens: { fromSize: ['paddingEnd', 'paddingEndSide', 'stepIconSize', 'stepWidth'], fromVariant: ['step-up-fg', 'step-down-fg', 'step-fg-disabled', 'step-hover-fg', 'step-active-fg', 'step-border', 'step-bg'] },
         tokenKinds: {
-            stepIconSize: 'length', stepWidth: 'length',
+            paddingEnd: 'length', paddingEndSide: 'length', stepIconSize: 'length', stepWidth: 'length',
             'step-up-fg': 'color', 'step-down-fg': 'color', 'step-fg-disabled': 'color', 'step-hover-fg': 'color', 'step-active-fg': 'color', 'step-border': 'color', 'step-bg': 'color',
         },
         tokenRoles: {
             stepIconSize: { xs: 'gap-sm', sm: 'clear-icon-xs', md: 'clear-icon-sm', lg: 'clear-icon-md', xl: 'clear-icon-lg', default: 'clear-icon-sm' },
-            stepWidth: 'height-sm',
+            // The column is as wide as antd's handler (22px, which the base data holds as Switch's track height); the text ends a little before it (the small control height, 24px) while it is
+            // there, and runs to the side padding without it.
+            stepWidth: 'switch-height',
+            paddingEnd: 'height-sm',
+            paddingEndSide: INPUT.tokenRoles.paddingX,
             'step-up-fg': 'clear-hover', 'step-down-fg': 'clear-hover', 'step-fg-disabled': 'fg-disabled', 'step-hover-fg': 'brand', 'step-active-fg': 'brand-active', 'step-border': 'border', 'step-bg': 'transparent',
         },
         display: {
+            root: { paddingStart: 'paddingX', paddingEnd: 'paddingEnd' },
             stepper: { fill: 'step-bg', radiusEnd: 'radius', width: 'stepWidth', stroke: 'step-border', strokeWidth: 'borderWidth' },
             stepDownBox: { stroke: 'step-border', strokeWidth: 'borderWidth' },
             stepUp: { fill: 'step-up-fg', size: 'stepIconSize' },
             stepDown: { fill: 'step-down-fg', size: 'stepIconSize' },
         },
-        // A limit recolours its arrow; disabled recolours both and is declared last, so it wins. `noStepper` is a marker: it only says a data attribute the containers follow.
+        // A limit recolours its arrow; disabled recolours both and is declared last, so it wins. `noStepper` is a marker (never the state the instance is in): it says a data attribute the containers follow and gives the end padding back when there is no column.
         persistentStates: {
-            noStepper: { prop: 'noStepper', tokens: {}, marker: true },
+            noStepper: { prop: 'noStepper', tokens: { paddingEnd: 'paddingEndSide' }, marker: true },
             atMin: { prop: 'atMin', tokens: { 'step-down-fg': 'step-fg-disabled' } },
             atMax: { prop: 'atMax', tokens: { 'step-up-fg': 'step-fg-disabled' } },
             disabled: { prop: 'disabled', tokens: { ...INPUT.persistentStates.disabled.tokens, 'step-up-fg': 'step-fg-disabled', 'step-down-fg': 'step-fg-disabled' } },

@@ -10,7 +10,7 @@ import { generateComponent } from '../src/behavior-engine/codegen.js';
 import { previewOf } from '../src/behavior-engine/preview.js';
 import { cssVarOf } from '../src/behavior-engine/tokens.js';
 import { rowsBounds } from '../src/behavior-engine/display.js';
-import { cornerInsetOf, cornerPosition } from '../src/behavior-engine/template-master.js';
+import { pinnedFrame } from '../src/behavior-engine/template-master.js';
 import { toDomTree } from '../src/prototype/dom-tree.js';
 import { forwardFocus, startResizeDrag } from '../src/prototype/press.js';
 import { modelFor, instanceFor } from './helpers/box-template.js';
@@ -254,10 +254,10 @@ test('the resize grip sits in the bottom right corner of the border box with the
         const vars = varsAt(size, { kind: 'textarea' });
         const inset = parseFloat(vars[cssVarOf('input', 'glyphInset')]);
         assert.equal(inset, 2, `${size}: the token is 2px`);
-        assert.equal(cornerInsetOf(input, input.anatomy.find(s => s.id === 'resizeHandle'), vars), 2);
         for (const box of [{ w: 343, h: 84 }, { w: 343, h: 140 }]) {
-            const at = cornerPosition(box, { w: 14, h: 14 }, inset);
-            assert.deepEqual([box.w - (at.x + 14), box.h - (at.y + 14)], [2, 2], 'the grip rect is 2px from the right and the bottom of the box');
+            const at = pinnedFrame(input, input.anatomy.find(s => s.id === 'resizeHandle'), box, vars);
+            assert.deepEqual([box.w - (at.x + at.w), box.h - (at.y + at.h)], [2, 2], 'the grip rect is 2px from the right and the bottom of the box');
+            assert.equal(at.w, parseFloat(vars[cssVarOf('input', input.display.resizeHandle.size)]), 'and its own size token');
         }
         // Play and the export: the offset from the padding box edge plus the border (which lies outside it) is the inset on both sides.
         const { styles, find, host } = playOf({ kind: 'textarea', resize: 'vertical' }, size);
