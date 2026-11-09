@@ -85,3 +85,22 @@ export function iconNodes(entry, idOf) {
     };
     return [root, path];
 }
+
+/**
+ * The file's glyph for each role of the set: the id of the component named Icon/<name> for each ICON_SET entry with that role, when the file has it.
+ * A role the file has no glyph for is absent (a slot asking for it falls back to the file's default icon).
+ * @param {{ nodes?: any[] }[]} pages
+ * @returns {Record<string, string>}
+ */
+export function roleIconsOf(pages) {
+    /** @type {Record<string, string>} */
+    const out = {};
+    for (const entry of ICON_SET) {
+        if (out[entry.role] !== undefined) continue;
+        for (const page of pages) {
+            const icon = (page.nodes ?? []).find(n => n.component === true && n.name === ICON_PREFIX + entry.name);
+            if (icon) { out[entry.role] = icon.id; break; }
+        }
+    }
+    return out;
+}

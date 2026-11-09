@@ -103,22 +103,25 @@ function iconDefShown(template, def, values) {
  * @param {Record<string, unknown> | null} prev the instance's stored props before the edit; null when the instance is being created (nothing was shown before)
  * @param {Record<string, unknown>} next the stored props after it
  * @param {string | null} defaultIcon the id of the default icon, or null when the document has none
+ * @param {Record<string, string>} [roleIcons] the file's glyph for each role (roleIconsOf): a def that names a role takes its glyph, else the default
  * @returns {Record<string, string>} prop name to icon id
  */
-export function newlyShownIconDefaults(template, prev, next, defaultIcon) {
-    if (!defaultIcon) return {};
+export function newlyShownIconDefaults(template, prev, next, defaultIcon, roleIcons = {}) {
+    if (!defaultIcon && Object.keys(roleIcons).length === 0) return {};
     const before = prev === null ? null : resolveProps(template, /** @type {any} */ (prev)), after = resolveProps(template, /** @type {any} */ (next));
     /** @type {Record<string, string>} */
     const writes = {};
     for (const def of iconDefsOf(template)) {
         if (!def.component) continue;
+        const fallback = (def.role !== undefined && roleIcons[def.role]) || defaultIcon;
+        if (!fallback) continue;
         // An always visible slot is never switched on: it takes the default icon while none was ever chosen (no stored value), and an icon cleared on purpose (stored null) stays cleared.
         if (def.show === undefined) {
-            if ((prev === null || prev[def.component] === undefined) && next[def.component] == null) writes[def.component] = defaultIcon;
+            if ((prev === null || prev[def.component] === undefined) && next[def.component] == null) writes[def.component] = fallback;
             continue;
         }
         if ((before !== null && iconDefShown(template, def, before)) || !iconDefShown(template, def, after)) continue;
-        if (after[def.component] == null) writes[def.component] = defaultIcon;
+        if (after[def.component] == null) writes[def.component] = fallback;
     }
     return writes;
 }
@@ -131,8 +134,8 @@ export function newlyShownIconDefaults(template, prev, next, defaultIcon) {
  * @param {string | null} defaultIcon the id of the default icon, or null when the document has none
  * @returns {Record<string, string>} prop name to icon id
  */
-export function createdIconDefaults(template, props, defaultIcon) {
-    return newlyShownIconDefaults(template, null, props, defaultIcon);
+export function createdIconDefaults(template, props, defaultIcon, roleIcons = {}) {
+    return newlyShownIconDefaults(template, null, props, defaultIcon, roleIcons);
 }
 
 /**

@@ -77,7 +77,7 @@ const FUNCTIONS = [
     'runDesignSystem', 'buildDesignSystemPage', 'sectionFor', 'nodeFromSpec', 'fixMaster', 'placeDemoInstance', 'applyTemplateNodes', 'pageMasterLayers', 'bindMasterTokens', 'applyAutoFixPlan',
     'syncInstance', 'syncParts', 'anatomyPlanOf', 'managedLayersOf', 'containerOf', 'managedTextLayersOf', 'managedTextSlotOf', 'managedTemplateOf', 'placeAmongChildren', 'depthFirstOf',
     'applyStateBindings', 'stateBindingsOf', 'copyPairsOf', 'instanceLabelOf', 'applyManagedTextBindings', 'applyLiteralFields', 'placePinned', 'instanceModesOf', 'partLayersOf', 'groupLayersOf',
-    'textSlotLayersOf', 'applyIconSlotBindings', 'setIconVars', 'iconVariableId', 'iconOfSlot', 'setSlotIcon', 'placeIconInSlot', 'defaultIconId', 'onPage', 'componentById',
+    'textSlotLayersOf', 'applyIconSlotBindings', 'setIconVars', 'iconVariableId', 'iconOfSlot', 'setSlotIcon', 'placeIconInSlot', 'defaultIconId', 'roleIconIds', 'onPage', 'componentById',
     'instancesOf', 'pageOfNode', 'varStore', 'varColl', 'isAutoLayout', 'repairBoundStroke', 'rootSpec', 'designSystemSummary', 'remeasureText',
     // What a commit runs after an edit: the component sync (changed({ commit: true }) -> syncComponents).
     'rolledBackForBehavior', 'syncComponents', 'detachOrphans', 'syncInstanceStructure', 'labelIdsOfComponents', 'ownedVarsOf', 'ownedFieldsOf', 'ownedTemplateOf', 'propControlled', 'iconLayerOf',
