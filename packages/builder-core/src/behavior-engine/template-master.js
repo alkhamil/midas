@@ -412,11 +412,11 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
         // A slot inside a container of the anatomy hangs under the instance's copy of that container: the master's copy, or the stub made earlier in this loop.
         const holder = slot.parent === undefined ? root : out.find(n => n.behavior?.group === slot.parent || n.behavior?.slot === slot.parent) ?? stubBySlot.get(slot.parent) ?? root;
         if (slot.kind !== 'icon') {
-            stubs.push({ anatomy: template.anatomy.indexOf(slot), node: managedSlotLayer(template, slot.id, resolved, { id: id(stub), parentId: holder.id }) });
+            stubs.push({ anatomy: template.anatomy.indexOf(slot), node: managedSlotLayer(template, slot.id, resolved, { id: id(stub.id), parentId: holder.id }) });
             stubBySlot.set(slot.id, stubs[stubs.length - 1].node);
             continue;
         }
-        stubs.push({ anatomy: template.anatomy.indexOf(slot), node: { ...LAYER, id: id(stub), name: slot.id, type: 'frame', parentId: holder.id, sourceId: undefined, isInstance: false, component: false, overrides: {}, visible: slotShown(template, slot.id, resolved), w: 16, h: 16, layout: 'none', fills: [], layoutSizingH: sizedSlot(template, slot.id), layoutSizingV: sizedSlot(template, slot.id), behavior: { version: BEHAVIOR_DATA_VERSION, slot: slot.id } } });
+        stubs.push({ anatomy: template.anatomy.indexOf(slot), node: { ...LAYER, id: id(stub.id), name: slot.id, type: 'frame', parentId: holder.id, sourceId: undefined, isInstance: false, component: false, overrides: {}, visible: slotShown(template, slot.id, resolved), w: 16, h: 16, layout: 'none', fills: [], layoutSizingH: sizedSlot(template, slot.id), layoutSizingV: sizedSlot(template, slot.id), behavior: { version: BEHAVIOR_DATA_VERSION, slot: slot.id } } });
         stubBySlot.set(slot.id, stubs[stubs.length - 1].node);
     }
     // Each slot goes where the anatomy puts it: before the label (and so before the spinner) when it precedes the label; after it, before
