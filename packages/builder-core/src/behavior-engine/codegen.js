@@ -181,7 +181,8 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     if (controlOf(template)?.number) params.push('onCommit');
     for (const entry of (template.press ?? []).filter(p => !p.resize)) { const name = entry.toggle !== undefined ? toggleCallback(entry.toggle) : entry.dismiss ? 'onClose' : 'onStep'; if (!params.includes(name)) params.push(name); }
     // A derived boolean (the value has reached a limit) is read from the others in the component, never passed in.
-    const derivedLines = Object.entries(template.props).filter(([, def]) => def.derived !== undefined).map(([prop, { derived }]) => `  const ${prop} = ${derived.limit} != null && Number(${derived.value}) ${derived.cmp === 'gte' ? '>=' : '<='} ${derived.limit} && String(${derived.value} ?? "") !== "";`);
+    // A `when` rule holds as its condition does; a limit rule reads its value against the limit.
+    const derivedLines = Object.entries(template.props).filter(([, def]) => def.derived !== undefined).map(([prop, { derived }]) => derived.when !== undefined ? `  const ${prop} = ${shownJsx(derived.when)};` : `  const ${prop} = ${derived.limit} != null && Number(${derived.value}) ${derived.cmp === 'gte' ? '>=' : '<='} ${derived.limit} && String(${derived.value} ?? "") !== "";`);
     // A control that is a textarea for one kind and an input for the others is one element chosen by the props.
     // A dismiss press keeps the element in local state: it is drawn until the click, then not at all (the export has no exit motion).
     const dismissLines = (template.press ?? []).some(p => p.dismiss) ? ['  const [dismissed, setDismissed] = useState(false);', '  if (dismissed) return null;'] : [];

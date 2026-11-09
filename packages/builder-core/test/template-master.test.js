@@ -13,7 +13,7 @@ const variablesOf = model => ({ collections: model.collections, items: model.ite
 
 test('Button is built from its label, icon slots and spinner; Input from its affixes, value, icons and parts', () => {
     assert.deepEqual(layerSpecsOf(TEMPLATES.get('button')).map(s => s.key), ['root', 'iconStart', 'spinner', 'label', 'iconEnd']);
-    assert.deepEqual(layerSpecsOf(TEMPLATES.get('input')).map(s => s.key), ['root', 'prefixIcon', 'prefixText', 'value', 'placeholder', 'count', 'clear', 'suffixText', 'suffixIcon', 'eye', 'eyeOff', 'footer', 'countArea', 'resizeHandle']);
+    assert.deepEqual(layerSpecsOf(TEMPLATES.get('input')).map(s => s.key), ['root', 'prefixIcon', 'prefixText', 'value', 'placeholder', 'count', 'clear', 'suffixText', 'suffixIcon', 'eyeBox', 'eyeOn', 'eyeOff', 'footer', 'countArea', 'resizeHandle']);
 });
 
 test('applying a Button template to a frame creates its label and spinner, binds them, and reports no problem', () => {

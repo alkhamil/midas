@@ -13,11 +13,12 @@ const KIND = prop => ({ prop: 'kind', is: prop });
 const KIND_TEXT = KIND('text'), KIND_PASSWORD = KIND('password'), KIND_TEXTAREA = KIND('textarea');
 const TEXT_OR_PASSWORD = { any: [KIND_TEXT, KIND_PASSWORD] };
 /** The glyph of a password: shown while the toggle is on and the text is (or is not) visible. */
-const EYE = visible => ({ all: [KIND_PASSWORD, { prop: 'visibilityToggle', is: true }, { prop: 'passwordVisible', is: visible }] });
+/** The eye box of a password: shown while the toggle is on (each eye inside it is shown for the state it draws). */
+const EYE_BOX = { all: [KIND_PASSWORD, { prop: 'visibilityToggle', is: true }] };
 /** The text area's footer line holds the count, so it is there while the count is. */
 const FOOTER = { all: [KIND_TEXTAREA, { prop: 'showCount', is: true }] };
-/** The glyphs' colour and the disabled one; the eyes follow the icon size, the grip the clear icon's (smaller) size. */
-const EYE_DISPLAY = { fill: 'glyph-fg', size: 'iconSize' };
+/** The eye icons: the glyph colour, its disabled and hover colours, and the icon size. */
+const EYE_TOKENS = { colour: 'glyph-fg', disabledColour: 'glyph-fg-disabled', size: 'iconSize', hoverColour: 'glyph-fg-hover' };
 
 /** @type {TemplateSchema} */
 export const INPUT = inputFamily({
@@ -27,6 +28,11 @@ export const INPUT = inputFamily({
     dropped: { anatomy: [], icons: [], props: [], tokens: [], playOnly: [] },
     added: {
         isControl: true,
+        // The eye icons: the state each one is shown for, its picker, and its role (the default glyph the icon set gives it).
+        icons: [
+            { show: 'eyeOnShown', slot: 'eyeOn', component: 'eyeOnIcon', role: 'eyeOn', tokens: EYE_TOKENS },
+            { show: 'eyeOffShown', slot: 'eyeOff', component: 'eyeOffIcon', role: 'eyeOff', tokens: EYE_TOKENS },
+        ],
         // Switching the kind lays the box out (a column for the text area) and sizes the text layers: the value and the placeholder fill the box in height too for a text
         // area, so the whole box is the field, and hug it otherwise.
         props: {
@@ -41,6 +47,11 @@ export const INPUT = inputFamily({
             // Password: the eye. Both are shown for that kind only.
             visibilityToggle: { source: 'literal', type: 'boolean', default: true, visibleIf: KIND_PASSWORD },
             passwordVisible: { source: 'literal', type: 'boolean', default: false, visibleIf: { all: [KIND_PASSWORD, { prop: 'visibilityToggle', is: true }] } },
+            // The eye icons: each picks its icon (role default from the icon set), and is shown while its state holds (derived, never stored).
+            eyeOnIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: EYE_BOX, remembered: true },
+            eyeOffIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: EYE_BOX, remembered: true },
+            eyeOnShown: { source: 'literal', type: 'boolean', default: false, derived: { when: { all: [EYE_BOX, { prop: 'passwordVisible', is: true }] } } },
+            eyeOffShown: { source: 'literal', type: 'boolean', default: false, derived: { when: { all: [EYE_BOX, { prop: 'passwordVisible', is: false }] } } },
             // TextArea: the rows, autoSize and the resize grip.
             rows: { source: 'literal', type: 'number', default: 3, visibleIf: KIND_TEXTAREA },
             autoSize: { source: 'literal', type: 'boolean', default: false, visibleIf: KIND_TEXTAREA },
@@ -60,8 +71,10 @@ export const INPUT = inputFamily({
             count: { shownWhen: { all: [{ prop: 'showCount', is: true }, KIND_TEXT] } },
         },
         anatomy: [
-            { id: 'eye', kind: 'glyph', glyph: 'eye', hoverFill: 'glyph-fg-hover', optional: true, managed: true, shownWhen: EYE(true) },
-            { id: 'eyeOff', kind: 'glyph', glyph: 'eyeOff', hoverFill: 'glyph-fg-hover', optional: true, managed: true, shownWhen: EYE(false) },
+            // The eye box holds the eye icon of the state (one of the two): the box is the toggle's click target.
+            { id: 'eyeBox', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center', managed: true, shownWhen: EYE_BOX },
+            { id: 'eyeOn', kind: 'icon', parent: 'eyeBox', optional: true, managed: true },
+            { id: 'eyeOff', kind: 'icon', parent: 'eyeBox', optional: true, managed: true },
             { id: 'footer', kind: 'frame', layout: 'horizontal', primaryAlign: 'end', counterAlign: 'center', fill: true, managed: true, shownWhen: FOOTER },
             { id: 'countArea', kind: 'text', optional: true, managed: true, parent: 'footer', typography: 'count', fill: true, align: 'right', shownWhen: { all: [KIND_TEXTAREA, { prop: 'showCount', is: true }] }, text: { counter: { value: 'value', max: 'maxLength' } } },
             // The grip is out of the flow, in the bottom right corner of the box (corner): it ignores the padding and the footer.
@@ -72,9 +85,10 @@ export const INPUT = inputFamily({
         // The glyphs rest in the placeholder colour (antd's icon tint), the eyes take the text colour while hovered (Play and the export only), and the disabled text colour when disabled.
         tokenRoles: { glyphInset: 'glyph-inset', 'glyph-fg': 'placeholder', 'glyph-fg-hover': 'fg', 'glyph-fg-disabled': 'fg-disabled' },
         display: {
-            eye: EYE_DISPLAY,
-            eyeOff: EYE_DISPLAY,
             countArea: { fill: 'placeholder', typography: 'countTypography' },
+            // The eyes are drawn at the icon size (the icon slots' size token).
+            eyeOn: { size: 'iconSize' },
+            eyeOff: { size: 'iconSize' },
             resizeHandle: { fill: 'glyph-fg', size: 'clearIconSize' },
         },
         persistentStates: {
@@ -89,7 +103,7 @@ export const INPUT = inputFamily({
             maskUnless: 'passwordVisible', maskWhen: KIND_PASSWORD,
             multiline: { rows: 'rows', autoSize: 'autoSize', minRows: 'minRows', maxRows: 'maxRows', resize: 'resize', when: KIND_TEXTAREA },
         },
-        press: [{ slot: 'eye', toggle: 'passwordVisible' }, { slot: 'eyeOff', toggle: 'passwordVisible' }, { slot: 'resizeHandle', resize: true }],
+        press: [{ slot: 'eyeBox', toggle: 'passwordVisible' }, { slot: 'resizeHandle', resize: true }],
         // The export also carries Input.Password and Input.TextArea, as antd does.
         subcomponents: [{ name: 'Password', props: { kind: 'password' } }, { name: 'TextArea', props: { kind: 'textarea' } }],
     },

@@ -78,9 +78,13 @@ for (const template of TEMPLATES.values()) {
         const out = applyTemplateToFrame(template, { frame, children: [], binding, variables, idOf });
         // Every managed slot shown: one instance per icon def (its show gate plus each option of its placement prop, so every slot a placement
         // can pick is drawn) and one per managed text slot (its own condition: exclusive states cannot share one instance).
-        const showProps = def => typeof def.show === 'string' ? { [def.show]: true } : (def.show && typeof def.show === 'object' ? { [def.show.prop]: def.show.is } : {});
-        const iconCases = template.icons.flatMap(def => def.placement ? template.props[def.placement].options.map(option => ({ ...showProps(def), [def.placement]: option })) : [showProps(def)]);
         const holding = cond => cond.all ? Object.assign({}, ...cond.all.map(holding)) : 'is' in cond ? { [cond.prop]: cond.is } : { [cond.prop]: cond.empty ? '' : 'x' };
+        // A show gate that is a derived prop (Password's eyes) holds when its condition does: the props it reads are set, never the derived one.
+        const showProps = def => {
+            if (typeof def.show === 'string') { const when = template.props[def.show]?.derived?.when; return when ? holding(when) : { [def.show]: true }; }
+            return def.show && typeof def.show === 'object' ? { [def.show.prop]: def.show.is } : {};
+        };
+        const iconCases = template.icons.flatMap(def => def.placement ? template.props[def.placement].options.map(option => ({ ...showProps(def), [def.placement]: option })) : [showProps(def)]);
         const texts = template.anatomy.filter(s => s.managed && s.kind !== 'icon').map(s => holding(s.shownWhen));
         const copies = [...texts, ...iconCases].flatMap(extra => instanceOf(template, frame, out.created, { ...extra, ...(template.control ? { [template.control.value]: 'x' } : {}) }, { id: idOf }));
         for (const slot of template.anatomy.filter(s => s.managed || s.kind === 'icon')) assert.ok(copies.some(n => n.behavior?.slot === slot.id), `${template.id} instance has ${slot.id}`);

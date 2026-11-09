@@ -17,7 +17,7 @@ import { computed, elementsOf } from './helpers/play-compute.js';
 
 const SIZES = ['xs', 'sm', 'md', 'lg', 'xl'];
 const GLYPH_CASES = [
-    { id: 'input', label: 'password', kind: { kind: 'password' }, slots: ['eye', 'eyeOff'],
+    { id: 'input', label: 'password', kind: { kind: 'password' }, slots: ['eyeOn', 'eyeOff'],
         states: { default: {}, disabled: { disabled: true }, visible: { passwordVisible: true }, 'no toggle': { visibilityToggle: false }, 'with suffix': { hasSuffix: true, suffixText: 'kg' } } },
     { id: 'input', label: 'textarea grip', kind: { kind: 'textarea' }, slots: ['resizeHandle'],
         states: { default: { resize: 'vertical' }, none: {}, counted: { resize: 'vertical', showCount: true, value: 'abc' }, disabled: { resize: 'vertical', disabled: true } } },
@@ -67,7 +67,9 @@ for (const { id, label, kind, slots, states } of GLYPH_CASES) {
                     const drawn = !!el && computed(styles, el.chain).display !== 'none';
                     assert.equal(drawn, !!layer, `${label} ${state}: ${slot} is drawn exactly when the canvas has the layer`);
                     if (!layer) continue;
-                    const token = vars[cssVarOf(id, template.display[slot].size)];
+                    // A glyph takes its size from its display map; an icon slot from its icon def's size token.
+                    const sizeToken = template.display[slot]?.size ?? template.icons.find(d => d.slot === slot).tokens.size;
+                    const token = vars[cssVarOf(id, sizeToken)];
                     assert.ok(token, `${slot}: the size token resolves at ${size}`);
                     const play = computed(styles, el.chain);
                     assert.equal(play.width, token, `${slot} width at ${size}`);

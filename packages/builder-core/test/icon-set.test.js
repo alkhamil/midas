@@ -13,9 +13,9 @@ test('the icon prefix is the file convention, Icon/', () => {
     assert.equal(ICON_PREFIX, 'Icon/');
 });
 
-test('the registry asks for two roles: default, and close for the Tag close; every other icon slot takes the default icon', () => {
+test('the registry asks for four roles: default, close (Tag), eyeOn and eyeOff (Password); every other icon slot takes the default icon', () => {
     const roles = iconRolesOf([...BUILT_IN_TEMPLATES.values()]);
-    assert.deepEqual(roles, ['default', 'close']);
+    assert.deepEqual(roles, ['default', 'eyeOn', 'eyeOff', 'close']);
     // The slots behind them, by template: the close def names its role, every other icon def is a default-role slot.
     const slots = [...BUILT_IN_TEMPLATES.values()].flatMap(t => iconDefsOf(t).map(d => `${t.id}.${d.slot ?? d.placement}`));
     assert.ok(slots.includes('icon-button.icon') && slots.includes('input.clear') && slots.includes('button.iconStart'));
@@ -24,9 +24,7 @@ test('the registry asks for two roles: default, and close for the Tag close; eve
 test('the set holds an icon for each role the registry asks for, and nothing else', () => {
     const roles = new Set(iconRolesOf([...BUILT_IN_TEMPLATES.values()]));
     assert.ok(ICON_SET.length >= 1);
-    // eyeOn and eyeOff are in the set before the Password template asks for them (the next change): they wait for it.
-    const waiting = ['eyeOn', 'eyeOff'];
-    for (const entry of ICON_SET) assert.ok(roles.has(entry.role) || waiting.includes(entry.role), `${entry.name} fills a role a template asks for`);
+    for (const entry of ICON_SET) assert.ok(roles.has(entry.role), `${entry.name} fills a role a template asks for`);
     for (const role of roles) assert.ok(ICON_SET.some(e => e.role === role), `${role} has an icon`);
     assert.deepEqual(ICON_SET.map(e => e.name), [...new Set(ICON_SET.map(e => e.name))], 'names are unique');
 });

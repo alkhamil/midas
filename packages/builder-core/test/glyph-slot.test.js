@@ -41,7 +41,7 @@ test('Checkbox and Radio have glyph slots in the box, no icons and no icon props
         }
     }
     assert.deepEqual(ICON_SET.map(e => e.name), ['circle', 'close', 'eye', 'eyeOff'], 'the icon set holds the circle, the close and the eye glyphs; no other glyph');
-    assert.deepEqual(iconRolesOf([...TEMPLATES.values()]), ['default', 'close']);
+    assert.deepEqual(iconRolesOf([...TEMPLATES.values()]), ['default', 'eyeOn', 'eyeOff', 'close']);
 });
 
 test('the schema refuses a glyph slot that names no glyph, has no condition, or follows a prop that is not a state with an attribute', () => {

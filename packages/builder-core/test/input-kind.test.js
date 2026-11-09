@@ -74,8 +74,8 @@ test('a prop that applies to one kind shows for that kind only', () => {
 
 test('a fresh Input holds the placeholder only; each kind adds exactly the layers it needs', () => {
     assert.deepEqual(names({}), ['placeholder']);
-    assert.deepEqual(names({ kind: 'password' }), ['placeholder', 'eyeOff']);
-    assert.deepEqual(names({ kind: 'password', passwordVisible: true }), ['placeholder', 'eye']);
+    assert.deepEqual(names({ kind: 'password' }), ['placeholder', 'eyeBox', 'eyeOff']);
+    assert.deepEqual(names({ kind: 'password', passwordVisible: true }), ['placeholder', 'eyeBox', 'eyeOn']);
     assert.deepEqual(names({ kind: 'password', visibilityToggle: false }), ['placeholder']);
     assert.deepEqual(names({ kind: 'textarea' }), ['placeholder'], 'no footer without a count or a grip');
     assert.deepEqual(names({ kind: 'textarea', resize: 'vertical' }), ['placeholder', 'resizeHandle'], 'the grip is a layer of the box, not of a footer');
@@ -86,9 +86,9 @@ test('a fresh Input holds the placeholder only; each kind adds exactly the layer
 
 test('switching the kind makes and removes exactly the layers: the eye for password, the footer and grip for textarea', () => {
     const plan = (from, to) => { const nodes = nodesOf(from); return planAnatomy(input, resolveProps(input, { ...base, ...to }), heldOf(nodes)).map(op => op.op === 'insert' ? `+${op.slot}` : `-${nodes.find(n => n.id === op.id)?.name}`).sort(); };
-    assert.deepEqual(plan({}, { kind: 'password' }), ['+eyeOff']);
-    assert.deepEqual(plan({ kind: 'password' }, {}), ['-eyeOff']);
-    assert.deepEqual(plan({ kind: 'password' }, { kind: 'textarea', resize: 'vertical' }), ['+resizeHandle', '-eyeOff']);
+    assert.deepEqual(plan({}, { kind: 'password' }), ['+eyeBox', '+eyeOff']);
+    assert.deepEqual(plan({ kind: 'password' }, {}), ['-eyeBox', '-eyeOff']);
+    assert.deepEqual(plan({ kind: 'password' }, { kind: 'textarea', resize: 'vertical' }), ['+resizeHandle', '-eyeBox', '-eyeOff']);
     assert.deepEqual(plan({ kind: 'textarea', resize: 'vertical', showCount: true }, {}), ['-countArea', '-footer', '-resizeHandle']);
     assert.deepEqual(plan({ kind: 'textarea', resize: 'vertical' }, { kind: 'textarea' }), ['-resizeHandle'], 'resize none takes the grip away');
     for (const props of [{}, { kind: 'password' }, { kind: 'textarea', resize: 'vertical', showCount: true }]) assert.deepEqual(planAnatomy(input, resolveProps(input, { ...base, ...props }), held(props)), [], `converges for ${JSON.stringify(props)}`);
@@ -236,9 +236,8 @@ test('the export carries Input.Password and Input.TextArea, one element chosen b
     assert.match(css, /\.input\[data-kind="textarea"\] \.input-value \{[^}]*flex: 1 1 auto;[^}]*resize: none;/);
     assert.match(css, /\.input\[data-kind="textarea"\]\[data-resize="vertical"\] \.input-value \{\s*resize: vertical;/);
     assert.match(css, /\.input\[data-kind="textarea"\]\[data-auto-size\] \.input-value \{[^}]*max-height: calc\(var\(--input-max-rows\) \* var\(--input-value-typography-line-height\)\)/);
-    assert.match(css, /\.input:not\(\[data-kind="password"\]\) \.input-eye,/);
     assert.match(css, /\.input\[data-kind="textarea"\] \{\s*cursor: text;/);
-    assert.match(css, /\.input\[data-kind="password"\] \.input-eyeOff \{\s*cursor: pointer|\.input-eyeOff \{\s*cursor: pointer/);
+    assert.match(css, /\.input-eyeBox \{\s*cursor: pointer/);
     assert.match(css, /\.input\[data-kind="textarea"\] \{[^}]*flex-direction: column/);
 });
 
@@ -274,15 +273,14 @@ test('the resize grip sits in the bottom right corner of the border box with the
 });
 
 test('the eye takes the text colour while hovered, in the stylesheet of Play and the export only, token-bound, never on a disabled control', () => {
-    assert.equal(input.anatomy.find(s => s.id === 'eye').hoverFill, 'glyph-fg-hover');
-    assert.equal(input.anatomy.find(s => s.id === 'eyeOff').hoverFill, 'glyph-fg-hover');
+    for (const slot of ['eyeOn', 'eyeOff']) assert.equal(input.icons.find(d => d.slot === slot).tokens.hoverColour, 'glyph-fg-hover', `${slot} hovers`);
     assert.equal(input.tokenRoles['glyph-fg-hover'], 'fg', 'the text colour');
     assert.equal(input.tokenRoles['glyph-fg'], 'placeholder', 'idle is the muted colour');
     const css = generateComponent(input, model.binding, model.variables, 'Input', model.frame, id => model.created.filter(n => n.parentId === id)).files['Input.css'];
-    for (const slot of ['eye', 'eyeOff']) {
+    for (const slot of ['eyeOn', 'eyeOff']) {
         assert.ok(css.includes(`.input:not(:has(:disabled)) .input-${slot}:hover {\n  color: var(--input-glyph-fg-hover);\n}`), `${slot}: hover recolours it, guarded against a disabled control`);
     }
-    assert.ok(!/\.input-(eye|eyeOff|resizeHandle):hover[^{]*\{[^}]*#[0-9a-f]{3,8}/i.test(css), 'no colour literal in a hover rule');
+    assert.ok(!/\.input-(eyeOn|eyeOff|resizeHandle):hover[^{]*\{[^}]*#[0-9a-f]{3,8}/i.test(css), 'no colour literal in a hover rule');
     assert.ok(!/\.input-resizeHandle:hover/.test(css), 'only the eyes change on hover');
     // The hover colour differs from the idle colour in the variables the stylesheet resolves.
     const vars = varsAt('md', { kind: 'password' });
@@ -291,9 +289,9 @@ test('the eye takes the text colour while hovered, in the stylesheet of Play and
     // The canvas is static: the layer is bound to the idle colour token only.
     const eye = nodesOf({ kind: 'password' }).find(n => n.name === 'eyeOff');
     assert.equal(eye.vars?.['fills.0'] === undefined || typeof eye.vars['fills.0'] === 'string', true);
-    assert.equal(input.display.eyeOff.fill, 'glyph-fg');
+    assert.equal(input.icons.find(d => d.slot === 'eyeOff').tokens.colour, 'glyph-fg');
     // A disabled control keeps its disabled colour: its glyph token swaps to the disabled one, and no hover rule applies to it.
     assert.equal(input.persistentStates.disabled.tokens['glyph-fg'], 'glyph-fg-disabled');
     // Play carries the same stylesheet.
-    assert.match(String(playOf({ kind: 'password' }).styles), /\.input-eye:hover/);
+    assert.match(String(playOf({ kind: 'password' }).styles), /\.input-eyeOn:hover/);
 });
