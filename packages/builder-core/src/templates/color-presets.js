@@ -1,15 +1,9 @@
-// Colour presets: the Color modes a template declares for its presets (a Tag, a Badge). A preset reads the palette its name maps to (an existing
-// base palette is reused; a palette the base does not hold yet is named, and Auto Fix reports its roles as needs value). Each preset has four uses,
-// each a role of roles.json that aliases one step of the palette through a Semantic item. Data only: the engine resolves the roles.
+// Colour presets: the Color modes a template declares for its presets (a Tag, a Badge). Each preset is one base Primitives palette, named the same:
+// primary, secondary, tertiary, info, danger, warning, success, neutral. A preset has four uses, each a role of roles.json that derives a Semantic alias
+// to one palette step. The palettes are the base's; a new palette is added to Primitives first, then a preset may name it. Data only.
 
-/** The presets, in the order their modes are listed. */
-export const COLOR_PRESETS = ['default', 'primary', 'success', 'warning', 'danger', 'red', 'orange', 'gold', 'green', 'cyan', 'blue', 'purple'];
-
-/** The palette each preset reads: an existing base palette, or the name of one the base does not hold yet (orange, purple). */
-export const PRESET_PALETTE = {
-    default: 'neutral', primary: 'primary', success: 'success', warning: 'warning', danger: 'danger',
-    red: 'danger', orange: 'orange', gold: 'warning', green: 'success', cyan: 'tertiary', blue: 'info', purple: 'purple',
-};
+/** The presets, in the order their modes are listed: the eight base palettes. */
+export const COLOR_PRESETS = ['primary', 'secondary', 'tertiary', 'info', 'danger', 'warning', 'success', 'neutral'];
 
 /** The uses of a preset and the palette step each reads: the subtle fill, the border, the solid fill and the text. */
 export const PRESET_USES = { subtle: 50, border: 200, solid: 500, text: 600 };
