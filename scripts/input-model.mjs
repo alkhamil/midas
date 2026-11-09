@@ -19,19 +19,19 @@ const STATUS_VALUES = {
 
 /** Variant values per mode: `st:` a Status token, a hex literal, or `transparent`. */
 const OUTLINED = {
-    bg: '#ffffff', fg: '#18181b', border: 'st:status-border', placeholder: '#bfbfbf', 'clear-hover': '#595959', 'glyph-fg': '#bfbfbf', 'glyph-fg-disabled': '#a1a1aa',
+    bg: '#ffffff', fg: '#18181b', border: 'st:status-border', placeholder: '#bfbfbf', 'clear-hover': '#595959', 'glyph-fg': '#bfbfbf', 'glyph-fg-hover': '#18181b', 'glyph-fg-disabled': '#a1a1aa',
     'bg-hover': '#ffffff', 'border-hover': 'st:status-border-hover', 'border-focus': 'st:status-border-focus',
     'bg-disabled': '#f5f5f5', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent',
     'outline-color-active': 'st:status-outline',
 };
 const FILLED = {
-    bg: '#f5f5f5', fg: '#18181b', border: 'transparent', placeholder: '#bfbfbf', 'clear-hover': '#595959', 'glyph-fg': '#bfbfbf', 'glyph-fg-disabled': '#a1a1aa',
+    bg: '#f5f5f5', fg: '#18181b', border: 'transparent', placeholder: '#bfbfbf', 'clear-hover': '#595959', 'glyph-fg': '#bfbfbf', 'glyph-fg-hover': '#18181b', 'glyph-fg-disabled': '#a1a1aa',
     'bg-hover': '#eeeeee', 'border-hover': 'transparent', 'border-focus': 'transparent',
     'bg-disabled': '#f5f5f5', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent',
     'outline-color-active': 'st:status-outline',
 };
 const BORDERLESS = {
-    bg: 'transparent', fg: '#18181b', border: 'transparent', placeholder: '#bfbfbf', 'clear-hover': '#595959', 'glyph-fg': '#bfbfbf', 'glyph-fg-disabled': '#a1a1aa',
+    bg: 'transparent', fg: '#18181b', border: 'transparent', placeholder: '#bfbfbf', 'clear-hover': '#595959', 'glyph-fg': '#bfbfbf', 'glyph-fg-hover': '#18181b', 'glyph-fg-disabled': '#a1a1aa',
     'bg-hover': 'transparent', 'border-hover': 'transparent', 'border-focus': 'transparent',
     'bg-disabled': 'transparent', 'fg-disabled': '#a1a1aa', 'outline-color': 'transparent',
     'outline-color-active': 'st:status-outline',

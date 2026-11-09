@@ -269,3 +269,28 @@ test('the resize grip sits flush in the bottom right corner of the box: canvas g
     // The grip is a small box, so a click on the text outside it is the text's.
     assert.ok(grip.w <= 24 && grip.h <= 24);
 });
+
+test('the eye takes the text colour while hovered, in the stylesheet of Play and the export only, token-bound, never on a disabled control', () => {
+    assert.equal(input.anatomy.find(s => s.id === 'eye').hoverFill, 'glyph-fg-hover');
+    assert.equal(input.anatomy.find(s => s.id === 'eyeOff').hoverFill, 'glyph-fg-hover');
+    assert.equal(input.tokenRoles['glyph-fg-hover'], 'fg', 'the text colour');
+    assert.equal(input.tokenRoles['glyph-fg'], 'placeholder', 'idle is the muted colour');
+    const css = generateComponent(input, model.binding, model.variables, 'Input', model.frame, id => model.created.filter(n => n.parentId === id)).files['Input.css'];
+    for (const slot of ['eye', 'eyeOff']) {
+        assert.ok(css.includes(`.input:not(:has(:disabled)) .input-${slot}:hover {\n  color: var(--input-glyph-fg-hover);\n}`), `${slot}: hover recolours it, guarded against a disabled control`);
+    }
+    assert.ok(!/\.input-(eye|eyeOff|resizeHandle):hover[^{]*\{[^}]*#[0-9a-f]{3,8}/i.test(css), 'no colour literal in a hover rule');
+    assert.ok(!/\.input-resizeHandle:hover/.test(css), 'only the eyes change on hover');
+    // The hover colour differs from the idle colour in the variables the stylesheet resolves.
+    const vars = varsAt('md', { kind: 'password' });
+    assert.notEqual(vars['--input-glyph-fg-hover'], vars['--input-glyph-fg']);
+    assert.equal(vars['--input-glyph-fg-hover'], vars['--input-fg'], 'the hover colour is the text colour');
+    // The canvas is static: the layer is bound to the idle colour token only.
+    const eye = nodesOf({ kind: 'password' }).find(n => n.name === 'eyeOff');
+    assert.equal(eye.vars?.['fills.0'] === undefined || typeof eye.vars['fills.0'] === 'string', true);
+    assert.equal(input.display.eyeOff.fill, 'glyph-fg');
+    // A disabled control keeps its disabled colour: its glyph token swaps to the disabled one, and no hover rule applies to it.
+    assert.equal(input.persistentStates.disabled.tokens['glyph-fg'], 'glyph-fg-disabled');
+    // Play carries the same stylesheet.
+    assert.match(String(playOf({ kind: 'password' }).styles), /\.input-eye:hover/);
+});

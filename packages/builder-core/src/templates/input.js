@@ -60,17 +60,17 @@ export const INPUT = inputFamily({
             count: { shownWhen: { all: [{ prop: 'showCount', is: true }, KIND_TEXT] } },
         },
         anatomy: [
-            { id: 'eye', kind: 'glyph', glyph: 'eye', optional: true, managed: true, shownWhen: EYE(true) },
-            { id: 'eyeOff', kind: 'glyph', glyph: 'eyeOff', optional: true, managed: true, shownWhen: EYE(false) },
+            { id: 'eye', kind: 'glyph', glyph: 'eye', hoverFill: 'glyph-fg-hover', optional: true, managed: true, shownWhen: EYE(true) },
+            { id: 'eyeOff', kind: 'glyph', glyph: 'eyeOff', hoverFill: 'glyph-fg-hover', optional: true, managed: true, shownWhen: EYE(false) },
             { id: 'footer', kind: 'frame', layout: 'horizontal', primaryAlign: 'end', counterAlign: 'center', fill: true, managed: true, shownWhen: FOOTER },
             { id: 'countArea', kind: 'text', optional: true, managed: true, parent: 'footer', typography: 'count', fill: true, align: 'right', shownWhen: { all: [KIND_TEXTAREA, { prop: 'showCount', is: true }] }, text: { counter: { value: 'value', max: 'maxLength' } } },
             // The grip is out of the flow, in the bottom right corner of the box (corner): it ignores the padding and the footer.
             { id: 'resizeHandle', kind: 'glyph', glyph: 'resizeHandle', corner: 'bottom-right', optional: true, managed: true, shownWhen: { all: [KIND_TEXTAREA, { prop: 'resize', is: 'vertical' }] } },
         ],
-        tokens: { fromVariant: ['glyph-fg', 'glyph-fg-disabled'] },
-        tokenKinds: { 'glyph-fg': 'color', 'glyph-fg-disabled': 'color' },
-        // The glyphs rest in the placeholder colour (antd's icon tint) and take the disabled text colour when disabled.
-        tokenRoles: { 'glyph-fg': 'placeholder', 'glyph-fg-disabled': 'fg-disabled' },
+        tokens: { fromVariant: ['glyph-fg', 'glyph-fg-hover', 'glyph-fg-disabled'] },
+        tokenKinds: { 'glyph-fg': 'color', 'glyph-fg-hover': 'color', 'glyph-fg-disabled': 'color' },
+        // The glyphs rest in the placeholder colour (antd's icon tint), the eyes take the text colour while hovered (Play and the export only), and the disabled text colour when disabled.
+        tokenRoles: { 'glyph-fg': 'placeholder', 'glyph-fg-hover': 'fg', 'glyph-fg-disabled': 'fg-disabled' },
         display: {
             eye: EYE_DISPLAY,
             eyeOff: EYE_DISPLAY,

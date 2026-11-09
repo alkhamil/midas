@@ -544,7 +544,25 @@ function motionRules(template) {
         out.push(`${roots.join(', ')} {\n  animation: ${name} ${a.duration} ${a.timing}${a.delay ? ` ${a.delay}` : ''} backwards;\n}\n`);
     }
     if (motion.press) {
-        const { key, token, prop, grow } = motion.press;
+        const { key, token, prop, growRatio } = motion.press;
+        out.push(`.${template.id}:active${notDis} .${template.id}-${key} {\n  ${prop}: calc(var(${cssVarOf(template.id, token)}) * ${1 + growRatio});\n}\n`);
+    }
+    return out;
+}
+/**
+ * The hover colour of a glyph (`hoverFill`, a colour token): Play and the export only, the canvas is static. A disabled control never changes it.
+ * @param {any} template
+ * @returns {string[]}
+ */
+function glyphHoverRules(template) {
+    const off = template.focusTarget === 'wrapper' ? ':not(:has(:disabled))' : `:not(${pseudoOf(template, template.element.disabledState)})`;
+    return template.anatomy.filter(slot => slot.kind === 'glyph' && slot.hoverFill !== undefined)
+        .map(slot => `.${template.id}${off} .${template.id}-${slot.id}:hover {
+  color: var(${cssVarOf(template.id, slot.hoverFill)});
+}
+`);
+}
+
 /**
  * The handler column that appears on hover or focus (`reveal`): drawn on the canvas always, here transparent until the control is hovered or holds focus, over the time
  * antd gives it (motionDurationMid). A disabled control never reveals it, and reduced motion shows the change at once.
@@ -759,7 +777,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     blocks.push(...iconHoverRules(template), ...blockedRules(template));
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
-    blocks.push(...fieldRules(template), ...multilineRules(template), ...revealRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
+    blocks.push(...glyphHoverRules(template), ...fieldRules(template), ...multilineRules(template), ...revealRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
     if (template.interaction || template.motion) blocks.push(reducedMotion(template));
     return blocks.join('\n');
 }

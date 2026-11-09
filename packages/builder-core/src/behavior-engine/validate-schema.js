@@ -171,6 +171,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
         if (slot.kind === 'glyph') {
             if (!Object.hasOwn(GLYPHS, slot.glyph)) out.push(`glyph slot "${slot.id}" names the glyph "${slot.glyph}", which is not a built-in glyph`);
             if (slot.managed !== true || slot.optional !== true) out.push(`glyph slot "${slot.id}" must be managed and optional`);
+            if (slot.hoverFill !== undefined && !Object.values(isPlainObject(schema.tokens) ? schema.tokens : {}).flat().includes(slot.hoverFill)) out.push(`glyph slot "${slot.id}" hoverFill "${slot.hoverFill}" is not a token`);
             if (slot.corner !== undefined && (slot.corner !== 'bottom-right' || slot.parent !== undefined)) out.push(`glyph slot "${slot.id}" corner must be bottom-right, on a glyph that is a layer of the box itself`);
             const tests = glyphTests(slot.shownWhen);
             const attrs = stateAttributesOf(schema);
