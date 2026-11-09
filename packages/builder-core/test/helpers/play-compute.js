@@ -10,7 +10,7 @@ const has = (el, name, value) => {
 
 /** Whether one compound selector (no spaces) matches an element. */
 function matchesCompound(compound, el) {
-    const cls = /^\.([a-z0-9-]+)/.exec(compound)?.[1];
+    const cls = /^\.([A-Za-z0-9-]+)/.exec(compound)?.[1];
     if (cls && el.attrs.class !== cls) return false;
     const rest = cls ? compound.slice(cls.length + 1) : compound;
     for (const m of rest.matchAll(/:not\(:disabled\)|:not\(\[([^\]=]+)(?:="([^"]*)")?\]\)|\[([^\]=]+)(?:="([^"]*)")?\]|:(disabled)|:(hover|focus-visible|focus|active)|:(has\([^)]*\))/g)) {
