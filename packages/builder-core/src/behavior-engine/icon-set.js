@@ -15,7 +15,8 @@ const at = (x, y, inX, inY, outX, outY) => ({ x, y, in: { x: inX, y: inY }, out:
 /**
  * The icons the bundle creates. `role` is the need they fill (`default`: the icon every slot takes until the designer chooses one), `points` the closed outline
  * in a 24 x 24 space (bezier handles absolute), filled so the foreground colour binds to it.
- * @type {{ name: string, role: string, closed: boolean, points: { x: number, y: number, in?: { x: number, y: number }, out?: { x: number, y: number } }[] }[]}
+ * An entry may add `contours` (further sub-paths, each { points, closed }) and a `fillRule` ('evenodd'); both are optional.
+ * @type {{ name: string, role: string, closed: boolean, points: { x: number, y: number, in?: { x: number, y: number }, out?: { x: number, y: number } }[], contours?: { points: { x: number, y: number, in?: { x: number, y: number }, out?: { x: number, y: number } }[], closed: boolean }[], fillRule?: 'evenodd' }[]}
  */
 export const ICON_SET = [
     // A disc: neutral for a button's icon and for the clear icon, which takes the same default.
@@ -82,7 +83,8 @@ export function iconNodes(entry, idOf) {
         id: pathId, name: entry.name, type: 'path', parentId: id, x: 0, y: 0, w: SIZE, h: SIZE, pathW: SIZE, pathH: SIZE, closed: entry.closed,
         // The path fills its frame, so in an instance sized to a slot (the icon size) it scales with it; a fixed path would stay SIZE px and show a corner of the outline.
         layoutSizingH: 'fill', layoutSizingV: 'fill',
-        points: structuredClone(entry.points), fills: [{ type: 'solid', color: '#20202a', opacity: 1, visible: true }], stroke: '#20202a', strokeWidth: 0,
+        points: structuredClone(entry.points), ...(entry.contours ? { contours: structuredClone(entry.contours) } : {}), ...(entry.fillRule ? { fillRule: entry.fillRule } : {}),
+        fills: [{ type: 'solid', color: '#20202a', opacity: 1, visible: true }], stroke: '#20202a', strokeWidth: 0,
         rotation: 0, opacity: 1, visible: true, locked: false, clip: false, radius: 0, version: 0,
     };
     return [root, path];
