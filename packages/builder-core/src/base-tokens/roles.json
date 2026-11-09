@@ -128,5 +128,14 @@
   "preset-neutral-subtle": { "base": "Semantic/presetNeutralSubtle", "derive": { "from": "Primitives/neutral/50" } },
   "preset-neutral-border": { "base": "Semantic/presetNeutralBorder", "derive": { "from": "Primitives/neutral/200" } },
   "preset-neutral-solid": { "base": "Semantic/presetNeutralSolid", "derive": { "from": "Primitives/neutral/500" } },
-  "preset-neutral-text": { "base": "Semantic/presetNeutralText", "derive": { "from": "Primitives/neutral/600" } }
+  "preset-neutral-text": { "base": "Semantic/presetNeutralText", "derive": { "from": "Primitives/neutral/600" } },
+  "badge-height": { "base": "Semantic/badgeHeight", "derive": { "from": "Primitives/size/20" } },
+  "badge-dot": { "base": "Semantic/badgeDot", "derive": { "from": "Primitives/size/6" } },
+  "badge-padding-x": { "base": "Semantic/badgePaddingX", "derive": { "from": "Primitives/padding/6" } },
+  "badge-padding-none": { "base": "Semantic/badgePaddingNone", "derive": { "from": "Primitives/padding/0" } },
+  "badge-status-success": { "base": "Semantic/presetSuccessSolid", "derive": { "from": "Primitives/success/500" } },
+  "badge-status-processing": { "base": "Semantic/presetInfoSolid", "derive": { "from": "Primitives/info/500" } },
+  "badge-status-default": { "base": "Semantic/presetNeutralSolid", "derive": { "from": "Primitives/neutral/500" } },
+  "badge-status-error": { "base": "Semantic/presetDangerSolid", "derive": { "from": "Primitives/danger/500" } },
+  "badge-status-warning": { "base": "Semantic/presetWarningSolid", "derive": { "from": "Primitives/warning/500" } }
 }
