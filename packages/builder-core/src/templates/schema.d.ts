@@ -84,6 +84,8 @@ export interface ControlDef {
     count?: string;
     /** The value layer is hidden while the value is empty (the placeholder that shows in its place takes its space and no more). */
     hideWhenEmpty?: boolean;
+    /** The boolean prop that unmasks the text: while it is off the input is a password field and the canvas value is bullets. */
+    maskUnless?: string;
     /** The reverse: the placeholder layer is hidden while the value is not empty, so the value wins over the placeholder. */
     hidePlaceholderWhenFilled?: boolean;
 }
@@ -93,9 +95,9 @@ export interface RequiresCols { requires?: string[] }
 
 /** A prop whose value is a literal stored on the instance. */
 export type LiteralProp =
-    | ({ source: 'literal'; type: 'boolean'; default: boolean; node?: NodeField; visibleIf?: VisibleIf; exclusiveWith?: string; clearsPreview?: boolean; /** Backfills an empty text prop with `text` when this toggle turns on (never overwrites, never removed on turn-off). */ fillEmpty?: { prop: string; text: string } } & RequiresCols)
+    | ({ source: 'literal'; type: 'boolean'; default: boolean; node?: NodeField; visibleIf?: VisibleIf; exclusiveWith?: string; clearsPreview?: boolean; /** True while `value` has reached `limit` (gte: at or above, lte: at or below); read from the other props, never stored. */ derived?: { value: string; limit: string; cmp: 'gte' | 'lte' }; /** Backfills an empty text prop with `text` when this toggle turns on (never overwrites, never removed on turn-off). */ fillEmpty?: { prop: string; text: string } } & RequiresCols)
     | ({ source: 'literal'; type: 'string'; default: string; node?: NodeField; visibleIf?: VisibleIf } & RequiresCols)
-    | ({ source: 'literal'; type: 'number'; default: number | null; atMost?: string; visibleIf?: VisibleIf } & RequiresCols)
+    | ({ source: 'literal'; type: 'number'; default: number | null; atMost?: string; /** Takes any finite number (negatives, fractions), not only whole numbers of 0 or more. */ decimal?: boolean; visibleIf?: VisibleIf } & RequiresCols)
     | ({ source: 'literal'; type: 'enum'; options: string[]; default: string; slots?: Record<string, string | string[]>; control?: 'segmented'; visibleIf?: VisibleIf } & RequiresCols)
     | ({ source: 'literal'; type: 'iconComponent'; default: null; visibleIf?: VisibleIf } & RequiresCols);
 
@@ -211,6 +213,8 @@ export interface TemplateSchema {
     isControl?: boolean;
     /** A click in Play turns the state prop on (and off, unless `once`) and ends the state `clears` names; both are booleans a state with an attribute follows. */
     toggle?: { prop: string, clears?: string, once?: boolean };
+    /** Pressable glyph slots: a click either flips a boolean state prop (`toggle`) or steps the control's number (`step`, 1 or -1). */
+    press?: ({ slot: string, toggle: string } | { slot: string, step: 1 | -1 })[];
     sampleProps?: Record<string, string | number | boolean>;
     anatomy: AnatomySlot[];
     /** The managed icon slots; absent or empty for a template with none. */

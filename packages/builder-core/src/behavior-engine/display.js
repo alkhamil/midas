@@ -106,6 +106,21 @@ export function ariaCheckedOf(template, props) {
     return props[template.toggle.prop] === true ? 'true' : 'false';
 }
 
+/** The root attribute a state prop is written as (`data-password-visible`), or undefined when no state with an attribute follows it. */
+export const attrOfProp = (template, prop) => stateAttributesOf(template).find(a => a.prop === prop)?.attr;
+
+/**
+ * What a pressable glyph says about its click, as data attributes (Play reads them, see press.js): a toggle names the root attribute it flips, a step its direction.
+ * @param {any} template
+ * @param {string} slot the glyph slot's id
+ * @returns {Record<string, string>}
+ */
+export function pressAttrsOf(template, slot) {
+    const entry = (template.press ?? []).find(p => p.slot === slot);
+    if (!entry) return {};
+    return entry.toggle !== undefined ? { 'data-press': 'toggle', 'data-press-attr': attrOfProp(template, entry.toggle) } : { 'data-press': 'step', 'data-press-step': String(entry.step) };
+}
+
 /** The node kind a display key targets: `root` is the instance's frame, otherwise the anatomy slot's or the part's kind. */
 export const targetKindOf = (template, key) => {
     if (key === 'root') return 'frame';
@@ -255,6 +270,14 @@ function nodeWritersOf(template) {
 }
 
 /**
+ * Whether the canvas draws a prop's text as bullets: it is the control's value and the prop named by `control.maskUnless` is off. The value stays in its prop.
+ * @param {any} template
+ * @param {string} prop
+ * @param {Record<string, unknown>} props the resolved props
+ */
+export const masked = (template, prop, props) => template.control?.maskUnless !== undefined && template.control.value === prop && props[template.control.maskUnless] !== true;
+
+/**
  * The node fields the literal props write, with the value each one writes. A boolean writes the field value its `values` map gives.
  * @param {import('../templates/schema.js').TemplateSchema} template
  * @param {Record<string, unknown>} props the instance's resolved literal props
@@ -268,7 +291,7 @@ export function literalFields(template, props) {
         const raw = props[prop];
         if (spec.kind === 'boolean') out.push({ key, field, value: spec.values[String(raw === true)] });
         else if (spec.kind === 'number') out.push({ key, field, value: raw == null ? null : Number(raw) });
-        else out.push({ key, field, value: String(raw) });
+        else out.push({ key, field, value: masked(template, prop, props) ? '•'.repeat(String(raw).length) : String(raw) });
     }
     return out;
 }

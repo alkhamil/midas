@@ -16,7 +16,24 @@ export const GLYPHS = {
     dash: { points: [corner(0, 0), corner(24, 0), corner(24, 24), corner(0, 24)] },
     // The dot of a selected radio: a full-bleed disc, which its small slot draws as the dot.
     dot: { points: [round(12, 0, 12 - K, 0, 12 + K, 0), round(24, 12, 24, 12 - K, 24, 12 + K), round(12, 24, 12 + K, 24, 12 - K, 24), round(0, 12, 0, 12 + K, 0, 12 - K)] },
+    // The eye of a password shown: an almond with the pupil cut out. One contour, filled non-zero: the pupil is wound the other way and joined by a bridge that
+    // is walked there and back, so it has no width.
+    eye: { points: eyePoints() },
+    // The eye of a password hidden: the same eye with a slash through it, a second loop of the same winding joined by its own bridge.
+    eyeOff: { points: [...eyePoints(), corner(9, 12), corner(3.5, 4.6), corner(5.1, 3), corner(20.5, 19.4), corner(18.9, 21), corner(3.5, 4.6), corner(9, 12)] },
+    // The arrows of a number input's stepper: a filled triangle each.
+    chevronUp: { points: [corner(12, 6), corner(21, 16), corner(3, 16)] },
+    chevronDown: { points: [corner(3, 8), corner(21, 8), corner(12, 18)] },
 };
+
+/** The almond of the eye and its pupil, ending on the pupil's start so a caller can chain another loop from there. */
+function eyePoints() {
+    const k = 3 * 0.5523;
+    return [
+        corner(1, 12), round(12, 5.5, 7, 5.5, 17, 5.5), corner(23, 12), round(12, 18.5, 17, 18.5, 7, 18.5), corner(1, 12),
+        round(9, 12, 9, 12 - k, 9, 12 + k), round(12, 15, 12 - k, 15, 12 + k, 15), round(15, 12, 15, 12 + k, 15, 12 - k), round(12, 9, 12 + k, 9, 12 - k, 9), round(9, 12, 9, 12 - k, 9, 12 + k),
+    ];
+}
 
 /**
  * The vector layer fields of a glyph (what the canvas draws): the outline in its own 24 x 24 space, closed.

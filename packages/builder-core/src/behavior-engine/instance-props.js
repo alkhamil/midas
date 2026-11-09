@@ -35,6 +35,13 @@ export function resolveProps(template, stored = {}) {
     for (const [name, def] of literal) {
         out[name] = isPropVisible(template, name, base) && stored[name] !== undefined ? stored[name] : /** @type {any} */ (def).default;
     }
+    // A derived boolean is read from the others, never stored: it holds while the value has reached its limit (an empty value or no limit reaches nothing).
+    for (const [name, def] of literal) {
+        const rule = /** @type {any} */ (def).derived;
+        if (rule === undefined) continue;
+        const value = out[rule.value] === '' || out[rule.value] == null ? NaN : Number(out[rule.value]), limit = out[rule.limit];
+        out[name] = limit != null && Number.isFinite(value) && (rule.cmp === 'gte' ? value >= limit : value <= limit);
+    }
     return out;
 }
 
@@ -65,7 +72,8 @@ export function valueProblem(def, value) {
     if (def.type === 'boolean' && typeof value !== 'boolean') return 'expects a boolean';
     if (def.type === 'string' && typeof value !== 'string') return 'expects text';
     if (def.type === 'enum' && !def.options.includes(/** @type {string} */ (value))) return `expects one of ${def.options.join(', ')}`;
-    if (def.type === 'number' && value !== null && !(Number.isInteger(value) && value >= 0)) return 'expects a whole number, 0 or more, or nothing';
+    if (def.type === 'number' && /** @type {any} */ (def).decimal === true && value !== null && !(typeof value === 'number' && Number.isFinite(value))) return 'expects a number, or nothing';
+    if (def.type === 'number' && /** @type {any} */ (def).decimal !== true && value !== null && !(Number.isInteger(value) && value >= 0)) return 'expects a whole number, 0 or more, or nothing';
     if (def.type === 'iconComponent' && value !== null && typeof value !== 'string') return 'expects an icon id or null';
     return null;
 }
@@ -87,6 +95,7 @@ export function setInstanceProp(template, stored, name, value) {
     if (value === undefined) delete next[name];
     else {
         if (def.source === 'variable') throw new Error(`Prop "${name}" is an Appearance mode, not a behavior prop`);
+        if (/** @type {any} */ (def).derived !== undefined) throw new Error(`Prop "${name}" on ${template.id} is derived from other props, not stored`);
         if (!isPropVisible(template, name, resolveProps(template, stored))) throw new Error(`Prop "${name}" is hidden by visibleIf`);
         const problem = valueProblem(def, value);
         if (problem) throw new Error(`Prop "${name}" on ${template.id}: ${problem}`);

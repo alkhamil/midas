@@ -9,6 +9,7 @@ import { pathCommands, svgPathD } from '../geometry/shapes.js';
 import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js';
 import { cssVarOf, splitColor, tokenValueOf } from './tokens.js';
 import { glyphPathD } from './glyphs.js';
+import { glyphTests } from './validate-schema.js';
 import { rootLayoutOf, labelLayoutOf, flexOf, flowSizing } from './layout.js';
 import { labelEntryOf } from './layers.js';
 import { managedTextLayer } from './template-master.js';
@@ -109,8 +110,20 @@ function placeholderCondition(template, control) {
     return `String(${control.value} ?? "") === ""${control.readonly ? ` && ${control.readonly} !== true` : ''} ? ${control.placeholder} : undefined`;
 }
 
+/** The name of the callback a press toggle reports to: `on<Prop>Change`. */
+const toggleCallback = prop => `on${prop[0].toUpperCase()}${prop.slice(1)}Change`;
+
+/** The click handler of a pressable glyph in the export: a toggle reports the next value, a step its direction; nothing while the control is disabled. */
+function pressHandlerJsx(template, slot) {
+    const entry = (template.press ?? []).find(p => p.slot === slot.id);
+    if (!entry) return '';
+    const off = template.persistentStates[template.element.disabledState].prop;
+    const disabled = Object.values(template.persistentStates).filter(def => def.prop === off || def.as === template.element.disabledState).map(def => def.prop).join(' || ');
+    return entry.toggle !== undefined ? ` onClick={() => { if (!(${disabled})) ${toggleCallback(entry.toggle)}?.(!${entry.toggle}); }}` : ` onClick={() => { if (!(${disabled})) onStep?.(${entry.step}); }}`;
+}
+
 /** The element of a glyph slot: a span of the slot's class holding the definition's outline as an SVG, in currentColor. */
-export const glyphJsx = (template, slot) => `<span className="${template.id}-${slot.id}"><svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="${glyphPathD(slot.glyph)}" fill="currentColor" /></svg></span>`;
+export const glyphJsx = (template, slot) => `<span className="${template.id}-${slot.id}"${pressHandlerJsx(template, slot)}><svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="${glyphPathD(slot.glyph)}" fill="currentColor" /></svg></span>`;
 
 function componentSource(template, name, problems, partWidthOf = part => part.arc.width) {
     const params = Object.entries(template.props).map(([prop, def]) => (def.source === 'variable' ? prop : `${prop} = ${JSON.stringify(def.default)}`));
@@ -118,6 +131,8 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         if (!DOM_EVENT[event.name]) problems.push({ event: event.name, reason: 'no-dom-event' });
         params.push(event.name);
     }
+    // A pressable glyph reports its press: a toggle the next value of its prop, a step its direction.
+    for (const entry of template.press ?? []) { const name = entry.toggle !== undefined ? toggleCallback(entry.toggle) : 'onStep'; if (!params.includes(name)) params.push(name); }
     const slotted = (template.slots ?? []).length > 0;
     // The props that write a gap or a width reach the stylesheet as custom properties on the root (a width of none is not set); a layout is a data attribute.
     const varPairs = fieldWritersOf(template).filter(w => w.field === 'gap' || w.field === 'width').map(w => {
@@ -163,7 +178,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             if (!template.props[slot.id] && !isControl) problems.push({ slot: slot.id, reason: 'no-prop' });
             // A control slot is an input holding the value prop (and the placeholder beside it), not a span.
             const label = control && control.slot === slot.id
-                ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderCondition(template, control)}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''} disabled={${disabledProp}} />`
+                ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderCondition(template, control)}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''}${control.maskUnless ? ` type={${control.maskUnless} ? "text" : "password"}` : ''} disabled={${disabledProp}} />`
                 : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
             // The control is always written: the input holds the value and the placeholder whether or not the canvas has a layer for them.
             out.push(isControl ? label : slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
@@ -556,10 +571,22 @@ ${cssDecls({ ...flexOf(node, 0), ...sizing }).join('')}}
  */
 function glyphRules(template) {
     const attrs = stateAttributesOf(template);
-    return template.anatomy.filter(slot => slot.kind === 'glyph').map(slot => `.${template.id}:not([${attrs.find(a => a.prop === slot.shownWhen.prop).attr}]) .${template.id}-${slot.id} {
+    const attrOf = prop => attrs.find(a => a.prop === prop).attr;
+    return template.anatomy.filter(slot => slot.kind === 'glyph').flatMap(slot => {
+        // A glyph is hidden when any of its tests fails: a test that wants the state on fails without its attribute, one that wants it off fails with it.
+        const fails = glyphTests(slot.shownWhen).map(t => t.is ? `.${template.id}:not([${attrOf(t.prop)}]) .${template.id}-${slot.id}` : `.${template.id}[${attrOf(t.prop)}] .${template.id}-${slot.id}`);
+        const press = (template.press ?? []).some(p => p.slot === slot.id);
+        return [`${fails.join(',\n')} {
   display: none;
 }
-`);
+`, ...(press ? [`.${template.id}-${slot.id} {
+  cursor: pointer;
+}
+.${template.id}:has(:disabled) .${template.id}-${slot.id} {
+  cursor: not-allowed;
+}
+`] : [])];
+    });
 }
 
 /**

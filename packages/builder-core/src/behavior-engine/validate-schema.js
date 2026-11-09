@@ -33,7 +33,14 @@ function propProblems(name, def, props) {
         if (def.exclusiveWith !== undefined && (def.type !== 'boolean' || !isPlainObject(props[def.exclusiveWith]) || props[def.exclusiveWith].type !== 'boolean' || props[def.exclusiveWith].source !== 'literal')) out.push(`prop "${name}" exclusiveWith must name a boolean literal prop`);
         if (def.fillEmpty !== undefined && (def.type !== 'boolean' || !isPlainObject(def.fillEmpty) || !isPlainObject(props[def.fillEmpty.prop]) || props[def.fillEmpty.prop].source !== 'literal' || props[def.fillEmpty.prop].type !== 'string' || typeof def.fillEmpty.text !== 'string')) out.push(`prop "${name}" fillEmpty must name a literal string prop and its fallback text`);
         if (def.type === 'string' && typeof def.default !== 'string') out.push(`prop "${name}" is string but its default is not`);
-        if (def.type === 'number' && !(def.default === null || (Number.isInteger(def.default) && def.default >= 0))) out.push(`prop "${name}" is a number but its default is not a whole number, 0 or more, or null`);
+        if (def.decimal !== undefined && (typeof def.decimal !== 'boolean' || def.type !== 'number')) out.push(`prop "${name}" decimal must be a boolean on a number prop`);
+        if (def.type === 'number' && def.decimal === true) { if (!(def.default === null || Number.isFinite(def.default))) out.push(`prop "${name}" is a decimal number but its default is not a number or null`); }
+        else if (def.type === 'number' && !(def.default === null || (Number.isInteger(def.default) && def.default >= 0))) out.push(`prop "${name}" is a number but its default is not a whole number, 0 or more, or null`);
+        if (def.derived !== undefined) {
+            const d = def.derived;
+            const readable = n => props[n]?.source === 'literal' && (props[n].type === 'number' || props[n].type === 'string');
+            if (def.type !== 'boolean' || !isPlainObject(d) || !readable(d.value) || props[d.limit]?.type !== 'number' || !['gte', 'lte'].includes(d.cmp)) out.push(`prop "${name}" derived must be { value, limit, cmp: gte | lte } on a boolean prop, over a text or number prop and a number prop`);
+        }
         if (def.defaultMode !== undefined && !(Array.isArray(def.modes) && def.modes.includes(def.defaultMode))) out.push(`prop "${name}" defaultMode "${def.defaultMode}" is not one of its modes`);
         if (def.atMost !== undefined && (def.type !== 'number' || props[def.atMost]?.type !== 'number')) out.push(`prop "${name}" atMost must name a number prop`);
     } else {
@@ -84,6 +91,17 @@ function conditionProblems(cond, props, where) {
     if ('is' in cond) return ['boolean', 'enum'].includes(target.type) ? [] : [`${where} tests "${cond.prop}" with "is", which needs a boolean or enum prop`];
     if ('empty' in cond) return typeof cond.empty === 'boolean' && target.type === 'string' ? [] : [`${where} tests "${cond.prop}" with "empty", which needs a string prop and a boolean`];
     return [`${where} has neither "is" nor "empty"`];
+}
+
+/**
+ * The tests of a glyph's condition: one `{ prop, is: boolean }` or an `all` of them. Null when it is anything else (the stylesheet shows a glyph by attributes, so it can
+ * only follow on/off states).
+ * @param {any} cond
+ * @returns {{ prop: string, is: boolean }[] | null}
+ */
+export function glyphTests(cond) {
+    const list = isPlainObject(cond) && Array.isArray(cond.all) ? cond.all : [cond];
+    return list.every(t => isPlainObject(t) && typeof t.prop === 'string' && typeof t.is === 'boolean' && Object.keys(t).length === 2) ? list : null;
 }
 
 /**
@@ -152,9 +170,10 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
         if (slot.kind === 'glyph') {
             if (!Object.hasOwn(GLYPHS, slot.glyph)) out.push(`glyph slot "${slot.id}" names the glyph "${slot.glyph}", which is not a built-in glyph`);
             if (slot.managed !== true || slot.optional !== true) out.push(`glyph slot "${slot.id}" must be managed and optional`);
-            const cond = slot.shownWhen;
-            const state = isPlainObject(cond) && cond.is === true && typeof cond.prop === 'string' && isPlainObject(schema.props) && schema.props[cond.prop]?.type === 'boolean' && stateAttributesOf(schema).some(a => a.prop === cond.prop);
-            if (!state) out.push(`glyph slot "${slot.id}" needs a shownWhen of { prop, is: true } on a boolean prop that a state with an attribute follows`);
+            const tests = glyphTests(slot.shownWhen);
+            const attrs = stateAttributesOf(schema);
+            const state = tests !== null && tests.every(t => isPlainObject(schema.props) && schema.props[t.prop]?.type === 'boolean' && attrs.some(a => a.prop === t.prop));
+            if (!state) out.push(`glyph slot "${slot.id}" needs a shownWhen of { prop, is: true | false } tests (or an all of them) on boolean props that a state with an attribute follows`);
         }
         // A managed text or control layer is made and removed from the props: the schema says when its instance layer is wanted.
         if (slot.managed && slot.kind !== 'icon' && slot.shownWhen === undefined) out.push(`managed ${slot.kind} slot "${slot.id}" needs a shownWhen`);
@@ -207,6 +226,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
     out.push(...interactionProblems(schema));
     out.push(...motionProblems(schema, allTokens));
     out.push(...toggleProblems(schema));
+    out.push(...pressProblems(schema));
     out.push(...nodeProblems(schema));
     out.push(...outlineProblems(schema));
     if (!Array.isArray(schema.events)) out.push('events must be a list');
@@ -536,6 +556,7 @@ function controlProblems(schema) {
         const def = props[control[field]];
         if (!def || def.source !== 'literal' || def.type !== kind) out.push(`control ${field} "${control[field]}" is not a ${kind} prop`);
     }
+    if (control.maskUnless !== undefined && !(props[control.maskUnless]?.source === 'literal' && props[control.maskUnless]?.type === 'boolean')) out.push(`control maskUnless "${control.maskUnless}" is not a boolean prop`);
     for (const flag of ['hideWhenEmpty', 'hidePlaceholderWhenFilled']) {
         if (control[flag] !== undefined && typeof control[flag] !== 'boolean') out.push(`control ${flag} must be a boolean`);
     }
@@ -546,6 +567,32 @@ function controlProblems(schema) {
             const key = props[control.placeholder]?.node?.key;
             const parts = (Array.isArray(schema.parts) ? schema.parts : []).filter(p => isPlainObject(p) && p.canvas !== false).map(p => p.id);
             if (!parts.includes(key)) out.push(`control hidePlaceholderWhenFilled names the placeholder layer "${key}", which is not a part of the template`);
+        }
+    }
+    return out;
+}
+
+/**
+ * Problems in the press actions: each entry names a glyph slot of the template and one action, `toggle` (a boolean prop that a state with an attribute follows) or
+ * `step` (1 or -1, which needs a control with `number` limits).
+ * @param {any} schema
+ * @returns {string[]}
+ */
+function pressProblems(schema) {
+    if (schema.press === undefined) return [];
+    if (!Array.isArray(schema.press)) return ['press must be a list'];
+    const props = isPlainObject(schema.props) ? schema.props : {};
+    const attrs = stateAttributesOf(schema);
+    const out = [];
+    for (const entry of schema.press) {
+        const slot = (Array.isArray(schema.anatomy) ? schema.anatomy : []).find(s => isPlainObject(s) && isPlainObject(entry) && s.id === entry.slot);
+        if (!isPlainObject(entry) || slot?.kind !== 'glyph') { out.push(`press names "${entry?.slot}", which is not a glyph slot`); continue; }
+        const actions = ['toggle', 'step'].filter(k => entry[k] !== undefined);
+        if (actions.length !== 1) { out.push(`press on "${entry.slot}" needs exactly one of toggle or step`); continue; }
+        if (entry.toggle !== undefined && !(props[entry.toggle]?.source === 'literal' && props[entry.toggle]?.type === 'boolean' && attrs.some(a => a.prop === entry.toggle))) out.push(`press toggle "${entry.toggle}" on "${entry.slot}" is not a boolean prop that a state with an attribute follows`);
+        if (entry.step !== undefined) {
+            if (entry.step !== 1 && entry.step !== -1) out.push(`press step on "${entry.slot}" must be 1 or -1`);
+            if (!isPlainObject(schema.control?.number)) out.push(`press step on "${entry.slot}" needs a control with number limits`);
         }
     }
     return out;

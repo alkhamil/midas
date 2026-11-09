@@ -19,7 +19,7 @@ import { controlOf, iconDefOn, placementsOfDef, primarySlotOf, slotDefsOf } from
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { repeatCount } from '../behavior-engine/slot-rules.js';
-import { ariaCheckedOf, canvasPartsOf, counterLabel, conditionHolds, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
+import { attrOfProp, pressAttrsOf, ariaCheckedOf, canvasPartsOf, counterLabel, conditionHolds, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, shadowCss, svgNumber } from '../geometry/format.js';
@@ -264,6 +264,8 @@ function renderTemplate(n, template, parent, scope) {
     // A toggle control: the root says what a click changes (Play needs no template for it) and its aria-checked.
     const toggle = toggleOf(template);
     if (toggle) Object.assign(attrs, { 'data-toggle': toggle.attr, ...(toggle.clearsAttr ? { 'data-toggle-clears': toggle.clearsAttr } : {}), ...(toggle.once ? { 'data-toggle-once': true } : {}), 'aria-checked': ariaCheckedOf(template, props) });
+    // A template with pressable glyphs marks its root, so a click finds the control it acts on (see press.js).
+    if (template.press?.length) attrs['data-press-root'] = '';
     if (!control && stateOn(template, template.element.disabledState, props)) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true', tabindex: '-1' });
     // A layer that blocks its click (a loading Button) stays enabled, but its clicks fire nothing (see isDisabledTarget).
     if (template.element.blockClickProps.some(prop => props[prop] === true)) attrs['data-blocked'] = true;
@@ -310,6 +312,8 @@ function renderTemplate(n, template, parent, scope) {
                 if (control.maxlength && props[control.maxlength] != null) inputAttrs.maxLength = String(props[control.maxlength]);
                 if (control.minlength && props[control.minlength] != null) inputAttrs.minLength = String(props[control.minlength]);
                 if (stateOn(template, template.element.disabledState, props)) inputAttrs.disabled = true;
+                // A masked input is a password field until the state that unmasks it holds; it says which root attribute that is, so a click can retype it.
+                if (control.maskUnless) Object.assign(inputAttrs, { type: props[control.maskUnless] === true ? 'text' : 'password', 'data-mask-unless': attrOfProp(template, control.maskUnless) });
                 out.push({ tag: 'input', attrs: inputAttrs, style, children: [] });
             }
             else {
@@ -326,7 +330,7 @@ function renderTemplate(n, template, parent, scope) {
         }
         else if (slot.kind === 'glyph') {
             // A glyph is drawn from its definition (the export's markup), always; the stylesheet shows it while the root's state attribute is on.
-            out.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}` }, style: {}, html: `<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="${glyphPathD(slot.glyph)}" fill="currentColor" /></svg>`, children: [] });
+            out.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}`, ...pressAttrsOf(template, slot.id) }, style: {}, html: `<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="${glyphPathD(slot.glyph)}" fill="currentColor" /></svg>`, children: [] });
         }
         else if (slot.managed) {
             // The slot's own layer draws the icon its nested instance holds.

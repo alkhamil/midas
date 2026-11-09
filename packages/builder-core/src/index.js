@@ -51,6 +51,7 @@ export * from './prototype/play.js';
 export * from './prototype/conditional.js';
 export * from './prototype/events.js';
 export * from './prototype/toggle.js';
+export * from './prototype/press.js';
 export * from './prototype/viewport.js';
 export * from './geometry/shapes.js';
 export * from './geometry/fills.js';

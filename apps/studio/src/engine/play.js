@@ -3,7 +3,7 @@
 // through the player, so the history stays consistent. Play reads the document and never writes it: the view settings live in the
 // browser (localStorage), not in the document. The chrome (top bar, bottom controls) hides on a click that triggers nothing, and
 // Ctrl+\ pins it hidden.
-import { counterLabel, toDomTree, createPlayer, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES, showWave, flipToggle } from '@midas/builder-core';
+import { counterLabel, toDomTree, createPlayer, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES, showWave, flipToggle, applyPress } from '@midas/builder-core';
 import { applyStyle } from './styleApply.js';
 
 const PREFS_KEY = 'midas.play';
@@ -493,6 +493,8 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
         const toggle = e.target.closest?.('.play-stage [data-toggle]');
         if (toggle) flipToggle(toggle);
         const clear = e.target.closest?.('[data-role="clear"]');
+        // A pressable glyph (a password's eye, a number input's arrows) acts on its control (see applyPress).
+        applyPress(e.target);
         if (clear) return clearValue(clear);
         const step = e.target.closest('[data-step]');
         if (step && !step.disabled) {
