@@ -143,6 +143,8 @@ export interface IconSlotDef {
 
 /** A persistent state: the boolean prop that turns it on, and the base tokens it replaces. */
 export interface PersistentState {
+    /** A marker only says a switch to the stylesheet (a data attribute a glyph follows) and changes no token: it is never the state the instance is in. */
+    marker?: boolean;
     prop: string;
     tokens: Record<string, string>;
 }

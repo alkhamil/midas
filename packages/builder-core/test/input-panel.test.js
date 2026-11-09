@@ -58,5 +58,5 @@ test('a switch needs the Variant and Size collections: it is disabled, naming th
 test('the master contract keeps the side switches, kinds, texts and icons out: they are the instance\'s choices, as Button\'s icon switch is', () => {
     const contract = masterPanel(master, model.collections).contract.props.map(p => p.name);
     for (const prop of ['hasPrefix', 'prefixKind', 'prefixText', 'prefixIcon', 'hasSuffix', 'suffixKind', 'suffixText', 'suffixIcon', 'hasIcon', 'iconPlacement']) assert.ok(!contract.includes(prop), `${prop} is not in the contract`);
-    for (const prop of ['value', 'placeholder', 'showCount', 'disabled']) assert.ok(contract.includes(prop), `${prop} is in the contract`);
+    for (const prop of ['value', 'placeholder', 'kind', 'maxLength', 'disabled']) assert.ok(contract.includes(prop), `${prop} is in the contract`);
 });

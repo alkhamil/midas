@@ -22,8 +22,6 @@ const MODELS = {
     checkbox: generated('checkbox'),
     switch: generated('switch'),
     radio: generated('radio'),
-    password: generated('password'),
-    textarea: generated('textarea'),
     inputnumber: generated('inputnumber'),
     button: () => {
         const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });

@@ -10051,16 +10051,17 @@ function applyLiteralFields(inst) {
         if ((field === 'text' || field === 'width') && n.type === 'text')
             remeasureText(n);
     }
-    // A multiline control's box is at least its rows tall: rows x the text's line height + the padding (rowsBounds), written as the root's min and max height. The
-    // metrics are the bound layers' own, so this runs after the bindings (see syncInstance).
-    const textLayer = managedText[template.control?.slot] ?? target.placeholder;
-    if (template.control?.multiline && textLayer) {
-        const lineHeight = textLayer.lineHeight < 4 ? textLayer.lineHeight * textLayer.fontSize : textLayer.lineHeight;
-        const bounds = rowsBounds(template, props, { lineHeight, paddingY: inst.padT ?? inst.padding ?? 0 });
-        if (inst.minH !== bounds.minH || inst.maxH !== (bounds.maxH ?? undefined)) {
-            inst.minH = bounds.minH;
-            inst.maxH = bounds.maxH ?? undefined;
-            doc.touch(inst);
+    // A multiline control's text is at least its rows tall: rows x line height, written as the min and max height of the value and the placeholder layers (rowsBounds), and
+    // cleared when the kind has no rows. The metric is the layer's own bound line height, so this runs after the bindings (see syncInstance). The box adds its padding around it.
+    if (template.control?.multiline) {
+        for (const layer of [managedText[template.control.slot], target.placeholder].filter(Boolean)) {
+            const lineHeight = layer.lineHeight < 4 ? layer.lineHeight * layer.fontSize : layer.lineHeight;
+            const bounds = rowsBounds(template, props, { lineHeight });
+            const minH = bounds?.minH, maxH = bounds?.maxH ?? undefined;
+            if (layer.minH === minH && layer.maxH === maxH) continue;
+            layer.minH = minH;
+            layer.maxH = maxH;
+            doc.touch(layer);
         }
     }
     // A managed slot that shows while its value is set (the clear icon) is shown or hidden as the value changes.

@@ -6,12 +6,11 @@ import { SIZE_MODES } from '../src/templates/size-modes.js';
 import { buttonModel } from '../../../scripts/button-model.mjs';
 import { inputModel } from '../../../scripts/input-model.mjs';
 
-test('Input and Button take the same height and vertical padding tokens at every Size', () => {
-    for (const token of ['height', 'paddingY']) {
-        for (const size of SIZE_MODES) {
-            assert.equal(INPUT.tokenRoles[token][size], BUTTON.tokenRoles[token][size], `${token} at ${size}`);
-        }
-    }
+test('Input and Button take the same height token at every Size; the Input reads the antd paddingBlock for its vertical padding (a wrapped text needs the inset)', () => {
+    for (const size of SIZE_MODES) assert.equal(INPUT.tokenRoles.height[size], BUTTON.tokenRoles.height[size], `height at ${size}`);
+    assert.deepEqual(INPUT.tokenRoles.paddingY, { xs: 'padding-y-xs', sm: 'padding-y-sm', md: 'input-padding-y-md', lg: 'input-padding-y-lg', xl: 'input-padding-y-xl', default: 'input-padding-y-md' });
+    assert.equal(INPUT.display.root.minHeight, 'height', 'the height is a floor under the box, so a text area can grow');
+    assert.ok(!('height' in INPUT.display.root));
 });
 
 /** A Size token's number in a model: the value its Primitive holds for the Size's mode, followed through the Semantic alias. */

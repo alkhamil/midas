@@ -69,11 +69,11 @@ test('codegen writes a span root with data modes, an input with its props, and a
     assert.match(jsx, /data-variant=\{variant\}/);
     assert.match(jsx, /data-status=\{status\}/);
     assert.match(jsx, /data-size=\{size\}/);
-    assert.match(jsx, /<input className="input-value" value=\{value\} placeholder=\{String\(value \?\? ""\) === "" && readOnly !== true \? placeholder : undefined\} readOnly=\{readOnly\} maxLength=\{maxLength\} minLength=\{minLength\} disabled=\{disabled \|\| readOnly\} \/>/);
+    assert.match(jsx, /<Control className="input-value" value=\{value\} placeholder=\{String\(value \?\? ""\) === "" && readOnly !== true \? placeholder : undefined\} readOnly=\{readOnly\} maxLength=\{maxLength\} minLength=\{minLength\} type=\{\(kind === "password"\) && !passwordVisible \? "password" : undefined\} rows=\{\(kind === "textarea"\) \? rows : undefined\} disabled=\{disabled \|\| readOnly\} \/>/);
     assert.ok(jsx.includes('{((hasPrefix === true) && (prefixKind === "text") && (String(prefixText ?? "") !== "")) && <span className="input-prefixText">{prefixText}</span>}'), 'the prefix text is shown with its switch, the Text kind and a non-empty text');
     assert.ok(jsx.includes('{((hasSuffix === true) && (suffixKind === "text") && (String(suffixText ?? "") !== "")) && <span className="input-suffixText">{suffixText}</span>}'), 'the suffix text is shown with its switch, the Text kind and a non-empty text');
     assert.match(jsx, /\{allowClear && value !== '' && <span className="input-clear">\{clearIcon\}<\/span>\}/);
-    assert.match(jsx, /\{showCount && <span className="input-count">\{value\.length\}\{maxLength != null \? ` \/ \$\{maxLength\}` : ''\}<\/span>\}/);
+    assert.match(jsx, /\{\(\(showCount === true\) && \(kind === "text"\)\) && <span className="input-count">\{value\.length\}\{maxLength != null \? ` \/ \$\{maxLength\}` : ''\}<\/span>\}/);
 });
 
 test('the outline follows the outline-width variable, and vanishes when it no longer exceeds the border', () => {

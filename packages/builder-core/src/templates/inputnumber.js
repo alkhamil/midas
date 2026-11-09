@@ -1,4 +1,4 @@
-import { INPUT } from './input.js';
+import { INPUT_BASE as INPUT } from './input-base.js';
 import { inputFamily, CLEAR, COUNT } from './input-family.js';
 
 /** @typedef {import('./schema.js').TemplateSchema} TemplateSchema */
@@ -53,7 +53,7 @@ export const INPUTNUMBER = inputFamily({
         display: { stepUp: { fill: 'step-up-fg', size: 'stepIconSize' }, stepDown: { fill: 'step-down-fg', size: 'stepIconSize' } },
         // A limit recolours its arrow; disabled recolours both and is declared last, so it wins.
         persistentStates: {
-            controls: { prop: 'controls', tokens: {} },
+            controls: { prop: 'controls', tokens: {}, marker: true },
             atMin: { prop: 'atMin', tokens: { 'step-down-fg': 'step-fg-disabled' } },
             atMax: { prop: 'atMax', tokens: { 'step-up-fg': 'step-fg-disabled' } },
             disabled: { prop: 'disabled', tokens: { ...INPUT.persistentStates.disabled.tokens, 'step-up-fg': 'step-fg-disabled', 'step-down-fg': 'step-fg-disabled' } },

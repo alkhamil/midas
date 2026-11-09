@@ -62,7 +62,7 @@ test('the inner input owns text only: transparent, no border, outline or shadow'
 
 test('no state selector targets the inner input: exactly one element carries a border', () => {
     const css = cssOf();
-    assert.ok(!/\.input-value:(?!:placeholder)/.test(css), 'no hover, focus or disabled rule on the input');
+    assert.ok(!/\.input-value:(?!:placeholder|:-webkit-resizer)/.test(css), 'no hover, focus or disabled rule on the input');
     assert.ok(/\.input \{[^}]*border-width: 1px;/.test(css), 'the wrapper draws its own border');
     assert.ok(!/\.input::before \{[^}]*border-width/.test(css), 'no ::before border');
 });

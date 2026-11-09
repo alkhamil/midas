@@ -19,7 +19,7 @@ import { controlOf, iconDefOn, placementsOfDef, primarySlotOf, slotDefsOf } from
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { repeatCount } from '../behavior-engine/slot-rules.js';
-import { attrOfProp, pressAttrsOf, ariaCheckedOf, canvasPartsOf, counterLabel, conditionHolds, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
+import { attrOfProp, multilineOf, pressAttrsOf, ariaCheckedOf, canvasPartsOf, counterLabel, conditionHolds, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, shadowCss, svgNumber } from '../geometry/format.js';
@@ -315,11 +315,11 @@ function renderTemplate(n, template, parent, scope) {
                 // A numeric control carries its limits for a press on its arrows (see press.js).
                 if (control.number) for (const [field, prop] of Object.entries(control.number)) if (props[prop] != null) inputAttrs[`data-num-${field}`] = String(props[prop]);
                 // A masked input is a password field until the state that unmasks it holds; it says which root attribute that is, so a click can retype it.
-                if (control.maskUnless) Object.assign(inputAttrs, { type: props[control.maskUnless] === true ? 'text' : 'password', 'data-mask-unless': attrOfProp(template, control.maskUnless) });
-                if (control.multiline) {
+                if (control.maskUnless && (control.maskWhen === undefined || conditionHolds(control.maskWhen, props))) Object.assign(inputAttrs, { type: props[control.maskUnless] === true ? 'text' : 'password', 'data-mask-unless': attrOfProp(template, control.maskUnless) });
+                if (multilineOf(template, props)) {
                     // A multiline control is a textarea that wraps in the width the box leaves and hugs its height (field-sizing); its text is its value, not an attribute.
                     const { value, ...rest } = inputAttrs;
-                    const { height, ...wrapped } = style;
+                    const { height, minHeight, ...wrapped } = style;
                     out.push({ tag: 'textarea', attrs: { ...rest, rows: String(props[control.multiline.rows]) }, style: wrapped, text: value, children: [] });
                 }
                 else out.push({ tag: 'input', attrs: inputAttrs, style, children: [] });

@@ -17,7 +17,8 @@ export function activeStateOf(template, props, preview) {
     /** @type {Record<string, string>} */
     const overrides = {};
     for (const [own, alias] of Object.entries(template.persistentStates)) {
-        if (props[alias.prop] !== true) continue;
+        // A marker state only says a switch to the stylesheet (a data attribute the glyphs follow): it changes no token, so it is never the state the instance is in.
+        if (props[alias.prop] !== true || alias.marker === true) continue;
         // An alias is the state it names turned on by its own prop: it draws that state.
         const name = alias.as ?? own, def = template.persistentStates[name];
         if (!names.includes(name)) names.push(name);

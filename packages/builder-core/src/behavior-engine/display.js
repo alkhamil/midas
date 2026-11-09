@@ -19,6 +19,8 @@ export const NODE_PROPERTIES = {
         paddingEnd: { kind: 'length', css: 'padding-inline-end' },
         gap: { kind: 'length', css: 'gap' },
         height: { kind: 'length', css: 'height' },
+        // A floor under the box's height: the box hugs its content and is never shorter than the token.
+        minHeight: { kind: 'length', css: 'min-height' },
         // A fixed width from a token, bound through the w variable like the height through h.
         width: { kind: 'length', css: 'width' },
         minWidth: { kind: 'length', css: 'min-width' },
@@ -62,7 +64,7 @@ export const LOADING_OPACITY = 0.65;
 
 export const NODE_FIELDS = {
     frame: { visible: { kind: 'boolean' }, primaryAlign: { kind: 'boolean', values: { true: 'end', false: 'start' } }, layout: { kind: 'enum', options: ['horizontal', 'vertical'] }, gap: { kind: 'number' }, width: { kind: 'number' }, opacity: { kind: 'boolean', values: { true: LOADING_OPACITY } } },
-    text: { text: { kind: 'string' }, visible: { kind: 'boolean' }, width: { kind: 'number' } },
+    text: { text: { kind: 'string' }, visible: { kind: 'boolean' }, width: { kind: 'number' }, heightSizing: { kind: 'enum', options: ['hug', 'fill'] } },
     arc: { visible: { kind: 'boolean' } },
 };
 
@@ -118,11 +120,12 @@ export const attrOfProp = (template, prop) => stateAttributesOf(template).find(a
 export function pressAttrsOf(template, slot) {
     const entry = (template.press ?? []).find(p => p.slot === slot);
     if (!entry) return {};
+    if (entry.resize) return { 'data-press': 'resize' };
     return entry.toggle !== undefined ? { 'data-press': 'toggle', 'data-press-attr': attrOfProp(template, entry.toggle) } : { 'data-press': 'step', 'data-press-step': String(entry.step) };
 }
 
 /**
- * The min and max height of a multiline control's box, from its rows: rows x line height + the padding on both sides (the metrics are the bound layers' own, in px).
+ * The min and max height of a multiline control's text, from its rows: rows x line height (the metric is the bound layer's own, in px). The box adds its padding around it.
  * Without autoSize the box is at least `rows` tall and grows with its text; with it, `minRows` (else `rows`) is the floor and `maxRows` the ceiling (none when empty).
  * Null for a template with no multiline control.
  * @param {any} template
@@ -130,10 +133,10 @@ export function pressAttrsOf(template, slot) {
  * @param {{ lineHeight: number, paddingY: number }} metrics
  * @returns {{ minH: number, maxH: number | null } | null}
  */
-export function rowsBounds(template, props, { lineHeight, paddingY }) {
-    const ml = template.control?.multiline;
+export function rowsBounds(template, props, { lineHeight }) {
+    const ml = multilineOf(template, props);
     if (!ml) return null;
-    const box = rows => rows * lineHeight + 2 * paddingY;
+    const box = rows => rows * lineHeight;
     const auto = props[ml.autoSize] === true;
     const min = auto && props[ml.minRows] != null ? props[ml.minRows] : props[ml.rows];
     const max = auto && props[ml.maxRows] != null ? props[ml.maxRows] : null;
@@ -150,10 +153,12 @@ const kebabOf = name => name.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`);
  * @returns {{ attrs: Record<string, string | true>, vars: Record<string, string> }}
  */
 export function multilineStyleOf(template, props) {
-    const ml = template.control?.multiline;
+    const ml = multilineOf(template, props);
     /** @type {Record<string, string | true>} */
     const attrs = {}, vars = {};
     if (!ml) return { attrs, vars };
+    // The whole box acts as the field: the cursor is the text cursor over it and a click on its padding focuses the field (see forwardFocus).
+    attrs['data-field-box'] = '';
     attrs[`data-${kebabOf(ml.resize)}`] = String(props[ml.resize]);
     vars[`--${template.id}-${kebabOf(ml.rows)}`] = String(props[ml.rows]);
     if (props[ml.autoSize] === true) {
@@ -161,6 +166,12 @@ export function multilineStyleOf(template, props) {
         for (const key of [ml.minRows, ml.maxRows]) if (props[key] != null) vars[`--${template.id}-${kebabOf(key)}`] = String(props[key]);
     }
     return { attrs, vars };
+}
+
+/** The root attribute an enum prop is written as (`data-kind`): the prop lays the box out, or is the multiline control's resize option. Undefined when none is. */
+export function enumAttrOf(template, prop) {
+    const written = nodeWritersOf(template).some(w => w.prop === prop && w.field === 'layout') || template.control?.multiline?.resize === prop;
+    return written ? `data-${kebabOf(prop)}` : undefined;
 }
 
 /** The node kind a display key targets: `root` is the instance's frame, otherwise the anatomy slot's or the part's kind. */
@@ -296,6 +307,7 @@ export const VARIABLE_KEYS = {
     height: ['h'],
     width: ['w'],
     minWidth: ['minW'],
+    minHeight: ['minH'],
     size: ['w', 'h'],
     shadow: ['effects'],
 };
@@ -307,8 +319,8 @@ export const VARIABLE_KEYS = {
  */
 function nodeWritersOf(template) {
     return Object.entries(template.props)
-        .filter(([, def]) => def.source === 'literal' && 'node' in def && def.node)
-        .map(([prop, def]) => ({ prop, key: def.node.key, field: def.node.field }));
+        .filter(([, def]) => def.source === 'literal')
+        .flatMap(([prop, def]) => [/** @type {any} */ (def).node, .../** @type {any} */ (def).nodes ?? []].filter(Boolean).map(n => ({ prop, key: n.key, field: n.field, values: n.values })));
 }
 
 /**
@@ -317,7 +329,16 @@ function nodeWritersOf(template) {
  * @param {string} prop
  * @param {Record<string, unknown>} props the resolved props
  */
-export const masked = (template, prop, props) => template.control?.maskUnless !== undefined && template.control.value === prop && props[template.control.maskUnless] !== true;
+export const masked = (template, prop, props) => template.control?.value === prop && maskedOn(template, props);
+
+/** Whether the control's text is masked for these props: it has a mask, the mask applies (`maskWhen`), and the prop that unmasks it is off. */
+export const maskedOn = (template, props) => template.control?.maskUnless !== undefined && (template.control.maskWhen === undefined || conditionHolds(template.control.maskWhen, props)) && props[template.control.maskUnless] !== true;
+
+/** The multiline control for these props, or null: the control has one and it applies (`when`). */
+export function multilineOf(template, props) {
+    const ml = template.control?.multiline;
+    return ml && (ml.when === undefined || conditionHolds(ml.when, props)) ? ml : null;
+}
 
 /**
  * The node fields the literal props write, with the value each one writes. A boolean writes the field value its `values` map gives.
@@ -328,10 +349,12 @@ export const masked = (template, prop, props) => template.control?.maskUnless !=
 export function literalFields(template, props) {
     /** @type {{ key: string, field: string, value: unknown }[]} */
     const out = [];
-    for (const { prop, key, field } of nodeWritersOf(template)) {
+    for (const { prop, key, field, values } of nodeWritersOf(template)) {
         const spec = NODE_FIELDS[targetKindOf(template, key)][field];
         const raw = props[prop];
-        if (spec.kind === 'boolean') out.push({ key, field, value: spec.values[String(raw === true)] });
+        // An enum prop may write a different value to each of its options (the kind lays the box out as a row or a column).
+        if (values) out.push({ key, field, value: values[String(raw)] });
+        else if (spec.kind === 'boolean') out.push({ key, field, value: spec.values[String(raw === true)] });
         else if (spec.kind === 'number') out.push({ key, field, value: raw == null ? null : Number(raw) });
         else out.push({ key, field, value: masked(template, prop, props) ? '•'.repeat(String(raw).length) : String(raw) });
     }
@@ -349,7 +372,7 @@ export function literalFieldNames(template) {
 }
 
 /** The node fields a prop's field writes: `width` is a fixed width (or hug), so it owns the width, its sizing and, for a text, whether it measures itself. */
-const OWNED_NODE_FIELDS = { width: ['w', 'layoutSizingH', 'autoW'] };
+const OWNED_NODE_FIELDS = { width: ['w', 'layoutSizingH', 'autoW'], heightSizing: ['layoutSizingV'] };
 
 /**
  * What a field write puts on a node: the field itself, except `width`, which is a fixed width (its sizing fixed, and a text no longer measures itself) or, with
@@ -364,6 +387,7 @@ export function nodeFieldPatch(field, value, type) {
         if (value == null) return type === 'text' ? { layoutSizingH: 'hug', autoW: true } : { layoutSizingH: 'hug' };
         return type === 'text' ? { w: value, layoutSizingH: 'fixed', autoW: false } : { w: value, layoutSizingH: 'fixed' };
     }
+    if (field === 'heightSizing') return { layoutSizingV: value };
     if (field === 'gap') return { gap: value == null ? 0 : value };
     if (field === 'opacity') return { opacity: value ?? 1 };
     return { [field]: value };

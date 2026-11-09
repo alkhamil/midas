@@ -18,9 +18,9 @@ const docOf = (f, nodes) => ({ variables, pages: [{ name: 'p', nodes: [f, ...nod
 const missing = (f, nodes) => diagnoseDocument(docOf(f, nodes)).filter(finding => finding.code === 'part-missing').map(finding => finding.layer);
 
 test('the layer specs of an Input are its side texts, value, placeholder, count and clear slot, in the anatomy order; the texts are instance (slot) layers', () => {
-    assert.deepEqual(layerSpecsOf(input).map(s => s.key), ['root', 'prefixIcon', 'prefixText', 'value', 'placeholder', 'count', 'clear', 'suffixText', 'suffixIcon']);
+    assert.deepEqual(layerSpecsOf(input).map(s => s.key), ['root', 'prefixIcon', 'prefixText', 'value', 'placeholder', 'count', 'clear', 'suffixText', 'suffixIcon', 'eye', 'eyeOff', 'footer', 'countArea', 'resizeHandle']);
     assert.deepEqual(layerSpecsOf(input).filter(s => s.role === 'text').map(s => s.key), [], 'no text layer of the master is an affix');
-    assert.deepEqual(layerSpecsOf(input).filter(s => s.role === 'slot' && s.type === 'text').map(s => s.key), ['prefixText', 'value', 'count', 'suffixText']);
+    assert.deepEqual(layerSpecsOf(input).filter(s => s.role === 'slot' && s.type === 'text').map(s => s.key), ['prefixText', 'value', 'count', 'suffixText', 'countArea']);
 });
 
 test('a generated Input master is its placeholder only, and is complete: no side text, value or counter is required of it', () => {

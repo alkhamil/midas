@@ -2,7 +2,7 @@
 // control, the press actions (a toggle and a step), decimal number props with derived bounds. Synthetic schemas built on the Input, never a registered template.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { INPUT } from '../src/templates/input.js';
+import { INPUT_BASE as INPUT } from '../src/templates/input-base.js';
 import { inputFamily } from '../src/templates/input-family.js';
 import { GLYPHS, glyphFillRuleAttr, glyphPathD } from '../src/behavior-engine/glyphs.js';
 import { validateTemplateSchema } from '../src/behavior-engine/validate-schema.js';

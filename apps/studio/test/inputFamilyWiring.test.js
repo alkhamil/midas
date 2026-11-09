@@ -14,11 +14,12 @@ const body = name => {
     return midas.slice(at, midas.indexOf('\n}\n', at));
 };
 
-test('applyLiteralFields gives a multiline control its min and max height from the bound layers, after the bindings', () => {
+test('applyLiteralFields gives the text layers of a multiline control their min and max height from their own line height, after the bindings', () => {
     const fields = body('applyLiteralFields');
     assert.ok(fields.includes('rowsBounds(template, props,'), 'the rows bounds are written');
-    assert.ok(fields.includes('template.control?.multiline'), 'only for a multiline control');
-    assert.ok(fields.includes('inst.minH = bounds.minH') && fields.includes('inst.maxH = bounds.maxH ?? undefined'), 'min and max height of the root');
+    assert.ok(fields.includes('template.control?.multiline'), 'only for a template with a multiline control');
+    assert.ok(fields.includes('layer.minH = minH') && fields.includes('layer.maxH = maxH'), 'min and max height of the value and placeholder layers');
+    assert.ok(fields.includes('bounds?.minH'), 'a kind without rows clears them');
     const sync = body('syncInstance');
     assert.ok(sync.indexOf('applyManagedTextBindings(') < sync.indexOf('applyLiteralFields('), 'the layers are bound (their line height is a px) before the box is measured from them');
 });
@@ -37,11 +38,12 @@ test('every name midas.js and play.js import from builder-core is exported by it
     }
 });
 
-test('replay: the rows bounds the glue writes follow the layers the engine built (line height and padding, in px)', () => {
-    const template = core.TEMPLATES.get('textarea');
-    const props = core.resolveProps(template, { rows: 4 });
-    // The glue passes the bound text layer's line height (a ratio is multiplied by the font size) and the root's vertical padding.
+test('replay: the rows bounds the glue writes follow the layer the engine built (its line height, in px), and are none for a kind without rows', () => {
+    const template = core.TEMPLATES.get('input');
+    const props = core.resolveProps(template, { kind: 'textarea', rows: 4 });
+    // The glue passes the bound text layer's line height (a ratio is multiplied by the font size).
     const layer = { lineHeight: 1.5, fontSize: 14 };
     const lineHeight = layer.lineHeight < 4 ? layer.lineHeight * layer.fontSize : layer.lineHeight;
-    assert.deepEqual(core.rowsBounds(template, props, { lineHeight, paddingY: 4 }), { minH: 4 * 21 + 8, maxH: null });
+    assert.deepEqual(core.rowsBounds(template, props, { lineHeight }), { minH: 4 * 21, maxH: null });
+    assert.equal(core.rowsBounds(template, core.resolveProps(template, { rows: 4 }), { lineHeight }), null, 'a text input has no rows');
 });

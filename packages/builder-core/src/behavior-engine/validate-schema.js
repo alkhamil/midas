@@ -1,5 +1,5 @@
 import { GLYPHS } from './glyphs.js';
-import { NODE_FIELDS, STATE_ATTRIBUTE, displayProblems, stateAttributesOf, targetKindOf } from './display.js';
+import { NODE_FIELDS, STATE_ATTRIBUTE, displayProblems, enumAttrOf, stateAttributesOf, targetKindOf } from './display.js';
 
 const LITERAL_TYPES = ['boolean', 'string', 'number', 'enum', 'iconComponent'];
 
@@ -101,7 +101,7 @@ function conditionProblems(cond, props, where) {
  */
 export function glyphTests(cond) {
     const list = isPlainObject(cond) && Array.isArray(cond.all) ? cond.all : [cond];
-    return list.every(t => isPlainObject(t) && typeof t.prop === 'string' && typeof t.is === 'boolean' && Object.keys(t).length === 2) ? list : null;
+    return list.every(t => isPlainObject(t) && typeof t.prop === 'string' && (typeof t.is === 'boolean' || typeof t.is === 'string') && Object.keys(t).length === 2) ? list : null;
 }
 
 /**
@@ -172,8 +172,10 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
             if (slot.managed !== true || slot.optional !== true) out.push(`glyph slot "${slot.id}" must be managed and optional`);
             const tests = glyphTests(slot.shownWhen);
             const attrs = stateAttributesOf(schema);
-            const state = tests !== null && tests.every(t => isPlainObject(schema.props) && schema.props[t.prop]?.type === 'boolean' && attrs.some(a => a.prop === t.prop));
-            if (!state) out.push(`glyph slot "${slot.id}" needs a shownWhen of { prop, is: true | false } tests (or an all of them) on boolean props that a state with an attribute follows`);
+            const state = tests !== null && tests.every(t => isPlainObject(schema.props) && (typeof t.is === 'boolean'
+                ? schema.props[t.prop]?.type === 'boolean' && attrs.some(a => a.prop === t.prop)
+                : schema.props[t.prop]?.type === 'enum' && schema.props[t.prop].options.includes(t.is) && enumAttrOf(schema, t.prop) !== undefined));
+            if (!state) out.push(`glyph slot "${slot.id}" needs a shownWhen of { prop, is } tests (or an all of them): a boolean prop that a state with an attribute follows, or an enum option of a prop the root says as an attribute`);
         }
         // A managed text or control layer is made and removed from the props: the schema says when its instance layer is wanted.
         if (slot.managed && slot.kind !== 'icon' && slot.shownWhen === undefined) out.push(`managed ${slot.kind} slot "${slot.id}" needs a shownWhen`);
@@ -572,6 +574,7 @@ function controlProblems(schema) {
             if (!def || def.source !== 'literal' || def.type !== 'number') out.push(`control number ${field} "${control.number[field]}" is not a number prop`);
         }
     }
+    for (const [field, cond] of [['maskWhen', control.maskWhen], ['multiline when', control.multiline?.when]]) if (cond !== undefined) out.push(...conditionProblems(cond, props, `control ${field}`));
     if (control.maskUnless !== undefined && !(props[control.maskUnless]?.source === 'literal' && props[control.maskUnless]?.type === 'boolean')) out.push(`control maskUnless "${control.maskUnless}" is not a boolean prop`);
     for (const flag of ['hideWhenEmpty', 'hidePlaceholderWhenFilled']) {
         if (control[flag] !== undefined && typeof control[flag] !== 'boolean') out.push(`control ${flag} must be a boolean`);
@@ -603,8 +606,9 @@ function pressProblems(schema) {
     for (const entry of schema.press) {
         const slot = (Array.isArray(schema.anatomy) ? schema.anatomy : []).find(s => isPlainObject(s) && isPlainObject(entry) && s.id === entry.slot);
         if (!isPlainObject(entry) || slot?.kind !== 'glyph') { out.push(`press names "${entry?.slot}", which is not a glyph slot`); continue; }
-        const actions = ['toggle', 'step'].filter(k => entry[k] !== undefined);
-        if (actions.length !== 1) { out.push(`press on "${entry.slot}" needs exactly one of toggle or step`); continue; }
+        const actions = ['toggle', 'step', 'resize'].filter(k => entry[k] !== undefined);
+        if (actions.length !== 1) { out.push(`press on "${entry.slot}" needs exactly one of toggle, step or resize`); continue; }
+        if (entry.resize !== undefined && !(entry.resize === true && schema.control?.multiline)) out.push(`press resize on "${entry.slot}" needs a multiline control`);
         if (entry.toggle !== undefined && !(props[entry.toggle]?.source === 'literal' && props[entry.toggle]?.type === 'boolean' && attrs.some(a => a.prop === entry.toggle))) out.push(`press toggle "${entry.toggle}" on "${entry.slot}" is not a boolean prop that a state with an attribute follows`);
         if (entry.step !== undefined) {
             if (entry.step !== 1 && entry.step !== -1) out.push(`press step on "${entry.slot}" must be 1 or -1`);
@@ -749,13 +753,23 @@ function motionProblems(schema, allTokens) {
 function nodeProblems(schema) {
     const out = [];
     for (const [name, def] of Object.entries(isPlainObject(schema.props) ? schema.props : {})) {
-        if (!isPlainObject(def) || !def.node) continue;
-        const kind = targetKindOf(schema, def.node.key);
-        if (!kind) { out.push(`prop "${name}" writes "${def.node.key}", which is not root or an anatomy slot`); continue; }
-        const field = NODE_FIELDS[kind]?.[def.node.field];
-        if (!field) { out.push(`prop "${name}" writes "${def.node.field}", which a ${kind} does not take`); continue; }
-        if (def.type !== field.kind) out.push(`prop "${name}" is ${def.type} but writes "${def.node.field}", which takes ${field.kind}`);
-        else if (field.kind === 'enum') for (const option of def.options ?? []) if (!field.options.includes(option)) out.push(`prop "${name}" offers "${option}", which "${def.node.field}" does not take`);
+        if (!isPlainObject(def)) continue;
+        for (const node of [def.node, ...(Array.isArray(def.nodes) ? def.nodes : [])].filter(Boolean)) {
+            const kind = targetKindOf(schema, node.key);
+            if (!kind) { out.push(`prop "${name}" writes "${node.key}", which is not root or an anatomy slot`); continue; }
+            const field = NODE_FIELDS[kind]?.[node.field];
+            if (!field) { out.push(`prop "${name}" writes "${node.field}", which a ${kind} does not take`); continue; }
+            // An enum prop with a value map writes the mapped value of each option, which the field must take.
+            if (node.values !== undefined) {
+                for (const option of def.options ?? []) {
+                    if (node.values[option] === undefined) out.push(`prop "${name}" maps no value for "${option}" to "${node.field}"`);
+                    else if (field.kind === 'enum' && !field.options.includes(node.values[option])) out.push(`prop "${name}" maps "${option}" to "${node.values[option]}", which "${node.field}" does not take`);
+                }
+                continue;
+            }
+            if (def.type !== field.kind) out.push(`prop "${name}" is ${def.type} but writes "${node.field}", which takes ${field.kind}`);
+            else if (field.kind === 'enum') for (const option of def.options ?? []) if (!field.options.includes(option)) out.push(`prop "${name}" offers "${option}", which "${node.field}" does not take`);
+        }
     }
     const states = [...Object.keys(isPlainObject(schema.persistentStates) ? schema.persistentStates : {}), ...Object.keys(isPlainObject(schema.previewStates) ? schema.previewStates : {})];
     const pseudo = isPlainObject(schema.statePseudo) ? schema.statePseudo : {};

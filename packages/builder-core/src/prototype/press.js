@@ -98,16 +98,17 @@ export function resizeLimits({ minHeight, maxHeight }, boxHeight, fieldHeight) {
 export const resizeHeight = (height, dy, { min, max }) => Math.min(max, Math.max(min, height + dy));
 
 /**
- * The start of a drag on a text area's resize handle. Null while the field is disabled. `move(y)` sets the field's height from the pointer's y.
- * @param {{ offsetHeight: number, querySelector(sel: string): any }} box
+ * The start of a drag on a text area's resize handle. The field's own computed min and max height (its rows, as the tokens give them) bound the drag. Null while the field is disabled.
+ * `move(y)` sets the field's height from the pointer's y.
+ * @param {{ querySelector(sel: string): any }} box
  * @param {number} startY
- * @param {(el: any) => { minHeight: string, maxHeight: string }} computedOf
+ * @param {(el: any) => { minHeight: string, maxHeight: string }} computedOf the computed style of the field
  * @returns {{ move(y: number): void } | null}
  */
 export function startResizeDrag(box, startY, computedOf) {
     const field = box.querySelector('textarea');
     if (!field || field.hasAttribute('disabled')) return null;
-    const from = field.offsetHeight, range = resizeLimits(computedOf(box), box.offsetHeight, from);
+    const from = field.offsetHeight, range = resizeLimits(computedOf(field), from, from);
     return { move: y => { field.style.height = `${resizeHeight(from, y - startY, range)}px`; } };
 }
 

@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
 import { validateTemplateSchema } from '../src/behavior-engine/validate-schema.js';
-import { INPUT } from '../src/templates/input.js';
+import { INPUT_BASE as INPUT } from '../src/templates/input-base.js';
 import { planAnatomy } from '../src/behavior-engine/anatomy.js';
 import { resolveProps, setInstanceProp } from '../src/behavior-engine/instance-props.js';
 import { generateComponent } from '../src/behavior-engine/codegen.js';

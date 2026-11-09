@@ -79,7 +79,7 @@ function sourceOf(template) {
 }
 
 test('the export passes the placeholder only while the value is empty and not readOnly', () => {
-    assert.match(sourceOf(input), /<input className="input-value" value=\{value\} placeholder=\{String\(value \?\? ""\) === "" && readOnly !== true \? placeholder : undefined\}/);
+    assert.match(sourceOf(input), /<Control className="input-value" value=\{value\} placeholder=\{String\(value \?\? ""\) === "" && readOnly !== true \? placeholder : undefined\}/);
 });
 
 test('without the rule the export passes the placeholder plainly: the rule is the schema\'s, not the engine\'s', () => {

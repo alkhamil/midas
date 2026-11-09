@@ -4,11 +4,12 @@
 import { previewOf } from './preview.js';
 import { variableProps } from './registry.js';
 import { resolveProps } from './instance-props.js';
-import { NODE_PROPERTIES, LOADING_OPACITY, canvasPartsOf, fieldWritersOf, placeholderPartOf, stateAttributesOf, targetKindOf } from './display.js';
+import { NODE_PROPERTIES, LOADING_OPACITY, enumAttrOf, canvasPartsOf, fieldWritersOf, placeholderPartOf, stateAttributesOf, targetKindOf } from './display.js';
 import { pathCommands, svgPathD } from '../geometry/shapes.js';
 import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js';
 import { cssVarOf, splitColor, tokenValueOf } from './tokens.js';
 import { glyphFillRuleAttr, glyphPathD } from './glyphs.js';
+import { resizeHeight, resizeLimits, startResizeDrag } from '../prototype/press.js';
 import { glyphTests } from './validate-schema.js';
 
 /** A camelCase name as kebab-case (the custom properties and data attributes a prop is written as). */
@@ -122,7 +123,20 @@ function pressHandlerJsx(template, slot) {
     if (!entry) return '';
     const off = template.persistentStates[template.element.disabledState].prop;
     const disabled = Object.values(template.persistentStates).filter(def => def.prop === off || def.as === template.element.disabledState).map(def => def.prop).join(' || ');
+    if (entry.resize) return ` onPointerDown={(e) => { if (${disabled}) return; const drag = startResizeDrag(e.currentTarget.closest("[data-field-box]"), e.clientY, (el) => getComputedStyle(el)); if (!drag) return; e.preventDefault(); const move = (m) => drag.move(m.clientY); const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); }; window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); }}`;
     return entry.toggle !== undefined ? ` onClick={() => { if (!(${disabled})) ${toggleCallback(entry.toggle)}?.(!${entry.toggle}); }}` : ` onClick={() => { if (!(${disabled})) onStep?.(${entry.step}); }}`;
+}
+
+/** `Input.Password = ...`: a sub-component is the component with some props fixed, as antd names them. */
+function subcomponentLines(template, name) {
+    return (template.subcomponents ?? []).flatMap(sub => ['', `${name}.${sub.name} = function ${sub.name}(props) {`, `  return <${name} {...props} ${Object.entries(sub.props).map(([key, value]) => `${key}=${JSON.stringify(value)}`).join(' ')} />;`, '};']);
+}
+
+/** The counter of a slot that sits in a container: a span of its class showing the value's length (and the limit), while its condition holds. */
+function counterJsx(template, slot) {
+    const { value, max } = slot.text.counter;
+    const limit = max ? '{' + max + ' != null ? ` / ${' + max + '}` : ""}' : '';
+    return '{(' + shownJsx(slot.shownWhen) + ') && <span className="' + template.id + '-' + slot.id + '">{' + value + '.length}' + limit + '</span>}';
 }
 
 /** The element of a glyph slot: a span of the slot's class holding the definition's outline as an SVG, in currentColor. */
@@ -135,9 +149,11 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         params.push(event.name);
     }
     // A pressable glyph reports its press: a toggle the next value of its prop, a step its direction.
-    for (const entry of template.press ?? []) { const name = entry.toggle !== undefined ? toggleCallback(entry.toggle) : 'onStep'; if (!params.includes(name)) params.push(name); }
+    for (const entry of (template.press ?? []).filter(p => !p.resize)) { const name = entry.toggle !== undefined ? toggleCallback(entry.toggle) : 'onStep'; if (!params.includes(name)) params.push(name); }
     // A derived boolean (the value has reached a limit) is read from the others in the component, never passed in.
     const derivedLines = Object.entries(template.props).filter(([, def]) => def.derived !== undefined).map(([prop, { derived }]) => `  const ${prop} = ${derived.limit} != null && Number(${derived.value}) ${derived.cmp === 'gte' ? '>=' : '<='} ${derived.limit} && String(${derived.value} ?? "") !== "";`);
+    // A control that is a textarea for one kind and an input for the others is one element chosen by the props.
+    const controlLines = controlOf(template)?.multiline?.when ? [`  const Control = ${shownJsx(controlOf(template).multiline.when)} ? "textarea" : "input";`] : [];
     const slotted = (template.slots ?? []).length > 0;
     // The props that write a gap or a width reach the stylesheet as custom properties on the root (a width of none is not set); a layout is a data attribute.
     const varPairs = fieldWritersOf(template).filter(w => w.field === 'gap' || w.field === 'width').map(w => {
@@ -173,8 +189,9 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     const parented = part => framed.filter(p => p.parent === part);
     const ctl = controlOf(template);
     // The clear and the counter follow the input, as the canvas and Play order them: a text affix after the input comes after them.
+    const countSlot = template.anatomy.find(s => s.text?.counter && !s.parent);
     const controlPartsJsx = () => [
-        ...(ctl?.count ? ['{' + ctl.count + ' && <span className="' + template.id + '-count">{' + ctl.value + '.length}' + (ctl.maxlength ? '{' + ctl.maxlength + ' != null ? ` / ${' + ctl.maxlength + '}` : ' + "''" + '}' : '') + '</span>}'] : []),
+        ...(ctl?.count ? ['{' + (countSlot?.shownWhen ? `(${shownJsx(countSlot.shownWhen)})` : ctl.count) + ' && <span className="' + template.id + '-count">{' + ctl.value + '.length}' + (ctl.maxlength ? '{' + ctl.maxlength + ' != null ? ` / ${' + ctl.maxlength + '}` : ' + "''" + '}' : '') + '</span>}'] : []),
     ];
     let framePlaced = false;
     let sidedAfterPlaced = false;
@@ -182,14 +199,18 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     const emitSlot = (slot, out) => {
         if (slot.kind === 'text' || slot.kind === 'control') {
             // The counter is written after the control it counts (controlPartsJsx), which is where the anatomy puts it.
-            if (slot.text?.counter) return;
+            if (slot.text?.counter) {
+                // A counter in a container (the text area's footer) is written where its container is, with its own condition.
+                if (slot.parent) out.push(counterJsx(template, slot));
+                return;
+            }
             if (!framePlaced && !slot.parent) { out.push(...rooted.filter(part => !part.side).map(part => framePartJsx(part)), ...rooted.filter(part => part.side).map(part => framePartJsx(part, `${part.side} !== "end"`))); framePlaced = true; }
             const isControl = controlOf(template)?.slot === slot.id;
             const control = controlOf(template);
             if (!template.props[slot.id] && !isControl) problems.push({ slot: slot.id, reason: 'no-prop' });
             // A control slot is an input holding the value prop (and the placeholder beside it), not a span.
             const label = control && control.slot === slot.id
-                ? `<${control.multiline ? 'textarea' : 'input'} className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderCondition(template, control)}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''}${control.maskUnless ? ` type={${control.maskUnless} ? "text" : "password"}` : ''}${control.multiline ? ` rows={${control.multiline.rows}}` : ''}${control.number ? ` min={${control.number.min} ?? undefined} max={${control.number.max} ?? undefined} step={${control.number.step}}` : ''} disabled={${disabledProp}} />`
+                ? `<${control.multiline ? (control.multiline.when ? 'Control' : 'textarea') : 'input'} className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderCondition(template, control)}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''}${control.maskUnless ? ` type={${control.maskWhen ? `(${shownJsx(control.maskWhen)}) && !${control.maskUnless}` : `!${control.maskUnless}`} ? "password" : undefined}` : ''}${control.multiline ? ` rows={${control.multiline.when ? `(${shownJsx(control.multiline.when)}) ? ${control.multiline.rows} : undefined` : control.multiline.rows}}` : ''}${control.number ? ` min={${control.number.min} ?? undefined} max={${control.number.max} ?? undefined} step={${control.number.step}}` : ''} disabled={${disabledProp}} />`
                 : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
             // The control is always written: the input holds the value and the placeholder whether or not the canvas has a layer for them.
             out.push(isControl ? label : slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
@@ -274,6 +295,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             `export const ${name} = forwardRef<${elementType}, ${name}Props>(function ${name}({ ${slotParams.join(', ')} }, ref) {`,
             `  const blocked = ${blockClickProps.join(' || ') || 'false'};`,
             ...derivedLines,
+            ...controlLines,
             ...counts,
             '  return (',
             `    <${tag}`,
@@ -293,6 +315,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         `export function ${name}({ ${params.join(', ')} }) {`,
         `  const blocked = ${blockClickProps.join(' || ') || 'false'};`,
         ...derivedLines,
+        ...controlLines,
         '  return (',
         `    <${tag}`,
         ...attrs.map(attr => `      ${attr}`),
@@ -301,6 +324,8 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         `    </${tag}>`,
         '  );',
         '}',
+        ...subcomponentLines(template, name),
+        ...(template.press ?? []).some(p => p.resize) ? ['', `const resizeLimits = ${resizeLimits.toString()};`, `const resizeHeight = ${resizeHeight.toString()};`, `const startResizeDrag = ${startResizeDrag.toString()};`] : [],
         ...(template.interaction?.wave ? ['', 'function waveDown(el) {', "  if (!el || el.disabled) return;", "  el.removeAttribute('data-wave-on');", '  void el.offsetWidth;', "  el.setAttribute('data-wave-on', '');", '}'] : []),
         '',
     ].join('\n');
@@ -386,7 +411,6 @@ function displayRules(template, master, childrenOf, geometry) {
             const w = rootBorderWidthOf(box);
             decls.push('  box-sizing: border-box;\n', `  border-width: ${w}px;\n`, `  border-style: ${w === 0 ? 'none' : lineStyleOf(box)};\n`, `  background-clip: ${clipOf(box)};\n`);
         }
-        if (controlOf(template)?.slot === key && controlOf(template).multiline) decls.push('  display: block;\n', '  width: 100%;\n', '  min-width: 0px;\n', '  resize: none;\n');
         // A control slot draws as a native input: it owns text only, so the reset comes first and the
         // token-driven declarations below win for colour and font metrics. Generic: any template with a
         // `control` reads this path. Its width is its text's, as the canvas's hugging layer is: the value, or the placeholder while
@@ -529,9 +553,9 @@ function reducedMotion(template) {
     const dis2 = `:not(${pseudoOf(template, template.element.disabledState)})`;
     const motion = template.motion ? [...(template.motion.transitions ?? []).map(t => `\n  ${t.key === 'root' ? sel : `${sel}-${t.key}`} {\n    transition: none;\n  }`),
 /**
- * The height of a multiline control's box from its rows: at least rows x line height + the padding on both sides (the box is border-box and its stroke is inside the
- * padding, so that is the outer height), and with autoSize the min and max rows. A max with no rows set is an invalid declaration, so there is none. Resize is
- * one rule per option on the data attribute; autoSize never resizes.
+ * The rules of a multiline control, scoped to the kind that has it (the root says it as a data attribute). The whole box acts as the field: the cursor is the text cursor over
+ * it (not-allowed while disabled). The field fills the box in both directions, at least `rows` lines tall (rows x line height, tokens) and, with autoSize, between the min and max
+ * rows; the box adds its padding around it. Resize is one rule per option on the data attribute; autoSize never resizes. The native grip is hidden: the grip glyph is the handle.
  * @param {any} template
  * @returns {string[]}
  */
@@ -539,15 +563,18 @@ function multilineRules(template) {
     const ml = controlOf(template)?.multiline;
     if (!ml) return [];
     const id = template.id, slot = controlOf(template).slot;
-    const lineHeight = `var(${cssVarOf(id, template.display[slot].typography)}-line-height)`, padding = `var(${cssVarOf(id, template.display.root.paddingY)})`;
+    const kind = ml.when ? `[${enumAttrOf(template, ml.when.prop)}="${ml.when.is}"]` : '';
+    const lineHeight = `var(${cssVarOf(id, template.display[slot].typography)}-line-height)`;
     const rows = name => `var(--${id}-${kebabCase(name)})`;
-    const height = count => `calc(${count} * ${lineHeight} + 2 * ${padding})`;
-    const auto = `[data-${kebabCase(ml.autoSize)}]`, value = `.${id}-${slot}`;
+    const height = count => `calc(${count} * ${lineHeight})`;
+    const auto = `[data-${kebabCase(ml.autoSize)}]`, root = `.${id}${kind}`, field = `${root} .${id}-${slot}`;
     return [
-        `.${id} {\n  min-height: ${height(rows(ml.rows))};\n}\n`,
-        `.${id}${auto} {\n  min-height: calc(var(--${id}-${kebabCase(ml.minRows)}, ${rows(ml.rows)}) * ${lineHeight} + 2 * ${padding});\n  max-height: ${height(rows(ml.maxRows))};\n}\n`,
-        `.${id}[data-${kebabCase(ml.resize)}="vertical"] ${value} {\n  resize: vertical;\n}\n`,
-        `.${id}${auto} ${value} {\n  resize: none;\n}\n`,
+        `${root} {\n  cursor: text;\n}\n`,
+        `${root}:has(:disabled) {\n  cursor: not-allowed;\n}\n`,
+        `${field} {\n  display: block;\n  flex: 1 1 auto;\n  align-self: stretch;\n  min-width: 0px;\n  min-height: ${height(rows(ml.rows))};\n  resize: none;\n}\n`,
+        `${field}::-webkit-resizer {\n  display: none;\n}\n`,
+        `${root}${auto} .${id}-${slot} {\n  min-height: calc(var(--${id}-${kebabCase(ml.minRows)}, ${rows(ml.rows)}) * ${lineHeight});\n  max-height: ${height(rows(ml.maxRows))};\n}\n`,
+        `${root}[data-${kebabCase(ml.resize)}="vertical"] .${id}-${slot} {\n  resize: vertical;\n}\n`,
     ];
 }
 
@@ -567,7 +594,7 @@ function fieldRules(template) {
         if (field === 'layout') {
             // A slot that fills the width it is given takes the cross axis of a vertical root and what is left of the row in a horizontal one (flowSizing, per option).
             const fills = key === 'root' ? (template.slots ?? []).filter(slot => slot.fill).map(slot => slot.id) : [];
-            const direction = option => `.${template.id}[data-${prop}="${option}"]${target} {\n  flex-direction: ${option === 'horizontal' ? 'row' : 'column'};\n}\n`;
+            const direction = option => `.${template.id}[data-${prop}="${option}"]${target} {\n  flex-direction: ${(values?.[option] ?? option) === 'horizontal' ? 'row' : 'column'};\n}\n`;
             const fill = (option, id) => `.${template.id}[data-${prop}="${option}"] .${template.id}-${id} {\n${option === 'horizontal' ? '  flex: 1 1 0;\n  min-width: 0px;\n  align-self: auto;' : '  flex: none;\n  align-self: stretch;'}\n}\n`;
             return template.props[prop].options.flatMap(option => [direction(option), ...fills.map(id => fill(option, id))]);
         }
@@ -611,14 +638,16 @@ function glyphRules(template) {
     const attrs = stateAttributesOf(template);
     const attrOf = prop => attrs.find(a => a.prop === prop).attr;
     return template.anatomy.filter(slot => slot.kind === 'glyph').flatMap(slot => {
-        // A glyph is hidden when any of its tests fails: a test that wants the state on fails without its attribute, one that wants it off fails with it.
-        const fails = glyphTests(slot.shownWhen).map(t => t.is ? `.${template.id}:not([${attrOf(t.prop)}]) .${template.id}-${slot.id}` : `.${template.id}[${attrOf(t.prop)}] .${template.id}-${slot.id}`);
-        const press = (template.press ?? []).some(p => p.slot === slot.id);
+        const on = `.${template.id}`, glyph = `.${template.id}-${slot.id}`;
+        // A glyph is hidden when any of its tests fails: a state that must be on fails without its attribute, one that must be off fails with it, an enum option fails
+        // while the root says another.
+        const fails = glyphTests(slot.shownWhen).map(t => typeof t.is === 'string' ? `${on}:not([${enumAttrOf(template, t.prop)}="${t.is}"]) ${glyph}` : t.is ? `${on}:not([${attrOf(t.prop)}]) ${glyph}` : `${on}[${attrOf(t.prop)}] ${glyph}`);
+        const press = (template.press ?? []).find(p => p.slot === slot.id);
         return [`${fails.join(',\n')} {
   display: none;
 }
-`, ...(press ? [`.${template.id}-${slot.id} {
-  cursor: pointer;
+`, ...(press ? [`${glyph} {
+  cursor: ${press.resize ? 'ns-resize' : 'pointer'};
 }
 .${template.id}:has(:disabled) .${template.id}-${slot.id} {
   cursor: not-allowed;

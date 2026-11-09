@@ -1,4 +1,4 @@
-import { INPUT } from './input.js';
+import { INPUT_BASE as INPUT } from './input-base.js';
 
 /** @typedef {import('./schema.js').TemplateSchema} TemplateSchema */
 
@@ -18,7 +18,7 @@ export const COUNT = { anatomy: ['count'], icons: [], props: ['showCount'], toke
  * @param {{
  *   id: string, name: string, sampleProps: Record<string, string>,
  *   dropped?: { anatomy?: string[], icons?: string[], props?: string[], tokens?: string[], playOnly?: string[] },
- *   added?: Partial<TemplateSchema> & { anatomyBefore?: Record<string, string>, anatomyPatch?: Record<string, Record<string, unknown>> },
+ *   added?: Partial<TemplateSchema> & { anatomyBefore?: Record<string, string>, anatomyPatch?: Record<string, Record<string, unknown>>, propPatch?: Record<string, Record<string, unknown>> },
  * }} spec
  * @returns {TemplateSchema}
  */
@@ -36,7 +36,7 @@ export function inputFamily({ id, name, sampleProps, dropped = CLEAR, added = {}
     for (const group of Object.keys(out.tokens)) out.tokens[group] = out.tokens[group].filter(t => !gone.has(t));
     for (const table of [out.tokenKinds, out.tokenRoles]) for (const t of gone) delete table[t];
     out.playOnly = out.playOnly.filter(p => !(dropped.playOnly ?? []).includes(p.id));
-    const { anatomyBefore = {}, anatomyPatch = {}, anatomy = [], props = {}, tokens = {}, tokenKinds = {}, tokenRoles = {}, display = {}, persistentStates = {}, statePseudo = {}, previewStates = {}, parts = [], playOnly = [], icons = [], ...rest } = added;
+    const { anatomyBefore = {}, anatomyPatch = {}, propPatch = {}, anatomy = [], props = {}, tokens = {}, tokenKinds = {}, tokenRoles = {}, display = {}, persistentStates = {}, statePseudo = {}, previewStates = {}, parts = [], playOnly = [], icons = [], ...rest } = added;
     for (const slot of out.anatomy) Object.assign(slot, anatomyPatch[slot.id] ?? {});
     for (const slot of anatomy) {
         const before = anatomyBefore[slot.id];
@@ -45,6 +45,7 @@ export function inputFamily({ id, name, sampleProps, dropped = CLEAR, added = {}
     }
     out.icons.push(...icons);
     Object.assign(out.props, props);
+    for (const [name, patch] of Object.entries(propPatch)) Object.assign(out.props[name], patch);
     for (const [group, list] of Object.entries(tokens)) out.tokens[group] = [...(out.tokens[group] ?? []), ...list];
     Object.assign(out.tokenKinds, tokenKinds);
     Object.assign(out.tokenRoles, tokenRoles);

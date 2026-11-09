@@ -62,7 +62,7 @@ test('resize: dragging the handle changes the height within min and max, vertica
 test('resize drag: pointer down on the handle, move, release sets the textarea height; a disabled field does not resize', () => {
     const area = { offsetHeight: 60, style: {}, hasAttribute: n => n === 'disabled' && area.disabled === true, disabled: false };
     const root = { offsetHeight: 80, querySelector: () => area };
-    const computed = { minHeight: '68px', maxHeight: '128px' };
+    const computed = { minHeight: '48px', maxHeight: '108px' };
     const drag = startResizeDrag(root, 100, () => computed);
     drag.move(130);
     assert.equal(area.style.height, '90px');

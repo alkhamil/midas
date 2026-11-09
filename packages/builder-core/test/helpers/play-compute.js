@@ -10,6 +10,8 @@ const has = (el, name, value) => {
 
 /** Whether one compound selector (no spaces) matches an element. */
 function matchesCompound(compound, el) {
+    // A rule for a pseudo-element (::placeholder, ::-webkit-resizer) styles a part of the element, never the element.
+    if (compound.includes('::')) return false;
     const cls = /^\.([A-Za-z0-9-]+)/.exec(compound)?.[1];
     if (cls && el.attrs.class !== cls) return false;
     const rest = cls ? compound.slice(cls.length + 1) : compound;

@@ -78,7 +78,7 @@ export function layerSpecsOf(template) {
 function nodeOf(spec, template, binding, idOf, parentId) {
     const id = idOf(spec.key);
     if (spec.role === 'group') {
-        return { ...LAYER, id, name: spec.key, type: 'frame', parentId, w: 0, h: 0, layout: spec.slot.layout, gap: 0, padding: 0, fills: [], layoutSizingH: 'hug', layoutSizingV: 'hug', ...(spec.slot.primaryAlign ? { primaryAlign: spec.slot.primaryAlign } : {}), ...(spec.slot.counterAlign ? { counterAlign: spec.slot.counterAlign } : {}), behavior: { version: BEHAVIOR_DATA_VERSION, group: spec.key } };
+        return { ...LAYER, id, name: spec.key, type: 'frame', parentId, w: 0, h: 0, layout: spec.slot.layout, gap: 0, padding: 0, fills: [], layoutSizingH: spec.slot.fill === true ? 'fill' : 'hug', layoutSizingV: 'hug', ...(spec.slot.primaryAlign ? { primaryAlign: spec.slot.primaryAlign } : {}), ...(spec.slot.counterAlign ? { counterAlign: spec.slot.counterAlign } : {}), behavior: { version: BEHAVIOR_DATA_VERSION, group: spec.key } };
     }
     if (spec.role === 'content') {
         return { ...LAYER, id, name: spec.content.name, type: 'frame', parentId, w: 0, h: 0, layout: spec.content.layout, gap: 0, padding: 0, fills: [], layoutSizingH: spec.content.fill === true ? 'fill' : 'hug', layoutSizingV: 'hug', propBind: { slot: spec.key } };
@@ -251,7 +251,9 @@ export function masterLayersByKey(template, frame, nodes) {
 export function managedTextLayer(template, slotId, resolved, { id, parentId }) {
     const spec = layerSpecsOf(template).find(sp => sp.key === slotId);
     const text = [...literalFields(template, resolved), ...partWrites(template, resolved)].find(w => w.key === slotId && w.field === 'text');
-    return { ...nodeOf(spec, template, null, () => id, parentId), ...(text ? { text: text.value } : {}), visible: slotShown(template, slotId, resolved), sourceId: undefined, isInstance: false, component: false, overrides: {} };
+    // The node fields the props write to this layer (a text area's value fills the box in height) are its own from the start, as an instance's copy of a master layer gets them.
+    const fields = literalFields(template, resolved).filter(w => w.key === slotId && !['visible', 'text'].includes(w.field)).reduce((patch, w) => Object.assign(patch, nodeFieldPatch(w.field, w.value, 'text')), {});
+    return { ...nodeOf(spec, template, null, () => id, parentId), ...fields, ...(text ? { text: text.value } : {}), visible: slotShown(template, slotId, resolved), sourceId: undefined, isInstance: false, component: false, overrides: {} };
 }
 
 /**

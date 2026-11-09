@@ -7,8 +7,6 @@ import { ICON_BUTTON } from '../templates/icon-button.js';
 import { CHECKBOX } from '../templates/checkbox.js';
 import { SWITCH } from '../templates/switch.js';
 import { RADIO } from '../templates/radio.js';
-import { PASSWORD } from '../templates/password.js';
-import { TEXTAREA } from '../templates/textarea.js';
 import { INPUTNUMBER } from '../templates/inputnumber.js';
 
 /**
@@ -30,7 +28,7 @@ export function createTemplateRegistry(schemas) {
 }
 
 /** The templates the engine ships. */
-export const BUILT_IN_TEMPLATES = createTemplateRegistry([BUTTON, INPUT, FORM_ITEM, LIST, ICON_BUTTON, CHECKBOX, SWITCH, RADIO, PASSWORD, TEXTAREA, INPUTNUMBER]);
+export const BUILT_IN_TEMPLATES = createTemplateRegistry([BUTTON, INPUT, FORM_ITEM, LIST, ICON_BUTTON, CHECKBOX, SWITCH, RADIO, INPUTNUMBER]);
 
 /**
  * The registry every engine call reads: the built-in templates and the Custom templates of the open document (see custom-templates.js, which fills it).

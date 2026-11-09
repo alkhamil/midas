@@ -57,9 +57,9 @@ test('the Input master is complete with the placeholder only: no part-missing, a
 
 test('the export writes the input, the placeholder and the value from props, with no value layer needed', () => {
     const jsx = generateComponent(input, model.binding, variables, 'Input', frame, id => made.created.filter(n => n.parentId === id)).files['Input.jsx'];
-    assert.match(jsx, /<input className="input-value" value=\{value\}/);
+    assert.match(jsx, /<Control className="input-value" value=\{value\}/);
     assert.doesNotMatch(jsx, /\{\(String\(value \?\? ""\) !== ""\) && <input/, 'the input is not conditional on the value');
-    assert.match(jsx, /\{showCount && <span className="input-count">/);
+    assert.match(jsx, /\{\(\(showCount === true\) && \(kind === "text"\)\) && <span className="input-count">/);
 });
 
 test('Play draws the input from the props with no value layer, and the counter and affix text from their own layers', () => {
