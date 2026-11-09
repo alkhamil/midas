@@ -492,7 +492,6 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
         // A toggle control (Checkbox, Radio, Switch) turns its state on or off; a disabled one ignores the click (see flipToggle).
         const toggle = e.target.closest?.('.play-stage [data-toggle]');
         if (toggle) flipToggle(toggle);
-        const clear = e.target.closest?.('[data-role="clear"]');
         // A pressable glyph (a password's eye, a number input's arrows) acts on its control (see applyPress).
         applyPress(e.target);
         // A click on the padding of a text box focuses its field, so the whole box acts as the field (see forwardFocus).
