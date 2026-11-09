@@ -137,5 +137,12 @@
   "badge-status-processing": { "base": "Semantic/presetInfoSolid", "derive": { "from": "Primitives/info/500" } },
   "badge-status-default": { "base": "Semantic/presetNeutralSolid", "derive": { "from": "Primitives/neutral/500" } },
   "badge-status-error": { "base": "Semantic/presetDangerSolid", "derive": { "from": "Primitives/danger/500" } },
-  "badge-status-warning": { "base": "Semantic/presetWarningSolid", "derive": { "from": "Primitives/warning/500" } }
+  "badge-status-warning": { "base": "Semantic/presetWarningSolid", "derive": { "from": "Primitives/warning/500" } },
+  "tag-height-xs": { "base": "Semantic/tagHeightXS", "derive": { "from": "Primitives/size/20" } },
+  "tag-height-sm": { "base": "Semantic/tagHeightSM", "derive": { "from": "Primitives/size/20" } },
+  "tag-height": { "base": "Semantic/tagHeightMD", "derive": { "from": "Primitives/size/24" } },
+  "tag-height-lg": { "base": "Semantic/tagHeightLG", "derive": { "from": "Primitives/size/28" } },
+  "tag-height-xl": { "base": "Semantic/tagHeightXL", "derive": { "from": "Primitives/size/28" } },
+  "tag-padding-x": { "base": "Semantic/tagPaddingX", "derive": { "from": "Primitives/padding/8" } },
+  "tag-icon-size": { "base": "Semantic/tagIconSize", "derive": { "from": "Primitives/size/12" } }
 }
