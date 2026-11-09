@@ -3,7 +3,7 @@
 // through the player, so the history stays consistent. Play reads the document and never writes it: the view settings live in the
 // browser (localStorage), not in the document. The chrome (top bar, bottom controls) hides on a click that triggers nothing, and
 // Ctrl+\ pins it hidden.
-import { counterLabel, toDomTree, createPlayer, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES, showWave, flipToggle, applyPress } from '@midas/builder-core';
+import { counterLabel, toDomTree, createPlayer, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES, showWave, flipToggle, applyPress, blurNumber, forwardFocus, startResizeDrag } from '@midas/builder-core';
 import { applyStyle } from './styleApply.js';
 
 const PREFS_KEY = 'midas.play';
@@ -495,6 +495,9 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
         const clear = e.target.closest?.('[data-role="clear"]');
         // A pressable glyph (a password's eye, a number input's arrows) acts on its control (see applyPress).
         applyPress(e.target);
+        // A click on the padding of a text box focuses its field, so the whole box acts as the field (see forwardFocus).
+        forwardFocus(e.target);
+        const clear = e.target.closest?.('[data-role="clear"]');
         if (clear) return clearValue(clear);
         const step = e.target.closest('[data-step]');
         if (step && !step.disabled) {
@@ -515,6 +518,25 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
     });
     overlay.addEventListener('input', e => {
         if (e.target.matches('input[data-role="value"],textarea[data-role="value"]')) syncValueParts(e.target);
+    });
+    // A number input losing focus commits the typed number, or restores the last committed value when the text is not a number (see blurNumber).
+    overlay.addEventListener('focusout', e => {
+        if (e.target.matches?.('input[data-committed]')) blurNumber(e.target);
+    });
+    // The grip of a resizable text area drags the height of its field within the rows its tokens give it, vertically only. The stage may be scaled, so the pointer moves in
+    // the element's own px (the client width over the layout width).
+    overlay.addEventListener('pointerdown', e => {
+        const grip = e.target.closest?.('[data-press="resize"]');
+        const box = grip?.closest('[data-field-box]');
+        if (!grip || !box) return;
+        const k = box.getBoundingClientRect().width / box.offsetWidth || 1;
+        const drag = startResizeDrag(box, e.clientY / k, el => getComputedStyle(el));
+        if (!drag) return;
+        e.preventDefault();
+        const move = m => drag.move(m.clientY / k);
+        const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+        window.addEventListener('pointermove', move);
+        window.addEventListener('pointerup', up);
     });
     overlay.addEventListener('change', e => {
         if (e.target.matches('[data-background]')) {

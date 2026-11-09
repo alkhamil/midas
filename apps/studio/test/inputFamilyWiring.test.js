@@ -47,3 +47,12 @@ test('replay: the rows bounds the glue writes follow the layer the engine built 
     assert.deepEqual(core.rowsBounds(template, props, { lineHeight }), { minH: 4 * 21, maxH: null });
     assert.equal(core.rowsBounds(template, core.resolveProps(template, { rows: 4 }), { lineHeight }), null, 'a text input has no rows');
 });
+
+test('Play wires the click-to-focus, the number commit on blur and the resize grip drag', () => {
+    const importLine = play.split('\n').find(l => l.includes("from '@midas/builder-core'") && l.includes('{'));
+    for (const name of ['blurNumber', 'forwardFocus', 'startResizeDrag']) assert.ok(importLine.includes(` ${name}`), `${name} is imported`);
+    assert.ok(play.includes('forwardFocus(e.target)'), 'a click on the padding focuses the field');
+    assert.ok(play.includes("overlay.addEventListener('focusout'") && play.includes("matches?.('input[data-committed]')"), 'a blur commits the number');
+    assert.ok(play.includes("closest?.('[data-press=\"resize\"]')") && play.includes("overlay.addEventListener('pointerdown'"), 'the grip starts a drag');
+    assert.ok(play.includes('getComputedStyle(el)'), 'the field limits are the computed min and max height (the tokens)');
+});
