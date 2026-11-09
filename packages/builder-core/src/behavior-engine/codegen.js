@@ -129,13 +129,15 @@ function pressHandlerJsx(template, slot) {
 export const glyphJsx = (template, slot) => `<span className="${template.id}-${slot.id}"${pressHandlerJsx(template, slot)}><svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="${glyphPathD(slot.glyph)}" fill="currentColor" /></svg></span>`;
 
 function componentSource(template, name, problems, partWidthOf = part => part.arc.width) {
-    const params = Object.entries(template.props).map(([prop, def]) => (def.source === 'variable' ? prop : `${prop} = ${JSON.stringify(def.default)}`));
+    const params = Object.entries(template.props).filter(([, def]) => def.derived === undefined).map(([prop, def]) => (def.source === 'variable' ? prop : `${prop} = ${JSON.stringify(def.default)}`));
     for (const event of template.events) {
         if (!DOM_EVENT[event.name]) problems.push({ event: event.name, reason: 'no-dom-event' });
         params.push(event.name);
     }
     // A pressable glyph reports its press: a toggle the next value of its prop, a step its direction.
     for (const entry of template.press ?? []) { const name = entry.toggle !== undefined ? toggleCallback(entry.toggle) : 'onStep'; if (!params.includes(name)) params.push(name); }
+    // A derived boolean (the value has reached a limit) is read from the others in the component, never passed in.
+    const derivedLines = Object.entries(template.props).filter(([, def]) => def.derived !== undefined).map(([prop, { derived }]) => `  const ${prop} = ${derived.limit} != null && Number(${derived.value}) ${derived.cmp === 'gte' ? '>=' : '<='} ${derived.limit} && String(${derived.value} ?? "") !== "";`);
     const slotted = (template.slots ?? []).length > 0;
     // The props that write a gap or a width reach the stylesheet as custom properties on the root (a width of none is not set); a layout is a data attribute.
     const varPairs = fieldWritersOf(template).filter(w => w.field === 'gap' || w.field === 'width').map(w => {
@@ -187,7 +189,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             if (!template.props[slot.id] && !isControl) problems.push({ slot: slot.id, reason: 'no-prop' });
             // A control slot is an input holding the value prop (and the placeholder beside it), not a span.
             const label = control && control.slot === slot.id
-                ? `<${control.multiline ? 'textarea' : 'input'} className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderCondition(template, control)}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''}${control.maskUnless ? ` type={${control.maskUnless} ? "text" : "password"}` : ''}${control.multiline ? ` rows={${control.multiline.rows}}` : ''} disabled={${disabledProp}} />`
+                ? `<${control.multiline ? 'textarea' : 'input'} className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderCondition(template, control)}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''}${control.maskUnless ? ` type={${control.maskUnless} ? "text" : "password"}` : ''}${control.multiline ? ` rows={${control.multiline.rows}}` : ''}${control.number ? ` min={${control.number.min} ?? undefined} max={${control.number.max} ?? undefined} step={${control.number.step}}` : ''} disabled={${disabledProp}} />`
                 : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
             // The control is always written: the input holds the value and the placeholder whether or not the canvas has a layer for them.
             out.push(isControl ? label : slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
@@ -271,6 +273,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             ...propsTypeOf(template, name, elementType, attrType),
             `export const ${name} = forwardRef<${elementType}, ${name}Props>(function ${name}({ ${slotParams.join(', ')} }, ref) {`,
             `  const blocked = ${blockClickProps.join(' || ') || 'false'};`,
+            ...derivedLines,
             ...counts,
             '  return (',
             `    <${tag}`,
@@ -289,6 +292,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     return [
         `export function ${name}({ ${params.join(', ')} }) {`,
         `  const blocked = ${blockClickProps.join(' || ') || 'false'};`,
+        ...derivedLines,
         '  return (',
         `    <${tag}`,
         ...attrs.map(attr => `      ${attr}`),

@@ -312,6 +312,8 @@ function renderTemplate(n, template, parent, scope) {
                 if (control.maxlength && props[control.maxlength] != null) inputAttrs.maxLength = String(props[control.maxlength]);
                 if (control.minlength && props[control.minlength] != null) inputAttrs.minLength = String(props[control.minlength]);
                 if (stateOn(template, template.element.disabledState, props)) inputAttrs.disabled = true;
+                // A numeric control carries its limits for a press on its arrows (see press.js).
+                if (control.number) for (const [field, prop] of Object.entries(control.number)) if (props[prop] != null) inputAttrs[`data-num-${field}`] = String(props[prop]);
                 // A masked input is a password field until the state that unmasks it holds; it says which root attribute that is, so a click can retype it.
                 if (control.maskUnless) Object.assign(inputAttrs, { type: props[control.maskUnless] === true ? 'text' : 'password', 'data-mask-unless': attrOfProp(template, control.maskUnless) });
                 if (control.multiline) {

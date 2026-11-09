@@ -8,7 +8,7 @@ import { glyphFields } from './glyphs.js';
 import { canvasPartsOf, conditionHolds, literalFields, nodeFieldPatch, partWrites } from './display.js';
 import { planBindTokens, applyBindTokens } from './bind-tokens.js';
 import { resolveProps } from './instance-props.js';
-import { controlOf, iconDefOn, indexAmongLaterSlots, placementsOfDef, primarySlotOf, replacedSlotsOf, slotDefsOf } from './anatomy.js';
+import { controlOf, holderAllows, iconDefOn, indexAmongLaterSlots, managedBehavior, placementsOfDef, primarySlotOf, replacedSlotsOf, slotDefsOf } from './anatomy.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
 import { newSlotProp } from './slot-property.js';
 
@@ -16,7 +16,7 @@ import { newSlotProp } from './slot-property.js';
 export function slotWanted(template, slotId, resolved) {
     // A managed text or control slot is wanted while its own condition holds; only an icon slot is shown by icon defs.
     const anatomy = template.anatomy.find(s => s.id === slotId);
-    if (anatomy?.managed && anatomy.kind !== 'icon') return conditionHolds(anatomy.shownWhen, resolved);
+    if (anatomy?.managed && anatomy.kind !== 'icon') return conditionHolds(anatomy.shownWhen, resolved) && holderAllows(template, anatomy, resolved);
     if (replacedSlotsOf(template, resolved).includes(slotId)) return false;
     return slotDefsOf(template, slotId).some(def => iconDefOn(def, resolved) && (!def.placement || placementsOfDef(template, def, slotId).includes(String(resolved[def.placement]))));
 }
@@ -326,6 +326,8 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
         const skipped = n.behavior?.part !== undefined && (template.parts ?? []).some(p => p.id === n.behavior.part && p.shownWhen !== undefined) && !subtree.some(c => c.parentId === n.id) && writes.find(w => w.key === n.behavior.part && w.field === 'visible')?.value !== true;
         if (skipped) continue;
         const next = copy(n, ids.get(n.parentId ?? master.id));
+        // A managed container the master holds (its condition holds at the sample props) is the instance's slot-marked frame, as one made on the instance is.
+        if (n.behavior?.group !== undefined && template.anatomy.some(s => s.id === n.behavior.group && s.managed)) next.behavior = managedBehavior(n.behavior.group);
         const key = n.behavior?.part ?? n.name;
         const visible = writes.find(w => w.key === key && w.field === 'visible');
         if (visible) next.visible = visible.value;
@@ -355,11 +357,11 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
     const stubs = [];
     const stubBySlot = new Map();
     for (const slot of template.anatomy.filter(s => s.kind === 'icon' || s.managed)) {
-        if (!slotWanted(template, slot.id, resolved) || subtree.some(n => n.behavior?.slot === slot.id))
+        if (!slotWanted(template, slot.id, resolved) || subtree.some(n => n.behavior?.slot === slot.id || (slot.kind === 'frame' && n.behavior?.group === slot.id)))
             continue;
         const stub = { id: `slot-${slot.id}`, name: slot.id };
         // A slot inside a container of the anatomy hangs under the instance's copy of that container: the master's copy, or the stub made earlier in this loop.
-        const holder = slot.parent === undefined ? root : out.find(n => n.behavior?.group === slot.parent) ?? stubBySlot.get(slot.parent) ?? root;
+        const holder = slot.parent === undefined ? root : out.find(n => n.behavior?.group === slot.parent || n.behavior?.slot === slot.parent) ?? stubBySlot.get(slot.parent) ?? root;
         if (slot.kind !== 'icon') {
             stubs.push({ anatomy: template.anatomy.indexOf(slot), node: managedSlotLayer(template, slot.id, resolved, { id: id(stub), parentId: holder.id }) });
             stubBySlot.set(slot.id, stubs[stubs.length - 1].node);

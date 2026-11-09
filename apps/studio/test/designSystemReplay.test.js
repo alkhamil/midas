@@ -77,7 +77,7 @@ test('every demo instance holds the box and the handle and the label its sample 
         const sample = core.resolveProps(template, template.sampleProps ?? {});
         for (const slot of template.anatomy.filter(s => s.kind === 'frame')) {
             if (slot.shownWhen !== undefined && !core.slotWanted(template, slot.id, sample)) continue;
-            assert.ok(layers.some(n => n.behavior?.group === slot.id), `${template.id} demo holds ${slot.id}`);
+            assert.ok(layers.some(n => n.behavior?.group === slot.id || n.behavior?.slot === slot.id), `${template.id} demo holds ${slot.id}`);
         }
         // A glyph is a layer exactly while its condition holds at the sample props (a Password's eye is on from the start; a Checkbox's checkmark is not).
         for (const slot of template.anatomy.filter(s => s.kind === 'glyph')) assert.equal(layers.some(n => n.behavior?.slot === slot.id), core.slotWanted(template, slot.id, sample), `${template.id} demo ${slot.id} follows its condition`);

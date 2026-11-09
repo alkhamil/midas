@@ -24,6 +24,7 @@ const MODELS = {
     radio: generated('radio'),
     password: generated('password'),
     textarea: generated('textarea'),
+    inputnumber: generated('inputnumber'),
     button: () => {
         const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
         return { variables: { collections: model.collections, items: model.items }, binding: { variables: { variant: model.ids.variant, color: model.ids.color, size: model.ids.size } } };

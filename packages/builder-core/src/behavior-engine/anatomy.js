@@ -176,6 +176,12 @@ export function carryPlacementIcons(template, placement, prev, next) {
     return writes;
 }
 
+/** Whether the container a managed slot sits in allows it: a slot inside a conditional container exists only while the container's own condition holds (no container, no content). */
+export function holderAllows(template, slot, values) {
+    const holder = slot.parent === undefined ? undefined : template.anatomy.find(s => s.id === slot.parent);
+    return holder?.shownWhen === undefined || conditionHolds(holder.shownWhen, values);
+}
+
 /** Whether a template's anatomy declares a required text or control slot (its label). A template without one has no label to order against. */
 export function hasTextSlot(template) {
     return template.anatomy.some(s => (s.kind === 'text' || s.kind === 'control') && !s.optional);
@@ -240,7 +246,7 @@ export function planAnatomy(template, values, children, flip = false) {
     }
     // A managed text or control layer is wanted while its slot's condition holds; its text is the prop's, so it carries no component.
     for (const slot of template.anatomy) {
-        if (slot.managed && slot.kind !== 'icon' && conditionHolds(slot.shownWhen, values) && !wanted.some(w => w.slot === slot.id)) wanted.push({ slot: slot.id, component: null });
+        if (slot.managed && slot.kind !== 'icon' && conditionHolds(slot.shownWhen, values) && holderAllows(template, slot, values) && !wanted.some(w => w.slot === slot.id)) wanted.push({ slot: slot.id, component: null });
     }
     const want = new Set(wanted.map(w => w.slot));
     /** @type {AnatomyOp[]} */
