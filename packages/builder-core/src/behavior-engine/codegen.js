@@ -9,7 +9,7 @@ import { pathCommands, svgPathD } from '../geometry/shapes.js';
 import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js';
 import { cssVarOf, splitColor, tokenValueOf } from './tokens.js';
 import { glyphFillRuleAttr, glyphPathD } from './glyphs.js';
-import { resizeHeight, resizeLimits, startResizeDrag } from '../prototype/press.js';
+import { commitNumber, resizeHeight, resizeLimits, startResizeDrag } from '../prototype/press.js';
 import { glyphTests } from './validate-schema.js';
 
 /** A camelCase name as kebab-case (the custom properties and data attributes a prop is written as). */
@@ -149,6 +149,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         params.push(event.name);
     }
     // A pressable glyph reports its press: a toggle the next value of its prop, a step its direction.
+    if (controlOf(template)?.number) params.push('onCommit');
     for (const entry of (template.press ?? []).filter(p => !p.resize)) { const name = entry.toggle !== undefined ? toggleCallback(entry.toggle) : 'onStep'; if (!params.includes(name)) params.push(name); }
     // A derived boolean (the value has reached a limit) is read from the others in the component, never passed in.
     const derivedLines = Object.entries(template.props).filter(([, def]) => def.derived !== undefined).map(([prop, { derived }]) => `  const ${prop} = ${derived.limit} != null && Number(${derived.value}) ${derived.cmp === 'gte' ? '>=' : '<='} ${derived.limit} && String(${derived.value} ?? "") !== "";`);
@@ -210,7 +211,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             if (!template.props[slot.id] && !isControl) problems.push({ slot: slot.id, reason: 'no-prop' });
             // A control slot is an input holding the value prop (and the placeholder beside it), not a span.
             const label = control && control.slot === slot.id
-                ? `<${control.multiline ? (control.multiline.when ? 'Control' : 'textarea') : 'input'} className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderCondition(template, control)}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''}${control.maskUnless ? ` type={${control.maskWhen ? `(${shownJsx(control.maskWhen)}) && !${control.maskUnless}` : `!${control.maskUnless}`} ? "password" : undefined}` : ''}${control.multiline ? ` rows={${control.multiline.when ? `(${shownJsx(control.multiline.when)}) ? ${control.multiline.rows} : undefined` : control.multiline.rows}}` : ''}${control.number ? ` min={${control.number.min} ?? undefined} max={${control.number.max} ?? undefined} step={${control.number.step}}` : ''} disabled={${disabledProp}} />`
+                ? `<${control.multiline ? (control.multiline.when ? 'Control' : 'textarea') : 'input'} className="${template.id}-${slot.id}" ${control.number ? `defaultValue={${control.value}} key={${control.value}} data-committed={${control.value}}` : `value={${control.value}}`}${control.placeholder ? ` placeholder={${placeholderCondition(template, control)}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''}${control.maskUnless ? ` type={${control.maskWhen ? `(${shownJsx(control.maskWhen)}) && !${control.maskUnless}` : `!${control.maskUnless}`} ? "password" : undefined}` : ''}${control.multiline ? ` rows={${control.multiline.when ? `(${shownJsx(control.multiline.when)}) ? ${control.multiline.rows} : undefined` : control.multiline.rows}}` : ''}${control.number ? ` min={${control.number.min} ?? undefined} max={${control.number.max} ?? undefined} step={${control.number.step}} onBlur={(e) => { const next = commitNumber(e.target.value, e.target.dataset.committed ?? "", { min: ${control.number.min} ?? null, max: ${control.number.max} ?? null, precision: ${control.number.precision} ?? null }); e.target.value = next; e.target.dataset.committed = next; onCommit?.(next); }}` : ''} disabled={${disabledProp}} />`
                 : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
             // The control is always written: the input holds the value and the placeholder whether or not the canvas has a layer for them.
             out.push(isControl ? label : slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
@@ -325,6 +326,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         '  );',
         '}',
         ...subcomponentLines(template, name),
+        ...controlOf(template)?.number ? ['', `const commitNumber = ${commitNumber.toString()};`] : [],
         ...(template.press ?? []).some(p => p.resize) ? ['', `const resizeLimits = ${resizeLimits.toString()};`, `const resizeHeight = ${resizeHeight.toString()};`, `const startResizeDrag = ${startResizeDrag.toString()};`] : [],
         ...(template.interaction?.wave ? ['', 'function waveDown(el) {', "  if (!el || el.disabled) return;", "  el.removeAttribute('data-wave-on');", '  void el.offsetWidth;', "  el.setAttribute('data-wave-on', '');", '}'] : []),
         '',
@@ -436,7 +438,7 @@ function displayRules(template, master, childrenOf, geometry) {
             const { css, perMember } = NODE_PROPERTIES[kind][prop];
             if (!css || !tokens.includes(source)) continue;
             if (perMember) { for (const name of css) decls.push(`  ${name}: var(${cssVarOf(template.id, source)}-${name});\n`); continue; }
-            for (const name of [css].flat()) { if (key === 'root' && (prop === 'paddingX' || prop === 'paddingY')) { const bw = rootBorderWidthOf(master); if (bw > 0) { decls.push(`  ${name}: max(0px, calc(var(${cssVarOf(template.id, source)}) - ${bw}px));\n`); continue; } } decls.push(`  ${name}: var(${cssVarOf(template.id, source)});\n`); }
+            for (const name of [css].flat()) { if (key === 'root' && (prop === 'paddingX' || prop === 'paddingY' || prop === 'paddingStart' || prop === 'paddingEnd')) { const bw = rootBorderWidthOf(master); if (bw > 0) { decls.push(`  ${name}: max(0px, calc(var(${cssVarOf(template.id, source)}) - ${bw}px));\n`); continue; } } decls.push(`  ${name}: var(${cssVarOf(template.id, source)});\n`); }
         }
         if (!decls.length) return '';
         const selector = key === 'root' ? `.${template.id}` : `.${template.id}-${key}`;
@@ -543,6 +545,22 @@ function motionRules(template) {
     }
     if (motion.press) {
         const { key, token, prop, grow } = motion.press;
+/**
+ * The handler column that appears on hover or focus (`reveal`): drawn on the canvas always, here transparent until the control is hovered or holds focus, over the time
+ * antd gives it (motionDurationMid). A disabled control never reveals it, and reduced motion shows the change at once.
+ * @param {any} template
+ * @returns {string[]}
+ */
+function revealRules(template) {
+    if (!template.reveal) return [];
+    const id = template.id, slot = `.${id}-${template.reveal.slot}`, off = ':not(:has(:disabled))';
+    return [
+        `${slot} {\n  opacity: 0;\n  pointer-events: none;\n  transition: opacity ${template.reveal.duration};\n}\n`,
+        `.${id}:hover${off} ${slot},\n.${id}:focus-within${off} ${slot} {\n  opacity: 1;\n  pointer-events: auto;\n}\n`,
+        `@media (prefers-reduced-motion: reduce) {\n  ${slot} {\n    transition: none;\n  }\n}\n`,
+    ];
+}
+
         out.push(`.${template.id}:active${notDis} .${template.id}-${key} {\n  ${prop}: calc(var(${cssVarOf(template.id, token)}) + ${grow});\n}\n`);
     }
     return out;
@@ -739,7 +757,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     blocks.push(...iconHoverRules(template), ...blockedRules(template));
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
-    blocks.push(...fieldRules(template), ...multilineRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
+    blocks.push(...fieldRules(template), ...multilineRules(template), ...revealRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
     if (template.interaction || template.motion) blocks.push(reducedMotion(template));
     return blocks.join('\n');
 }

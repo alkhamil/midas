@@ -88,7 +88,7 @@ export function masterPanel(master, collections) {
     });
     const contractProps = [];
     for (const [name, def] of Object.entries(template.props)) {
-        if (def.source === 'literal' && !isIconRelated(template, name)) contractProps.push({ name, type: def.type, default: def.default });
+        if (def.source === 'literal' && def.derived === undefined && !isIconRelated(template, name)) contractProps.push({ name, type: def.type, default: def.default });
     }
     const contract = {
         props: contractProps,
@@ -139,6 +139,8 @@ export function instancePanel(instance, master, collections, modes) {
     ];
     const rows = [];
     for (const [name, def] of Object.entries(template.props)) {
+        // A derived prop is read from the others, so there is nothing to set.
+        if (def.derived !== undefined) continue;
         if (def.source === 'variable') {
             const collection = collections.find(c => c.id === binding.variables[name]);
             rows.push({

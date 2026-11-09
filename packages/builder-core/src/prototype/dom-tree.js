@@ -314,6 +314,8 @@ function renderTemplate(n, template, parent, scope) {
                 if (stateOn(template, template.element.disabledState, props)) inputAttrs.disabled = true;
                 // A numeric control carries its limits for a press on its arrows (see press.js).
                 if (control.number) for (const [field, prop] of Object.entries(control.number)) if (props[prop] != null) inputAttrs[`data-num-${field}`] = String(props[prop]);
+                // The last committed value, which a blur restores when the typed text is not a number (see blurNumber).
+                if (control.number) inputAttrs['data-committed'] = String(props[control.value] ?? '');
                 // A masked input is a password field until the state that unmasks it holds; it says which root attribute that is, so a click can retype it.
                 if (control.maskUnless && (control.maskWhen === undefined || conditionHolds(control.maskWhen, props))) Object.assign(inputAttrs, { type: props[control.maskUnless] === true ? 'text' : 'password', 'data-mask-unless': attrOfProp(template, control.maskUnless) });
                 if (multilineOf(template, props)) {

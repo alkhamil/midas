@@ -39,7 +39,8 @@ function propProblems(name, def, props) {
         if (def.derived !== undefined) {
             const d = def.derived;
             const readable = n => props[n]?.source === 'literal' && (props[n].type === 'number' || props[n].type === 'string');
-            if (def.type !== 'boolean' || !isPlainObject(d) || !readable(d.value) || props[d.limit]?.type !== 'number' || !['gte', 'lte'].includes(d.cmp)) out.push(`prop "${name}" derived must be { value, limit, cmp: gte | lte } on a boolean prop, over a text or number prop and a number prop`);
+            if (def.type === 'boolean' && isPlainObject(d) && d.when !== undefined) out.push(...conditionProblems(d.when, props, `prop "${name}" derived when`));
+            else if (def.type !== 'boolean' || !isPlainObject(d) || !readable(d.value) || props[d.limit]?.type !== 'number' || !['gte', 'lte'].includes(d.cmp)) out.push(`prop "${name}" derived must be { when } or { value, limit, cmp: gte | lte } on a boolean prop (the second over a text or number prop and a number prop)`);
         }
         if (def.defaultMode !== undefined && !(Array.isArray(def.modes) && def.modes.includes(def.defaultMode))) out.push(`prop "${name}" defaultMode "${def.defaultMode}" is not one of its modes`);
         if (def.atMost !== undefined && (def.type !== 'number' || props[def.atMost]?.type !== 'number')) out.push(`prop "${name}" atMost must name a number prop`);
@@ -229,6 +230,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
     out.push(...motionProblems(schema, allTokens));
     out.push(...toggleProblems(schema));
     out.push(...pressProblems(schema));
+    out.push(...revealProblems(schema));
     out.push(...nodeProblems(schema));
     out.push(...outlineProblems(schema));
     if (!Array.isArray(schema.events)) out.push('events must be a list');
@@ -615,6 +617,22 @@ function pressProblems(schema) {
             if (!isPlainObject(schema.control?.number)) out.push(`press step on "${entry.slot}" needs a control with number limits`);
         }
     }
+    return out;
+}
+
+/**
+ * Problems in `reveal`: the container of the anatomy that Play and the export show only while the control is hovered or has focus (antd's handler column), and the
+ * time it takes. The canvas always draws it.
+ * @param {any} schema
+ * @returns {string[]}
+ */
+function revealProblems(schema) {
+    if (schema.reveal === undefined) return [];
+    if (!isPlainObject(schema.reveal)) return ['reveal must be an object'];
+    const slot = (Array.isArray(schema.anatomy) ? schema.anatomy : []).find(s => isPlainObject(s) && s.id === schema.reveal.slot);
+    const out = [];
+    if (slot?.kind !== 'frame') out.push(`reveal names "${schema.reveal.slot}", which is not a frame slot`);
+    if (typeof schema.reveal.duration !== 'string' || !/^[0-9.]+m?s$/.test(schema.reveal.duration)) out.push('reveal duration must be a time such as 0.2s');
     return out;
 }
 

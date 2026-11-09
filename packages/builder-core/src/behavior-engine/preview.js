@@ -16,19 +16,23 @@ export function activeStateOf(template, props, preview) {
     const names = [];
     /** @type {Record<string, string>} */
     const overrides = {};
+    /** @type {Record<string, string>} */
+    const markerOverrides = {};
     for (const [own, alias] of Object.entries(template.persistentStates)) {
-        // A marker state only says a switch to the stylesheet (a data attribute the glyphs follow): it changes no token, so it is never the state the instance is in.
-        if (props[alias.prop] !== true || alias.marker === true) continue;
+        if (props[alias.prop] !== true) continue;
+        // A marker state is never the state the instance is in (a hover still shows over it): it says a switch to the stylesheet (a data attribute the glyphs follow) and may swap
+        // a token that is not a colour of the interaction (the padding an attached handler column leaves).
+        if (alias.marker === true) { Object.assign(markerOverrides, alias.tokens); continue; }
         // An alias is the state it names turned on by its own prop: it draws that state.
         const name = alias.as ?? own, def = template.persistentStates[name];
         if (!names.includes(name)) names.push(name);
         Object.assign(overrides, def.tokens);
     }
-    if (names.length) return { state: names.join('+'), overrides };
-    if (preview === 'default') return { state: 'default', overrides };
+    if (names.length) return { state: names.join('+'), overrides: { ...markerOverrides, ...overrides } };
+    if (preview === 'default') return { state: 'default', overrides: markerOverrides };
     const def = template.previewStates[preview];
     if (!def) throw new Error(`${template.id}: unknown preview state "${preview}"`);
-    return { state: preview, overrides: { ...def } };
+    return { state: preview, overrides: { ...markerOverrides, ...def } };
 }
 
 /**

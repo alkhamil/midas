@@ -49,13 +49,33 @@ export function applyPress(target) {
         for (const el of root.querySelectorAll('[data-mask-unless]')) el.type = root.hasAttribute(el.getAttribute('data-mask-unless')) ? 'text' : 'password';
         return true;
     }
-    if (!input) return false;
+    // The resize grip drags (see startResizeDrag); only an arrow steps.
+    if (glyph.getAttribute('data-press') !== 'step' || !input) return false;
     const min = numberOf(input.getAttribute('data-num-min')), max = numberOf(input.getAttribute('data-num-max'));
     const next = stepValue(String(input.value ?? ''), Number(glyph.getAttribute('data-press-step')) === -1 ? -1 : 1, { min, max, step: numberOf(input.getAttribute('data-num-step')) ?? 1, precision: numberOf(input.getAttribute('data-num-precision')) });
     input.value = next;
+    input.setAttribute('data-committed', next);
     write(AT_MIN_ATTR, min !== null && Number(next) <= min);
     write(AT_MAX_ATTR, max !== null && Number(next) >= max);
     return true;
+}
+
+/**
+ * A number input losing focus (Play): the typed text commits as commitNumber says (a valid number, clamped and rounded; anything else is discarded for the last committed value),
+ * and the root says whether a limit is reached.
+ * @param {any} input the number input; it carries its limits (data-num-*) and the last committed value (data-committed)
+ * @returns {string} the value it holds now
+ */
+export function blurNumber(input) {
+    const root = input.closest?.('[data-press-root]');
+    const min = numberOf(input.getAttribute('data-num-min')), max = numberOf(input.getAttribute('data-num-max'));
+    const next = commitNumber(String(input.value ?? ''), input.getAttribute('data-committed') ?? '', { min, max, precision: numberOf(input.getAttribute('data-num-precision')) });
+    input.value = next;
+    input.setAttribute('data-committed', next);
+    const write = (name, on) => (on ? root?.setAttribute(name, '') : root?.removeAttribute(name));
+    write(AT_MIN_ATTR, next !== '' && min !== null && Number(next) <= min);
+    write(AT_MAX_ATTR, next !== '' && max !== null && Number(next) >= max);
+    return next;
 }
 
 /**

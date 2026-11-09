@@ -78,7 +78,7 @@ export function layerSpecsOf(template) {
 function nodeOf(spec, template, binding, idOf, parentId) {
     const id = idOf(spec.key);
     if (spec.role === 'group') {
-        return { ...LAYER, id, name: spec.key, type: 'frame', parentId, w: 0, h: 0, layout: spec.slot.layout, gap: 0, padding: 0, fills: [], layoutSizingH: spec.slot.fill === true ? 'fill' : 'hug', layoutSizingV: 'hug', ...(spec.slot.primaryAlign ? { primaryAlign: spec.slot.primaryAlign } : {}), ...(spec.slot.counterAlign ? { counterAlign: spec.slot.counterAlign } : {}), behavior: { version: BEHAVIOR_DATA_VERSION, group: spec.key } };
+        return { ...LAYER, id, name: spec.key, type: 'frame', parentId, w: 0, h: 0, layout: spec.slot.layout, gap: 0, padding: 0, fills: [], layoutSizingH: spec.slot.fill === true ? 'fill' : 'hug', layoutSizingV: spec.slot.fillV === true ? 'fill' : 'hug', ...(spec.slot.primaryAlign ? { primaryAlign: spec.slot.primaryAlign } : {}), ...(spec.slot.counterAlign ? { counterAlign: spec.slot.counterAlign } : {}), behavior: { version: BEHAVIOR_DATA_VERSION, group: spec.key } };
     }
     if (spec.role === 'content') {
         return { ...LAYER, id, name: spec.content.name, type: 'frame', parentId, w: 0, h: 0, layout: spec.content.layout, gap: 0, padding: 0, fills: [], layoutSizingH: spec.content.fill === true ? 'fill' : 'hug', layoutSizingV: 'hug', propBind: { slot: spec.key } };

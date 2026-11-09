@@ -19,6 +19,8 @@ export const NODE_PROPERTIES = {
         paddingEnd: { kind: 'length', css: 'padding-inline-end' },
         gap: { kind: 'length', css: 'gap' },
         height: { kind: 'length', css: 'height' },
+        // The corners at the end side only (the right ones in a left to right row): a handler column attached to the right edge.
+        radiusEnd: { kind: 'length', css: ['border-top-right-radius', 'border-bottom-right-radius'] },
         // A floor under the box's height: the box hugs its content and is never shorter than the token.
         minHeight: { kind: 'length', css: 'min-height' },
         // A fixed width from a token, bound through the w variable like the height through h.
@@ -41,6 +43,9 @@ export const NODE_PROPERTIES = {
     glyph: {
         fill: { kind: 'color', css: 'color' },
         size: { kind: 'length', css: ['width', 'height'] },
+        // A stretched glyph (the stepper's divider is a bar a column wide and a line thick) sizes its axes apart.
+        width: { kind: 'length', css: 'width' },
+        height: { kind: 'length', css: 'height' },
     },
     // An arc part (the spinner) is an SVG drawn with `currentColor`: its colour is the CSS colour, and it is the icon size wide and high.
     arc: {
@@ -308,6 +313,7 @@ export const VARIABLE_KEYS = {
     width: ['w'],
     minWidth: ['minW'],
     minHeight: ['minH'],
+    radiusEnd: ['rTR', 'rBR'],
     size: ['w', 'h'],
     shadow: ['effects'],
 };

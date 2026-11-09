@@ -56,15 +56,15 @@ test('atMin and atMax are read from the value and the limits, and are never stor
 
 test('the master is the root, the placeholder and the empty stepper container; a fresh instance has the container with both arrows', () => {
     assert.deepEqual(model.created.map(n => n.name), ['placeholder', 'stepper'], 'the arrows are instance layers; the container is there while controls is on at the sample props');
-    assert.deepEqual(names({}), ['placeholder', 'stepper', 'stepUp', 'stepDown']);
+    assert.deepEqual(names({}), ['placeholder', 'stepper', 'stepUp', 'stepDivider', 'stepDown']);
 });
 
 test('controls off, or the position none, removes the stepper with its arrows; turning it back on makes them again', () => {
     assert.deepEqual(names({ controls: false }), ['placeholder']);
     assert.deepEqual(names({ controlsPosition: 'none' }), ['placeholder']);
-    const held = instanceFor(model, { ...base }).slice(1).map(n => ({ id: n.id, slot: n.behavior?.slot ?? null, name: n.name, ...(n.behavior?.slot === 'stepUp' || n.behavior?.slot === 'stepDown' ? { parent: 'stepper' } : {}) }));
+    const held = instanceFor(model, { ...base }).slice(1).map(n => ({ id: n.id, slot: n.behavior?.slot ?? null, name: n.name, ...(['stepUp', 'stepDivider', 'stepDown'].includes(n.behavior?.slot) ? { parent: 'stepper' } : {}) }));
     const off = planAnatomy(number, resolveProps(number, { ...base, controls: false }), held);
-    assert.deepEqual(off.map(o => o.op), ['remove', 'remove', 'remove'], 'the container and both arrows go');
+    assert.deepEqual(off.map(o => o.op), ['remove', 'remove', 'remove', 'remove'], 'the container, both arrows and the divider go');
     assert.deepEqual(planAnatomy(number, resolveProps(number, base), held), [], 'the plan converges');
 });
 
@@ -72,7 +72,7 @@ test('the arrows sit in the stepper, which sits after the suffix; a prefix and a
     const nodes = instanceFor(model, { ...base, hasSuffix: true, suffixText: 'kg' });
     assert.deepEqual(nodes.slice(1).filter(n => n.parentId === nodes[0].id).map(n => n.name), ['placeholder', 'suffixText', 'stepper']);
     const stepper = nodes.find(n => n.name === 'stepper');
-    assert.deepEqual(nodes.filter(n => n.parentId === stepper.id).map(n => n.name), ['stepUp', 'stepDown']);
+    assert.deepEqual(nodes.filter(n => n.parentId === stepper.id).map(n => n.name), ['stepUp', 'stepDivider', 'stepDown']);
     assert.equal(stepper.layout, 'vertical');
 });
 
@@ -117,7 +117,7 @@ test('the export computes the limits from the props, reports a press, and recolo
     assert.match(jsx, /onStep/);
     assert.match(jsx, /data-at-max=\{atMax \|\| undefined\}/);
     assert.match(jsx, /onClick=\{\(\) => \{ if \(!\(disabled \|\| readOnly\)\) onStep\?\.\(1\); \}\}/);
-    assert.match(jsx, /\{\(\(controls === true\) && \(controlsPosition === "right"\)\) && <div className="inputnumber-stepper">/);
+    assert.match(jsx, /\{\(noStepper === false\) && <div className="inputnumber-stepper">/);
     assert.match(css, /\[data-at-max\]:not\(:has\(:disabled\)\) \{\s*--inputnumber-step-up-fg: #/, 'a limit swaps the arrow colour token on the root');
     assert.match(css, /\.inputnumber-stepUp \{[^}]*cursor: pointer/);
 });

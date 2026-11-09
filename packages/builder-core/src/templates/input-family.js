@@ -17,7 +17,7 @@ export const COUNT = { anatomy: ['count'], icons: [], props: ['showCount'], toke
  * A family member: INPUT without `dropped`, plus `added`.
  * @param {{
  *   id: string, name: string, sampleProps: Record<string, string>,
- *   dropped?: { anatomy?: string[], icons?: string[], props?: string[], tokens?: string[], playOnly?: string[] },
+ *   dropped?: { anatomy?: string[], icons?: string[], props?: string[], tokens?: string[], playOnly?: string[], display?: Record<string, string[]> },
  *   added?: Partial<TemplateSchema> & { anatomyBefore?: Record<string, string>, anatomyPatch?: Record<string, Record<string, unknown>>, propPatch?: Record<string, Record<string, unknown>> },
  * }} spec
  * @returns {TemplateSchema}
@@ -33,6 +33,7 @@ export function inputFamily({ id, name, sampleProps, dropped = CLEAR, added = {}
     out.icons = out.icons.filter(d => !(dropped.icons ?? []).includes(d.slot));
     for (const prop of dropped.props ?? []) delete out.props[prop];
     for (const key of dropped.anatomy ?? []) delete out.display[key];
+    for (const [key, list] of Object.entries(dropped.display ?? {})) for (const prop of list) delete out.display[key][prop];
     for (const group of Object.keys(out.tokens)) out.tokens[group] = out.tokens[group].filter(t => !gone.has(t));
     for (const table of [out.tokenKinds, out.tokenRoles]) for (const t of gone) delete table[t];
     out.playOnly = out.playOnly.filter(p => !(dropped.playOnly ?? []).includes(p.id));
