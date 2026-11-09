@@ -20,6 +20,7 @@ const generated = id => () => { const m = modelFor(TEMPLATES.get(id)); return { 
 /** The variable model and binding each registered template is checked with. */
 const MODELS = {
     checkbox: generated('checkbox'),
+    'antd-badge': generated('antd-badge'),
     switch: generated('switch'),
     radio: generated('radio'),
     inputnumber: generated('inputnumber'),
