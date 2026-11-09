@@ -17,8 +17,8 @@ export const BADGE = {
     name: 'Badge',
     primarySlot: 'countText',
     sampleProps: { count: 5 },
-    // The root is never a control; a zero count hides it (the hiding state), which is the state its element reads as disabled (no interaction).
-    element: { tag: 'span', attrs: {}, disabledState: 'zeroHidden', blockClickProps: [] },
+    // A non-interactive element: no disabled state, so no disabled attribute, rule or guard.
+    element: { tag: 'span', attrs: {}, blockClickProps: [] },
     anatomy: [
         { id: 'pill', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center', managed: true, shownWhen: { prop: 'type', is: 'count' } },
         { id: 'countText', kind: 'text', parent: 'pill', optional: true, managed: true, typography: 'count', shownWhen: { prop: 'type', is: 'count' }, text: { overflow: { value: 'count', limit: 'overflowCount' } } },
@@ -61,7 +61,7 @@ export const BADGE = {
         'badge-height': 'badge-height', 'badge-dot': 'badge-dot', 'badge-padding-x': 'badge-padding-x', 'radius-full': 'radius-full', gap: 'gap-xs',
         countTypography: 'text-xs', labelTypography: 'text-xs',
     },
-    // The hiding state: an attribute the stylesheet hides the root by. It replaces no token; it is the state the element reads as disabled (no interaction).
+    // The hiding state: an attribute the stylesheet hides the root by. It replaces no token.
     persistentStates: { zeroHidden: { prop: 'zeroHidden', tokens: {}, hide: true } },
     previewStates: {},
     statePseudo: { zeroHidden: '[data-zero-hidden]' },

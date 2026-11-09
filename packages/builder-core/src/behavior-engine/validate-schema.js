@@ -337,7 +337,8 @@ function elementProblems(schema) {
     const out = [];
     if (!isName(el.tag)) out.push('element has no tag');
     if (!isPlainObject(el.attrs)) out.push('element attrs must be an object');
-    if (!isPlainObject(schema.persistentStates) || !(el.disabledState in schema.persistentStates)) out.push(`element disabledState "${el.disabledState}" is not a persistent state`);
+    // A template may declare no disabled state (a non-interactive one); a name it does declare must be a persistent state.
+    if (el.disabledState !== undefined && (!isPlainObject(schema.persistentStates) || !(el.disabledState in schema.persistentStates))) out.push(`element disabledState "${el.disabledState}" is not a persistent state`);
     if (!Array.isArray(el.blockClickProps)) out.push('element blockClickProps must be a list');
     else for (const prop of el.blockClickProps) {
         const def = isPlainObject(schema.props) ? schema.props[prop] : undefined;

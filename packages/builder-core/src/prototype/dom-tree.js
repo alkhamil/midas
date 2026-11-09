@@ -266,7 +266,7 @@ function renderTemplate(n, template, parent, scope) {
     if (toggle) Object.assign(attrs, { 'data-toggle': toggle.attr, ...(toggle.clearsAttr ? { 'data-toggle-clears': toggle.clearsAttr } : {}), ...(toggle.once ? { 'data-toggle-once': true } : {}), 'aria-checked': ariaCheckedOf(template, props) });
     // A template with pressable glyphs marks its root, so a click finds the control it acts on (see press.js).
     if (template.press?.length) attrs['data-press-root'] = '';
-    if (!control && stateOn(template, template.element.disabledState, props)) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true', tabindex: '-1' });
+    if (!control && template.element.disabledState !== undefined && stateOn(template, template.element.disabledState, props)) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true', tabindex: '-1' });
     // A layer that blocks its click (a loading Button) stays enabled, but its clicks fire nothing (see isDisabledTarget).
     if (template.element.blockClickProps.some(prop => props[prop] === true)) attrs['data-blocked'] = true;
     const children = [];
@@ -311,7 +311,7 @@ function renderTemplate(n, template, parent, scope) {
                 if (control.readonly && props[control.readonly] === true) inputAttrs.readOnly = true;
                 if (control.maxlength && props[control.maxlength] != null) inputAttrs.maxLength = String(props[control.maxlength]);
                 if (control.minlength && props[control.minlength] != null) inputAttrs.minLength = String(props[control.minlength]);
-                if (stateOn(template, template.element.disabledState, props)) inputAttrs.disabled = true;
+                if (template.element.disabledState !== undefined && stateOn(template, template.element.disabledState, props)) inputAttrs.disabled = true;
                 // A numeric control carries its limits for a press on its arrows (see press.js).
                 if (control.number) for (const [field, prop] of Object.entries(control.number)) if (props[prop] != null) inputAttrs[`data-num-${field}`] = String(props[prop]);
                 // The last committed value, which a blur restores when the typed text is not a number (see blurNumber).

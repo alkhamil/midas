@@ -57,6 +57,20 @@ const DISABLEABLE = new Set(['button', 'input', 'select', 'textarea', 'fieldset'
  */
 const pseudoOf = (template, state) => (state === template.element.disabledState && !DISABLEABLE.has(template.element.tag) ? '[aria-disabled="true"]' : template.statePseudo[state]);
 
+/** The disabled pseudo-class of a template, or '' when it declares no disabled state (a non-interactive one). */
+const disabledPseudoOf = template => (template.element.disabledState === undefined ? '' : pseudoOf(template, template.element.disabledState));
+
+/** `:not(<disabled>)` for the interaction rules, or '' when the template has no disabled state. */
+const notDisabledOf = template => (disabledPseudoOf(template) ? `:not(${disabledPseudoOf(template)})` : '');
+
+/** The props that turn the disabled state on (its own prop and each alias of it), joined for a condition; '' when the template has no disabled state. */
+const disabledPropsOf = template => {
+    const off = template.element.disabledState;
+    if (off === undefined || !template.persistentStates[off]) return '';
+    const own = template.persistentStates[off].prop;
+    return Object.values(template.persistentStates).filter(def => def.prop === own || def.as === off).map(def => def.prop).join(' || ');
+};
+
 /** The DOM handler type each schema event is typed with in a .tsx (the element type fills the generic). */
 const EVENT_TYPE = { onClick: 'MouseEventHandler', onHover: 'MouseEventHandler', onFocus: 'FocusEventHandler', onBlur: 'FocusEventHandler' };
 
@@ -131,10 +145,9 @@ const toggleCallback = prop => `on${prop[0].toUpperCase()}${prop.slice(1)}Change
 function pressHandlerJsx(template, slot) {
     const entry = (template.press ?? []).find(p => p.slot === slot.id);
     if (!entry) return '';
-    const off = template.persistentStates[template.element.disabledState].prop;
-    const disabled = Object.values(template.persistentStates).filter(def => def.prop === off || def.as === template.element.disabledState).map(def => def.prop).join(' || ');
-    if (entry.resize) return ` onPointerDown={(e) => { if (${disabled}) return; const drag = startResizeDrag(e.currentTarget.closest("[data-field-box]"), e.clientY, (el) => getComputedStyle(el)); if (!drag) return; e.preventDefault(); const move = (m) => drag.move(m.clientY); const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); }; window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); }}`;
-    return entry.toggle !== undefined ? ` onClick={() => { if (!(${disabled})) ${toggleCallback(entry.toggle)}?.(!${entry.toggle}); }}` : ` onClick={() => { if (!(${disabled})) onStep?.(${entry.step}); }}`;
+    const disabled = disabledPropsOf(template);
+    if (entry.resize) return ` onPointerDown={(e) => { ${disabled ? `if (${disabled}) return; ` : ''}const drag = startResizeDrag(e.currentTarget.closest("[data-field-box]"), e.clientY, (el) => getComputedStyle(el)); if (!drag) return; e.preventDefault(); const move = (m) => drag.move(m.clientY); const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); }; window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); }}`;
+    return entry.toggle !== undefined ? ` onClick={() => { ${disabled ? `if (!(${disabled})) ` : ''}${toggleCallback(entry.toggle)}?.(!${entry.toggle}); }}` : ` onClick={() => { ${disabled ? `if (!(${disabled})) ` : ''}onStep?.(${entry.step}); }}`;
 }
 
 /** `Input.Password = ...`: a sub-component is the component with some props fixed, as antd names them. */
@@ -184,7 +197,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     }
     const varsExpr = varPairs.length ? `{ ${varPairs.join(', ')} }` : null;
     // Whatever turns the disabled state on: its own prop, and the prop of each state that is an alias of it (the Input's Read only).
-    const disabledProp = Object.values(template.persistentStates).filter(def => def.prop === template.persistentStates[template.element.disabledState].prop || def.as === template.element.disabledState).map(def => def.prop).join(' || ');
+    const disabledProp = disabledPropsOf(template);
     const children = [];
     // The canvas frame parts (the spinner) are drawn as the canvas places them: before the first text layer. An arc is an SVG path
     // of the same geometry the canvas and Play draw, shown while its condition holds (at rest: the turn is Play's).
@@ -277,7 +290,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         const guard = slot.repeat ? `${slot.id}Copies > 0` : `filled(${prop})`;
         children.push(slot.showEmpty === true ? element : `{${guard} && ${element}}`);
     }
-    const { tag, attrs: tagAttrs, disabledState, blockClickProps } = template.element;
+    const { tag, attrs: tagAttrs, blockClickProps } = template.element;
     const dims = variableProps(template).map(([prop]) => prop);
     const attrs = [
         ...Object.entries(tagAttrs).map(([key, value]) => `${key === 'tabindex' ? 'tabIndex' : key}="${value}"`),
@@ -296,7 +309,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         // A prop that aligns the row's content to the end says which end as a data attribute (a Switch's handle).
         ...fieldWritersOf(template).filter(w => w.field === 'primaryAlign').map(w => `data-${w.prop}-align={${alignExprOf(w)}}`),
         // Only some elements have a `disabled` attribute; any other root says it with aria-disabled (and the schema's state pseudo selects on it).
-        ...(ctl ? [] : [DISABLEABLE.has(tag) ? `disabled={${disabledProp}}` : `aria-disabled={${disabledProp} || undefined}`]),
+        ...(ctl || !disabledProp ? [] : [DISABLEABLE.has(tag) ? `disabled={${disabledProp}}` : `aria-disabled={${disabledProp} || undefined}`]),
         // A root whose click a prop blocks says so, so the loading rule (see blockedRules) matches in Play and in the export alike.
         ...(blockClickProps.length ? ['data-blocked={blocked || undefined}'] : []),
         ...template.events.map(event => `${DOM_EVENT[event.name]}={${event.name === 'onClick' ? (template.interaction?.wave ? 'blocked ? undefined : (e) => { if (onClick) onClick(e); waveDown(e.currentTarget); }' : 'blocked ? undefined : onClick') : event.name}}`),
@@ -501,7 +514,7 @@ function lineStyleOf(master) {
  * @returns {string[]}
  */
 function iconHoverRules(template) {
-    const guard = template.focusTarget === 'wrapper' ? ':not(:has(:disabled))' : `:not(${pseudoOf(template, template.element.disabledState)})`;
+    const guard = template.focusTarget === 'wrapper' ? ':not(:has(:disabled))' : notDisabledOf(template);
     return iconDefsOf(template).filter(def => def.tokens?.hoverColour !== undefined && def.slot !== undefined)
         .map(def => `.${template.id}${guard} .${template.id}-${def.slot}:hover {\n  color: var(${cssVarOf(template.id, def.tokens.hoverColour)});\n}\n`);
 }
@@ -551,14 +564,14 @@ function motionRules(template) {
     const motion = template.motion;
     if (!motion) return [];
     const out = [];
-    const dis = pseudoOf(template, template.element.disabledState);
-    const notDis = `:not(${dis})`;
+    const dis = disabledPseudoOf(template);
+    const notDis = notDisabledOf(template);
     const selOf = key => key === 'root' ? `.${template.id}` : `.${template.id}-${key}`;
     for (const t of motion.transitions ?? []) {
         const sel = selOf(t.key);
         out.push(`${sel} {\n  transition: ${t.props.map(p => `${p} ${t.duration} ${t.timing}${t.delay ? ` ${t.delay}` : ''}`).join(', ')};\n}\n`);
         // A control taking the disabled state swaps colours with no transition, so the swap is instant.
-        out.push(`${t.key === 'root' ? `.${template.id}${dis}` : `.${template.id}${dis} ${sel}`} {\n  transition: none;\n}\n`);
+        if (dis) out.push(`${t.key === 'root' ? `.${template.id}${dis}` : `.${template.id}${dis} ${sel}`} {\n  transition: none;\n}\n`);
     }
     for (const a of motion.appearances ?? []) {
         const name = `midas-${template.id}-${a.key}-in`;
@@ -598,7 +611,7 @@ function pressRules(template) {
  * @returns {string[]}
  */
 function glyphHoverRules(template) {
-    const off = template.focusTarget === 'wrapper' ? ':not(:has(:disabled))' : `:not(${pseudoOf(template, template.element.disabledState)})`;
+    const off = template.focusTarget === 'wrapper' ? ':not(:has(:disabled))' : notDisabledOf(template);
     return template.anatomy.filter(slot => slot.kind === 'glyph' && slot.hoverFill !== undefined)
         .map(slot => `.${template.id}${off} .${template.id}-${slot.id}:hover {
   color: var(${cssVarOf(template.id, slot.hoverFill)});
@@ -629,7 +642,7 @@ function revealRules(template) {
 function reducedMotion(template) {
     const sel = `.${template.id}`;
     const wave = template.interaction?.wave ? `\n  ${sel}[data-wave-on]::after {\n    animation: none;\n  }` : '';
-    const dis2 = `:not(${pseudoOf(template, template.element.disabledState)})`;
+    const dis2 = notDisabledOf(template);
     const motion = template.motion ? [...(template.motion.transitions ?? []).map(t => `\n  ${t.key === 'root' ? sel : `${sel}-${t.key}`} {\n    transition: none;\n  }`),
         ...(template.motion.appearances ?? []).map(a => `\n  ${a.states.map(s => `${sel}[${stateAttributesOf(template).find(x => x.state === s)?.attr}]${dis2} ${sel}-${a.key}`).join(', ')} {\n    animation: none;\n  }`)] : [];
     return `@media (prefers-reduced-motion: reduce) {\n  ${sel} {\n    transition: none;\n  }${wave}${motion.join('')}\n}\n`;
@@ -811,7 +824,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
             const wrapperTarget = template.focusTarget === 'wrapper';
             // A click-blocking prop held hides the interaction states, like disabled does; a persistent state it carries (a checked Switch that loads) still applies, as the canvas binds it.
             const blockedGuard = !persistent && (template.element.blockClickProps?.length ?? 0) ? ':not([data-blocked])' : '';
-            const noDisabled = wrapperTarget ? ':not(:has(:disabled))' : `:not(${pseudoOf(template, disabledState)})`;
+            const noDisabled = wrapperTarget ? ':not(:has(:disabled))' : notDisabledOf(template);
             const guard = state === disabledState ? '' : `${noDisabled}${blockedGuard}`;
             if (!Object.keys(delta).length) continue;
             // A preview state does not apply while a state the root says as an attribute replaces the tokens it changes (the checked look wins over hover).

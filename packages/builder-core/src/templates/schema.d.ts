@@ -126,7 +126,8 @@ export interface ElementDef {
     tag: string;
     attrs: Record<string, string>;
     /** The persistent state that disables the element. */
-    disabledState: string;
+    /** The persistent state that disables the element; absent for a non-interactive template (no disabled attribute, rule or guard). */
+    disabledState?: string;
     /** Props that stop onClick from running. */
     blockClickProps: string[];
 }
