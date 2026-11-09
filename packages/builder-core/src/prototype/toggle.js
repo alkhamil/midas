@@ -39,18 +39,39 @@ export function applyToggle(root) {
  * A click on a toggle control's root in Play: flips the state like applyToggle, and glides each child the flip moved
  * (a Switch's handle) from its old spot to its new one. Justification cannot transition, so the travel is a FLIP
  * animation over the template's 0.2s ease-in-out; children that did not move (glyphs, icons) animate nothing.
+ * Distances are in the element's own px (see the scale below). A child that also changes size at the click (the pressed handle, grown while held, returns to its size as the button is released) moves and resizes in
+ * the same animation: its own width transition is suspended while the end layout is measured, so the child neither shrinks in place first nor
+ * travels at the wrong size. The glide keeps the edge the alignment anchors (the far edge of a handle that ends at the end of the track).
  * Reduced motion skips the glide. Returns what applyToggle returns.
- * @param {{ getAttribute(n: string): string | null, hasAttribute(n: string): boolean, setAttribute(n: string, v: string): void, removeAttribute(n: string): void, style: Record<string, string>, children?: { getBoundingClientRect?: () => { left: number }, animate?: (frames: object[], opts: object) => void }[], ownerDocument?: { defaultView?: { matchMedia?: (query: string) => { matches: boolean } } | null } | null }} root
+ * @param {{ getAttribute(n: string): string | null, hasAttribute(n: string): boolean, setAttribute(n: string, v: string): void, removeAttribute(n: string): void, style: Record<string, string>, children?: { style?: Record<string, string>, getBoundingClientRect?: () => { left: number, width?: number }, animate?: (frames: object[], opts: object) => void }[], ownerDocument?: { defaultView?: { matchMedia?: (query: string) => { matches: boolean } } | null } | null }} root
  * @returns {boolean} whether the root is a toggle that took the click
  */
 export function flipToggle(root) {
     // Element.children is an HTMLCollection, which has no map: copy it into an array first.
-    const before = new Map(Array.from(root.children ?? []).map(el => [el, el.getBoundingClientRect?.().left ?? 0]));
+    const kids = Array.from(root.children ?? []);
+    // Play scales its stage (a fit mode is a CSS scale), so a client rect is in screen px while the animation is in the element's own px: divide by the scale,
+    // read as the root's client width over its layout width.
+    const rootRect = root.getBoundingClientRect?.();
+    const k = rootRect?.width > 0 && root.offsetWidth > 0 ? rootRect.width / root.offsetWidth : 1;
+    const rectOf = el => { const r = el.getBoundingClientRect?.(); return { left: (r?.left ?? 0) / k, width: (r?.width ?? 0) / k }; };
+    const before = new Map(kids.map(el => [el, rectOf(el)]));
     if (!applyToggle(root)) return false;
     if (root.ownerDocument?.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return true;
-    for (const [el, x] of before) {
-        const dx = x - (el.getBoundingClientRect?.().left ?? 0);
-        if (dx !== 0 && typeof el.animate === 'function') el.animate([{ transform: `translateX(${dx}px)` }, { transform: 'translateX(0px)' }], { duration: 200, easing: 'ease-in-out' });
+    const anchoredEnd = root.style.justifyContent === 'flex-end';
+    for (const [el, from] of before) {
+        // The end layout, measured with the child's own transition suspended so a width still easing back from the press does not count.
+        const held = el.style?.transition;
+        if (el.style) el.style.transition = 'none';
+        const to = rectOf(el);
+        if (el.style) el.style.transition = held ?? '';
+        const dx = from.left - to.left;
+        if (dx === 0 || typeof el.animate !== 'function') continue;
+        const dw = to.width - from.width;
+        // Width changes about the anchored edge, so the left edge's offset follows it: the glide interpolates the left edge from its old to its new place.
+        const shift = dw !== 0 && anchoredEnd ? dx - (to.width - from.width) : dx;
+        const first = dw !== 0 ? { transform: `translateX(${shift}px)`, width: `${from.width}px` } : { transform: `translateX(${shift}px)` };
+        const last = dw !== 0 ? { transform: 'translateX(0px)', width: `${to.width}px` } : { transform: 'translateX(0px)' };
+        el.animate([first, last], { duration: 200, easing: 'ease-in-out' });
     }
     return true;
 }

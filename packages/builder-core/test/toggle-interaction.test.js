@@ -155,3 +155,30 @@ test('flipToggle works on a real DOM children collection, which has no map', () 
     assert.equal(flipToggle(root), true);
     assert.ok(root.has('data-checked'), 'the click flips the state even though children has no map');
 });
+
+test('a handle that is released from a press moves and resizes in one glide, anchored by the alignment', () => {
+    const run = (align, rects, on = false) => {
+        const calls = [];
+        let n = 0;
+        const handle = { style: { transition: '' }, getBoundingClientRect: () => rects[n++], animate: (frames, opts) => calls.push([frames, opts]) };
+        const root = { ...fake({ 'data-toggle': 'data-checked', 'data-checked-align': align, ...(on ? { 'data-checked': '' } : {}), 'aria-checked': String(on) }), children: [handle] };
+        assert.equal(flipToggle(root), true);
+        assert.equal(handle.style.transition, '', 'the handle\'s own transition is given back');
+        return calls[0][0];
+    };
+    // Unchecked to checked: pressed width 22 at the start (left 2) ends 18 wide at the end (left 24); the far edge is the anchor.
+    assert.deepEqual(run('start', [{ left: 2, width: 22 }, { left: 24, width: 18 }]), [{ transform: 'translateX(-18px)', width: '22px' }, { transform: 'translateX(0px)', width: '18px' }]);
+    // Checked to unchecked: pressed width 22 at the end (left 20) ends 18 wide at the start (left 2); the near edge is the anchor.
+    assert.deepEqual(run('end', [{ left: 20, width: 22 }, { left: 2, width: 18 }], true), [{ transform: 'translateX(18px)', width: '22px' }, { transform: 'translateX(0px)', width: '18px' }]);
+});
+
+test('a scaled stage: the glide is in the handle\'s own px, not the screen\'s', () => {
+    const calls = [];
+    let n = 0;
+    const rects = [{ left: 4, width: 44 }, { left: 48, width: 36 }];
+    const handle = { style: { transition: '' }, getBoundingClientRect: () => rects[n++], animate: (frames) => calls.push(frames) };
+    // The track is 44px wide in its own px and 88px on screen: a stage scaled by 2.
+    const root = { ...fake({ 'data-toggle': 'data-checked', 'data-checked-align': 'start', 'aria-checked': 'false' }), offsetWidth: 44, getBoundingClientRect: () => ({ left: 0, width: 88 }), children: [handle] };
+    assert.equal(flipToggle(root), true);
+    assert.deepEqual(calls[0], [{ transform: 'translateX(-18px)', width: '22px' }, { transform: 'translateX(0px)', width: '18px' }]);
+});
