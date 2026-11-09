@@ -4,13 +4,23 @@
 import { previewOf } from './preview.js';
 import { variableProps } from './registry.js';
 import { resolveProps } from './instance-props.js';
-import { NODE_PROPERTIES, LOADING_OPACITY, enumAttrOf, canvasPartsOf, fieldWritersOf, placeholderPartOf, stateAttributesOf, targetKindOf } from './display.js';
+import { NODE_PROPERTIES, LOADING_OPACITY, alignValuesOf, enumAttrOf, canvasPartsOf, fieldWritersOf, placeholderPartOf, stateAttributesOf, targetKindOf } from './display.js';
 import { pathCommands, svgPathD } from '../geometry/shapes.js';
 import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js';
 import { cssVarOf, splitColor, tokenValueOf } from './tokens.js';
 import { glyphFillRuleAttr, glyphPathD } from './glyphs.js';
 import { commitNumber, resizeHeight, resizeLimits, startResizeDrag } from '../prototype/press.js';
 import { glyphTests } from './validate-schema.js';
+
+/** The CSS justify-content of an alignment: start and end are the flex ends, centre is centre. */
+const justifyOf = side => (side === 'center' ? 'center' : `flex-${side}`);
+
+/** The JSX value of a primaryAlign writer's data attribute: a boolean prop picks end or start; an enum prop looks its option up in its value map. */
+function alignExprOf(writer) {
+    if (!writer.values) return `${writer.prop} ? "end" : "start"`;
+    const entries = Object.entries(writer.values).map(([option, value]) => `"${option}": "${value}"`).join(', ');
+    return `{${entries}}[${writer.prop}]`;
+}
 
 /** A camelCase name as kebab-case (the custom properties and data attributes a prop is written as). */
 const kebabCase = name => name.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`);
@@ -278,7 +288,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         ...fieldWritersOf(template).filter(w => w.field === 'layout').map(w => `data-${w.prop}={${w.prop}}`),
         ...(ml ? [`data-${kebabCase(ml.resize)}={${ml.resize}}`, `data-${kebabCase(ml.autoSize)}={${ml.autoSize} || undefined}`] : []),
         // A prop that aligns the row's content to the end says which end as a data attribute (a Switch's handle).
-        ...fieldWritersOf(template).filter(w => w.field === 'primaryAlign').map(w => `data-${w.prop}-align={${w.prop} ? "end" : "start"}`),
+        ...fieldWritersOf(template).filter(w => w.field === 'primaryAlign').map(w => `data-${w.prop}-align={${alignExprOf(w)}}`),
         // Only some elements have a `disabled` attribute; any other root says it with aria-disabled (and the schema's state pseudo selects on it).
         ...(ctl ? [] : [DISABLEABLE.has(tag) ? `disabled={${disabledProp}}` : `aria-disabled={${disabledProp} || undefined}`]),
         // A root whose click a prop blocks says so, so the loading rule (see blockedRules) matches in Play and in the export alike.
@@ -662,7 +672,7 @@ function fieldRules(template) {
             return template.props[prop].options.flatMap(option => [direction(option), ...fills.map(id => fill(option, id))]);
         }
         // A prop that aligns the content to the end: one rule per side, selected on the data attribute the root carries.
-        if (field === 'primaryAlign') return ['start', 'end'].map(side => `.${template.id}[data-${prop}-align="${side}"]${target} {\n  justify-content: flex-${side};\n}\n`);
+        if (field === 'primaryAlign') return alignValuesOf({ values }).map(side => `.${template.id}[data-${prop}-align="${side}"]${target} {\n  justify-content: ${justifyOf(side)};\n}\n`);
         const own = key === 'root' ? `.${template.id}` : `.${template.id}-${key}`;
         return [`${own} {
   ${field === 'gap' ? `gap: var(--${template.id}-${prop})` : `width: var(--${template.id}-${prop}, auto)`};

@@ -409,9 +409,10 @@ export function nodeFieldPatch(field, value, type) {
 export function fieldStyleOf(template, props) {
     /** @type {Record<string, string>} */
     const attrs = {}, vars = {};
-    for (const { prop, field } of nodeWritersOf(template)) {
+    for (const writer of nodeWritersOf(template)) {
+        const { prop, field } = writer;
         if (field === 'layout') attrs[`data-${prop}`] = String(props[prop]);
-        else if (field === 'primaryAlign') attrs[`data-${prop}-align`] = NODE_FIELDS.frame.primaryAlign.values[String(props[prop] === true)];
+        else if (field === 'primaryAlign') attrs[`data-${prop}-align`] = alignValueOf(writer, props[prop]);
         else if ((field === 'gap' || field === 'width') && props[prop] != null) vars[`--${template.id}-${prop}`] = `${props[prop]}px`;
     }
     const multiline = multilineStyleOf(template, props);
@@ -424,4 +425,24 @@ export function fieldStyleOf(template, props) {
  */
 export function fieldWritersOf(template) {
     return nodeWritersOf(template).filter(({ field }) => ['layout', 'gap', 'width', 'primaryAlign'].includes(field));
+}
+
+/**
+ * The alignment a primaryAlign writer gives for a prop's value: the writer's own value map (an enum), else a boolean's true and false map
+ * (a Switch's handle: on is the end).
+ * @param {{ values?: Record<string, string> }} writer
+ * @param {unknown} raw the prop's value
+ * @returns {string}
+ */
+export function alignValueOf(writer, raw) {
+    return writer.values ? writer.values[String(raw)] : NODE_FIELDS.frame.primaryAlign.values[String(raw === true)];
+}
+
+/**
+ * The alignments a primaryAlign writer can give: the distinct values of its map, or start and end for a boolean.
+ * @param {{ values?: Record<string, string> }} writer
+ * @returns {string[]}
+ */
+export function alignValuesOf(writer) {
+    return writer.values ? [...new Set(Object.values(writer.values))] : ['start', 'end'];
 }
