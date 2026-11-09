@@ -202,6 +202,8 @@ export interface MotionPress {
 
 /** Motion behaviour of a template: transitions, appearances, at most one slide and one press grow. */
 export interface MotionDef {
+    /** The exit of a dismissed element (a press with `dismiss`): the properties it takes at the end, over the duration and easing (Play only). */
+    exit?: { duration: string, timing: string, to: Record<string, string> };
     transitions?: MotionTransition[];
     appearances?: MotionAppearance[];
     press?: MotionPress;
@@ -219,7 +221,7 @@ export interface TemplateSchema {
     /** A click in Play turns the state prop on (and off, unless `once`) and ends the state `clears` names; both are booleans a state with an attribute follows. */
     toggle?: { prop: string, clears?: string, once?: boolean };
     /** Pressable glyph slots: a click either flips a boolean state prop (`toggle`) or steps the control's number (`step`, 1 or -1). */
-    press?: ({ slot: string, toggle: string } | { slot: string, step: 1 | -1 })[];
+    press?: ({ slot: string, toggle: string } | { slot: string, step: 1 | -1 } | { slot: string, dismiss: true })[];
     sampleProps?: Record<string, string | number | boolean>;
     anatomy: AnatomySlot[];
     /** The managed icon slots; absent or empty for a template with none. */

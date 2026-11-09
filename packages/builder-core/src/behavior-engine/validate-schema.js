@@ -622,8 +622,8 @@ function pressProblems(schema) {
         for (const field of ['hoverFill', 'activeFill']) if (entry[field] !== undefined && !tokens.includes(entry[field])) out.push(`press ${field} "${entry[field]}" on "${entry.slot}" is not a token`);
         if (entry.glyph !== undefined && !(Array.isArray(schema.anatomy) && schema.anatomy.some(s => isPlainObject(s) && s.id === entry.glyph && s.parent === entry.slot))) out.push(`press glyph "${entry.glyph}" is not a slot inside "${entry.slot}"`);
         if (entry.blockedBy !== undefined && !stateAttributesOf(schema).some(a => a.prop === entry.blockedBy)) out.push(`press blockedBy "${entry.blockedBy}" is not a state with an attribute`);
-        const actions = ['toggle', 'step', 'resize'].filter(k => entry[k] !== undefined);
-        if (actions.length !== 1) { out.push(`press on "${entry.slot}" needs exactly one of toggle, step or resize`); continue; }
+        const actions = ['toggle', 'step', 'resize', 'dismiss'].filter(k => entry[k] !== undefined);
+        if (actions.length !== 1) { out.push(`press on "${entry.slot}" needs exactly one of toggle, step, resize or dismiss`); continue; }
         if (entry.resize !== undefined && !(entry.resize === true && schema.control?.multiline)) out.push(`press resize on "${entry.slot}" needs a multiline control`);
         if (entry.toggle !== undefined && !(props[entry.toggle]?.source === 'literal' && props[entry.toggle]?.type === 'boolean' && attrs.some(a => a.prop === entry.toggle))) out.push(`press toggle "${entry.toggle}" on "${entry.slot}" is not a boolean prop that a state with an attribute follows`);
         if (entry.step !== undefined) {

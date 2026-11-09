@@ -126,6 +126,7 @@ export function pressAttrsOf(template, slot) {
     const entry = (template.press ?? []).find(p => p.slot === slot);
     if (!entry) return {};
     if (entry.resize) return { 'data-press': 'resize' };
+    if (entry.dismiss) return { 'data-press': 'dismiss' };
     return entry.toggle !== undefined ? { 'data-press': 'toggle', 'data-press-attr': attrOfProp(template, entry.toggle) } : { 'data-press': 'step', 'data-press-step': String(entry.step) };
 }
 

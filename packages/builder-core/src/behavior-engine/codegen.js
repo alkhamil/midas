@@ -146,6 +146,7 @@ function pressHandlerJsx(template, slot) {
     const entry = (template.press ?? []).find(p => p.slot === slot.id);
     if (!entry) return '';
     const disabled = disabledPropsOf(template);
+    if (entry.dismiss) return ` onClick={() => { ${disabled ? `if (!(${disabled})) { setDismissed(true); onClose?.(); }` : 'setDismissed(true); onClose?.();'} }}`;
     if (entry.resize) return ` onPointerDown={(e) => { ${disabled ? `if (${disabled}) return; ` : ''}const drag = startResizeDrag(e.currentTarget.closest("[data-field-box]"), e.clientY, (el) => getComputedStyle(el)); if (!drag) return; e.preventDefault(); const move = (m) => drag.move(m.clientY); const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); }; window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); }}`;
     return entry.toggle !== undefined ? ` onClick={() => { ${disabled ? `if (!(${disabled})) ` : ''}${toggleCallback(entry.toggle)}?.(!${entry.toggle}); }}` : ` onClick={() => { ${disabled ? `if (!(${disabled})) ` : ''}onStep?.(${entry.step}); }}`;
 }
@@ -178,10 +179,12 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     }
     // A pressable glyph reports its press: a toggle the next value of its prop, a step its direction.
     if (controlOf(template)?.number) params.push('onCommit');
-    for (const entry of (template.press ?? []).filter(p => !p.resize)) { const name = entry.toggle !== undefined ? toggleCallback(entry.toggle) : 'onStep'; if (!params.includes(name)) params.push(name); }
+    for (const entry of (template.press ?? []).filter(p => !p.resize)) { const name = entry.toggle !== undefined ? toggleCallback(entry.toggle) : entry.dismiss ? 'onClose' : 'onStep'; if (!params.includes(name)) params.push(name); }
     // A derived boolean (the value has reached a limit) is read from the others in the component, never passed in.
     const derivedLines = Object.entries(template.props).filter(([, def]) => def.derived !== undefined).map(([prop, { derived }]) => `  const ${prop} = ${derived.limit} != null && Number(${derived.value}) ${derived.cmp === 'gte' ? '>=' : '<='} ${derived.limit} && String(${derived.value} ?? "") !== "";`);
     // A control that is a textarea for one kind and an input for the others is one element chosen by the props.
+    // A dismiss press keeps the element in local state: it is drawn until the click, then not at all (the export has no exit motion).
+    const dismissLines = (template.press ?? []).some(p => p.dismiss) ? ['  const [dismissed, setDismissed] = useState(false);', '  if (dismissed) return null;'] : [];
     const controlLines = controlOf(template)?.multiline?.when ? [`  const Control = ${shownJsx(controlOf(template).multiline.when)} ? "textarea" : "input";`] : [];
     const slotted = (template.slots ?? []).length > 0;
     // The props that write a gap or a width reach the stylesheet as custom properties on the root (a width of none is not set); a layout is a data attribute.
@@ -346,10 +349,12 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         ].join('\n');
     }
     return [
+        ...((template.press ?? []).some(p => p.dismiss) ? ["import { useState } from 'react';", ''] : []),
         `export function ${name}({ ${params.join(', ')} }) {`,
         `  const blocked = ${blockClickProps.join(' || ') || 'false'};`,
         ...derivedLines,
         ...controlLines,
+        ...dismissLines,
         '  return (',
         `    <${tag}`,
         ...attrs.map(attr => `      ${attr}`),
@@ -566,6 +571,11 @@ function motionRules(template) {
     const out = [];
     const dis = disabledPseudoOf(template);
     const notDis = notDisabledOf(template);
+    // The exit of a dismissed root: the fade and scale of the motion, over the transition the exit names (Play only; the export has no such attribute).
+    if (motion.exit) {
+        const { duration, timing, to } = motion.exit;
+        out.push(`.${template.id} {\n  transition: ${Object.keys(to).map(p => `${p} ${duration} ${timing}`).join(', ')};\n}\n`, `.${template.id}[data-dismissed] {\n${Object.entries(to).map(([p, v]) => `  ${p}: ${v};`).join('\n')}\n}\n`);
+    }
     const selOf = key => key === 'root' ? `.${template.id}` : `.${template.id}-${key}`;
     for (const t of motion.transitions ?? []) {
         const sel = selOf(t.key);
@@ -642,10 +652,12 @@ function revealRules(template) {
 function reducedMotion(template) {
     const sel = `.${template.id}`;
     const wave = template.interaction?.wave ? `\n  ${sel}[data-wave-on]::after {\n    animation: none;\n  }` : '';
+    // A dismissed root under reduced motion has no exit: it is hidden at once.
+    const dismissed = template.motion?.exit ? `\n  ${sel}[data-dismissed] {\n    display: none;\n  }` : '';
     const dis2 = notDisabledOf(template);
     const motion = template.motion ? [...(template.motion.transitions ?? []).map(t => `\n  ${t.key === 'root' ? sel : `${sel}-${t.key}`} {\n    transition: none;\n  }`),
         ...(template.motion.appearances ?? []).map(a => `\n  ${a.states.map(s => `${sel}[${stateAttributesOf(template).find(x => x.state === s)?.attr}]${dis2} ${sel}-${a.key}`).join(', ')} {\n    animation: none;\n  }`)] : [];
-    return `@media (prefers-reduced-motion: reduce) {\n  ${sel} {\n    transition: none;\n  }${wave}${motion.join('')}\n}\n`;
+    return `@media (prefers-reduced-motion: reduce) {\n  ${sel} {\n    transition: none;\n  }${wave}${dismissed}${motion.join('')}\n}\n`;
 }
 
 /**

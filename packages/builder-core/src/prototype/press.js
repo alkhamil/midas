@@ -38,6 +38,13 @@ export function applyPress(target) {
     const glyph = target.closest?.('[data-press]');
     const root = glyph?.closest('[data-press-root]');
     if (!glyph || !root) return false;
+    // A dismiss takes the root out: a disabled element does not dismiss; the exit runs, then the root is hidden (at once under reduced motion, see the stylesheet).
+    if (glyph.getAttribute('data-press') === 'dismiss') {
+        if (root.hasAttribute('aria-disabled') || root.hasAttribute('disabled')) return false;
+        root.setAttribute('data-dismissed', '');
+        root.addEventListener?.('transitionend', e => { if (e.target === root) root.style.display = 'none'; });
+        return true;
+    }
     const input = root.querySelector('input,textarea');
     if (input?.hasAttribute('disabled')) return false;
     const write = (name, on) => (on ? root.setAttribute(name, '') : root.removeAttribute(name));
