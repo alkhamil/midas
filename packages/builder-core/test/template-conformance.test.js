@@ -21,6 +21,7 @@ const generated = id => () => { const m = modelFor(TEMPLATES.get(id)); return { 
 const MODELS = {
     checkbox: generated('checkbox'),
     'antd-badge': generated('antd-badge'),
+    'antd-tag': generated('antd-tag'),
     switch: generated('switch'),
     radio: generated('radio'),
     inputnumber: generated('inputnumber'),
