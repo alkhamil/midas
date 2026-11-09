@@ -3,7 +3,7 @@
 // 28 small); the handle (18, small 12) is placed by alignment — flex-start unchecked,
 // flex-end checked — so the travel always spans the real track width. For both sizes,
 // checked and unchecked, idle and pressed, the handle rect must lie inside the track
-// minus padding. Pressed grows 4px toward the inside, never past the padding.
+// minus padding. Pressed grows 30% toward the inside, never past the padding.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
@@ -86,7 +86,7 @@ for (const size of ['default', 'small']) {
                 assert.deepEqual([pad.l, pad.r, pad.t, pad.b], [2, 2, 2, 2], 'track padding is 2');
                 assert.deepEqual([border.l, border.r, border.t, border.b], [0, 0, 0, 0], 'track draws no border of its own');
                 const hw = px(handleStyle.width);
-                const wantIdle = EXPECT[size].handle, wantPressed = pressed ? wantIdle + 4 : wantIdle;
+                const wantIdle = EXPECT[size].handle, wantPressed = pressed ? wantIdle * 1.3 : wantIdle;
                 assert.equal(hw, wantPressed, `handle width ${pressed ? '(grown)' : ''}`);
                 // Alignment places the handle: start unchecked, end checked (no transform travel).
                 assert.equal(translateXOf(handleStyle.transform), 0, 'no transform travel: alignment slides the handle');

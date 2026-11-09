@@ -33,7 +33,7 @@ test('the track hugs with the token minimum and the handle is fixed; both are bo
     assert.deepEqual(Object.keys(model.frame.vars).sort(), ['fills.0', 'h', 'minW', 'padH', 'padV', 'radius']);
     assert.deepEqual([model.frame.layoutSizingH, model.frame.layoutSizingV], ['hug', 'fixed']);
     const handle = model.created[0];
-    assert.deepEqual(Object.keys(handle.vars).sort(), ['fills.0', 'h', 'radius', 'w']);
+    assert.deepEqual(Object.keys(handle.vars).sort(), ['effects', 'fills.0', 'h', 'radius', 'w']);
     assert.deepEqual([handle.layoutSizingH, handle.layoutSizingV], ['fixed', 'fixed']);
     assert.equal(handle.vars.stroke, undefined, 'no border at all');
     assert.equal(model.frame.vars.stroke, undefined);
@@ -69,4 +69,14 @@ test('Play draws the checked attribute, the alignment and the handle', () => {
     assert.equal(root.attrs['data-checked-align'], 'end');
     assert.equal(root.style.justifyContent, 'flex-end');
     assert.ok(root.children.some(c => c.attrs?.class === 'switch-handle'));
+});
+
+test('the handle shadow is a variable: antd handleShadow as a Primitive, a Semantic alias, and a Size cell aliased to it, bound to the handle', () => {
+    const find = (collection, name) => model.variables.items.find(i => model.variables.collections.find(c => c.id === i.collectionId).name === collection && i.name === name);
+    assert.deepEqual(Object.values(find('Primitives', 'shadow/handle').values)[0], [{ type: 'drop', visible: true, color: '#00230b', opacity: 0.2, x: 0, y: 2, blur: 4, spread: 0 }]);
+    assert.equal(find('Semantic', 'boxShadowHandle').type, 'effect');
+    const cell = model.variables.items.find(i => i.type === 'effect' && /handle-shadow/.test(i.name));
+    assert.ok(cell, 'a component effect variable');
+    assert.ok(Object.values(cell.values).every(v => v.alias), 'every mode aliases the Semantic effect, never a literal');
+    assert.equal(model.created[0].vars.effects, cell.id);
 });

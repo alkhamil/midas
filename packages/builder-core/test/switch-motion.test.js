@@ -1,5 +1,5 @@
 // Switch motion (antd, timings and easings only): the track recolours over 0.2s ease-in-out;
-// the handle grows 4px while pressed over 0.2s (flex-end keeps its far edge on the padding,
+// the handle grows 30% while pressed over 0.2s (flex-end keeps its far edge on the padding,
 // so it grows toward the inside). The checked prop moves the handle by alignment on every
 // surface — the travel always spans the real track width, so there is no transform slide
 // to transition. Play uses the same stylesheet as the export; the canvas stays static.
@@ -24,16 +24,16 @@ function css() {
 test('the schema declares the motion as data: track and handle transitions and the press grow, no slide', () => {
     assert.deepEqual(validateTemplateSchema(structuredClone(sw)).filter(p => /motion/i.test(p)), []);
     assert.deepEqual(sw.motion.transitions, [
-        { key: 'root', props: ['background-color'], duration: '0.2s', timing: 'ease-in-out' },
+        { key: 'root', props: ['background-color'], duration: '0.2s', timing: 'ease' },
         { key: 'handle', props: ['width'], duration: '0.2s', timing: 'ease-in-out' },
     ]);
     assert.equal(sw.motion.slide, undefined, 'alignment moves the handle, so no transform slide is declared');
-    assert.deepEqual(sw.motion.press, { key: 'handle', token: 'handleSize', prop: 'width', grow: '4px' });
+    assert.deepEqual(sw.motion.press, { key: 'handle', token: 'handleSize', prop: 'width', growRatio: 0.3 });
 });
 
 test('the export transitions the track colour and the handle width', () => {
     const text = css();
-    assert.match(text, /\.switch \{\s*[^}]*transition: background-color 0\.2s ease-in-out;\s*[^}]*\}/s);
+    assert.match(text, /\.switch \{\s*[^}]*transition: background-color 0\.2s ease;\s*[^}]*\}/s);
     assert.match(text, /\.switch-handle \{\s*[^}]*transition: width 0\.2s ease-in-out;\s*[^}]*\}/s);
 });
 
@@ -44,8 +44,8 @@ test('the handle moves by alignment: checked puts it at the end, unchecked at th
     assert.doesNotMatch(text, /translateX/, 'no transform travel: the travel spans the real track width');
 });
 
-test('the handle grows 4px while pressed', () => {
-    assert.match(css(), /\.switch:active:not\(:disabled\) \.switch-handle \{\s*width: calc\(var\(--switch-handle-size\) \+ 4px\);\s*\}/s);
+test('the handle grows 30% while pressed (antd switchHandleActiveInset)', () => {
+    assert.match(css(), /\.switch:active:not\(:disabled\) \.switch-handle \{\s*width: calc\(var\(--switch-handle-size\) \* 1\.3\);\s*\}/s);
 });
 
 test('a slid handle grows toward the inside: one press rule, flex-end keeps the far edge on the padding', () => {
@@ -71,7 +71,7 @@ test('Play applies the same motion stylesheet as the export', () => {
     nodes[0].parentId = 'top';
     const { styles, problems } = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [frame, model.frame, ...model.created, ...nodes] }], variables: model.variables }, 'top');
     assert.deepEqual(problems, []);
-    assert.match(styles, /transition: background-color 0\.2s ease-in-out;/s);
+    assert.match(styles, /transition: background-color 0\.2s ease;/s);
     assert.match(styles, /transition: width 0\.2s ease-in-out;/s);
     assert.doesNotMatch(styles, /translateX/, 'Play moves the handle by alignment, like the export');
 });

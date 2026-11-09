@@ -41,7 +41,7 @@ export const SWITCH = {
     rootPrimaryAlign: 'start',
     props: {
         // The colours, as Button's Color collection holds its own: only the checked track follows the mode (default is the text colour, primary the brand colour,
-        // danger the error colour). A new instance takes primary. The Size collection holds sizes only.
+        // danger the error colour). A new instance takes primary. The Size collection holds sizes, typography and the handle shadow (the same in every size).
         color: { source: 'variable', collection: 'Color', modes: ['default', 'primary', 'danger'], defaultMode: 'primary' },
         size: { source: 'variable', collection: 'Size', modes: ['small', 'default'], defaultMode: 'default' },
         // Checked writes the root's alignment: on puts the handle at the end of the track, off at the start.
@@ -60,11 +60,11 @@ export const SWITCH = {
     },
     tokens: {
         fromColor: ['track-bg', 'track-bg-checked', 'track-bg-disabled', 'track-bg-hover', 'track-bg-focus', 'handle-bg', 'wave-color'],
-        fromSize: ['trackHeight', 'trackWidth', 'trackPadding', 'handleSize', 'radiusFull', 'iconSize', 'textTypography', 'innerPadNear', 'innerPadFar'],
+        fromSize: ['trackHeight', 'trackWidth', 'trackPadding', 'handleSize', 'radiusFull', 'iconSize', 'textTypography', 'innerPadNear', 'innerPadFar', 'handle-shadow'],
     },
     tokenKinds: {
         trackHeight: 'length', trackWidth: 'length', trackPadding: 'length', handleSize: 'length', radiusFull: 'length', iconSize: 'length', textTypography: 'typography', innerPadNear: 'length', innerPadFar: 'length',
-        'track-bg': 'color', 'track-bg-checked': 'color', 'track-bg-disabled': 'color', 'track-bg-hover': 'color', 'track-bg-focus': 'color', 'handle-bg': 'color', 'wave-color': 'color',
+        'track-bg': 'color', 'track-bg-checked': 'color', 'track-bg-disabled': 'color', 'track-bg-hover': 'color', 'track-bg-focus': 'color', 'handle-bg': 'color', 'handle-shadow': 'effect', 'wave-color': 'color',
     },
     tokenRoles: {
         trackHeight: { small: 'switch-height-sm', default: 'switch-height' },
@@ -76,7 +76,7 @@ export const SWITCH = {
         textTypography: { small: 'text-sm', default: 'text-sm' },
         innerPadNear: 'switch-inner-pad-near',
         innerPadFar: { small: 'switch-inner-pad-far-sm', default: 'switch-inner-pad-far' },
-        'track-bg': 'track-off', 'track-bg-checked': ACCENT, 'track-bg-disabled': 'border', 'track-bg-hover': 'track-off-hover', 'track-bg-focus': 'track-off-hover', 'handle-bg': 'solid-text', 'wave-color': ACCENT,
+        'track-bg': 'track-off', 'track-bg-checked': ACCENT, 'track-bg-disabled': 'border', 'track-bg-hover': 'track-off-hover', 'track-bg-focus': 'track-off-hover', 'handle-bg': 'solid-text', 'handle-shadow': 'shadow-handle', 'wave-color': ACCENT,
     },
     // Checked swaps the track colour; Disabled is declared last, so it wins over Checked.
     persistentStates: {
@@ -93,10 +93,10 @@ export const SWITCH = {
     // spans the real track width. Play and the export read it; the canvas stays static.
     motion: {
         transitions: [
-            { key: 'root', props: ['background-color'], duration: '0.2s', timing: 'ease-in-out' },
+            { key: 'root', props: ['background-color'], duration: '0.2s', timing: 'ease' },
             { key: 'handle', props: ['width'], duration: '0.2s', timing: 'ease-in-out' },
         ],
-        press: { key: 'handle', token: 'handleSize', prop: 'width', grow: '4px' },
+        press: { key: 'handle', token: 'handleSize', prop: 'width', growRatio: 0.3 },
     },
     // Hover and focus darken the off track while nothing replaces it (the checked look wins). The focus ring itself is not drawn.
     previewStates: {
@@ -113,7 +113,7 @@ export const SWITCH = {
         root: { fill: 'track-bg', radius: 'radiusFull', height: 'trackHeight', minWidth: 'trackWidth', paddingX: 'trackPadding', paddingY: 'trackPadding' },
         innerOn: { paddingStart: 'innerPadFar', paddingEnd: 'innerPadNear' },
         innerOff: { paddingStart: 'innerPadNear', paddingEnd: 'innerPadFar' },
-        handle: { fill: 'handle-bg', radius: 'radiusFull', size: 'handleSize' },
+        handle: { fill: 'handle-bg', radius: 'radiusFull', size: 'handleSize', shadow: 'handle-shadow' },
         spinner: { stroke: 'track-bg', size: 'iconSize' },
         checkedChildren: { fill: 'handle-bg', typography: 'textTypography' },
         checkedIcon: { size: 'iconSize' },
