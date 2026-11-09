@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BUILT_IN_TEMPLATES } from '../src/behavior-engine/registry.js';
 import { orderTemplates, planDesignSystem } from '../src/behavior-engine/design-system.js';
-import { defaultIconOf, iconNodes, planIcons } from '../src/behavior-engine/icon-set.js';
+import { defaultIconOf, iconNodes, iconRolesOf, planIcons } from '../src/behavior-engine/icon-set.js';
 import { generateComponent } from '../src/behavior-engine/codegen.js';
 import { applyTemplateToFrame, instanceOf, masterLayersByKey } from '../src/behavior-engine/template-master.js';
 import { planAutoFix, applyAutoFix } from '../src/behavior-engine/auto-fix.js';
@@ -31,7 +31,7 @@ function run(doc) {
     const templates = [...BUILT_IN_TEMPLATES.values()];
     const counts = { variables: applyBasePlan(doc.variables, planFromSnapshot(BASE_SNAPSHOT), uid).items, icons: 0, iconsPresent: 0, created: 0, present: 0 };
     // The icons come before the templates: the ones the file lacks, in a row of the Icons section (so they are nested, as in the studio).
-    const iconPlan = planIcons({ pages: [{ nodes: doc.nodes }] });
+    const iconPlan = planIcons({ pages: [{ nodes: doc.nodes }], roles: iconRolesOf([...BUILT_IN_TEMPLATES.values()]) });
     counts.iconsPresent = iconPlan.present.length;
     if (iconPlan.create.length) {
         const row = { id: uid(), name: 'Components', type: 'frame', parentId: null };

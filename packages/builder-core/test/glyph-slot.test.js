@@ -40,7 +40,7 @@ test('Checkbox and Radio have glyph slots in the box, no icons and no icon props
             assert.deepEqual(t.anatomy.find(s => s.id === slot), { id: slot, kind: 'glyph', glyph, parent: 'box', optional: true, managed: true, shownWhen: { prop, is: true } }, `${id}.${slot}`);
         }
     }
-    assert.deepEqual(ICON_SET.map(e => e.name), ['circle', 'close'], 'the icon set holds the circle and the close glyph; no other glyph');
+    assert.deepEqual(ICON_SET.map(e => e.name), ['circle', 'close', 'eye', 'eyeOff'], 'the icon set holds the circle, the close and the eye glyphs; no other glyph');
     assert.deepEqual(iconRolesOf([...TEMPLATES.values()]), ['default', 'close']);
 });
 
