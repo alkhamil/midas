@@ -41,12 +41,12 @@ function instantiate({ replay, doc, page }, id, props = {}) {
     assert.equal(replay.syncInstance(out[0]), null);
     return out[0];
 }
-const treeOf = (doc, root) => doc.children(root.id).map(n => `${n.name}${doc.children(n.id).length ? `{${doc.children(n.id).map(c => c.name).join(',')}}` : ''}`);
+const treeOf = (doc, root) => { const draw = n => (doc.children(n.id).length ? `${n.name}{${doc.children(n.id).map(draw).join(',')}}` : n.name); return doc.children(root.id).map(draw); };
 
 test('an InputNumber instance from its master has one stepper, a placeholder, the stepper last, and the chevrons up then down', () => {
     const w = world();
     const inst = instantiate(w, 'inputnumber');
-    assert.deepEqual(treeOf(w.doc, inst), ['placeholder', 'stepper{stepUp,stepDivider,stepDown}']);
+    assert.deepEqual(treeOf(w.doc, inst), ['placeholder', 'stepper{stepUpBox{stepUp},stepDownBox{stepDown}}']);
     assert.equal(w.doc.descendants(inst.id).filter(n => n.behavior?.slot === 'stepper').length, 1);
     assert.equal(w.doc.children(inst.id).at(-1).name, 'stepper', 'the stepper is the last child, at the right edge');
 });
@@ -63,9 +63,9 @@ test('a second sync changes nothing, and toggling controls off removes the stepp
         return treeOf(w.doc, inst);
     };
     assert.deepEqual(edit('controls', false), ['placeholder']);
-    assert.deepEqual(edit('controls', true), ['placeholder', 'stepper{stepUp,stepDivider,stepDown}']);
+    assert.deepEqual(edit('controls', true), ['placeholder', 'stepper{stepUpBox{stepUp},stepDownBox{stepDown}}']);
     assert.deepEqual(edit('controlsPosition', 'none'), ['placeholder']);
-    assert.deepEqual(edit('controlsPosition', 'right'), ['placeholder', 'stepper{stepUp,stepDivider,stepDown}']);
+    assert.deepEqual(edit('controlsPosition', 'right'), ['placeholder', 'stepper{stepUpBox{stepUp},stepDownBox{stepDown}}']);
     assert.equal(core.behaviorProblem(w.doc.data, {}), null);
 });
 
@@ -73,7 +73,7 @@ test('an Input instance gets its placeholder from the sample props like the demo
     const w = world();
     assert.deepEqual(treeOf(w.doc, instantiate(w, 'input')), ['placeholder']);
     const withSuffix = instantiate(w, 'inputnumber', { hasSuffix: true, suffixText: 'kg' });
-    assert.deepEqual(treeOf(w.doc, withSuffix), ['placeholder', 'suffixText', 'stepper{stepUp,stepDivider,stepDown}']);
+    assert.deepEqual(treeOf(w.doc, withSuffix), ['placeholder', 'suffixText', 'stepper{stepUpBox{stepUp},stepDownBox{stepDown}}']);
 });
 
 test('instantiate marks the managed containers of the clone and starts the instance with the sample props', () => {

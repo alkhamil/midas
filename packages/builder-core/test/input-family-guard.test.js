@@ -33,8 +33,8 @@ const CASES = [
         { on: { value: 'hello' }, swap: { gone: ['placeholder'], added: ['value'] }, why: 'a value takes the placeholder place' },
     ] },
     { id: 'inputnumber', label: 'inputnumber', kind: {}, options: [
-        { off: { controls: false }, gone: ['stepper', 'stepUpBox', 'stepDownBox', 'stepUp', 'stepDown', 'stepDivider', 'stepEdge'], why: 'the stepper and everything in it go with controls' },
-        { off: { controlsPosition: 'none' }, gone: ['stepper', 'stepUpBox', 'stepDownBox', 'stepUp', 'stepDown', 'stepDivider', 'stepEdge'], why: 'position none draws no stepper' },
+        { off: { controls: false }, gone: ['stepper', 'stepUpBox', 'stepDownBox', 'stepUp', 'stepDown'], why: 'the stepper and everything in it go with controls' },
+        { off: { controlsPosition: 'none' }, gone: ['stepper', 'stepUpBox', 'stepDownBox', 'stepUp', 'stepDown'], why: 'position none draws no stepper' },
         { on: { hasSuffix: true, suffixText: 'kg' }, added: ['suffixText'], why: 'a suffix text' },
         { on: { hasPrefix: true, prefixText: '$' }, added: ['prefixText'], why: 'a prefix text' },
     ] },

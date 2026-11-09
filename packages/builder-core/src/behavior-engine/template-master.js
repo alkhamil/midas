@@ -56,7 +56,7 @@ export function layerSpecsOf(template) {
     for (const slot of template.anatomy) {
         // A container is a frame of the master that holds the slots naming it as their parent; each of those carries its parent's key.
         if (slot.kind === 'frame') {
-            specs.push({ key: slot.id, role: 'group', type: 'frame', behavior: { group: slot.id }, slot });
+            specs.push({ key: slot.id, role: 'group', type: 'frame', behavior: { group: slot.id }, slot, ...(slot.parent ? { parentKey: slot.parent } : {}) });
             continue;
         }
         if (!placed && slot.kind === 'text' || slot.kind === 'control') { specs.push(...framed); placed = true; }
@@ -78,7 +78,7 @@ export function layerSpecsOf(template) {
 function nodeOf(spec, template, binding, idOf, parentId) {
     const id = idOf(spec.key);
     if (spec.role === 'group') {
-        return { ...LAYER, id, name: spec.key, type: 'frame', parentId, w: 0, h: 0, layout: spec.slot.layout, gap: 0, padding: 0, fills: [], layoutSizingH: spec.slot.fill === true ? 'fill' : 'hug', layoutSizingV: spec.slot.fillV === true ? 'fill' : 'hug', ...(spec.slot.primaryAlign ? { primaryAlign: spec.slot.primaryAlign } : {}), ...(spec.slot.counterAlign ? { counterAlign: spec.slot.counterAlign } : {}), behavior: { version: BEHAVIOR_DATA_VERSION, group: spec.key } };
+        return { ...LAYER, id, name: spec.key, type: 'frame', parentId, w: 0, h: 0, layout: spec.slot.layout, gap: 0, padding: 0, fills: [], layoutSizingH: spec.slot.fill === true ? 'fill' : 'hug', layoutSizingV: spec.slot.fillV === true ? 'fill' : 'hug', ...(spec.slot.edge === 'right' ? EDGE_NODE : {}), ...(spec.slot.strokeSides ? { strokeSides: spec.slot.strokeSides, strokeAlign: 'inside' } : {}), ...(spec.slot.primaryAlign ? { primaryAlign: spec.slot.primaryAlign } : {}), ...(spec.slot.counterAlign ? { counterAlign: spec.slot.counterAlign } : {}), behavior: { version: BEHAVIOR_DATA_VERSION, group: spec.key } };
     }
     if (spec.role === 'content') {
         return { ...LAYER, id, name: spec.content.name, type: 'frame', parentId, w: 0, h: 0, layout: spec.content.layout, gap: 0, padding: 0, fills: [], layoutSizingH: spec.content.fill === true ? 'fill' : 'hug', layoutSizingV: 'hug', propBind: { slot: spec.key } };
@@ -268,6 +268,18 @@ export function managedTextLayer(template, slotId, resolved, { id, parentId }) {
  * A glyph that sits in a corner of the box ignores the box's auto layout and its padding: the canvas's own mechanism, a layer that is absolutely positioned and pinned to the
  * right and bottom edges (Position in auto layout: Absolute, with constraints), so it stays in the corner as the box hugs its text.
  */
+export const EDGE_NODE = { layoutPositioning: 'absolute', constraintH: 'right', constraintV: 'stretch' };
+
+/**
+ * Where a container pinned to the right edge sits in its box: against the right edge and the full height, inside the border (the stroke is inside the box, so the column starts
+ * a border in), as the stylesheet's top, right and bottom of 0 on the padding box draw it.
+ * @param {{ w: number, h: number }} box
+ * @param {{ w: number }} layer
+ * @param {number} border the box's stroke width
+ * @returns {{ x: number, y: number, h: number }}
+ */
+export const edgePosition = (box, layer, border) => ({ x: box.w - layer.w - border, y: border, h: box.h - 2 * border });
+
 export const CORNER_NODE = { layoutPositioning: 'absolute', constraintH: 'right', constraintV: 'bottom' };
 
 /**

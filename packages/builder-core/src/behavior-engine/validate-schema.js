@@ -157,6 +157,8 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
         if (slot.kind === 'frame') {
             if (slot.layout !== 'horizontal' && slot.layout !== 'vertical') out.push(`frame slot "${slot.id}" layout must be horizontal or vertical`);
             if (slot.optional) out.push(`frame slot "${slot.id}" cannot be optional`);
+            if (slot.edge !== undefined && (slot.edge !== 'right' || slot.parent !== undefined)) out.push(`frame slot "${slot.id}" edge must be right, on a container of the box itself`);
+            if (slot.strokeSides !== undefined && !['left', 'top', 'right', 'bottom'].includes(slot.strokeSides)) out.push(`frame slot "${slot.id}" strokeSides must be left, top, right or bottom`);
             if (slot.managed && slot.shownWhen === undefined) out.push(`frame slot "${slot.id}" is managed but unconditional: a managed container names when it shows`);
             // A container that holds nothing is a drawn box when the display maps it (a Switch's handle).
             if (!anatomy.some(c => isPlainObject(c) && c.parent === slot.id) && !drawnBox(schema, slot.id)) out.push(`frame slot "${slot.id}" holds no slot`);
@@ -164,7 +166,8 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
         if (slot.parent !== undefined) {
             const holder = anatomy.find(c => isPlainObject(c) && c.id === slot.parent);
             if (!holder || holder.kind !== 'frame') out.push(`anatomy slot "${slot.id}" has the parent "${slot.parent}", which is not a frame slot`);
-            else if (slot.kind === 'frame') out.push(`frame slot "${slot.id}" cannot sit inside another frame slot`);
+            // Containers nest one level (the handler column holds its two halves), never deeper.
+            else if (slot.kind === 'frame' && holder.parent !== undefined) out.push(`frame slot "${slot.id}" sits too deep: containers nest one level`);
         }
         if (slot.managed && !['icon', 'text', 'control', 'glyph', 'frame'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" is managed but not an icon, text, control, glyph or frame slot`);
         // A glyph is a built-in outline drawn in a box: managed, shown by a state the root says as an attribute (so Play and the export need no layer).
@@ -609,7 +612,11 @@ function pressProblems(schema) {
     const out = [];
     for (const entry of schema.press) {
         const slot = (Array.isArray(schema.anatomy) ? schema.anatomy : []).find(s => isPlainObject(s) && isPlainObject(entry) && s.id === entry.slot);
-        if (!isPlainObject(entry) || slot?.kind !== 'glyph') { out.push(`press names "${entry?.slot}", which is not a glyph slot`); continue; }
+        if (!isPlainObject(entry) || !['glyph', 'frame'].includes(slot?.kind)) { out.push(`press names "${entry?.slot}", which is not a glyph or frame slot`); continue; }
+        const tokens = Object.values(isPlainObject(schema.tokens) ? schema.tokens : {}).flat();
+        for (const field of ['hoverFill', 'activeFill']) if (entry[field] !== undefined && !tokens.includes(entry[field])) out.push(`press ${field} "${entry[field]}" on "${entry.slot}" is not a token`);
+        if (entry.glyph !== undefined && !(Array.isArray(schema.anatomy) && schema.anatomy.some(s => isPlainObject(s) && s.id === entry.glyph && s.parent === entry.slot))) out.push(`press glyph "${entry.glyph}" is not a slot inside "${entry.slot}"`);
+        if (entry.blockedBy !== undefined && !stateAttributesOf(schema).some(a => a.prop === entry.blockedBy)) out.push(`press blockedBy "${entry.blockedBy}" is not a state with an attribute`);
         const actions = ['toggle', 'step', 'resize'].filter(k => entry[k] !== undefined);
         if (actions.length !== 1) { out.push(`press on "${entry.slot}" needs exactly one of toggle, step or resize`); continue; }
         if (entry.resize !== undefined && !(entry.resize === true && schema.control?.multiline)) out.push(`press resize on "${entry.slot}" needs a multiline control`);

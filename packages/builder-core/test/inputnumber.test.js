@@ -54,26 +54,31 @@ test('atMin and atMax are read from the value and the limits, and are never stor
     assert.throws(() => setInstanceProp(number, {}, 'atMax', true), /derived/);
 });
 
-test('the master is the root, the placeholder and the empty stepper container; a fresh instance has the container with both arrows', () => {
-    assert.deepEqual(model.created.map(n => n.name), ['placeholder', 'stepper'], 'the arrows are instance layers; the container is there while controls is on at the sample props');
-    assert.deepEqual(names({}), ['placeholder', 'stepper', 'stepUp', 'stepDivider', 'stepDown']);
+/** The layers of an instance as a tree of names: the root's children, each followed by its own in braces. */
+const treeOf = nodes => { const kids = id => nodes.filter(n => n.parentId === id); const draw = n => (kids(n.id).length ? `${n.name}{${kids(n.id).map(draw).join(',')}}` : n.name); return kids(nodes[0].id).map(draw); };
+const COLUMN = 'stepper{stepUpBox{stepUp},stepDownBox{stepDown}}';
+
+test('the master is the root, the placeholder and the empty stepper container; a fresh instance has the column with its two halves and their chevrons', () => {
+    assert.deepEqual(model.created.map(n => n.name), ['placeholder', 'stepper', 'stepUpBox', 'stepDownBox'], 'the column and its two halves are there while controls is on at the sample props; the chevrons are instance layers');
+    assert.equal(model.created.find(n => n.name === 'stepUpBox').parentId, model.created.find(n => n.name === 'stepper').id, 'the halves are inside the column');
+    assert.deepEqual(treeOf(instanceFor(model, { ...base })), ['placeholder', COLUMN]);
 });
 
-test('controls off, or the position none, removes the stepper with its arrows; turning it back on makes them again', () => {
-    assert.deepEqual(names({ controls: false }), ['placeholder']);
-    assert.deepEqual(names({ controlsPosition: 'none' }), ['placeholder']);
-    const held = instanceFor(model, { ...base }).slice(1).map(n => ({ id: n.id, slot: n.behavior?.slot ?? null, name: n.name, ...(['stepUp', 'stepDivider', 'stepDown'].includes(n.behavior?.slot) ? { parent: 'stepper' } : {}) }));
+test('controls off, or the position none, removes the column with everything in it; turning it back on makes them again', () => {
+    assert.deepEqual(treeOf(instanceFor(model, { ...base, controls: false })), ['placeholder']);
+    assert.deepEqual(treeOf(instanceFor(model, { ...base, controlsPosition: 'none' })), ['placeholder']);
+    const nodes = instanceFor(model, { ...base });
+    const parentOf = { stepUpBox: 'stepper', stepDownBox: 'stepper', stepUp: 'stepUpBox', stepDown: 'stepDownBox' };
+    const held = nodes.slice(1).map(n => ({ id: n.id, slot: n.behavior?.slot ?? null, name: n.name, ...(parentOf[n.behavior?.slot] ? { parent: parentOf[n.behavior.slot] } : {}) }));
     const off = planAnatomy(number, resolveProps(number, { ...base, controls: false }), held);
-    assert.deepEqual(off.map(o => o.op), ['remove', 'remove', 'remove', 'remove'], 'the container, both arrows and the divider go');
+    assert.deepEqual(off.map(o => o.op), ['remove', 'remove', 'remove', 'remove', 'remove'], 'the column, both halves and both chevrons go');
     assert.deepEqual(planAnatomy(number, resolveProps(number, base), held), [], 'the plan converges');
 });
 
-test('the arrows sit in the stepper, which sits after the suffix; a prefix and a suffix are the Input\'s', () => {
+test('the column sits after the suffix, the halves in it up then down, each with its chevron; a prefix and a suffix are the Input family', () => {
     const nodes = instanceFor(model, { ...base, hasSuffix: true, suffixText: 'kg' });
-    assert.deepEqual(nodes.slice(1).filter(n => n.parentId === nodes[0].id).map(n => n.name), ['placeholder', 'suffixText', 'stepper']);
-    const stepper = nodes.find(n => n.name === 'stepper');
-    assert.deepEqual(nodes.filter(n => n.parentId === stepper.id).map(n => n.name), ['stepUp', 'stepDivider', 'stepDown']);
-    assert.equal(stepper.layout, 'vertical');
+    assert.deepEqual(treeOf(nodes), ['placeholder', 'suffixText', COLUMN]);
+    assert.equal(nodes.find(n => n.name === 'stepper').layout, 'vertical');
 });
 
 test('no instance holds a hidden, transparent or zero-size layer, with the stepper on or off, at a limit or not', () => {
@@ -99,8 +104,8 @@ test('Play: the input carries the limits, the arrows say which way they step, th
     assert.deepEqual(r.problems, []);
     const input = find(r.root, e => e.tag === 'input');
     assert.deepEqual([input.attrs['data-num-min'], input.attrs['data-num-max'], input.attrs['data-num-step'], input.attrs['data-num-precision']], ['0', '10', '2', '1']);
-    assert.equal(find(r.root, e => e.attrs?.class === 'inputnumber-stepUp').attrs['data-press-step'], '1');
-    assert.equal(find(r.root, e => e.attrs?.class === 'inputnumber-stepDown').attrs['data-press-step'], '-1');
+    assert.equal(find(r.root, e => e.attrs?.class === 'inputnumber-stepUpBox').attrs['data-press-step'], '1', 'a click on the up half steps up');
+    assert.equal(find(r.root, e => e.attrs?.class === 'inputnumber-stepDownBox').attrs['data-press-step'], '-1');
     assert.ok('data-press-root' in r.root.attrs);
     assert.equal(r.root.attrs['data-at-max'], true);
     assert.equal(r.root.attrs['data-at-min'], undefined);
@@ -119,5 +124,5 @@ test('the export computes the limits from the props, reports a press, and recolo
     assert.match(jsx, /onClick=\{\(\) => \{ if \(!\(disabled \|\| readOnly\)\) onStep\?\.\(1\); \}\}/);
     assert.match(jsx, /\{\(noStepper === false\) && <div className="inputnumber-stepper">/);
     assert.match(css, /\[data-at-max\]:not\(:has\(:disabled\)\) \{\s*--inputnumber-step-up-fg: #/, 'a limit swaps the arrow colour token on the root');
-    assert.match(css, /\.inputnumber-stepUp \{[^}]*cursor: pointer/);
+    assert.match(css, /\.inputnumber-stepUpBox \{\s*cursor: pointer;/);
 });

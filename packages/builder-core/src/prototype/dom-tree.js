@@ -338,6 +338,7 @@ function renderTemplate(n, template, parent, scope) {
                 else out.push({ tag: 'span', nodeId: slot.id === primarySlotOf(template) ? labelEntry?.node?.id : undefined, attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
             }
         }
+        else if (slot.kind === 'frame') emitContainer(slot, out);
         else if (slot.kind === 'glyph') {
             // A glyph is drawn from its definition (the export's markup), always; the stylesheet shows it while the root's state attribute is on.
             out.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}`, ...pressAttrsOf(template, slot.id) }, style: {}, html: `<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="${glyphPathD(slot.glyph)}" fill="currentColor"${glyphFillRuleAttr(slot.glyph)} /></svg>`, children: [] });
@@ -359,9 +360,8 @@ function renderTemplate(n, template, parent, scope) {
         }
     };
     // A container is one element of the template's class around the slots that name it, in anatomy order (the codegen writes the same).
-    for (const slot of template.anatomy.filter(s => !s.parent)) {
-        if (slot.kind !== 'frame') { emitSlot(slot, children); continue; }
-        if (slot.shownWhen !== undefined && !conditionHolds(slot.shownWhen, props)) continue;
+    function emitContainer(slot, out) {
+        if (slot.shownWhen !== undefined && !conditionHolds(slot.shownWhen, props)) return;
         const group = below(n.id).find(c => c.behavior?.group === slot.id) ?? below(n.id).find(c => c.behavior?.slot === slot.id);
         const inner = [];
         for (const child of template.anatomy.filter(c => c.parent === slot.id)) emitSlot(child, inner);
@@ -371,7 +371,11 @@ function renderTemplate(n, template, parent, scope) {
             if (part.spin) el.style.animation = SPIN_ANIMATION;
             inner.push(el);
         }
-        children.push({ tag: 'div', nodeId: group?.id, attrs: { class: `${template.id}-${slot.id}` }, style: {}, children: inner });
+        out.push({ tag: 'div', nodeId: group?.id, attrs: { class: `${template.id}-${slot.id}`, ...pressAttrsOf(template, slot.id) }, style: {}, children: inner });
+    }
+    for (const slot of template.anatomy.filter(s => !s.parent)) {
+        if (slot.kind !== 'frame') { emitSlot(slot, children); continue; }
+        emitContainer(slot, children);
     }
     if (!framePartsDrawn && !template.anatomy.some(s => s.kind === 'text' || s.kind === 'control')) drawFrameParts(children);
     // The content slots, after the other layers as the export writes them: the slot element (class <template>-<slot>) around the layers the instance holds,

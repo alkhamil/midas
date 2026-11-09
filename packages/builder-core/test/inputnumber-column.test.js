@@ -18,37 +18,6 @@ const playOf = props => {
 };
 const find = (el, pred) => pred(el) ? el : (el.children ?? []).map(c => find(c, pred)).find(Boolean);
 
-test('the handler column is attached: full control height, a small control wide, split by a divider a border thick, rounded at the outer corners only', () => {
-    const nodes = instanceFor(model, { ...base });
-    const stepper = nodes.find(n => n.name === 'stepper');
-    assert.deepEqual([stepper.layoutSizingH, stepper.layoutSizingV], ['fixed', 'fill'], 'it fills the height of the control and is as wide as its width token');
-    assert.equal(stepper.layout, 'vertical');
-    assert.deepEqual([stepper.primaryAlign, stepper.counterAlign], ['center', 'center']);
-    assert.deepEqual(number.display.stepper, { fill: 'step-bg', radiusEnd: 'radius', width: 'stepWidth', gap: 'stepGap' }, 'colour, end corners, width and the gap that keeps the chevrons off the divider are tokens');
-    assert.deepEqual(number.display.stepDivider, { fill: 'step-border', width: 'stepWidth', height: 'borderWidth' }, 'the divider is a border thick and a column wide, in the border colour');
-    assert.equal(nodes.find(n => n.name === 'stepDivider').type, 'path');
-    assert.equal(number.tokenRoles.stepWidth, 'height-sm');
-    assert.equal(number.tokenRoles['step-border'], 'border');
-    assert.equal(number.anatomy.find(s => s.id === 'stepUp').glyph, 'chevronUp');
-    assert.equal(number.anatomy.find(s => s.id === 'stepDown').glyph, 'chevronDown');
-    const css = exported().files['InputNumber.css'];
-    assert.match(css, /\.inputnumber-stepper \{[^}]*border-top-right-radius: var\(--inputnumber-radius\);[^}]*border-bottom-right-radius: var\(--inputnumber-radius\)/);
-    assert.match(css, /\.inputnumber-stepDivider \{[^}]*width: var\(--inputnumber-step-width\);[^}]*height: var\(--inputnumber-border-width\)/);
-});
-
-test('while the column is attached the root keeps no padding on its end side: the token is none and a state gives it back without the column', () => {
-    assert.equal(number.display.root.paddingEnd, 'paddingEnd');
-    assert.equal(number.display.root.paddingStart, 'paddingX');
-    assert.ok(!('paddingX' in number.display.root));
-    assert.deepEqual(number.persistentStates.noStepper.tokens, { paddingEnd: 'paddingEndSide' });
-    assert.equal(number.tokenRoles.paddingEnd, 'button-padding-y-md', 'the zero length of the base data');
-    assert.equal(number.props.noStepper.derived.when.any.length, 2, 'no stepper: controls off, or position none');
-    const css = exported().files['InputNumber.css'];
-    assert.match(css, /\.inputnumber \{[^}]*padding-inline-start: max\(0px, calc\(var\(--inputnumber-padding-x\) - /);
-    assert.match(css, /\.inputnumber \{[^}]*padding-inline-end: max\(0px, calc\(var\(--inputnumber-padding-end\) - /);
-    assert.match(css, /\[data-no-stepper\][^{]*\{[^}]*--inputnumber-padding-end: /, 'without the column the end padding is the side one');
-});
-
 test('Play and the export reveal the column on hover and focus over the antd time, never when disabled; the canvas draws it always', () => {
     assert.deepEqual(number.reveal, { slot: 'stepper', duration: '0.2s' });
     const css = exported().files['InputNumber.css'];

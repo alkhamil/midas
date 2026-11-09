@@ -56,3 +56,10 @@ test('Play wires the click-to-focus, the number commit on blur and the resize gr
     assert.ok(play.includes("closest?.('[data-press=\"resize\"]')") && play.includes("overlay.addEventListener('pointerdown'"), 'the grip starts a drag');
     assert.ok(play.includes('getComputedStyle(el)'), 'the field limits are the computed min and max height (the tokens)');
 });
+
+test('applyLiteralFields places a pinned container and a corner glyph from the box size (edgePosition, cornerPosition), after the bindings', () => {
+    const fields = body('applyLiteralFields');
+    assert.ok(fields.includes('edgePosition(inst, layer, inst.strokeWidth ?? 0)'), 'the handler column spans the box inside its border');
+    assert.ok(fields.includes('cornerPosition(inst, layer)'), 'the grip sits on the corner');
+    assert.ok(midas.includes('const walk = id => { for (const c of doc.children(id)) { out.push(c); if (isContainer(c)) walk(c.id); } };'), 'the managed layers are found through nested containers');
+});

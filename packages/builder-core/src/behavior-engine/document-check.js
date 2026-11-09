@@ -135,11 +135,9 @@ function checkAnatomy(n, nodes, children, page) {
     // The planner orders a root slot among the root's direct children: a layer hanging under a container
     // carries its container, so a container's content never moves a root index.
     const kids = children.get(n.id) || [];
-    const layers = [
-        ...kids.map(c => ({ node: c })),
-        // A conditional container is an instance layer marked by its slot, not its group: its content counts all the same.
-        ...kids.filter(c => c.behavior?.group !== undefined || c.behavior?.slot !== undefined).flatMap(c => (children.get(c.id) || []).map(g => ({ node: g, parent: c.behavior.group ?? c.behavior.slot }))),
-    ].map(({ node: c, parent }) => ({
+    // A conditional container is an instance layer marked by its slot, not its group: its content counts all the same, down through the containers (one level of nesting).
+    const walk = (list, parent) => list.flatMap(c => [{ node: c, ...(parent === undefined ? {} : { parent }) }, ...(c.behavior?.group !== undefined || c.behavior?.slot !== undefined ? walk(children.get(c.id) || [], c.behavior.group ?? c.behavior.slot) : [])]);
+    const layers = walk(kids).map(({ node: c, parent }) => ({
         id: c.id, slot: c.behavior?.slot ?? null, name: c.name,
         ...(parent === undefined ? {} : { parent }),
         // A slot shows the icon its nested instance is an instance of (null for the placeholder).

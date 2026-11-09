@@ -38,13 +38,15 @@ const build = (f, children = []) => applyTemplateToFrame(BOXED, { frame: f, chil
 const withAnatomy = anatomy => ({ ...structuredClone(BOXED), anatomy });
 const problems = anatomy => validateTemplateSchema(withAnatomy(anatomy)).join('\n');
 
-test('the validator holds a container to its rules: a layout, children that name it, a single level, and a required text inside or beside it', () => {
+test('the validator holds a container to its rules: a layout, children that name it, one level of nesting, and a required text inside or beside it', () => {
     assert.deepEqual(validateTemplateSchema(BOXED), []);
     const [box, mark, label] = BOXED.anatomy;
     assert.match(problems([{ ...box, layout: undefined }, mark, label]), /frame slot "labelBox" layout must be horizontal or vertical/);
     assert.match(problems([box, { ...mark, parent: 'nope' }, label]), /anatomy slot "requiredMark" has the parent "nope", which is not a frame slot/);
     assert.match(problems([box, mark, { ...label, parent: 'label' }]), /anatomy slot "label" has the parent "label", which is not a frame slot/);
-    assert.match(problems([box, { id: 'x', kind: 'frame', layout: 'vertical', parent: 'labelBox' }, mark, label]), /frame slot "x" cannot sit inside another frame slot/);
+    // Containers nest one level (the handler column holds its halves), never two.
+    assert.doesNotMatch(problems([box, { id: 'x', kind: 'frame', layout: 'vertical', parent: 'labelBox' }, { ...mark, parent: 'x' }, label]), /sits too deep|cannot sit inside/);
+    assert.match(problems([box, { id: 'x', kind: 'frame', layout: 'vertical', parent: 'labelBox' }, { id: 'y', kind: 'frame', layout: 'vertical', parent: 'x' }, { ...mark, parent: 'y' }, label]), /frame slot "y" sits too deep: containers nest one level/);
     assert.match(validateTemplateSchema(withAnatomy([{ ...box }, { ...label, parent: undefined }])).join('\n'), /frame slot "labelBox" holds no slot/);
     assert.match(problems([{ ...box, optional: true }, mark, label]), /frame slot "labelBox" cannot be optional/);
     assert.doesNotMatch(problems([{ ...box, managed: true, shownWhen: { prop: 'label', empty: false } }, { ...mark, parent: 'labelBox' }, label]), /cannot be/, 'a managed conditional container is allowed');

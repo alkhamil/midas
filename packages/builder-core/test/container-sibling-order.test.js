@@ -9,15 +9,15 @@ import { markManagedContainers } from '../src/behavior-engine/template-master.js
 
 const number = TEMPLATES.get('inputnumber');
 
-test('a container with several slots gets them inserted in anatomy order, each among its siblings', () => {
+test('a container with several slots gets them inserted in anatomy order, each among its siblings, one level of nesting down', () => {
     const ops = planAnatomy(number, resolveProps(number, {}), [{ id: 'p', slot: null, name: 'placeholder' }]);
     const inserts = ops.filter(o => o.op === 'insert');
-    assert.deepEqual(inserts.map(o => [o.slot, o.index]), [['stepper', 1], ['stepUp', 0], ['stepDivider', 1], ['stepDown', 2]]);
+    assert.deepEqual(inserts.map(o => [o.slot, o.parent ?? null, o.index]), [['stepper', null, 1], ['stepUpBox', 'stepper', 0], ['stepUp', 'stepUpBox', 0], ['stepDownBox', 'stepper', 1], ['stepDown', 'stepDownBox', 0]]);
 });
 
-test('with the first and the last held, a missing middle slot goes between them', () => {
-    const held = [{ id: 'p', slot: null }, { id: 's', slot: 'stepper' }, { id: 'u', slot: 'stepUp', parent: 'stepper' }, { id: 'd', slot: 'stepDown', parent: 'stepper' }];
-    assert.deepEqual(planAnatomy(number, resolveProps(number, {}), held).map(o => [o.op, o.slot, o.index]), [['insert', 'stepDivider', 1]]);
+test('with the lower half held, the missing upper half goes before it', () => {
+    const held = [{ id: 'p', slot: null }, { id: 's', slot: 'stepper' }, { id: 'd', slot: 'stepDownBox', parent: 'stepper' }, { id: 'dg', slot: 'stepDown', parent: 'stepDownBox' }];
+    assert.deepEqual(planAnatomy(number, resolveProps(number, {}), held).map(o => [o.op, o.slot, o.parent, o.index]), [['insert', 'stepUpBox', 'stepper', 0], ['insert', 'stepUp', 'stepUpBox', 0]]);
 });
 
 test('a clone of the master keeps the group marker, and the managed container becomes the slot-marked frame; a box that is not managed stays a group', () => {
