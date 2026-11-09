@@ -10,6 +10,9 @@ import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js
 import { cssVarOf, splitColor, tokenValueOf } from './tokens.js';
 import { glyphPathD } from './glyphs.js';
 import { glyphTests } from './validate-schema.js';
+
+/** A camelCase name as kebab-case (the custom properties and data attributes a prop is written as). */
+const kebabCase = name => name.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`);
 import { rootLayoutOf, labelLayoutOf, flexOf, flowSizing } from './layout.js';
 import { labelEntryOf } from './layers.js';
 import { managedTextLayer } from './template-master.js';
@@ -139,6 +142,12 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         const none = template.props[w.prop].default === null ? `${w.prop} == null ? undefined : ` : '';
         return `'--${template.id}-${w.prop}': ${none}\`\${${w.prop}}px\``;
     });
+    // A multiline control's rows reach the stylesheet as custom properties (the height is rows x line height + padding, see multilineRules).
+    const ml = controlOf(template)?.multiline;
+    if (ml) {
+        varPairs.push(`'--${template.id}-${kebabCase(ml.rows)}': ${ml.rows}`);
+        for (const key of [ml.minRows, ml.maxRows]) varPairs.push(`'--${template.id}-${kebabCase(key)}': ${ml.autoSize} && ${key} != null ? ${key} : undefined`);
+    }
     const varsExpr = varPairs.length ? `{ ${varPairs.join(', ')} }` : null;
     // Whatever turns the disabled state on: its own prop, and the prop of each state that is an alias of it (the Input's Read only).
     const disabledProp = Object.values(template.persistentStates).filter(def => def.prop === template.persistentStates[template.element.disabledState].prop || def.as === template.element.disabledState).map(def => def.prop).join(' || ');
@@ -178,7 +187,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             if (!template.props[slot.id] && !isControl) problems.push({ slot: slot.id, reason: 'no-prop' });
             // A control slot is an input holding the value prop (and the placeholder beside it), not a span.
             const label = control && control.slot === slot.id
-                ? `<input className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderCondition(template, control)}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''}${control.maskUnless ? ` type={${control.maskUnless} ? "text" : "password"}` : ''} disabled={${disabledProp}} />`
+                ? `<${control.multiline ? 'textarea' : 'input'} className="${template.id}-${slot.id}" value={${control.value}}${control.placeholder ? ` placeholder={${placeholderCondition(template, control)}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''}${control.maskUnless ? ` type={${control.maskUnless} ? "text" : "password"}` : ''}${control.multiline ? ` rows={${control.multiline.rows}}` : ''} disabled={${disabledProp}} />`
                 : `<span className="${template.id}-${slot.id}">{${slot.id}}</span>`;
             // The control is always written: the input holds the value and the placeholder whether or not the canvas has a layer for them.
             out.push(isControl ? label : slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
@@ -239,6 +248,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         // A toggle control says its state to assistive technology: true, false, or mixed while the state it clears holds.
         ...(template.toggle ? [`aria-checked={${template.toggle.clears ? `${template.toggle.clears} ? "mixed" : ` : ''}${template.toggle.prop} ? "true" : "false"}`] : []),
         ...fieldWritersOf(template).filter(w => w.field === 'layout').map(w => `data-${w.prop}={${w.prop}}`),
+        ...(ml ? [`data-${kebabCase(ml.resize)}={${ml.resize}}`, `data-${kebabCase(ml.autoSize)}={${ml.autoSize} || undefined}`] : []),
         // A prop that aligns the row's content to the end says which end as a data attribute (a Switch's handle).
         ...fieldWritersOf(template).filter(w => w.field === 'primaryAlign').map(w => `data-${w.prop}-align={${w.prop} ? "end" : "start"}`),
         // Only some elements have a `disabled` attribute; any other root says it with aria-disabled (and the schema's state pseudo selects on it).
@@ -372,6 +382,7 @@ function displayRules(template, master, childrenOf, geometry) {
             const w = rootBorderWidthOf(box);
             decls.push('  box-sizing: border-box;\n', `  border-width: ${w}px;\n`, `  border-style: ${w === 0 ? 'none' : lineStyleOf(box)};\n`, `  background-clip: ${clipOf(box)};\n`);
         }
+        if (controlOf(template)?.slot === key && controlOf(template).multiline) decls.push('  display: block;\n', '  width: 100%;\n', '  min-width: 0px;\n', '  resize: none;\n');
         // A control slot draws as a native input: it owns text only, so the reset comes first and the
         // token-driven declarations below win for colour and font metrics. Generic: any template with a
         // `control` reads this path. Its width is its text's, as the canvas's hugging layer is: the value, or the placeholder while
@@ -513,6 +524,29 @@ function reducedMotion(template) {
     const wave = template.interaction?.wave ? `\n  ${sel}[data-wave-on]::after {\n    animation: none;\n  }` : '';
     const dis2 = `:not(${pseudoOf(template, template.element.disabledState)})`;
     const motion = template.motion ? [...(template.motion.transitions ?? []).map(t => `\n  ${t.key === 'root' ? sel : `${sel}-${t.key}`} {\n    transition: none;\n  }`),
+/**
+ * The height of a multiline control's box from its rows: at least rows x line height + the padding on both sides (the box is border-box and its stroke is inside the
+ * padding, so that is the outer height), and with autoSize the min and max rows. A max with no rows set is an invalid declaration, so there is none. Resize is
+ * one rule per option on the data attribute; autoSize never resizes.
+ * @param {any} template
+ * @returns {string[]}
+ */
+function multilineRules(template) {
+    const ml = controlOf(template)?.multiline;
+    if (!ml) return [];
+    const id = template.id, slot = controlOf(template).slot;
+    const lineHeight = `var(${cssVarOf(id, template.display[slot].typography)}-line-height)`, padding = `var(${cssVarOf(id, template.display.root.paddingY)})`;
+    const rows = name => `var(--${id}-${kebabCase(name)})`;
+    const height = count => `calc(${count} * ${lineHeight} + 2 * ${padding})`;
+    const auto = `[data-${kebabCase(ml.autoSize)}]`, value = `.${id}-${slot}`;
+    return [
+        `.${id} {\n  min-height: ${height(rows(ml.rows))};\n}\n`,
+        `.${id}${auto} {\n  min-height: calc(var(--${id}-${kebabCase(ml.minRows)}, ${rows(ml.rows)}) * ${lineHeight} + 2 * ${padding});\n  max-height: ${height(rows(ml.maxRows))};\n}\n`,
+        `.${id}[data-${kebabCase(ml.resize)}="vertical"] ${value} {\n  resize: vertical;\n}\n`,
+        `.${id}${auto} ${value} {\n  resize: none;\n}\n`,
+    ];
+}
+
         ...(template.motion.appearances ?? []).map(a => `\n  ${a.states.map(s => `${sel}[${stateAttributesOf(template).find(x => x.state === s)?.attr}]${dis2} ${sel}-${a.key}`).join(', ')} {\n    animation: none;\n  }`)] : [];
     return `@media (prefers-reduced-motion: reduce) {\n  ${sel} {\n    transition: none;\n  }${wave}${motion.join('')}\n}\n`;
 }
@@ -672,7 +706,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     blocks.push(...iconHoverRules(template), ...blockedRules(template));
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
-    blocks.push(...fieldRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
+    blocks.push(...fieldRules(template), ...multilineRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
     if (template.interaction || template.motion) blocks.push(reducedMotion(template));
     return blocks.join('\n');
 }

@@ -95,7 +95,7 @@ function nodeOf(spec, template, binding, idOf, parentId) {
         // A layer that fills (the Input's value and placeholder) takes the width the row leaves; the rest hug their text.
         const fills = (template.anatomy.find(slot => slot.id === spec.key) ?? spec.part ?? {}).fill === true;
         return { ...LAYER, id, name: spec.key, type: 'text', parentId, text: fallback,
-            fontFamily: 'Inter', fontSize: 14, fontWeight: 400, fontStyle: 'normal', lineHeight: 1.4, letterSpacing: 0, textAlign: 'left', textDecoration: 'none',
+            fontFamily: 'Inter', fontSize: 14, fontWeight: 400, fontStyle: 'normal', lineHeight: 1.4, letterSpacing: 0, textAlign: (template.anatomy.find(slot => slot.id === spec.key) ?? {}).align ?? 'left', textDecoration: 'none',
             textCase: 'none', direction: 'auto', w: 0, h: 0, autoW: true, layoutSizingH: fills ? 'fill' : 'hug', layoutSizingV: 'hug', fills: solid('#18181b'),
             ...(spec.behavior ? { behavior: { version: BEHAVIOR_DATA_VERSION, ...spec.behavior } } : {}) };
     }

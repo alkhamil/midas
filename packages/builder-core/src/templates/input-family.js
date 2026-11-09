@@ -18,7 +18,7 @@ export const COUNT = { anatomy: ['count'], icons: [], props: ['showCount'], toke
  * @param {{
  *   id: string, name: string, sampleProps: Record<string, string>,
  *   dropped?: { anatomy?: string[], icons?: string[], props?: string[], tokens?: string[], playOnly?: string[] },
- *   added?: Partial<TemplateSchema> & { anatomyBefore?: Record<string, string> },
+ *   added?: Partial<TemplateSchema> & { anatomyBefore?: Record<string, string>, anatomyPatch?: Record<string, Record<string, unknown>> },
  * }} spec
  * @returns {TemplateSchema}
  */
@@ -36,7 +36,8 @@ export function inputFamily({ id, name, sampleProps, dropped = CLEAR, added = {}
     for (const group of Object.keys(out.tokens)) out.tokens[group] = out.tokens[group].filter(t => !gone.has(t));
     for (const table of [out.tokenKinds, out.tokenRoles]) for (const t of gone) delete table[t];
     out.playOnly = out.playOnly.filter(p => !(dropped.playOnly ?? []).includes(p.id));
-    const { anatomyBefore = {}, anatomy = [], props = {}, tokens = {}, tokenKinds = {}, tokenRoles = {}, display = {}, persistentStates = {}, statePseudo = {}, previewStates = {}, parts = [], playOnly = [], icons = [], ...rest } = added;
+    const { anatomyBefore = {}, anatomyPatch = {}, anatomy = [], props = {}, tokens = {}, tokenKinds = {}, tokenRoles = {}, display = {}, persistentStates = {}, statePseudo = {}, previewStates = {}, parts = [], playOnly = [], icons = [], ...rest } = added;
+    for (const slot of out.anatomy) Object.assign(slot, anatomyPatch[slot.id] ?? {});
     for (const slot of anatomy) {
         const before = anatomyBefore[slot.id];
         const at = before === undefined ? out.anatomy.length : out.anatomy.findIndex(s => s.id === before);
@@ -50,6 +51,8 @@ export function inputFamily({ id, name, sampleProps, dropped = CLEAR, added = {}
     for (const [key, map] of Object.entries(display)) out.display[key] = { ...(out.display[key] ?? {}), ...map };
     Object.assign(out.persistentStates, persistentStates);
     Object.assign(out.statePseudo, statePseudo);
+    // A display entry that read a dropped token goes with it (the height, the icon size).
+    for (const map of Object.values(out.display)) for (const [prop, token] of Object.entries(map)) if (gone.has(token)) delete map[prop];
     for (const [state, map] of Object.entries(previewStates)) out.previewStates[state] = { ...(out.previewStates[state] ?? {}), ...map };
     out.parts.push(...parts);
     out.playOnly.push(...playOnly);

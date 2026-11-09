@@ -61,14 +61,14 @@ test('the document\'s templates are checked as a whole: its shape, its version, 
 });
 
 test('activating the document\'s templates puts them in the registry beside the built-in ones, and activating another document replaces them', () => {
-    assert.deepEqual([...TEMPLATES.keys()], ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'password']);
+    assert.deepEqual([...TEMPLATES.keys()], ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'password', 'textarea']);
     activateDocumentTemplates(behaviorOf(custom()));
-    assert.deepEqual([...TEMPLATES.keys()], ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'password', 'custom-card']);
+    assert.deepEqual([...TEMPLATES.keys()], ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'password', 'textarea', 'custom-card']);
     assert.equal(TEMPLATES.get('custom-card').name, 'Card');
     activateDocumentTemplates(behaviorOf(custom('custom-field')));
-    assert.deepEqual([...TEMPLATES.keys()], ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'password', 'custom-field']);
+    assert.deepEqual([...TEMPLATES.keys()], ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'password', 'textarea', 'custom-field']);
     activateDocumentTemplates(undefined);
-    assert.deepEqual([...TEMPLATES.keys()], ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'password']);
+    assert.deepEqual([...TEMPLATES.keys()], ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'password', 'textarea']);
 });
 
 test('a malformed document fails to activate with an explicit error and leaves the registry as it was', () => {

@@ -514,7 +514,7 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
         if (e.target.closest('.play-menu')) return onMenuClick(e);
     });
     overlay.addEventListener('input', e => {
-        if (e.target.matches('input[data-role="value"]')) syncValueParts(e.target);
+        if (e.target.matches('input[data-role="value"],textarea[data-role="value"]')) syncValueParts(e.target);
     });
     overlay.addEventListener('change', e => {
         if (e.target.matches('[data-background]')) {

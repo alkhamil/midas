@@ -121,6 +121,48 @@ export function pressAttrsOf(template, slot) {
     return entry.toggle !== undefined ? { 'data-press': 'toggle', 'data-press-attr': attrOfProp(template, entry.toggle) } : { 'data-press': 'step', 'data-press-step': String(entry.step) };
 }
 
+/**
+ * The min and max height of a multiline control's box, from its rows: rows x line height + the padding on both sides (the metrics are the bound layers' own, in px).
+ * Without autoSize the box is at least `rows` tall and grows with its text; with it, `minRows` (else `rows`) is the floor and `maxRows` the ceiling (none when empty).
+ * Null for a template with no multiline control.
+ * @param {any} template
+ * @param {Record<string, unknown>} props the resolved props
+ * @param {{ lineHeight: number, paddingY: number }} metrics
+ * @returns {{ minH: number, maxH: number | null } | null}
+ */
+export function rowsBounds(template, props, { lineHeight, paddingY }) {
+    const ml = template.control?.multiline;
+    if (!ml) return null;
+    const box = rows => rows * lineHeight + 2 * paddingY;
+    const auto = props[ml.autoSize] === true;
+    const min = auto && props[ml.minRows] != null ? props[ml.minRows] : props[ml.rows];
+    const max = auto && props[ml.maxRows] != null ? props[ml.maxRows] : null;
+    return { minH: box(Number(min)), maxH: max === null ? null : box(Number(max)) };
+}
+
+const kebabOf = name => name.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`);
+
+/**
+ * What a multiline control puts on the root of Play and of the export: the resize option and autoSize as data attributes, the rows as custom properties
+ * (`--<template>-rows`, and the autoSize min and max), which the stylesheet turns into the box's height with the line height and padding tokens.
+ * @param {any} template
+ * @param {Record<string, unknown>} props the resolved props
+ * @returns {{ attrs: Record<string, string | true>, vars: Record<string, string> }}
+ */
+export function multilineStyleOf(template, props) {
+    const ml = template.control?.multiline;
+    /** @type {Record<string, string | true>} */
+    const attrs = {}, vars = {};
+    if (!ml) return { attrs, vars };
+    attrs[`data-${kebabOf(ml.resize)}`] = String(props[ml.resize]);
+    vars[`--${template.id}-${kebabOf(ml.rows)}`] = String(props[ml.rows]);
+    if (props[ml.autoSize] === true) {
+        attrs[`data-${kebabOf(ml.autoSize)}`] = true;
+        for (const key of [ml.minRows, ml.maxRows]) if (props[key] != null) vars[`--${template.id}-${kebabOf(key)}`] = String(props[key]);
+    }
+    return { attrs, vars };
+}
+
 /** The node kind a display key targets: `root` is the instance's frame, otherwise the anatomy slot's or the part's kind. */
 export const targetKindOf = (template, key) => {
     if (key === 'root') return 'frame';
@@ -342,7 +384,8 @@ export function fieldStyleOf(template, props) {
         else if (field === 'primaryAlign') attrs[`data-${prop}-align`] = NODE_FIELDS.frame.primaryAlign.values[String(props[prop] === true)];
         else if ((field === 'gap' || field === 'width') && props[prop] != null) vars[`--${template.id}-${prop}`] = `${props[prop]}px`;
     }
-    return { attrs, vars };
+    const multiline = multilineStyleOf(template, props);
+    return { attrs: { ...attrs, ...multiline.attrs }, vars: { ...vars, ...multiline.vars } };
 }
 
 /**

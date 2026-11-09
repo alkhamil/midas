@@ -314,7 +314,13 @@ function renderTemplate(n, template, parent, scope) {
                 if (stateOn(template, template.element.disabledState, props)) inputAttrs.disabled = true;
                 // A masked input is a password field until the state that unmasks it holds; it says which root attribute that is, so a click can retype it.
                 if (control.maskUnless) Object.assign(inputAttrs, { type: props[control.maskUnless] === true ? 'text' : 'password', 'data-mask-unless': attrOfProp(template, control.maskUnless) });
-                out.push({ tag: 'input', attrs: inputAttrs, style, children: [] });
+                if (control.multiline) {
+                    // A multiline control is a textarea that wraps in the width the box leaves and hugs its height (field-sizing); its text is its value, not an attribute.
+                    const { value, ...rest } = inputAttrs;
+                    const { height, ...wrapped } = style;
+                    out.push({ tag: 'textarea', attrs: { ...rest, rows: String(props[control.multiline.rows]) }, style: wrapped, text: value, children: [] });
+                }
+                else out.push({ tag: 'input', attrs: inputAttrs, style, children: [] });
             }
             else {
                 drawFrameParts(out);

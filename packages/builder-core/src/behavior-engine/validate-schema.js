@@ -556,6 +556,15 @@ function controlProblems(schema) {
         const def = props[control[field]];
         if (!def || def.source !== 'literal' || def.type !== kind) out.push(`control ${field} "${control[field]}" is not a ${kind} prop`);
     }
+    if (control.multiline !== undefined) {
+        const ml = control.multiline;
+        const kinds = { rows: 'number', autoSize: 'boolean', minRows: 'number', maxRows: 'number', resize: 'enum' };
+        if (!isPlainObject(ml)) out.push('control multiline must be an object');
+        else for (const [field, kind] of Object.entries(kinds)) {
+            const def = props[ml[field]];
+            if (!def || def.source !== 'literal' || def.type !== kind) out.push(`control multiline ${field} "${ml[field]}" is not a ${kind} prop`);
+        }
+    }
     if (control.maskUnless !== undefined && !(props[control.maskUnless]?.source === 'literal' && props[control.maskUnless]?.type === 'boolean')) out.push(`control maskUnless "${control.maskUnless}" is not a boolean prop`);
     for (const flag of ['hideWhenEmpty', 'hidePlaceholderWhenFilled']) {
         if (control[flag] !== undefined && typeof control[flag] !== 'boolean') out.push(`control ${flag} must be a boolean`);
