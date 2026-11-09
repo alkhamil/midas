@@ -41,7 +41,7 @@ test('a bound uniform solid inside stroke: the host carries border, background a
     assert.equal(el.style.borderWidth, '1px');
     assert.equal(el.style.borderStyle, 'solid');
     assert.equal(el.style.borderColor, undefined, 'the colour follows the host states via the class rule');
-    assert.equal(el.style.backgroundClip, 'padding-box');
+    assert.equal(el.style.backgroundClip, 'border-box');
     assert.equal(el.style.background, undefined, 'the host fill comes from the class rule');
     for (const child of laidOut(el)) assert.equal(child.style.zIndex, undefined, 'no child is lifted');
 });

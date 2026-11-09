@@ -73,9 +73,9 @@ test('Play Input: exactly one border element, the host', () => {
   assert.equal(borders[0], root, 'the host draws the border');
 });
 
-test('Play: solid opaque uses padding-box, dashed/translucent use border-box', () => {
+test('Play: the fill always sits under the border (border-box), as on the canvas', () => {
   const solid = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [buttonMaster(), buttonInstance('btn', { stroke: '#18181b', strokeWidth: 1, strokeStyle: undefined })] }], variables: bvars }, 'i1').root;
-  assert.equal(solid.style.backgroundClip, 'padding-box', 'solid opaque clips the fill inside the border');
+  assert.equal(solid.style.backgroundClip, 'border-box', 'solid opaque: no seam between fill and border');
   const dashed = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [buttonMaster(), buttonInstance('btn', { stroke: '#18181b', strokeWidth: 1, strokeStyle: 'dash' })] }], variables: bvars }, 'i1').root;
   assert.equal(dashed.style.backgroundClip, 'border-box', 'dashed lets the fill show through the gaps');
   const translucent = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [buttonMaster(), buttonInstance('btn', { stroke: '#18181b33', strokeWidth: 1, strokeStyle: undefined })] }], variables: bvars }, 'i1').root;

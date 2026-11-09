@@ -104,7 +104,7 @@ test('a disabled or loading host is blocked, which is what stops the wave (Play 
 test('Button and Input output match their pinned hashes (the Input text part is named value)', () => {
     const hash = text => createHash('sha256').update(text).digest('hex').slice(0, 16);
     assert.equal(hash(buttonFiles['Button.jsx']), '53b29f8cdc7c2916');
-    assert.equal(hash(buttonFiles['Button.css']), '5d10105108ea07fd', 'the stylesheet changed only in the wave: the shared keyframes colour');
+    assert.equal(hash(buttonFiles['Button.css']), '530fdab0aae729e2', 'the fill sits under the border (border-box)');
     const im = inputModel({ ids: { variant: 'c-input-variant', status: 'c-input-status', size: 'c-input-size', semantic: 'c-input-semantic' }, prefix: 'in-' });
     const input = generateComponent(BUILT_IN_TEMPLATES.get('input'), im.binding, { collections: im.collections, items: im.items }, 'Input', { id: 'm', name: 'Input', type: 'frame', layout: 'horizontal' }, () => []).files;
     assert.equal(hash(input['Input.jsx']), 'aa7f58e9093dde76');

@@ -84,7 +84,7 @@ test('a bound uniform inside stroke draws on the host with no inline colour, so 
     assert.equal(root.style.borderWidth, '2px');
     assert.equal(root.style.borderStyle, 'solid');
     assert.equal(root.style.borderColor, undefined);
-    assert.equal(root.style.backgroundClip, 'padding-box');
+    assert.equal(root.style.backgroundClip, 'border-box');
 });
 
 test('the Dashed Variant still carries border-style: dashed in the class rule', () => {

@@ -52,7 +52,7 @@ function playRoot(extra, { bound = false } = {}) {
 test('a dot stroke draws solid on the Play host', () => {
     const root = playRoot({ stroke: '#18181b', strokeWidth: 1, strokeStyle: 'dot' });
     assert.equal(root.style.borderStyle, 'solid');
-    assert.equal(root.style.backgroundClip, 'padding-box');
+    assert.equal(root.style.backgroundClip, 'border-box');
 });
 
 test('an unbound butt cap stays CSS: caps the host cannot draw force the SVG overlay, butt does not', () => {
