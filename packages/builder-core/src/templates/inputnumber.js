@@ -91,7 +91,8 @@ export const INPUTNUMBER = inputFamily({
             { slot: 'stepUpBox', step: 1, glyph: 'stepUp', hoverFill: 'step-hover-fg', activeFill: 'step-active-fg', blockedBy: 'atMax' },
             { slot: 'stepDownBox', step: -1, glyph: 'stepDown', hoverFill: 'step-hover-fg', activeFill: 'step-active-fg', blockedBy: 'atMin' },
         ],
-        // antd shows the handler column on hover and focus only (opacity over motionDurationMid); Play and the export do the same, the canvas draws it always.
-        reveal: { slot: 'stepper', duration: '0.2s' },
+        // antd shows the handler column on hover and focus only, every property of it transitioning over motionDurationMid (0.2s, the default easing); Play and the export fade it in
+        // while it slides in from the right edge (a width off to the side), and back out on leave; the control clips the slide. The canvas draws it always.
+        reveal: { slot: 'stepper', duration: '0.2s', easing: 'ease', slide: '100%' },
     },
 });

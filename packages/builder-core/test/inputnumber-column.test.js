@@ -1,4 +1,4 @@
-// InputNumber's handler column (antd): attached to the right edge at the full control height, split by a divider, revealed on hover and focus in Play and the export only,
+// InputNumber's handler column (antd): attached to the right edge at the full control height, split by a divider, revealed on hover and focus in Play and the export only (see inputnumber-reveal.test.js),
 // and the blur that commits a typed number or restores the last committed value.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,16 +17,6 @@ const playOf = props => {
     return toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [model.frame, ...model.created, ...nodes] }], variables: model.variables }, nodes[0].id);
 };
 const find = (el, pred) => pred(el) ? el : (el.children ?? []).map(c => find(c, pred)).find(Boolean);
-
-test('Play and the export reveal the column on hover and focus over the antd time, never when disabled; the canvas draws it always', () => {
-    assert.deepEqual(number.reveal, { slot: 'stepper', duration: '0.2s' });
-    const css = exported().files['InputNumber.css'];
-    assert.match(css, /\.inputnumber-stepper \{\s*opacity: 0;\s*pointer-events: none;\s*transition: opacity 0\.2s;/);
-    assert.match(css, /\.inputnumber:hover:not\(:has\(:disabled\)\) \.inputnumber-stepper,\n\.inputnumber:focus-within:not\(:has\(:disabled\)\) \.inputnumber-stepper \{\s*opacity: 1;/);
-    assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.inputnumber-stepper \{\s*transition: none;/);
-    for (const n of instanceFor(model, { ...base })) assert.ok(n.opacity !== 0 && n.visible !== false, 'the canvas node tree always holds the column, drawn');
-    assert.match(String(playOf({}).styles), /\.inputnumber-stepper \{\s*opacity: 0;/, 'Play carries the same rule');
-});
 
 // An element-like object, enough for blurNumber.
 const el = (attrs, extra = {}) => ({ attrs: { ...attrs }, getAttribute(n) { return n in this.attrs ? String(this.attrs[n]) : null; }, setAttribute(n, v) { this.attrs[n] = String(v); }, removeAttribute(n) { delete this.attrs[n]; }, hasAttribute(n) { return n in this.attrs; }, ...extra });

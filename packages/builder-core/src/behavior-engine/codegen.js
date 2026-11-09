@@ -591,18 +591,22 @@ function glyphHoverRules(template) {
 }
 
 /**
- * The handler column that appears on hover or focus (`reveal`): drawn on the canvas always, here transparent until the control is hovered or holds focus, over the time
- * antd gives it (motionDurationMid). A disabled control never reveals it, and reduced motion shows the change at once.
+ * The handler column that appears on hover or focus (`reveal`): drawn on the canvas always, here transparent and one `slide` off to the right until the control is hovered or holds
+ * focus, then fading and sliding in over the time and easing antd gives it (motionDurationMid), and back out on leave. A disabled control never reveals it, and reduced motion shows it
+ * at once with no slide.
  * @param {any} template
  * @returns {string[]}
  */
 function revealRules(template) {
     if (!template.reveal) return [];
     const id = template.id, slot = `.${id}-${template.reveal.slot}`, off = ':not(:has(:disabled))';
+    const { duration, easing, slide } = template.reveal;
     return [
-        `${slot} {\n  opacity: 0;\n  pointer-events: none;\n  transition: opacity ${template.reveal.duration};\n}\n`,
-        `.${id}:hover${off} ${slot},\n.${id}:focus-within${off} ${slot} {\n  opacity: 1;\n  pointer-events: auto;\n}\n`,
-        `@media (prefers-reduced-motion: reduce) {\n  ${slot} {\n    transition: none;\n  }\n}\n`,
+        // The slide leaves the box, so the control clips it: the column never shows outside the border while it moves.
+        `.${id} {\n  overflow: hidden;\n}\n`,
+        `${slot} {\n  opacity: 0;\n  transform: translateX(${slide});\n  pointer-events: none;\n  transition: opacity ${duration} ${easing}, transform ${duration} ${easing};\n}\n`,
+        `.${id}:hover${off} ${slot},\n.${id}:focus-within${off} ${slot} {\n  opacity: 1;\n  transform: translateX(0);\n  pointer-events: auto;\n}\n`,
+        `@media (prefers-reduced-motion: reduce) {\n  ${slot} {\n    transition: none;\n    transform: none;\n  }\n}\n`,
     ];
 }
 

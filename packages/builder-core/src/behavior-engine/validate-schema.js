@@ -643,6 +643,8 @@ function revealProblems(schema) {
     const out = [];
     if (slot?.kind !== 'frame') out.push(`reveal names "${schema.reveal.slot}", which is not a frame slot`);
     if (typeof schema.reveal.duration !== 'string' || !/^[0-9.]+m?s$/.test(schema.reveal.duration)) out.push('reveal duration must be a time such as 0.2s');
+    if (typeof schema.reveal.easing !== 'string' || !/^(ease|ease-in|ease-out|ease-in-out|linear|cubic-bezier\([^)]*\))$/.test(schema.reveal.easing)) out.push('reveal easing must be a CSS easing such as ease');
+    if (typeof schema.reveal.slide !== 'string' || !/^[0-9.]+(%|px)$/.test(schema.reveal.slide)) out.push('reveal slide must be the distance the column leaves from, such as 100%');
     return out;
 }
 
