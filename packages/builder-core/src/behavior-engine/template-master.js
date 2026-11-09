@@ -264,9 +264,24 @@ export function managedTextLayer(template, slotId, resolved, { id, parentId }) {
  * @param {Record<string, unknown>} resolved the instance's resolved props
  * @param {{ id: string, parentId: string }} at
  */
+/**
+ * A glyph that sits in a corner of the box ignores the box's auto layout and its padding: the canvas's own mechanism, a layer that is absolutely positioned and pinned to the
+ * right and bottom edges (Position in auto layout: Absolute, with constraints), so it stays in the corner as the box hugs its text.
+ */
+export const CORNER_NODE = { layoutPositioning: 'absolute', constraintH: 'right', constraintV: 'bottom' };
+
+/**
+ * Where a corner glyph sits in its box: its right and bottom edges on the box's (the stroke is inside the box, so these are the border's outer edges), as the stylesheet's
+ * right and bottom of minus the border width draw it.
+ * @param {{ w: number, h: number }} box
+ * @param {{ w: number, h: number }} layer
+ * @returns {{ x: number, y: number }}
+ */
+export const cornerPosition = (box, layer) => ({ x: box.w - layer.w, y: box.h - layer.h });
+
 export function managedGlyphLayer(template, slotId, resolved, { id, parentId }) {
     const slot = template.anatomy.find(s => s.id === slotId);
-    return { ...LAYER, id, name: slotId, parentId, w: 16, h: 16, ...glyphFields(slot.glyph), fills: solid('#20202a'), layoutSizingH: 'fixed', layoutSizingV: 'fixed', visible: slotShown(template, slotId, resolved), sourceId: undefined, isInstance: false, component: false, overrides: {}, behavior: { version: BEHAVIOR_DATA_VERSION, slot: slotId } };
+    return { ...LAYER, id, name: slotId, parentId, w: 16, h: 16, ...glyphFields(slot.glyph), ...(slot.corner === 'bottom-right' ? CORNER_NODE : {}), fills: solid('#20202a'), layoutSizingH: 'fixed', layoutSizingV: 'fixed', visible: slotShown(template, slotId, resolved), sourceId: undefined, isInstance: false, component: false, overrides: {}, behavior: { version: BEHAVIOR_DATA_VERSION, slot: slotId } };
 }
 
 /**

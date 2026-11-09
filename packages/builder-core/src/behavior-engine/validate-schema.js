@@ -171,6 +171,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
         if (slot.kind === 'glyph') {
             if (!Object.hasOwn(GLYPHS, slot.glyph)) out.push(`glyph slot "${slot.id}" names the glyph "${slot.glyph}", which is not a built-in glyph`);
             if (slot.managed !== true || slot.optional !== true) out.push(`glyph slot "${slot.id}" must be managed and optional`);
+            if (slot.corner !== undefined && (slot.corner !== 'bottom-right' || slot.parent !== undefined)) out.push(`glyph slot "${slot.id}" corner must be bottom-right, on a glyph that is a layer of the box itself`);
             const tests = glyphTests(slot.shownWhen);
             const attrs = stateAttributesOf(schema);
             const state = tests !== null && tests.every(t => isPlainObject(schema.props) && (typeof t.is === 'boolean'

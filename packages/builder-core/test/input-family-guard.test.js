@@ -29,7 +29,7 @@ const CASES = [
     ] },
     { id: 'input', label: 'input (textarea)', kind: { kind: 'textarea' }, options: [
         { on: { showCount: true }, added: ['footer', 'countArea'], why: 'the count closes the box in a footer' },
-        { on: { resize: 'vertical' }, added: ['footer', 'resizeHandle'], why: 'the resize grip' },
+        { on: { resize: 'vertical' }, added: ['resizeHandle'], why: 'the resize grip' },
         { on: { value: 'hello' }, swap: { gone: ['placeholder'], added: ['value'] }, why: 'a value takes the placeholder place' },
     ] },
     { id: 'inputnumber', label: 'inputnumber', kind: {}, options: [

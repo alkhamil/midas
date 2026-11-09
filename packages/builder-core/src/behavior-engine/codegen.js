@@ -405,8 +405,8 @@ function displayRules(template, master, childrenOf, geometry) {
         }
         // The root draws its own border, so the children sit inside the compensated padding.
         if (key === 'root' && 'stroke' in (template.display.root ?? {})) { const w = rootBorderWidthOf(master); decls.push(`  border-width: ${w}px;\n`, `  border-style: ${w === 0 ? 'none' : lineStyleOf(master)};\n`);
-        decls.push(`  background-clip: ${clipOf(master)};\n`); }
-        if (key === 'root' && (template.interaction?.wave || 'stroke' in (template.display.root ?? {}))) decls.push('  position: relative;\n');
+        decls.push(`  background-clip: border-box;\n`); }
+        if (key === 'root' && (template.interaction?.wave || template.anatomy.some(s => s.corner) || 'stroke' in (template.display.root ?? {}))) decls.push('  position: relative;\n');
         // A box of the anatomy (a group frame) draws its own border the same way, from its own layer: its size includes the border.
         if (key !== 'root' && kind === 'frame' && 'stroke' in props) {
             const box = under.find(({ node: c }) => c.behavior?.group === key)?.node ?? master;
@@ -657,6 +657,8 @@ function glyphRules(template) {
     const attrOf = prop => attrs.find(a => a.prop === prop).attr;
     return template.anatomy.filter(slot => slot.kind === 'glyph').flatMap(slot => {
         const on = `.${template.id}`, glyph = `.${template.id}-${slot.id}`;
+        // A corner glyph is out of the flow, on the box's outer corner: the border is inside the padding box, so the offset is minus the border width (as the canvas, whose stroke is inside the box).
+        const corner = slot.corner === 'bottom-right' ? [`${glyph} {\n  position: absolute;\n  right: calc(-1 * var(${cssVarOf(template.id, template.display.root.strokeWidth)}));\n  bottom: calc(-1 * var(${cssVarOf(template.id, template.display.root.strokeWidth)}));\n}\n`] : [];
         // A glyph is hidden when any of its tests fails: a state that must be on fails without its attribute, one that must be off fails with it, an enum option fails
         // while the root says another.
         const fails = glyphTests(slot.shownWhen).map(t => typeof t.is === 'string' ? `${on}:not([${enumAttrOf(template, t.prop)}="${t.is}"]) ${glyph}` : t.is ? `${on}:not([${attrOf(t.prop)}]) ${glyph}` : `${on}[${attrOf(t.prop)}] ${glyph}`);
@@ -664,7 +666,7 @@ function glyphRules(template) {
         return [`${fails.join(',\n')} {
   display: none;
 }
-`, ...(press ? [`${glyph} {
+`, ...corner, ...(press ? [`${glyph} {
   cursor: ${press.resize ? 'ns-resize' : 'pointer'};
 }
 .${template.id}:has(:disabled) .${template.id}-${slot.id} {

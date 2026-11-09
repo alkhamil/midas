@@ -14,8 +14,8 @@ const KIND_TEXT = KIND('text'), KIND_PASSWORD = KIND('password'), KIND_TEXTAREA 
 const TEXT_OR_PASSWORD = { any: [KIND_TEXT, KIND_PASSWORD] };
 /** The glyph of a password: shown while the toggle is on and the text is (or is not) visible. */
 const EYE = visible => ({ all: [KIND_PASSWORD, { prop: 'visibilityToggle', is: true }, { prop: 'passwordVisible', is: visible }] });
-/** The text area's footer line holds the count and the grip, so it is there while either is. */
-const FOOTER = { all: [KIND_TEXTAREA, { any: [{ prop: 'showCount', is: true }, { prop: 'resize', is: 'vertical' }] }] };
+/** The text area's footer line holds the count, so it is there while the count is. */
+const FOOTER = { all: [KIND_TEXTAREA, { prop: 'showCount', is: true }] };
 /** The glyphs' colour and the disabled one; the eyes follow the icon size, the grip the clear icon's (smaller) size. */
 const EYE_DISPLAY = { fill: 'glyph-fg', size: 'iconSize' };
 
@@ -64,7 +64,8 @@ export const INPUT = inputFamily({
             { id: 'eyeOff', kind: 'glyph', glyph: 'eyeOff', optional: true, managed: true, shownWhen: EYE(false) },
             { id: 'footer', kind: 'frame', layout: 'horizontal', primaryAlign: 'end', counterAlign: 'center', fill: true, managed: true, shownWhen: FOOTER },
             { id: 'countArea', kind: 'text', optional: true, managed: true, parent: 'footer', typography: 'count', fill: true, align: 'right', shownWhen: { all: [KIND_TEXTAREA, { prop: 'showCount', is: true }] }, text: { counter: { value: 'value', max: 'maxLength' } } },
-            { id: 'resizeHandle', kind: 'glyph', glyph: 'resizeHandle', parent: 'footer', optional: true, managed: true, shownWhen: { all: [KIND_TEXTAREA, { prop: 'resize', is: 'vertical' }] } },
+            // The grip is out of the flow, in the bottom right corner of the box (corner): it ignores the padding and the footer.
+            { id: 'resizeHandle', kind: 'glyph', glyph: 'resizeHandle', corner: 'bottom-right', optional: true, managed: true, shownWhen: { all: [KIND_TEXTAREA, { prop: 'resize', is: 'vertical' }] } },
         ],
         tokens: { fromVariant: ['glyph-fg', 'glyph-fg-disabled'] },
         tokenKinds: { 'glyph-fg': 'color', 'glyph-fg-disabled': 'color' },

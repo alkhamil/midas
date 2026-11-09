@@ -10,6 +10,7 @@ import { generateComponent } from '../src/behavior-engine/codegen.js';
 import { previewOf } from '../src/behavior-engine/preview.js';
 import { cssVarOf } from '../src/behavior-engine/tokens.js';
 import { rowsBounds } from '../src/behavior-engine/display.js';
+import { cornerPosition } from '../src/behavior-engine/template-master.js';
 import { toDomTree } from '../src/prototype/dom-tree.js';
 import { forwardFocus, startResizeDrag } from '../src/prototype/press.js';
 import { modelFor, instanceFor } from './helpers/box-template.js';
@@ -77,9 +78,9 @@ test('a fresh Input holds the placeholder only; each kind adds exactly the layer
     assert.deepEqual(names({ kind: 'password', passwordVisible: true }), ['placeholder', 'eye']);
     assert.deepEqual(names({ kind: 'password', visibilityToggle: false }), ['placeholder']);
     assert.deepEqual(names({ kind: 'textarea' }), ['placeholder'], 'no footer without a count or a grip');
-    assert.deepEqual(names({ kind: 'textarea', resize: 'vertical' }), ['placeholder', 'footer', 'resizeHandle']);
+    assert.deepEqual(names({ kind: 'textarea', resize: 'vertical' }), ['placeholder', 'resizeHandle'], 'the grip is a layer of the box, not of a footer');
     assert.deepEqual(names({ kind: 'textarea', showCount: true }), ['placeholder', 'footer', 'countArea']);
-    assert.deepEqual(names({ kind: 'textarea', showCount: true, resize: 'vertical' }), ['placeholder', 'footer', 'countArea', 'resizeHandle']);
+    assert.deepEqual(names({ kind: 'textarea', showCount: true, resize: 'vertical' }).sort(), ['countArea', 'footer', 'placeholder', 'resizeHandle']);
     assert.deepEqual(names({ showCount: true }), ['placeholder', 'count'], 'the single line counts inline');
 });
 
@@ -87,9 +88,9 @@ test('switching the kind makes and removes exactly the layers: the eye for passw
     const plan = (from, to) => { const nodes = nodesOf(from); return planAnatomy(input, resolveProps(input, { ...base, ...to }), heldOf(nodes)).map(op => op.op === 'insert' ? `+${op.slot}` : `-${nodes.find(n => n.id === op.id)?.name}`).sort(); };
     assert.deepEqual(plan({}, { kind: 'password' }), ['+eyeOff']);
     assert.deepEqual(plan({ kind: 'password' }, {}), ['-eyeOff']);
-    assert.deepEqual(plan({ kind: 'password' }, { kind: 'textarea', resize: 'vertical' }), ['+footer', '+resizeHandle', '-eyeOff'].sort());
+    assert.deepEqual(plan({ kind: 'password' }, { kind: 'textarea', resize: 'vertical' }), ['+resizeHandle', '-eyeOff']);
     assert.deepEqual(plan({ kind: 'textarea', resize: 'vertical', showCount: true }, {}), ['-countArea', '-footer', '-resizeHandle']);
-    assert.deepEqual(plan({ kind: 'textarea', resize: 'vertical' }, { kind: 'textarea' }), ['-footer', '-resizeHandle'], 'resize none takes the grip and the empty footer away');
+    assert.deepEqual(plan({ kind: 'textarea', resize: 'vertical' }, { kind: 'textarea' }), ['-resizeHandle'], 'resize none takes the grip away');
     for (const props of [{}, { kind: 'password' }, { kind: 'textarea', resize: 'vertical', showCount: true }]) assert.deepEqual(planAnatomy(input, resolveProps(input, { ...base, ...props }), held(props)), [], `converges for ${JSON.stringify(props)}`);
 });
 
@@ -176,13 +177,11 @@ test('the box is the text field: the cursor is the text cursor over it, a click 
     assert.equal(playOf({ kind: 'textarea', disabled: true }).find(el => el.tag === 'textarea').el.attrs.disabled, true);
 });
 
-test('the resize grip is a glyph: made with resize vertical, a layer of the footer, bound to the glyph colour token; Play marks it as the handle', () => {
+test('the resize grip is a glyph, a layer of the box: bound to the glyph colour token, and Play marks it as the handle', () => {
     const nodes = nodesOf({ kind: 'textarea', resize: 'vertical' });
-    const grip = nodes.find(n => n.name === 'resizeHandle'), footer = nodes.find(n => n.name === 'footer');
+    const grip = nodes.find(n => n.name === 'resizeHandle');
     assert.equal(grip.type, 'path');
-    assert.equal(grip.parentId, footer.id);
-    assert.equal(footer.primaryAlign, 'end');
-    assert.equal(footer.layoutSizingH, 'fill');
+    assert.equal(grip.parentId, nodes[0].id, 'a child of the box itself');
     assert.equal(input.display.resizeHandle.fill, 'glyph-fg');
     const { find } = playOf({ kind: 'textarea', resize: 'vertical' });
     assert.equal(find(el => el.attrs?.class === 'input-resizeHandle').el.attrs['data-press'], 'resize');
@@ -241,4 +240,32 @@ test('the export carries Input.Password and Input.TextArea, one element chosen b
     assert.match(css, /\.input\[data-kind="textarea"\] \{\s*cursor: text;/);
     assert.match(css, /\.input\[data-kind="password"\] \.input-eyeOff \{\s*cursor: pointer|\.input-eyeOff \{\s*cursor: pointer/);
     assert.match(css, /\.input\[data-kind="textarea"\] \{[^}]*flex-direction: column/);
+});
+
+test('the resize grip sits flush in the bottom right corner of the box: canvas geometry, and the stylesheet Play and the export share', () => {
+    const nodes = nodesOf({ kind: 'textarea', resize: 'vertical' });
+    const grip = nodes.find(n => n.name === 'resizeHandle');
+    // The canvas: out of the auto layout (ignores the padding), pinned right and bottom, and placed with its edges on the box's.
+    assert.equal(grip.layoutPositioning, 'absolute');
+    assert.deepEqual([grip.constraintH, grip.constraintV], ['right', 'bottom']);
+    for (const box of [{ w: 343, h: 84 }, { w: 343, h: 140 }]) {
+        const at = cornerPosition(box, { w: 14, h: 14 });
+        assert.deepEqual([at.x + 14, at.y + 14], [box.w, box.h], 'the grip rect touches the bottom right corner of the box');
+    }
+    // Play and the export: absolutely positioned on the outer corner of the border box (the border is inside the padding box, so the offset is minus the border width).
+    for (const size of SIZES) {
+        const { styles, find, host } = playOf({ kind: 'textarea', resize: 'vertical' }, size);
+        const grip = computed(styles, find(el => el.attrs?.class === 'input-resizeHandle').chain);
+        assert.equal(grip.position, 'absolute');
+        const border = parseFloat(varsAt(size, {})[cssVarOf('input', 'borderWidth')]);
+        assert.equal(evalLength(grip.right, inlineOf(host.el)), -border, `${size}: right`);
+        assert.equal(evalLength(grip.bottom, inlineOf(host.el)), -border, `${size}: bottom`);
+        assert.equal(computed(styles, host.chain).position, 'relative', 'the box is the containing block');
+        assert.equal(grip.left, undefined);
+        assert.equal(grip.top, undefined);
+    }
+    const css = generateComponent(input, model.binding, model.variables, 'Input', model.frame, id => model.created.filter(n => n.parentId === id)).files['Input.css'];
+    assert.match(css, /\.input-resizeHandle \{\s*position: absolute;\s*right: calc\(-1 \* var\(--input-border-width\)\);\s*bottom: calc\(-1 \* var\(--input-border-width\)\);/);
+    // The grip is a small box, so a click on the text outside it is the text's.
+    assert.ok(grip.w <= 24 && grip.h <= 24);
 });
