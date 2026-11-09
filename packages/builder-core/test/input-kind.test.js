@@ -10,7 +10,7 @@ import { generateComponent } from '../src/behavior-engine/codegen.js';
 import { previewOf } from '../src/behavior-engine/preview.js';
 import { cssVarOf } from '../src/behavior-engine/tokens.js';
 import { rowsBounds } from '../src/behavior-engine/display.js';
-import { cornerPosition } from '../src/behavior-engine/template-master.js';
+import { cornerInsetOf, cornerPosition } from '../src/behavior-engine/template-master.js';
 import { toDomTree } from '../src/prototype/dom-tree.js';
 import { forwardFocus, startResizeDrag } from '../src/prototype/press.js';
 import { modelFor, instanceFor } from './helpers/box-template.js';
@@ -242,32 +242,35 @@ test('the export carries Input.Password and Input.TextArea, one element chosen b
     assert.match(css, /\.input\[data-kind="textarea"\] \{[^}]*flex-direction: column/);
 });
 
-test('the resize grip sits flush in the bottom right corner of the box: canvas geometry, and the stylesheet Play and the export share', () => {
+test('the resize grip sits in the bottom right corner of the border box with the inset token (2px) of gap to the right and to the bottom: canvas geometry, Play and the export alike', () => {
     const nodes = nodesOf({ kind: 'textarea', resize: 'vertical' });
     const grip = nodes.find(n => n.name === 'resizeHandle');
-    // The canvas: out of the auto layout (ignores the padding), pinned right and bottom, and placed with its edges on the box's.
+    // The canvas: out of the auto layout (ignores the padding), pinned right and bottom, and placed with its edges the inset in from the box's.
     assert.equal(grip.layoutPositioning, 'absolute');
     assert.deepEqual([grip.constraintH, grip.constraintV], ['right', 'bottom']);
-    for (const box of [{ w: 343, h: 84 }, { w: 343, h: 140 }]) {
-        const at = cornerPosition(box, { w: 14, h: 14 });
-        assert.deepEqual([at.x + 14, at.y + 14], [box.w, box.h], 'the grip rect touches the bottom right corner of the box');
-    }
-    // Play and the export: absolutely positioned on the outer corner of the border box (the border is inside the padding box, so the offset is minus the border width).
+    assert.equal(input.anatomy.find(s => s.id === 'resizeHandle').inset, 'glyphInset');
+    assert.equal(input.tokenRoles.glyphInset, 'glyph-inset');
     for (const size of SIZES) {
+        const vars = varsAt(size, { kind: 'textarea' });
+        const inset = parseFloat(vars[cssVarOf('input', 'glyphInset')]);
+        assert.equal(inset, 2, `${size}: the token is 2px`);
+        assert.equal(cornerInsetOf(input, input.anatomy.find(s => s.id === 'resizeHandle'), vars), 2);
+        for (const box of [{ w: 343, h: 84 }, { w: 343, h: 140 }]) {
+            const at = cornerPosition(box, { w: 14, h: 14 }, inset);
+            assert.deepEqual([box.w - (at.x + 14), box.h - (at.y + 14)], [2, 2], 'the grip rect is 2px from the right and the bottom of the box');
+        }
+        // Play and the export: the offset from the padding box edge plus the border (which lies outside it) is the inset on both sides.
         const { styles, find, host } = playOf({ kind: 'textarea', resize: 'vertical' }, size);
-        const grip = computed(styles, find(el => el.attrs?.class === 'input-resizeHandle').chain);
-        assert.equal(grip.position, 'absolute');
-        const border = parseFloat(varsAt(size, {})[cssVarOf('input', 'borderWidth')]);
-        assert.equal(evalLength(grip.right, inlineOf(host.el)), -border, `${size}: right`);
-        assert.equal(evalLength(grip.bottom, inlineOf(host.el)), -border, `${size}: bottom`);
+        const g = computed(styles, find(el => el.attrs?.class === 'input-resizeHandle').chain);
+        const border = parseFloat(vars[cssVarOf('input', 'borderWidth')]);
+        assert.equal(g.position, 'absolute');
+        assert.equal(evalLength(g.right, inlineOf(host.el)) + border, inset, `${size}: right`);
+        assert.equal(evalLength(g.bottom, inlineOf(host.el)) + border, inset, `${size}: bottom`);
         assert.equal(computed(styles, host.chain).position, 'relative', 'the box is the containing block');
-        assert.equal(grip.left, undefined);
-        assert.equal(grip.top, undefined);
     }
     const css = generateComponent(input, model.binding, model.variables, 'Input', model.frame, id => model.created.filter(n => n.parentId === id)).files['Input.css'];
-    assert.match(css, /\.input-resizeHandle \{\s*position: absolute;\s*right: calc\(-1 \* var\(--input-border-width\)\);\s*bottom: calc\(-1 \* var\(--input-border-width\)\);/);
-    // The grip is a small box, so a click on the text outside it is the text's.
-    assert.ok(grip.w <= 24 && grip.h <= 24);
+    assert.ok(css.includes('.input-resizeHandle {\n  position: absolute;\n  right: calc(var(--input-glyph-inset) - var(--input-border-width));\n  bottom: calc(var(--input-glyph-inset) - var(--input-border-width));'), 'tokens, no literal');
+    assert.ok(grip.w <= 24 && grip.h <= 24, 'a small box: a click on the text outside it is the text\'s');
 });
 
 test('the eye takes the text colour while hovered, in the stylesheet of Play and the export only, token-bound, never on a disabled control', () => {

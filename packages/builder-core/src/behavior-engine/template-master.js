@@ -283,13 +283,17 @@ export const edgePosition = (box, layer, border) => ({ x: box.w - layer.w - bord
 export const CORNER_NODE = { layoutPositioning: 'absolute', constraintH: 'right', constraintV: 'bottom' };
 
 /**
- * Where a corner glyph sits in its box: its right and bottom edges on the box's (the stroke is inside the box, so these are the border's outer edges), as the stylesheet's
- * right and bottom of minus the border width draw it.
+ * Where a corner glyph sits in its box: its right and bottom edges `inset` in from the box's (the stroke is inside the box, so these are the border's outer edges), as the
+ * stylesheet's right and bottom of the inset minus the border width draw it.
  * @param {{ w: number, h: number }} box
  * @param {{ w: number, h: number }} layer
+ * @param {number} [inset] the gap to the corner, the glyph inset token in px
  * @returns {{ x: number, y: number }}
  */
-export const cornerPosition = (box, layer) => ({ x: box.w - layer.w, y: box.h - layer.h });
+export const cornerPosition = (box, layer, inset = 0) => ({ x: box.w - layer.w - inset, y: box.h - layer.h - inset });
+
+/** The inset of a corner glyph in px, from the resolved token variables of an instance (0 when the slot names none). */
+export const cornerInsetOf = (template, slot, vars) => (slot.inset === undefined ? 0 : parseFloat(vars[`--${template.id}-${slot.inset.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`)}`]) || 0);
 
 export function managedGlyphLayer(template, slotId, resolved, { id, parentId }) {
     const slot = template.anatomy.find(s => s.id === slotId);

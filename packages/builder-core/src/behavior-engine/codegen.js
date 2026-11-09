@@ -708,8 +708,8 @@ function glyphRules(template) {
         // while the root says another.
         const fails = glyphTests(slot.shownWhen).map(t => typeof t.is === 'string' ? `${on}:not([${enumAttrOf(template, t.prop)}="${t.is}"]) ${glyph}` : t.is ? `${on}:not([${attrOf(t.prop)}]) ${glyph}` : `${on}[${attrOf(t.prop)}] ${glyph}`);
         const press = (template.press ?? []).find(p => p.slot === slot.id);
-        // A corner glyph is out of the flow, on the box's outer corner: the border is inside the padding box, so the offset is minus the border width (as the canvas, whose stroke is inside the box).
-        const corner = slot.corner === 'bottom-right' ? [`${glyph} {\n  position: absolute;\n  right: calc(-1 * var(${cssVarOf(template.id, template.display.root.strokeWidth)}));\n  bottom: calc(-1 * var(${cssVarOf(template.id, template.display.root.strokeWidth)}));\n}\n`] : [];
+        // A corner glyph is out of the flow, `inset` in from the box's outer corner: the border is inside the padding box, so the offset is the inset minus the border width (as the canvas, whose stroke is inside the box).
+        const corner = slot.corner === 'bottom-right' ? [`${glyph} {\n  position: absolute;\n  right: calc(${slot.inset ? `var(${cssVarOf(template.id, slot.inset)})` : '0px'} - var(${cssVarOf(template.id, template.display.root.strokeWidth)}));\n  bottom: calc(${slot.inset ? `var(${cssVarOf(template.id, slot.inset)})` : '0px'} - var(${cssVarOf(template.id, template.display.root.strokeWidth)}));\n}\n`] : [];
         return [`${fails.join(',\n')} {
   display: none;
 }

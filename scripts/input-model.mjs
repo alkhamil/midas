@@ -56,6 +56,7 @@ export function inputModel({ ids = {}, prefix = '', variantModes = INPUT_VARIANT
     const sizes = { ...DEFAULT_SIZE_VALUES, ...sizeValues };
     // The clear icon is the icon size minus 2 in every Size mode, derived here as the base data derives it (antd-sizes.json clearIconSize*).
     sizes.clearIconSize = Object.fromEntries(Object.entries(sizes.iconSize).map(([mode, value]) => [mode, value - 2]));
+    sizes.glyphInset = { xs: 2, sm: 2, md: 2, lg: 2, xl: 2 };
     const variant = ids.variant ?? 'c-variant';
     const status = ids.status ?? 'c-status';
     const size = ids.size ?? 'c-size';
