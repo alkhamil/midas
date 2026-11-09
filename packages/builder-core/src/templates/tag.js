@@ -26,7 +26,7 @@ export const TAG = {
     ],
     icons: [
         { show: 'hasIcon', slot: 'icon', component: 'icon', tokens: TAG_ICON_TOKENS },
-        { show: 'closable', slot: 'close', component: 'closeIcon', tokens: TAG_ICON_TOKENS },
+        { show: 'closable', slot: 'close', component: 'closeIcon', role: 'close', tokens: TAG_ICON_TOKENS },
     ],
     rootLayout: 'horizontal',
     rootAlign: 'center',

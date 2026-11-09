@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
 import { modelFor, instanceFor } from './helpers/box-template.js';
 import { COLOR_PRESETS } from '../src/templates/color-presets.js';
+import { iconDefsOf, createdIconDefaults } from '../src/behavior-engine/anatomy.js';
 
 const tag = TEMPLATES.get('antd-tag');
 const model = tag && modelFor(tag);
@@ -41,4 +42,12 @@ test('both props together give both layers, with exactly one layer per optional 
     assert.equal(names.filter(n => n === 'icon').length, 1);
     assert.equal(names.filter(n => n === 'close').length, 1);
     assert.equal(names.filter(n => n === 'label').length, 1);
+});
+
+test('the close icon takes the close glyph of the file when it has one; a file with none falls back to the default icon', () => {
+    const closeDef = iconDefsOf(tag).find(d => d.slot === 'close');
+    assert.equal(closeDef.role, 'close', 'the close def names the close role');
+    const withClose = createdIconDefaults(tag, { closable: true }, 'def-circle', { close: 'icon-close' });
+    assert.equal(withClose.closeIcon, 'icon-close');
+    assert.equal(createdIconDefaults(tag, { closable: true }, 'def-circle', {}).closeIcon, 'def-circle');
 });

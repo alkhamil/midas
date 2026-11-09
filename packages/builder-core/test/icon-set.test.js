@@ -13,10 +13,10 @@ test('the icon prefix is the file convention, Icon/', () => {
     assert.equal(ICON_PREFIX, 'Icon/');
 });
 
-test('the registry asks for one role: every icon slot of every template takes the default icon', () => {
+test('the registry asks for two roles: default, and close for the Tag close; every other icon slot takes the default icon', () => {
     const roles = iconRolesOf([...BUILT_IN_TEMPLATES.values()]);
-    assert.deepEqual(roles, ['default']);
-    // The slots behind it, by template: nothing is special-cased, every icon def is a default-role slot.
+    assert.deepEqual(roles, ['default', 'close']);
+    // The slots behind them, by template: the close def names its role, every other icon def is a default-role slot.
     const slots = [...BUILT_IN_TEMPLATES.values()].flatMap(t => iconDefsOf(t).map(d => `${t.id}.${d.slot ?? d.placement}`));
     assert.ok(slots.includes('icon-button.icon') && slots.includes('input.clear') && slots.includes('button.iconStart'));
 });
@@ -126,4 +126,17 @@ test('the icon path fills its component frame, so it scales with the icon: an in
         assert.deepEqual([path.layoutSizingH, path.layoutSizingV], ['fill', 'fill']);
         assert.deepEqual([path.pathW, path.pathH], [root.w, root.h], 'the outline is drawn in the box it scales from');
     }
+});
+
+test('the close icon is a closed filled 12-point polygon in the 24 x 24 box, with straight edges (no handles), and Tag asks for it by the close role', () => {
+    const close = ICON_SET.find(e => e.name === 'close');
+    assert.ok(close, 'close is in the set');
+    assert.equal(close.role, 'close');
+    assert.equal(close.closed, true);
+    assert.deepEqual(close.points.map(p => [p.x, p.y]), [
+        [5.293, 6.707], [6.707, 5.293], [12, 10.586], [17.293, 5.293], [18.707, 6.707], [13.414, 12],
+        [18.707, 17.293], [17.293, 18.707], [12, 13.414], [6.707, 18.707], [5.293, 17.293], [10.586, 12],
+    ]);
+    assert.ok(close.points.every(p => p.in === undefined && p.out === undefined), 'straight edges: no handles');
+    assert.ok(iconRolesOf([BUILT_IN_TEMPLATES.get('antd-tag')]).includes('close'));
 });

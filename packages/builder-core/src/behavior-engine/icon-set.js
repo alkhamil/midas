@@ -20,6 +20,8 @@ const at = (x, y, inX, inY, outX, outY) => ({ x, y, in: { x: inX, y: inY }, out:
 export const ICON_SET = [
     // A disc: neutral for a button's icon and for the clear icon, which takes the same default.
     { name: 'circle', role: 'default', closed: true, points: [at(12, 2, 12 - K, 2, 12 + K, 2), at(22, 12, 22, 12 - K, 22, 12 + K), at(12, 22, 12 + K, 22, 12 - K, 22), at(2, 12, 2, 12 + K, 2, 12 - K)] },
+    // A close cross: one closed polygon of straight edges (no handles), the close of a dismissible element (Tag).
+    { name: 'close', role: 'close', closed: true, points: [[5.293, 6.707], [6.707, 5.293], [12, 10.586], [17.293, 5.293], [18.707, 6.707], [13.414, 12], [18.707, 17.293], [17.293, 18.707], [12, 13.414], [6.707, 18.707], [5.293, 17.293], [10.586, 12]].map(([x, y]) => ({ x, y })) },
 ];
 
 /**
