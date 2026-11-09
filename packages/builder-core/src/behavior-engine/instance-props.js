@@ -41,7 +41,7 @@ export function resolveProps(template, stored = {}) {
         if (rule === undefined) continue;
         // A condition over the other props (InputNumber has no stepper while its controls are off).
         if (rule.when !== undefined) { out[name] = conditionHolds(rule.when, out); continue; }
-        const value = out[rule.value] === '' || out[rule.value] == null ? NaN : Number(out[rule.value]), limit = out[rule.limit];
+        const value = out[rule.value] === '' || out[rule.value] == null ? NaN : Number(out[rule.value]), limit = typeof rule.limit === 'number' ? rule.limit : out[rule.limit];
         out[name] = limit != null && Number.isFinite(value) && (rule.cmp === 'gte' ? value >= limit : value <= limit);
     }
     return out;

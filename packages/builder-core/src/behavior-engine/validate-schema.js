@@ -40,7 +40,8 @@ function propProblems(name, def, props) {
             const d = def.derived;
             const readable = n => props[n]?.source === 'literal' && (props[n].type === 'number' || props[n].type === 'string');
             if (def.type === 'boolean' && isPlainObject(d) && d.when !== undefined) out.push(...conditionProblems(d.when, props, `prop "${name}" derived when`));
-            else if (def.type !== 'boolean' || !isPlainObject(d) || !readable(d.value) || props[d.limit]?.type !== 'number' || !['gte', 'lte'].includes(d.cmp)) out.push(`prop "${name}" derived must be { when } or { value, limit, cmp: gte | lte } on a boolean prop (the second over a text or number prop and a number prop)`);
+            // The limit is a number prop, or a literal number (a count that holds at zero).
+            else if (def.type !== 'boolean' || !isPlainObject(d) || !readable(d.value) || !(typeof d.limit === 'number' || props[d.limit]?.type === 'number') || !['gte', 'lte'].includes(d.cmp)) out.push(`prop "${name}" derived must be { when } or { value, limit, cmp: gte | lte } on a boolean prop (the second over a text or number prop and a number prop or a literal number)`);
         }
         if (def.defaultMode !== undefined && !(Array.isArray(def.modes) && def.modes.includes(def.defaultMode))) out.push(`prop "${name}" defaultMode "${def.defaultMode}" is not one of its modes`);
         if (def.atMost !== undefined && (def.type !== 'number' || props[def.atMost]?.type !== 'number')) out.push(`prop "${name}" atMost must name a number prop`);
