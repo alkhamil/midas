@@ -287,8 +287,9 @@ export function pinnedFrame(template, slot, box, vars) {
     const px = token => parseFloat(vars[cssVarOf(template.id, token)]) || 0;
     const border = px(template.display.root.strokeWidth);
     if (slot.edge === 'right') {
-        const w = px(template.display[slot.id].width);
-        return { x: box.w - w - border, y: border, w, h: box.h - 2 * border };
+        // The column is the box's height token, from the box's top edge (its border-box), and its right edge is the inside of the right border.
+        const w = px(template.display[slot.id].width), h = px(template.display[slot.id].height);
+        return { x: box.w - w - border, y: 0, w, h };
     }
     if (slot.corner === 'bottom-right') {
         const size = px(template.display[slot.id].size), inset = slot.inset === undefined ? 0 : px(slot.inset);

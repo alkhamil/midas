@@ -72,7 +72,7 @@ export const INPUTNUMBER = inputFamily({
         },
         display: {
             root: { paddingStart: 'paddingX', paddingEnd: 'paddingEnd' },
-            stepper: { fill: 'step-bg', radiusEnd: 'radius', width: 'stepWidth', stroke: 'step-border', strokeWidth: 'borderWidth' },
+            stepper: { fill: 'step-bg', radiusEnd: 'radius', width: 'stepWidth', height: 'height', stroke: 'step-border', strokeWidth: 'borderWidth' },
             stepDownBox: { stroke: 'step-border', strokeWidth: 'borderWidth' },
             stepUp: { fill: 'step-up-fg', size: 'stepIconSize' },
             stepDown: { fill: 'step-down-fg', size: 'stepIconSize' },

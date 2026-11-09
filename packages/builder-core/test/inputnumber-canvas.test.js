@@ -38,9 +38,8 @@ for (const size of SIZES) {
             const f = pinnedFrame(number, slot('stepper'), box, vars);
             assert.equal(f.w, px(vars, 'stepWidth'), 'a small control wide');
             assert.equal(f.x + f.w, box.w - border, 'its right edge is the inside of the right border');
-            assert.equal(f.y, border, 'it starts inside the top border');
-            assert.equal(f.h, box.h - 2 * border, 'and spans the control inside the borders');
-            assert.equal(f.y + f.h, box.h - border, 'down to the inside of the bottom border');
+            assert.equal(f.y, 0, 'it starts on the top border line of the box');
+            assert.equal(f.h, height, 'and is the box height token, whatever the box is');
             // Two halves of 50% each (fill x fill in a column): together the column, each with its chevron centred on both axes.
             const half = f.h / 2, glyph = px(vars, 'stepIconSize');
             assert.equal(half * 2, f.h);

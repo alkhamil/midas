@@ -60,15 +60,15 @@ for (const size of SIZES) {
         assert.equal(computed(playOf('inputnumber', {}, size).styles, at('stepper').chain).position, 'absolute');
     });
 
-    test(`${size}: the column is the full height inside the border and a small control wide; two equal halves, each with its chevron centred and inside it`, () => {
+    test(`${size}: the column is the box height token from the top border line and a small control wide; two equal halves, each with its chevron centred and inside it`, () => {
         const { at, styles, nodes } = playOf('inputnumber', {}, size);
         const vars = varsAt('inputnumber', size);
         const height = px(vars[cssVarOf('inputnumber', 'height')]), border = px(vars[cssVarOf('inputnumber', 'borderWidth')]);
         const column = computed(styles, at('stepper').chain);
-        // Pinned to the inside of the border on the right, top and bottom: its height is the box's less the border on both sides.
-        assert.deepEqual([column.position, column.top, column.right, column.bottom], ['absolute', '0', '0', '0']);
+        // Pinned on the right, from the top border line: its height is the box height token.
+        assert.deepEqual([column.position, column.top, column.right, column.bottom], ['absolute', `calc(-1 * ${border}px)`, '0', undefined], 'from the top border line, no bottom pin: the height is the token');
         assert.equal(column.width, vars[cssVarOf('inputnumber', 'stepWidth')]);
-        const inner = height - 2 * border, width = px(column.width);
+        const inner = height, width = px(column.width);
         // The halves share the column by the same flex (fill x fill in a column): equal, and together the whole height.
         const up = computed(styles, at('stepUpBox').chain), down = computed(styles, at('stepDownBox').chain);
         assert.equal(up.flex, down.flex, 'equal shares');
@@ -89,7 +89,7 @@ for (const size of SIZES) {
         const stepper = nodes.find(n => n.name === 'stepper');
         assert.deepEqual([stepper.layoutPositioning, stepper.constraintH, stepper.constraintV], ['absolute', 'right', 'stretch']);
         const at2 = pinnedFrame(number, number.anatomy.find(s => s.id === 'stepper'), { w: 343, h: height }, vars);
-        assert.deepEqual([at2.x + at2.w + border, at2.y, at2.h], [343, border, inner], 'the column touches the inside of the right border and spans the height inside it');
+        assert.deepEqual([at2.x + at2.w + border, at2.y, at2.h], [343, 0, inner], 'the column touches the inside of the right border and is the box height');
         for (const name of ['stepUpBox', 'stepDownBox']) {
             const n = nodes.find(x => x.name === name);
             assert.deepEqual([n.layoutSizingH, n.layoutSizingV, n.primaryAlign, n.counterAlign], ['fill', 'fill', 'center', 'center'], name);

@@ -427,8 +427,9 @@ function displayRules(template, master, childrenOf, geometry) {
         const decls = kind === 'glyph' ? ['  display: block;\n', '  flex-shrink: 0;\n'] : key === 'root'
             ? ['  display: inline-flex;\n', '  box-sizing: border-box;\n', ...cssDecls(rootLayoutOf(master, 0)), ...(master.layoutSizingH === 'fixed' && master.vars?.w === undefined && master.w > 0 ? [`  width: ${master.w}px;\n`] : [])]
             : kind === 'text' ? cssDecls(labelLayoutOf(entryFor(key)?.node, entryFor(key)?.parent ?? master)) : [];
-        // A container pinned to the right edge is out of the flow: the full height of the box, against its inside edge (the border is outside the padding box).
-        if (template.anatomy.find(s => s.id === key)?.edge === 'right') decls.push('  position: absolute;\n', '  top: 0;\n', '  right: 0;\n', '  bottom: 0;\n');
+        // A container pinned to the right edge is out of the flow: it starts on the box's top border line (the padding box starts inside the border, so top is minus the border)
+        // and its height is the box's height token, so it is as tall as the box at every Size mode.
+        if (template.anatomy.find(s => s.id === key)?.edge === 'right') decls.push('  position: absolute;\n', `  top: calc(-1 * var(${cssVarOf(template.id, template.display.root.strokeWidth)}));\n`, '  right: 0;\n');
         if (key === 'root' && template.outline) {
             // The outline width includes the border: the ring starts back at the border's inner edge (an inside stroke),
             // so the visible ring is the width minus the border with no gap. A border as wide as the outline leaves no ring.
