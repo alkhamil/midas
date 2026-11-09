@@ -102,7 +102,16 @@ function renderNode(n, parent, scope, icon = false) {
         return null;
     }
     const base = { ...placement(n, parent, scope.responsive), ...opacityOf(n) };
-    if (n.type === 'text') return textElement(n, { ...base, ...textStyle(n), ...effectStyle(n, scope, true) });
+    if (n.type === 'text') {
+        // A managed text layer of an instance is drawn as the export draws it: it carries its slot's class, and its bound typography is the
+        // stylesheet's (the class rule reads the variable), not the size the node kept from its master.
+        const owner = n.behavior?.slot !== undefined ? owningTemplateOf(n, scope) : null;
+        const slotClass = owner ? `${owner.id}-${n.behavior.slot}` : null;
+        const style = { ...base, ...textStyle(n), ...effectStyle(n, scope, true) };
+        if (slotClass && n.vars?.typography !== undefined) for (const key of ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing']) delete style[key];
+        const element = textElement(n, style);
+        return slotClass ? { ...element, attrs: { ...element.attrs, class: slotClass } } : element;
+    }
     if (VECTOR.includes(n.type) || arcActive(n)) {
         // The outline is an SVG placed at the box's corner: the box must be positioned, or the SVG lands on an ancestor's corner.
         return { tag: 'div', nodeId: n.id, attrs: {}, style: { ...base, position: base.position ?? 'relative', ...effectStyle(n, scope, true) }, html: vectorMarkup(n, scope, icon), children: [] };
@@ -216,6 +225,12 @@ function maskImageOf(mask, child, scope) {
  * @param {any} n
  * @param {any} scope
  */
+/** The template of the instance a layer sits in: the nearest instance above it (the layer itself when it is one), or null. */
+function owningTemplateOf(n, scope) {
+    for (let cur = n; cur; cur = scope.byId.get(cur.parentId)) if (cur.isInstance) return templateOf(cur, scope);
+    return null;
+}
+
 function templateOf(n, scope) {
     if (!n.isInstance) return null;
     const master = scope.byId.get(n.sourceId);
