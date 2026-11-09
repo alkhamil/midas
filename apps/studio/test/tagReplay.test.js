@@ -102,3 +102,25 @@ test('the label text stays in its prop across toggles; the instance props resolv
     assert.equal(sample.label, 'Tag');
     assert.equal(sample.closable, false);
 });
+
+test('turning closable on gives the close slot the file\'s close glyph (role close), not the default circle', () => {
+    const replay = generate();
+    const { demo, layers } = demoOf(replay);
+    const closeGlyph = replay.doc.nodes.find(n => n.component === true && n.name === 'Icon/close');
+    assert.ok(closeGlyph, 'the Design System made the close glyph');
+    replay.setInstanceValueTo(demo, 'closable', true);
+    assert.equal(demo.behavior.props.closeIcon, closeGlyph.id, 'the close slot holds the close glyph');
+    assert.ok(layers().some(n => n.behavior?.slot === 'close'), 'and the close layer is there');
+});
+
+test('a picker swap of the close icon keeps the close layer and its icon size bound (one close layer, the new glyph)', () => {
+    const replay = generate();
+    const { demo, layers } = demoOf(replay);
+    setProps(replay, demo, { closable: true });
+    const before = layers().find(n => n.behavior?.slot === 'close');
+    const other = replay.doc.nodes.find(n => n.component === true && n.name === 'Icon/circle');
+    setProps(replay, demo, { closeIcon: other.id });
+    const after = layers().filter(n => n.behavior?.slot === 'close');
+    assert.equal(after.length, 1, 'exactly one close layer after the swap');
+    assert.deepEqual(after[0].vars, before.vars, 'its colour and size bindings are kept');
+});

@@ -104,3 +104,19 @@ for (const size of SIZE_MODES) {
         assert.ok(found.length > 0);
     });
 }
+
+// Play draws the root through the instances (a master is drawn only as the canvas component), so the master's canvas values are checked against the
+// Play of an instance made from it: the instance is a copy of the master, and the same tokens bind it.
+for (const size of SIZE_MODES) {
+    test(`the MASTER at ${size}: its canvas height, fill and border are the Play values of an instance made from it, for every variant`, () => {
+        for (const variant of VARIANTS) {
+            const props = { size, variant, color: 'primary' };
+            const { style } = playOf(props, instanceFor(model, props));
+            const modes = modesFor(props);
+            const root = style('antd-tag');
+            assert.equal(length(root.height), canvasOf(model.frame, 'h', modes), `master height at ${size} ${variant}`);
+            assert.equal(root['background-color'], canvasOf(model.frame, 'fills.0', modes), `master fill at ${size} ${variant}`);
+            assert.equal(root['border-color'], canvasOf(model.frame, 'stroke', modes), `master border at ${size} ${variant}`);
+        }
+    });
+}
