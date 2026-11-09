@@ -34,7 +34,7 @@ function varsOf({ replay, doc }, host, size) {
     return core.previewOf(number, binding.variables ? binding : master.behavior, modes, replay.varStore(), core.resolveProps(number, number.sampleProps), 'default').vars;
 }
 
-test('the master holds the column fixed in both axes, placed against the inside of its right border at the full height inside it', () => {
+test('the master holds the column fixed in both axes, placed against the inside of its right border from the top border line, at the box height', () => {
     const w = world();
     const master = w.page.nodes.find(n => n.component && n.behavior?.templateId === 'inputnumber');
     const column = w.doc.descendants(master.id).find(n => n.behavior?.group === 'stepper');
@@ -43,7 +43,8 @@ test('the master holds the column fixed in both axes, placed against the inside 
     assert.deepEqual([column.x, column.y, column.w, column.h], [at.x, at.y, at.w, at.h]);
     assert.ok(column.w > 0 && column.h > 0, 'a column with a size');
     assert.equal(column.x + column.w, master.w - 1, 'it ends on the inside of the right border');
-    assert.equal(column.y + column.h, master.h - 1);
+    assert.equal(column.y, 0, 'from the top border line');
+    assert.equal(column.y + column.h, master.h, 'the box height');
 });
 
 test('the demo instance and an instance at every Size hold the column where pinnedFrame puts it for that Size', () => {

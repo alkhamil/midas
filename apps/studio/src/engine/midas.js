@@ -10243,9 +10243,21 @@ function instanceModesOf(inst, binding) {
     const collections = varStore().collections || [];
     const pageModes = doc.page?.varModes;
     const byId = { get: id => doc.get(id) };
+    // A node with no mode of its own for a collection takes the template's default for that prop (a Size is md, not the collection's first mode).
+    const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
+    const hasOwnMode = (coll) => {
+        for (let cur = inst, guard = 0; cur && guard < 200; guard++) {
+            if (cur.varModes?.[coll.id] && coll.modes.some(m => m.id === cur.varModes[coll.id])) return true;
+            cur = cur.parentId ? doc.get(cur.parentId) : null;
+        }
+        return coll.modes.some(m => m.id === pageModes?.[coll.id]);
+    };
     return Object.fromEntries(Object.keys(binding ? binding.variables : {}).map(prop => {
         const coll = collections.find(c => c.id === binding.variables[prop]);
-        return [prop, coll ? resolveMode(coll, inst, byId, pageModes) : null];
+        if (!coll) return [prop, null];
+        const want = template?.props[prop]?.defaultMode;
+        if (want !== undefined && !hasOwnMode(coll)) return [prop, coll.modes.find(m => m.name === want)?.id ?? resolveMode(coll, inst, byId, pageModes)];
+        return [prop, resolveMode(coll, inst, byId, pageModes)];
     }));
 }
 function renderInspector() {
