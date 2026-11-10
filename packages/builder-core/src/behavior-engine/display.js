@@ -47,6 +47,13 @@ export const NODE_PROPERTIES = {
         width: { kind: 'length', css: 'width' },
         height: { kind: 'length', css: 'height' },
     },
+    // A line (a divider rule): a vector line node. Its stroke colour and width bind like any stroke; the length of a vertical one is a height token. The export draws none yet (codegen reports the slot).
+    line: {
+        stroke: { kind: 'color', css: null },
+        strokeWidth: { kind: 'length' },
+        width: { kind: 'length', css: null },
+        height: { kind: 'length', css: null },
+    },
     // An arc part (the spinner) is an SVG drawn with `currentColor`: its colour is the CSS colour, and it is the icon size wide and high.
     arc: {
         stroke: { kind: 'color', css: 'color' },
@@ -206,7 +213,7 @@ export const targetKindOf = (template, key) => {
     // A prop-only swap icon names no anatomy slot or part; its def still decides the kind.
     if (!kind) return (template.icons ?? []).some(d => d && typeof d === 'object' && d.slot === key) ? 'icon' : null;
     if (part?.arc) return 'arc';
-    return kind.kind === 'icon' ? 'icon' : kind.kind === 'frame' ? 'frame' : kind.kind === 'glyph' ? 'glyph' : 'text';
+    return kind.kind === 'icon' ? 'icon' : kind.kind === 'frame' ? 'frame' : kind.kind === 'glyph' ? 'glyph' : kind.kind === 'line' ? 'line' : 'text';
 };
 
 /** The text a counter part shows: the value's length, and `/ max` when the template has a maximum. */

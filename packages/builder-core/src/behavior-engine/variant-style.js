@@ -32,18 +32,21 @@ export function borderStyleOf(template, modes) {
     return null;
 }
 
+/** The gap of a dotted border: its dashes have no length, so the round cap makes the dots, and this is the space between their centres. */
+const DOT_GAP = 3;
+
 /**
- * What to write on an instance's root so it draws a Variant's border style: the node's own stroke style (dashed is dash 4 with gap following, dotted falls back to solid).
- * Null when it already does, and when the template has no variant styles (the node keeps what it has). The Variant sets the style when it changes; the
- * node owns it after that.
- * @param {{ strokeStyle?: string, strokeDash?: number }} node
+ * What to write on a layer so it draws a Variant's border style: the node's own stroke style (dashed is dash 4 with the gap following the dash; dotted is dashes of no
+ * length that the round cap makes dots). Null when it already does, and when the template has no variant styles (the node keeps what it has). The Variant sets the style
+ * when it changes; the node owns it after that. It reaches the instance's root and its managed line layers alike.
+ * @param {{ strokeStyle?: string, strokeDash?: number, strokeGap?: number }} node
  * @param {'solid' | 'dashed' | 'dotted' | null} style
- * @returns {{ strokeStyle: string, strokeDash?: number } | null}
+ * @returns {{ strokeStyle: string, strokeDash?: number, strokeGap?: number } | null}
  */
 export function variantStrokePatch(node, style) {
     if (style === null) return null;
     const own = node.strokeStyle ?? 'solid';
     if (style === 'dashed') return own === 'dash' && node.strokeDash === 4 ? null : { strokeStyle: 'dash', strokeDash: 4 };
-    if (style === 'dotted') return own === 'solid' ? null : { strokeStyle: 'solid' };
+    if (style === 'dotted') return own === 'dash' && node.strokeDash === 0 && node.strokeGap === DOT_GAP ? null : { strokeStyle: 'dash', strokeDash: 0, strokeGap: DOT_GAP };
     return own === 'solid' ? null : { strokeStyle: 'solid' };
 }

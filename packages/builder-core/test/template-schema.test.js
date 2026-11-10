@@ -176,7 +176,7 @@ test('a shownWhen names a real literal prop, with a condition the prop can hold'
     assert.match(validateTemplateSchema(wrongKind).join('\n'), /with "empty", which needs a string prop and a boolean/);
     const notText = clone(INPUT);
     notText.anatomy.find(s => s.id === 'prefixIcon').shownWhen = { prop: 'hasPrefix', is: true };
-    assert.match(validateTemplateSchema(notText).join('\n'), /anatomy slot "prefixIcon" has shownWhen but is not a text, control, glyph or frame slot/);
+    assert.match(validateTemplateSchema(notText).join('\n'), /anatomy slot "prefixIcon" has shownWhen but is not a text, control, glyph, frame or line slot/);
 });
 
 test('a frame container may gate on a shownWhen (a conditional container)', () => {

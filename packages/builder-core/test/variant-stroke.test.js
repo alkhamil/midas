@@ -30,12 +30,12 @@ test('a template with no variant styles has no border style, and a dotted mode i
     assert.equal(borderStyleOf(dotted, modesWith(mode('u', 'Dotted'))), 'dotted');
 });
 
-test('the node the canvas draws and Play reads gets the style the Variant says: dashed is dash 4 with gap following, dotted falls back to solid; what already holds is left', () => {
+test('the node the canvas draws and Play reads gets the style the Variant says: dashed is dash 4 with gap following, dotted is dashes of no length with a gap; what already holds is left', () => {
     assert.deepEqual(variantStrokePatch({}, 'dashed'), { strokeStyle: 'dash', strokeDash: 4 });
     assert.deepEqual(variantStrokePatch({ strokeStyle: 'dash', strokeDash: 4 }, 'dashed'), null, 'already dashed');
     assert.deepEqual(variantStrokePatch({ strokeStyle: 'dash', strokeDash: 9 }, 'dashed'), { strokeStyle: 'dash', strokeDash: 4 }, 'the Variant sets its dash when the Variant changes');
-    assert.equal(variantStrokePatch({}, 'dotted'), null, 'already solid');
-    assert.deepEqual(variantStrokePatch({ strokeStyle: 'dot' }, 'dotted'), { strokeStyle: 'solid' });
+    assert.deepEqual(variantStrokePatch({}, 'dotted'), { strokeStyle: 'dash', strokeDash: 0, strokeGap: 3 });
+    assert.equal(variantStrokePatch({ strokeStyle: 'dash', strokeDash: 0, strokeGap: 3 }, 'dotted'), null, 'already dotted');
     assert.deepEqual(variantStrokePatch({ strokeStyle: 'dash', strokeDash: 4 }, 'solid'), { strokeStyle: 'solid' });
     assert.deepEqual(variantStrokePatch({}, 'solid'), null, 'a node with no style is solid');
     assert.deepEqual(variantStrokePatch({ strokeStyle: 'dash' }, null), null, 'no variant styles: the node keeps what it has');

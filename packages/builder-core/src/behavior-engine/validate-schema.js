@@ -116,7 +116,7 @@ function shownWhenProblems(schema, props) {
     const out = [];
     for (const slot of Array.isArray(schema.anatomy) ? schema.anatomy : []) {
         if (!isPlainObject(slot) || slot.shownWhen === undefined) continue;
-        if (slot.kind !== 'text' && slot.kind !== 'control' && slot.kind !== 'glyph' && slot.kind !== 'frame') out.push(`anatomy slot "${slot.id}" has shownWhen but is not a text, control, glyph or frame slot`);
+        if (slot.kind !== 'text' && slot.kind !== 'control' && slot.kind !== 'glyph' && slot.kind !== 'frame' && slot.kind !== 'line') out.push(`anatomy slot "${slot.id}" has shownWhen but is not a text, control, glyph, frame or line slot`);
         out.push(...conditionProblems(slot.shownWhen, props, `anatomy slot "${slot.id}" shownWhen`));
     }
     return out;
@@ -154,7 +154,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
         if (!isPlainObject(slot) || !isName(slot.id)) { out.push('anatomy slot has no id'); continue; }
         if (seen.has(slot.id)) out.push(`duplicate anatomy slot "${slot.id}"`);
         seen.add(slot.id);
-        if (!['text', 'control', 'icon', 'frame', 'glyph'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" has unknown kind "${slot.kind}"`);
+        if (!['text', 'control', 'icon', 'frame', 'glyph', 'line'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" has unknown kind "${slot.kind}"`);
         if (slot.kind === 'frame') {
             if (slot.layout !== 'horizontal' && slot.layout !== 'vertical') out.push(`frame slot "${slot.id}" layout must be horizontal or vertical`);
             if (slot.optional) out.push(`frame slot "${slot.id}" cannot be optional`);
@@ -170,7 +170,13 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
             // Containers nest one level (the handler column holds its two halves), never deeper.
             else if (slot.kind === 'frame' && holder.parent !== undefined) out.push(`frame slot "${slot.id}" sits too deep: containers nest one level`);
         }
-        if (slot.managed && !['icon', 'text', 'control', 'glyph', 'frame'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" is managed but not an icon, text, control, glyph or frame slot`);
+        if (slot.managed && !['icon', 'text', 'control', 'glyph', 'frame', 'line'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" is managed but not an icon, text, control, glyph, frame or line slot`);
+        // A line is a vector line node of the instance (a divider rule), along one axis: managed and optional, a layer of the root.
+        if (slot.kind === 'line') {
+            if (slot.axis !== 'horizontal' && slot.axis !== 'vertical') out.push(`line slot "${slot.id}" axis must be horizontal or vertical`);
+            if (slot.managed !== true || slot.optional !== true) out.push(`line slot "${slot.id}" must be managed and optional`);
+            if (slot.parent !== undefined) out.push(`line slot "${slot.id}" is a layer of the root: it has no parent`);
+        }
         // A glyph is a built-in outline drawn in a box: managed, shown by a state the root says as an attribute (so Play and the export need no layer).
         if (slot.kind === 'glyph') {
             if (!Object.hasOwn(GLYPHS, slot.glyph)) out.push(`glyph slot "${slot.id}" names the glyph "${slot.glyph}", which is not a built-in glyph`);

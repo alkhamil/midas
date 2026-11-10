@@ -22,6 +22,7 @@ const MODELS = {
     checkbox: generated('checkbox'),
     'antd-badge': generated('antd-badge'),
     'antd-tag': generated('antd-tag'),
+    'antd-divider': generated('antd-divider'),
     switch: generated('switch'),
     radio: generated('radio'),
     inputnumber: generated('inputnumber'),
@@ -78,7 +79,9 @@ for (const template of TEMPLATES.values()) {
         const out = applyTemplateToFrame(template, { frame, children: [], binding, variables, idOf });
         // Every managed slot shown: one instance per icon def (its show gate plus each option of its placement prop, so every slot a placement
         // can pick is drawn) and one per managed text slot (its own condition: exclusive states cannot share one instance).
-        const holding = cond => cond.all ? Object.assign({}, ...cond.all.map(holding)) : 'is' in cond ? { [cond.prop]: cond.is } : { [cond.prop]: cond.empty ? '' : 'x' };
+        const holding = cond => cond.all ? Object.assign({}, ...cond.all.map(holding)) : 'is' in cond ? derivedHolding(cond) : { [cond.prop]: cond.empty ? '' : 'x' };
+        // A test on a derived prop holds when the condition it is read from does (the props it reads are set, never the derived one); a derived prop that must be off holds by default.
+        const derivedHolding = cond => { const when = template.props[cond.prop]?.derived?.when; return when === undefined ? { [cond.prop]: cond.is } : cond.is === true ? holding(when) : {}; };
         // A show gate that is a derived prop (Password's eyes) holds when its condition does: the props it reads are set, never the derived one.
         const showProps = def => {
             if (typeof def.show === 'string') { const when = template.props[def.show]?.derived?.when; return when ? holding(when) : { [def.show]: true }; }

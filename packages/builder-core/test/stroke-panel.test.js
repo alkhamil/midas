@@ -36,10 +36,12 @@ test('a dashed Variant writes dash only and deletes a stale gap; an explicit gap
     assert.deepEqual(variantStrokePatch({ strokeStyle: 'dash', strokeDash: 9, strokeGap: 9 }, 'dashed').strokeGap, undefined, 'a new dash resets to following');
 });
 
-test('a dotted Variant style falls back to solid: dots are removed', () => {
-    assert.equal(variantStrokePatch({}, 'dotted'), null, 'already solid: nothing to write');
-    assert.deepEqual(variantStrokePatch({ strokeStyle: 'dot' }, 'dotted'), { strokeStyle: 'solid' });
-    assert.deepEqual(variantStrokePatch({ strokeStyle: 'dash', strokeDash: 4 }, 'dotted'), { strokeStyle: 'solid' });
+test('a dotted Variant style is dashes of no length (the round cap makes the dots) with a gap; solid takes it back; what already holds is left', () => {
+    assert.deepEqual(variantStrokePatch({}, 'dotted'), { strokeStyle: 'dash', strokeDash: 0, strokeGap: 3 });
+    assert.equal(variantStrokePatch({ strokeStyle: 'dash', strokeDash: 0, strokeGap: 3 }, 'dotted'), null, 'already dotted');
+    assert.deepEqual(variantStrokePatch({ strokeStyle: 'dash', strokeDash: 4 }, 'dotted'), { strokeStyle: 'dash', strokeDash: 0, strokeGap: 3 });
+    assert.deepEqual(variantStrokePatch({ strokeStyle: 'dash', strokeDash: 0, strokeGap: 3 }, 'solid'), { strokeStyle: 'solid' });
+    assert.deepEqual(strokeDashArray({ strokeWidth: 1, strokeStyle: 'dash', strokeDash: 0, strokeGap: 3 }), [0, 3], 'the canvas dash array is the dots');
 });
 
 function playRoot(extra, { bound = false } = {}) {

@@ -46,7 +46,7 @@ test('the gap field displays the effective value: explicit gap, else the dash', 
 
 test('a dashed Variant removes a stale gap; an explicit one is kept by the null patch', () => {
     const body = bodyOf('applyVariantStroke');
-    assert.ok(body.includes('delete inst.strokeGap'), 'a stale gap is deleted on a dashed write');
+    assert.ok(body.includes('delete target.strokeGap'), 'a stale gap is deleted on a dashed write');
 });
 
 test('dash, gap, cap and style never bind: the purge and the allowlist agree', () => {

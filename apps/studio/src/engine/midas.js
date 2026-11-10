@@ -9955,6 +9955,8 @@ function syncInstance(inst) {
                 const n = doc.add(managedSlotLayer(template, op.slot, resolveProps(template, inst.behavior?.props ?? {}), { id: uid(), parentId: holder.id }));
                 if (n.type === 'text') remeasureText(n);
                 placeAmongChildren(holder, n, op.index);
+                // A line made by the sync draws the instance's Style from the start (a Variant writes it on the layers it finds).
+                if (n.type === 'line') applyVariantStroke(inst, n);
             }
             else {
                 const holder = containerOf(inst, op.parent);
@@ -10049,7 +10051,7 @@ function instanceLabelOf(inst, master) {
  * A Variant with a border style (the template's `styles`, such as dashed) draws the instance's root stroke in that style. The dash
  * length is the canvas's own (the schema has no token for a border style).
  */
-function applyVariantStroke(inst) {
+function applyVariantStroke(inst, only) {
     const master = componentById(inst.sourceId), binding = master?.behavior;
     const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
     if (!template || !inst.isInstance) return;
@@ -10057,11 +10059,16 @@ function applyVariantStroke(inst) {
     const collections = varStore().collections || [];
     const ids = instanceModesOf(inst, binding);
     const selected = Object.fromEntries(Object.entries(ids).map(([prop, id]) => [prop, collections.find(c => c.id === binding.variables[prop])?.modes.find(m => m.id === id) ?? null]));
-    const patch = variantStrokePatch(inst, borderStyleOf(template, selected));
-    if (!patch) return;
-    Object.assign(inst, patch);
-    if (patch.strokeStyle === 'dash') delete inst.strokeGap;
-    doc.touch(inst);
+    const style = borderStyleOf(template, selected);
+    // The root draws the style, and so does each of the instance's line layers (a Divider's rules are lines, not borders).
+    // `only` is a line the sync just made: the Style reaches that layer alone, so a dash the designer set on the others stays.
+    for (const target of only ? [only] : [...('stroke' in (template.display.root ?? {}) ? [inst] : []), ...doc.descendants(inst.id).filter(c => c.type === 'line' && c.behavior?.slot !== undefined)]) {
+        const patch = variantStrokePatch(target, style);
+        if (!patch) continue;
+        Object.assign(target, patch);
+        if (patch.strokeStyle === 'dash' && !('strokeGap' in patch)) delete target.strokeGap;
+        doc.touch(target);
+    }
 }
 /** The instance's copy of each part of the master (a master child marked `behavior.part`), by part id. */
 function partLayersOf(inst, master) {

@@ -97,6 +97,8 @@ Behavior rework pass (earlier): layout ownership (`isLayoutOwnedField`: x/y for 
 
 Local Fase 0 triage (2026-10-31, pre-merge master): Button stroke/label/icon-slot/disabled code done and tested. `AGENTS.md` is the single shared agent notes file (`CLAUDE.md` is only a pointer).
 
+Divider (`antd-divider`, Batch 2a): done on the canvas side. Rules are managed vector line nodes (anatomy `kind: 'line'`); Text, Orientation, Placement, Plain, Style (solid, dashed, dotted) and Size are props; layers come and go with the props, none hidden. Open: codegen and Play have no line emitter (the export reports `unsupported-slot`, Play omits the Divider), and nothing is verified in a browser. Details in `AGENTS.md`.
+
 Phase 1 batch 1 (Input): schema, `control` kind, input-model, Play/codegen rendering and regression tests done (builder-core 760 + studio 46 green, 0 failures). Single-line Input only; TextArea/Password/Search/OTP out of scope.
 
 Input wrapper parity (2026-10-31): the wrapper owns box visuals and interaction states (`focusTarget: "wrapper"`, `:has()` selectors in codegen), the inner control owns text only; the testing fixture mirrors the antd size demo.

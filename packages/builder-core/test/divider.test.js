@@ -1,0 +1,198 @@
+// Divider: a rule of vector line nodes. Horizontal it is a line, or a line, a text and a line (the text at the start, centre or end); vertical it is one line and has
+// no text. The text and the lines are managed layers: made while their props ask for them, removed when they do not, never hidden. A placement shortens one side to
+// its token and lets the other fill; the lines take their colour and width from tokens and their dash from the Style mode.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { TEMPLATES } from '../src/behavior-engine/registry.js';
+import { planInstanceAnatomy } from '../src/behavior-engine/anatomy.js';
+import { resolveProps, isPropVisible } from '../src/behavior-engine/instance-props.js';
+import { planManagedTextBindings, applyBindTokens } from '../src/behavior-engine/bind-tokens.js';
+import { borderStyleOf, variantStrokePatch } from '../src/behavior-engine/variant-style.js';
+import { variableValue } from '../src/behavior-engine/variable-value.js';
+import { generateComponent } from '../src/behavior-engine/codegen.js';
+import { validateTemplateSchema } from '../src/behavior-engine/validate-schema.js';
+import { toDomTree } from '../src/prototype/dom-tree.js';
+import { strokeDashArray, strokeIsOn } from '../src/geometry/shapes.js';
+import { modelFor, instanceFor } from './helpers/box-template.js';
+
+const divider = TEMPLATES.get('antd-divider');
+const model = modelFor(divider);
+
+/** An instance under these props, with its managed layers bound to their tokens the way the studio binds them after a sync. */
+const inst = props => {
+    const nodes = instanceFor(model, props);
+    const layers = nodes.slice(1).filter(n => n.behavior?.slot !== undefined).map(node => ({ key: node.behavior.slot, node }));
+    const { ops, problems } = planManagedTextBindings({ template: divider, binding: model.binding, props: resolveProps(divider, props), layers, variables: model.variables });
+    assert.deepEqual(problems, [], 'every token of the lines and the text has a variable');
+    applyBindTokens(layers, ops);
+    return nodes;
+};
+const layers = props => inst(props).slice(1).map(n => n.name);
+const nodeOf = (props, name) => inst(props).find(n => n.name === name);
+const item = id => model.variables.items.find(i => i.id === id);
+const modeNamed = (name) => c => c.modes.find(m => m.name === name)?.id ?? c.modes[0].id;
+const valueOf = (id, mode = 'small') => variableValue(model.variables, item(id), modeNamed(mode));
+/** What the plan does to an instance holding `nodes` when its props become `stored`. */
+const planFor = (nodes, stored) => {
+    const root = nodes[0];
+    const groups = new Map(nodes.filter(n => n.behavior?.group !== undefined).map(n => [n.id, n.behavior.group]));
+    const children = nodes.filter(n => n !== root).map(n => ({ id: n.id, slot: n.behavior?.slot ?? null, name: n.name, component: null, ...(n.parentId === root.id || !groups.has(n.parentId) ? {} : { parent: groups.get(n.parentId) }) }));
+    return planInstanceAnatomy({ binding: model.binding, masterRoot: { isAutoLayout: true }, masterTree: [{ id: 'x', type: 'frame' }], stored, children }).ops;
+};
+
+test('Divider is registered: a non-control, no disabled state, the props it declares', () => {
+    assert.ok(divider, 'Divider is in the registry');
+    assert.equal(divider.isControl, undefined);
+    assert.equal(divider.primarySlot, 'label');
+    assert.equal(divider.element.disabledState, undefined);
+    assert.deepEqual(Object.keys(divider.props), ['lineStyle', 'size', 'orientation', 'hasText', 'label', 'placement', 'plain', 'isVertical', 'shortBefore', 'shortAfter']);
+    assert.deepEqual(divider.props.lineStyle.modes, ['solid', 'dashed', 'dotted']);
+    assert.deepEqual(divider.props.size.modes, ['small', 'middle', 'large']);
+    assert.deepEqual(divider.props.orientation.options, ['horizontal', 'vertical']);
+    assert.deepEqual(divider.props.placement.options, ['start', 'center', 'end']);
+    assert.ok(divider.anatomy.filter(s => s.kind === 'line').every(s => s.managed && s.optional), 'every line is a managed layer');
+});
+
+test('the layers follow the props: a line alone, line + text + line, a short side at the start or the end, one vertical line', () => {
+    assert.deepEqual(layers({}), ['lineBefore']);
+    assert.deepEqual(layers({ hasText: true }), ['lineBefore', 'label', 'lineAfter']);
+    assert.deepEqual(layers({ hasText: true, placement: 'start' }), ['lineBeforeShort', 'label', 'lineAfter']);
+    assert.deepEqual(layers({ hasText: true, placement: 'end' }), ['lineBefore', 'label', 'lineAfterShort']);
+    assert.deepEqual(layers({ orientation: 'vertical' }), ['lineVertical']);
+    assert.ok(inst({ hasText: true }).slice(1).filter(n => n.type === 'line').length === 2 && inst({}).slice(1).every(n => n.type === 'line'), 'the rules are vector line nodes');
+});
+
+test('Text on adds the text layer and the second line; off removes both; the text stays in its prop and an empty text asks for no layer', () => {
+    const horizontal = inst({});
+    const on = planFor(horizontal, { hasText: true });
+    assert.deepEqual(on.filter(op => op.op === 'insert').map(op => op.slot).sort(), ['label', 'lineAfter']);
+    assert.equal(on.some(op => op.op === 'remove'), false, 'nothing is removed when the text is turned on');
+    const withText = inst({ hasText: true, label: 'Heading' });
+    assert.equal(withText.find(n => n.name === 'label').text, 'Heading');
+    const off = planFor(withText, { hasText: false, label: 'Heading' });
+    assert.deepEqual(off.filter(op => op.op === 'remove').map(op => withText.find(n => n.id === op.id).name).sort(), ['label', 'lineAfter']);
+    assert.deepEqual(layers({ hasText: false, label: 'Heading' }), ['lineBefore'], 'off: the text is in its prop, not in a layer');
+    assert.equal(nodeOf({ hasText: true, label: 'Heading' }, 'label').text, 'Heading', 'back on: the text comes back');
+    assert.deepEqual(layers({ hasText: true, label: '' }), ['lineBefore', 'lineAfter'], 'an empty text has no layer; the lines stay');
+});
+
+test('switching to vertical removes the text and its lines, leaves one vertical line, and hides the text props (they resolve to their defaults)', () => {
+    const before = inst({ hasText: true, placement: 'start', label: 'Heading', plain: true });
+    const ops = planFor(before, { hasText: true, placement: 'start', label: 'Heading', plain: true, orientation: 'vertical' });
+    assert.deepEqual(ops.filter(op => op.op === 'remove').map(op => before.find(n => n.id === op.id).name).sort(), ['label', 'lineAfter', 'lineBeforeShort']);
+    assert.deepEqual(ops.filter(op => op.op === 'insert').map(op => op.slot), ['lineVertical']);
+    assert.deepEqual(layers({ hasText: true, placement: 'start', label: 'Heading', plain: true, orientation: 'vertical' }), ['lineVertical']);
+    const resolved = resolveProps(divider, { hasText: true, placement: 'start', plain: true, orientation: 'vertical' });
+    for (const prop of ['hasText', 'label', 'placement', 'plain']) assert.equal(isPropVisible(divider, prop, resolved), false, `${prop} is hidden for a vertical divider`);
+    assert.equal(resolved.hasText, false);
+    assert.equal(resolved.placement, 'center');
+    assert.equal(resolved.plain, false);
+    // And back: the vertical line goes, the horizontal one comes.
+    const vertical = inst({ orientation: 'vertical' });
+    const back = planFor(vertical, {});
+    assert.deepEqual(back.filter(op => op.op === 'remove').map(op => vertical.find(n => n.id === op.id).name), ['lineVertical']);
+    assert.deepEqual(back.filter(op => op.op === 'insert').map(op => op.slot), ['lineBefore']);
+});
+
+test('placement sets the line lengths: the short side is its token, the other fills the rest; at the centre both fill equally', () => {
+    const SHORT = valueOf(nodeOf({ hasText: true, placement: 'start' }, 'lineBeforeShort').vars.w);
+    assert.equal(SHORT, 24, 'the short side is the Divider short token');
+    const fills = node => node.layoutSizingH === 'fill';
+    const fixed = node => node.layoutSizingH === 'fixed' && node.vars?.w !== undefined;
+    // start: short first, then the text, then the rest of the row
+    const start = inst({ hasText: true, placement: 'start' }).slice(1);
+    assert.ok(fixed(start[0]) && fills(start[2]));
+    // end: the rest of the row, then the text, then the short side
+    const end = inst({ hasText: true, placement: 'end' }).slice(1);
+    assert.ok(fills(end[0]) && fixed(end[2]));
+    // centre: both fill, no width of their own, so they share the row equally
+    const centre = inst({ hasText: true, placement: 'center' }).slice(1);
+    assert.ok(fills(centre[0]) && fills(centre[2]));
+    assert.equal(centre[0].vars?.w, undefined);
+    assert.equal(centre[2].vars?.w, undefined);
+    // The lengths a row of any width gives them (the root padding is none across, the gap between a line and the text is its token): the fixed side never grows or shrinks.
+    const gap = valueOf(model.variables.items.find(i => i.name === 'textGap').id), textW = 60;
+    const lengths = (rootW, placement) => {
+        const free = rootW - 2 * gap - textW;
+        return placement === 'start' ? [SHORT, free - SHORT] : placement === 'end' ? [free - SHORT, SHORT] : [free / 2, free / 2];
+    };
+    for (const rootW of [200, 343, 800]) {
+        const [a, b] = lengths(rootW, 'center');
+        assert.equal(a, b, `centre at ${rootW}: equal`);
+        assert.deepEqual(lengths(rootW, 'start')[0], SHORT, `start at ${rootW}: the short side keeps its token`);
+        assert.ok(lengths(rootW, 'start')[1] > SHORT, `start at ${rootW}: the other side is longer`);
+        assert.deepEqual(lengths(rootW, 'end')[1], SHORT, `end at ${rootW}: the short side keeps its token`);
+    }
+});
+
+test('no hidden layer: the master holds none, and no instance layer is hidden, transparent or a zero-size fixed one', () => {
+    assert.deepEqual(model.created, [], 'every layer of a Divider is managed: the master is the empty frame');
+    for (const props of [{}, { hasText: true }, { hasText: true, placement: 'start' }, { hasText: true, placement: 'end', plain: true }, { orientation: 'vertical' }, { orientation: 'vertical', hasText: true }]) {
+        for (const n of inst(props).slice(1)) {
+            assert.notEqual(n.visible, false, `${n.name} is shown (${JSON.stringify(props)})`);
+            assert.notEqual(n.opacity, 0, `${n.name} is opaque`);
+            const dead = n.w === 0 && n.h === 0 && n.layoutSizingH === 'fixed' && n.layoutSizingV === 'fixed' && !n.vars?.w && !n.vars?.h;
+            assert.equal(dead, false, `${n.name} has a size`);
+            assert.deepEqual(n.fills ?? [], n.type === 'line' ? [] : n.fills ?? [], 'a line has no fill: its stroke is the line');
+        }
+    }
+});
+
+test('a line takes its colour, its width and its length from tokens: the border colour, the line width, the short or vertical length', () => {
+    const line = nodeOf({}, 'lineBefore');
+    assert.equal(item(line.vars.stroke).name, 'lineColor');
+    assert.equal(item(line.vars.strokeWidth).name, 'lineWidth');
+    const border = model.variables.items.find(i => i.name === 'colorBorder');
+    assert.ok(border, 'the base has the border colour');
+    assert.equal(valueOf(line.vars.stroke), variableValue(model.variables, border, modeNamed('Base')), 'the line colour is the border colour');
+    assert.equal(valueOf(line.vars.strokeWidth), 1);
+    assert.equal(strokeIsOn({ ...line, stroke: valueOf(line.vars.stroke), strokeWidth: valueOf(line.vars.strokeWidth) }), true);
+    assert.equal(valueOf(nodeOf({ orientation: 'vertical' }, 'lineVertical').vars.h), 12, 'a vertical line is as long as its token');
+    assert.equal(nodeOf({ orientation: 'vertical' }, 'lineVertical').layoutSizingV, 'fixed');
+    assert.equal(nodeOf({ orientation: 'vertical' }, 'lineVertical').w, 0, 'a vertical line is a line along y');
+    assert.equal(nodeOf({}, 'lineBefore').h, 0, 'a horizontal line is a line along x');
+});
+
+test('the text takes the text colour and the heading typography; plain swaps the typography on the layer; the Size mode sets the space above and below', () => {
+    const typographyOf = props => item(nodeOf({ hasText: true, ...props }, 'label').vars.typography).name;
+    assert.equal(typographyOf({}), 'labelTypography');
+    assert.equal(typographyOf({ plain: true }), 'plainTypography');
+    assert.equal(typographyOf({ plain: false }), 'labelTypography', 'plain off: back to the heading');
+    const styleOf = name => { const it = model.variables.items.find(i => i.name === name); const target = item(Object.values(it.values)[0].alias); return target.name; };
+    assert.equal(styleOf('labelTypography'), 'textLgStrong');
+    assert.equal(styleOf('plainTypography'), 'textBase');
+    assert.equal(item(nodeOf({ hasText: true }, 'label').vars['fills.0']).name, 'labelColor');
+    const spaceY = model.variables.items.find(i => i.name === 'spaceY');
+    assert.deepEqual(['small', 'middle', 'large'].map(m => valueOf(spaceY.id, m)), [8, 16, 24], 'antd marginXS, margin, marginLG');
+    assert.equal(item(model.frame.vars.padV).name, 'spaceY', 'the root pads above and below by it');
+});
+
+test('the Style mode sets the dash of every line: solid has none, dashed is dash 4, dotted is dots', () => {
+    const modeOfName = name => ({ id: `id-${name}`, name });
+    const dashOf = (mode, node = nodeOf({ hasText: true }, 'lineBefore')) => {
+        const line = { ...node };
+        const patch = variantStrokePatch(line, borderStyleOf(divider, { lineStyle: modeOfName(mode) }));
+        return strokeDashArray(patch ? { ...line, ...patch } : line);
+    };
+    assert.deepEqual(dashOf('solid'), []);
+    assert.deepEqual(dashOf('dashed'), [4, 4]);
+    assert.deepEqual(dashOf('dotted'), [0, 3]);
+    for (const name of ['lineBefore', 'lineAfter', 'lineVertical']) assert.equal(inst({ hasText: true, orientation: name === 'lineVertical' ? 'vertical' : 'horizontal' }).find(n => n.name === name).type, 'line', `${name} can take the dash`);
+});
+
+test('the export and Play report the line slots they cannot draw yet (no emitter), loudly, instead of leaving them out', () => {
+    const out = generateComponent(model.template, model.binding, model.variables, 'Divider', model.frame, id => model.created.filter(n => n.parentId === id));
+    assert.deepEqual([...new Set(out.problems.filter(p => p.reason === 'unsupported-slot').map(p => p.slot))].sort(), ['lineAfter', 'lineAfterShort', 'lineBefore', 'lineBeforeShort', 'lineVertical']);
+    const nodes = instanceFor(model, { hasText: true });
+    const play = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [model.frame, ...model.created, ...nodes] }], variables: model.variables }, nodes[0].id);
+    assert.equal(play.root, null, 'Play draws no Divider until the line has an emitter');
+    assert.ok(play.problems.some(p => p.reason === 'unsupported-slot'));
+});
+
+test('a line slot must name its axis, be managed and optional, and be a layer of the root', () => {
+    const problems = mutate => { const copy = structuredClone(divider); mutate(copy); return validateTemplateSchema(copy).join('\n'); };
+    assert.equal(validateTemplateSchema(divider).length, 0);
+    assert.match(problems(t => { delete t.anatomy[0].axis; }), /line slot "lineBefore" axis must be horizontal or vertical/);
+    assert.match(problems(t => { delete t.anatomy[0].managed; }), /line slot "lineBefore" must be managed and optional/);
+    assert.match(problems(t => { t.anatomy[0].parent = 'label'; }), /line slot "lineBefore" is a layer of the root/);
+});

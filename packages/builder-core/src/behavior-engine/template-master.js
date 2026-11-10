@@ -62,7 +62,7 @@ export function layerSpecsOf(template) {
         }
         if (!placed && slot.kind === 'text' || slot.kind === 'control') { specs.push(...framed); placed = true; }
         // A managed slot (an icon frame, or a text layer) is a layer of the instance only, made while its props ask for it (instanceOf); a master holds none.
-        if (slot.kind === 'icon' || slot.managed) specs.push({ key: slot.id, role: 'slot', type: slot.kind === 'icon' ? 'frame' : slot.kind === 'glyph' ? 'path' : 'text', behavior: { slot: slot.id }, optional: true, ...(slot.parent ? { parentKey: slot.parent } : {}) });
+        if (slot.kind === 'icon' || slot.managed) specs.push({ key: slot.id, role: 'slot', type: slot.kind === 'icon' ? 'frame' : slot.kind === 'glyph' ? 'path' : slot.kind === 'line' ? 'line' : 'text', behavior: { slot: slot.id }, optional: true, ...(slot.parent ? { parentKey: slot.parent } : {}) });
         // An optional text slot (an affix) is marked, so it is not the label and does not claim an existing text layer when a master is built.
         else specs.push({ key: slot.id, role: control?.slot === slot.id ? 'control' : 'text', type: 'text', optional: !!slot.optional, ...(slot.parent ? { parentKey: slot.parent } : {}), ...(slot.optional ? { behavior: { text: slot.id } } : {}) });
         if (slot.kind === 'control' && !textedPlaced) { specs.push(...texted); textedPlaced = true; }
@@ -305,6 +305,21 @@ export function managedGlyphLayer(template, slotId, resolved, { id, parentId }) 
 }
 
 /**
+ * The layer an instance holds for a managed line slot: a vector line node along the slot's axis (a divider rule), bound afterwards to its stroke colour and width and to its length token. A horizontal
+ * one fills the row it is in unless a width token bounds it; a vertical one is as tall as its height token. Its dash is the Style mode's (the instance writes it, as a Variant's border style).
+ * @param {any} template
+ * @param {string} slotId
+ * @param {Record<string, unknown>} resolved the instance's resolved props
+ * @param {{ id: string, parentId: string }} at
+ */
+export function managedLineLayer(template, slotId, resolved, { id, parentId }) {
+    const slot = template.anatomy.find(s => s.id === slotId);
+    const filled = slot.axis === 'horizontal' && slot.fill === true;
+    // A fixed line starts at a visible length along its axis (its length token replaces it when bound); a filling one takes the row's.
+    return { ...LAYER, id, name: slotId, parentId, type: 'line', w: slot.axis === 'horizontal' ? 16 : 0, h: slot.axis === 'vertical' ? 16 : 0, stroke: '#18181b', strokeWidth: 1, strokeAlign: 'center', fills: [], layoutSizingH: filled ? 'fill' : 'fixed', layoutSizingV: 'fixed', visible: slotShown(template, slotId, resolved), sourceId: undefined, isInstance: false, component: false, overrides: {}, behavior: { version: BEHAVIOR_DATA_VERSION, slot: slotId } };
+}
+
+/**
  * The layer an instance holds for a conditional canvas part (the spinner while loading): a copy of the part spec's
  * node, not of a master layer (a master holds none while the condition is off). Existence is visibility.
  */
@@ -329,6 +344,7 @@ export function managedContainerLayer(template, slotId, resolved, { id, parentId
 export function managedSlotLayer(template, slotId, resolved, at) {
     const kind = template.anatomy.find(s => s.id === slotId)?.kind;
     if (kind === 'glyph') return managedGlyphLayer(template, slotId, resolved, at);
+    if (kind === 'line') return managedLineLayer(template, slotId, resolved, at);
     if (kind === 'frame') return managedContainerLayer(template, slotId, resolved, at);
     return managedTextLayer(template, slotId, resolved, at);
 }
