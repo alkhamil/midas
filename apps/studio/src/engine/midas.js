@@ -8,7 +8,7 @@ import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
 import { VAR_TYPES } from './varTypes.js';
 import { boot } from '../boot.js';
-import { AtlasPacker, tileGrid } from './atlasPacker.js';
+import { AtlasPacker, tileGrid, edgePadding, rasterMargin, placeQuad } from './atlasPacker.js';
 import { commitAffectsComponents, layerFlagsOf } from '@midas/builder-core';
 import { boundsIn, descendantsOf, effectBleed, planRasterRoots } from './rasterRoutes.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
@@ -7319,7 +7319,9 @@ function hashString(s) {
 // Fields that place a layer rather than paint it: two layers that differ only in these share one raster.
 const PLACEMENT_FIELDS = new Set(['id', 'name', 'parentId', 'x', 'y', 'rotation', 'version', 'flipX', 'flipY']);
 class Atlas {
-    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.latest = new Map(); this.keys = new WeakMap(); this.latestRoot = new Map(); this.packer = new AtlasPacker(this.size, this.layers); this.epoch = 0; this.budgetEnd = Infinity; this.deferred = false; this.rastered = 0; this.canvas = document.createElement('canvas'); }
+    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.latest = new Map(); this.keys = new WeakMap(); this.latestRoot = new Map(); this.packer = new AtlasPacker(this.size, this.layers); this.epoch = 0; this.full = false; this.inFlight = 0; this.budgetEnd = Infinity; this.deferred = false; this.rastered = 0; this.canvas = document.createElement('canvas'); }
+    /** A frame starts: an atlas that filled up during the last one is emptied now, when no instance holds an entry. */
+    beginFrame() { if (this.full) { this.full = false; this.reset(); } this.inFlight = 0; }
     reset() { this.entries.clear(); this.latest.clear(); this.latestRoot.clear(); this.packer.reset(); this.epoch++; }
     /** What a layer's raster depends on, as a key: layers with the same content share their rasters, wherever they are placed. */
     contentKeyOf(n) {
@@ -7338,10 +7340,9 @@ class Atlas {
     paddingOf(n, res) {
         // Raster-only paths carry stroke padding; the geometry stays editable in the document.
         const basePad = n.type === 'path' || n.type === 'line' ? (n.strokeWidth || 0) / 2 + 1 : (needsRasterFill(n) || needsRasterShape(n)) ? (n.strokeWidth || 0) + 1 : 0;
-        // Always a transparent border of about 2 texels: the bilinear sampler at the edge of a quad would otherwise pick up the
+        // Always a transparent border of 2 texels (edgePadding): the bilinear sampler at the edge of a quad would otherwise pick up the
         // neighbouring atlas entry (thin streaks along text boxes while zooming).
-        const padding = Math.max(basePad, Math.ceil(2 / Math.max(.05, Math.min(res, 1))));
-        return padding;
+        return Math.max(basePad, edgePadding(res));
     }
     /**
      * The entries a layer is drawn with at `res`: one per tile (tileGrid) that meets `view`, a rect in the layer's own units. Each entry
@@ -7351,6 +7352,7 @@ class Atlas {
         const padding = this.paddingOf(n, res), grid = tileGrid(n.w, n.h, res, this.size, padding);
         const content = this.contentKeyOf(n), base = `${content}:${res}${mode ? ':' + mode : ''}`, latestKey = `${content}:${mode}`;
         const out = [];
+        let pending = false;
         for (const t of grid) {
             if (t.x > view.x + view.w || t.x + t.w < view.x || t.y > view.y + view.h || t.y + t.h < view.y)
                 continue;
@@ -7359,6 +7361,7 @@ class Atlas {
                 const prev = this.latest.get(latestKey);
                 if (prev) {
                     this.deferred = true;
+                    this.inFlight++;
                     out.push({ entry: prev.entry, ox: -prev.entry.padding, oy: -prev.entry.padding });
                     continue;
                 }
@@ -7366,16 +7369,35 @@ class Atlas {
             const key = grid.length > 1 ? `${base}:${t.x},${t.y}` : base;
             if (!this.entries.has(key) && performance.now() > this.budgetEnd && this.rastered > 0) {
                 this.deferred = true;
+                pending = true;
                 continue;
             }
             const entry = this.entryOf(n, res, images, mode, t, padding, key);
-            if (!entry)
+            if (!entry) {
+                pending = grid.length > 1;
                 continue;
+            }
+            this.inFlight++;
             if (grid.length === 1)
                 this.latest.set(latestKey, { entry });
             out.push({ entry, ox: t.x - padding, oy: t.y - padding });
         }
+        // A tiled layer shows its sharp tiles only once every tile in view is ready; until then its coarse raster (one entry that fits the atlas, kept across zooms)
+        // stays on screen, so no band of the layer is blank or doubled while the tiles are made.
+        if (pending && grid.length > 1) {
+            const coarse = this.coarseOf(n, images, mode);
+            return coarse ? [coarse] : [];
+        }
         return out;
+    }
+    /** The whole layer as one entry at the density the atlas allows (at most 4 texels per unit): the stand-in for a tiled layer, valid at every zoom. */
+    coarseOf(n, images, mode) {
+        const res = Math.min(4, this.size / Math.max(n.w, n.h, 1)), padding = this.paddingOf(n, res), key = `${this.contentKeyOf(n)}:coarse${mode ? ':' + mode : ''}`;
+        const entry = this.entryOf(n, res, images, mode, { x: 0, y: 0, w: n.w, h: n.h }, padding, key);
+        if (!entry)
+            return null;
+        this.inFlight++;
+        return { entry, ox: -padding, oy: -padding };
     }
     entryOf(n, res, images, mode, t, padding, key) {
         if (this.entries.has(key))
@@ -7420,6 +7442,12 @@ class Atlas {
         const scale = entryScaleFor(width, height, res, this.size);
         const w = Math.max(1, Math.ceil(width * scale)), h = Math.max(1, Math.ceil(height * scale));
         let slot = this.packer.alloc(w, h);
+        if (!slot && this.inFlight > 0) {
+            // Full while this frame already holds entries: clearing now would overwrite what its instances sample. The next frame starts empty (beginFrame).
+            this.full = true;
+            this.deferred = true;
+            return null;
+        }
         if (!slot) {
             // Atlas penuh: buang semuanya dan mulai lagi (ring buffer) daripada membuat WebGPU error.
             this.entries.clear();
@@ -7731,8 +7759,9 @@ class Renderer {
         // page dibuka dengan "fit") raster 0,5 membuat ribuan teks/path memenuhi atlas dan diraster ulang setiap frame.
         const resolution = resolutionForZoom(camera.zoom, this.dpr, quality);
         // The raster roots in view, each with its entry, in paint order.
-        const z = camera.zoom, vx0 = originX - 100, vy0 = originY - 100, vx1 = originX + this.width / z + 100, vy1 = originY + this.height / z + 100;
+        const z = camera.zoom, margin = rasterMargin(z), vx0 = originX - margin, vy0 = originY - margin, vx1 = originX + this.width / z + margin, vy1 = originY + this.height / z + margin;
         // Sharp rasters are made within a frame's time budget; the rest keep their stale raster and the next frame continues.
+        this.atlas.beginFrame();
         this.atlas.budgetEnd = performance.now() + 6;
         this.atlas.deferred = false;
         this.atlas.rastered = 0;
@@ -7742,14 +7771,16 @@ class Renderer {
             if (b.x > vx1 || b.x + b.w < vx0 || b.y > vy1 || b.y + b.h < vy0)
                 continue;
             const r = this.rasterRoot(p, resolution);
-            if (r)
+            if (r) {
+                this.atlas.inFlight++;
                 rasters.push({ ...r, p, index: plan.index.get(id) });
+            }
         }
         rasters.sort((a, b) => a.index - b.index);
         const clipCount = scene.reduce((sum, s) => sum + s.clips.length, 0) + rasters.reduce((sum, r) => sum + r.p.root.clips.length, 0);
         // The raster layers' tiles in view, computed once: they size the instance buffer, since a large layer takes one instance per tile.
         const tilesOf = new Map(), stale = performance.now() < this.zoomingUntil;
-        const view = { x: originX - 100, y: originY - 100, w: this.width / camera.zoom + 200, h: this.height / camera.zoom + 200 };
+        const view = { x: originX - margin, y: originY - margin, w: this.width / camera.zoom + 2 * margin, h: this.height / camera.zoom + 2 * margin };
         let instances = scene.length * 2 + rasters.length + 1;
         for (const s of scene) {
             const n = s.node;
@@ -7770,8 +7801,9 @@ class Renderer {
             d[base + 1] = m[1];
             d[base + 2] = m[2];
             d[base + 3] = m[3];
-            d[base + 4] = m[4] - originX;
-            d[base + 5] = m[5] - originY;
+            const at = placeQuad(m, originX, originY);
+            d[base + 4] = at.x;
+            d[base + 5] = at.y;
             d[base + 6] = n.w;
             d[base + 7] = n.h;
             for (let i = 0; i < 4; i++) {
@@ -7813,8 +7845,9 @@ class Renderer {
                 }
                 for (const t of rest)
                     push(s, n, clipId, null, t);
-                d[base + 4] += m[0] * first.ox + m[2] * first.oy;
-                d[base + 5] += m[1] * first.ox + m[3] * first.oy;
+                const tileAt = placeQuad(m, originX, originY, first.ox, first.oy);
+                d[base + 4] = tileAt.x;
+                d[base + 5] = tileAt.y;
                 d[base + 6] = first.entry.w;
                 d[base + 7] = first.entry.h;
                 d[base + 18] = 2;
@@ -7836,7 +7869,8 @@ class Renderer {
         const pushRoot = r => {
             const s = r.p.root, base = count++ * 32, d = this.instanceData, m = s.matrix;
             const clipId = writeClips(s.clips.filter(c => !c.mask));
-            d.set([m[0], m[1], m[2], m[3], m[4] - originX + m[0] * r.offX + m[2] * r.offY, m[5] - originY + m[1] * r.offX + m[3] * r.offY, r.entry.w, r.entry.h], base);
+            const rootAt = placeQuad(m, originX, originY, r.offX, r.offY);
+            d.set([m[0], m[1], m[2], m[3], rootAt.x, rootAt.y, r.entry.w, r.entry.h], base);
             d.set([0, 0, 0, 0], base + 8);
             d.set([0, 0, 0, 0], base + 12);
             d.set([0, 0, 0, s.opacity], base + 16);

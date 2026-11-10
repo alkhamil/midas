@@ -46,13 +46,39 @@ export class AtlasPacker {
     }
 }
 
+/** The most texels a tile's entry takes along a side (its margin included): small entries fill the atlas evenly, so four fit across a page (with their gutters) and the tiles in view fit the atlas at any zoom. */
+export const MAX_TILE_TEXELS = 480;
+
+/** The transparent margin of an entry in world units: two texels at the raster scale, whatever the zoom (the sampler never reads a neighbour). */
+export function edgePadding(res) {
+    return res >= 1 ? 2 / res : Math.ceil(2 / Math.max(.05, res));
+}
+
+/** The margin around the view, in world units, within which layers are rastered ahead: 100 screen pixels from 100% zoom up, 100 units below it. */
+export function rasterMargin(zoom) {
+    return 100 / Math.max(1, zoom);
+}
+
+/**
+ * Where a quad lands, relative to the camera origin: the node's matrix applied to the offset (ox, oy) in its own space. Shapes (offset 0), the tiles of a
+ * raster layer and raster roots are all placed by this one function, so they share one scale and one origin; the camera-relative numbers stay small.
+ * @param {number[]} m the node's matrix [a, b, c, d, e, f]
+ * @returns {{ x: number, y: number }}
+ */
+export function placeQuad(m, originX, originY, ox = 0, oy = 0) {
+    return { x: m[4] - originX + m[0] * ox + m[2] * oy, y: m[5] - originY + m[1] * ox + m[3] * oy };
+}
+
 /**
  * The tiles a layer of `width` x `height` world units is rastered in, so that each tile's entry (its size plus `padding` on each side)
- * fits the atlas side `size` at `res` texels per unit. A layer that fits is one tile. Tiles cover the layer in a grid.
+ * fits the atlas side `size` and `maxTexels` at `res` texels per unit. A layer that fits is one tile. Tiles cover the layer in a grid.
  * @returns {{ x: number, y: number, w: number, h: number }[]}
  */
-export function tileGrid(width, height, res, size, padding) {
-    const room = Math.max(1, Math.floor((size - 4) / Math.max(res, 1e-9) - 2 * padding));
+export function tileGrid(width, height, res, size, padding, maxTexels = MAX_TILE_TEXELS) {
+    // Whole world units while a unit is smaller than a tile; past that (a unit is more than a tile of texels) a fraction of one.
+    const fit = Math.min(size - 4, maxTexels) / Math.max(res, 1e-9) - 2 * padding;
+    // A margin wider than the budget itself (a stroke's, in world units) leaves no room: one unit, and the entry is rastered down to the atlas (entryScaleFor).
+    const room = fit >= 1 ? Math.floor(fit) : fit > 0 ? Math.max(fit, 1 / Math.max(res, 1)) : 1;
     if (width <= room && height <= room)
         return [{ x: 0, y: 0, w: width, h: height }];
     const out = [];

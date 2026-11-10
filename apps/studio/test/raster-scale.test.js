@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { tileGrid } from '../src/engine/atlasPacker.js';
+import { tileGrid, edgePadding } from '../src/engine/atlasPacker.js';
 
 const src = fs.readFileSync(new URL('../src/engine/midas.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
@@ -26,7 +26,7 @@ const { resolutionForZoom, entryScaleFor } = new Function(body)();
 
 const ATLAS = 2048;
 // The entry margin of paddingOf for a plain layer (a path carries its half stroke plus one).
-const padFor = (kind, res) => Math.max(kind === 'path' ? 1 : 0, Math.ceil(2 / Math.max(0.05, Math.min(res, 1))));
+const padFor = (kind, res) => Math.max(kind === 'path' ? 1 : 0, edgePadding(res));
 
 // Ordinary layers: a line of text, a 24px vector, an input box. No effects, no giant spans.
 const LAYERS = [
@@ -53,9 +53,12 @@ test('tiles cover the layer exactly once, with no overlap, at every swept scale'
             const tiles = tileGrid(layer.w, layer.h, res, ATLAS, padFor(layer.kind, res));
             const area = tiles.reduce((s, t) => s + t.w * t.h, 0);
             assert.ok(Math.abs(area - layer.w * layer.h) < 1e-6, `${layer.name} zoom ${zoom}: covers ${area} of ${layer.w * layer.h}`);
-            for (let i = 0; i < tiles.length; i++) for (let j = i + 1; j < tiles.length; j++) {
-                const a = tiles[i], b = tiles[j];
-                assert.ok(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y, `${layer.name} zoom ${zoom}: tiles overlap`);
+            // A grid in row order: each tile starts where the one before it ends, and a row starts at the left edge below the last (no overlap, no gap).
+            let x = 0, y = 0, rowH = 0;
+            for (const t of tiles) {
+                if (x >= layer.w - 1e-9) { x = 0; y += rowH; }
+                assert.ok(Math.abs(t.x - x) < 1e-9 && Math.abs(t.y - y) < 1e-9, `${layer.name} zoom ${zoom}: tile at ${t.x},${t.y}, expected ${x},${y}`);
+                x += t.w; rowH = t.h;
             }
         }
     }
