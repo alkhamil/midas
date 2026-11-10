@@ -1,25 +1,10 @@
 // Vector boxes are the tight bounds of the path geometry (all contours, bezier extrema), not the
 // viewBox the points were authored in. normalizeVectorGeometry is the pure core the canvas creation
-// and edit paths share; it is cut out of midas.js by name (as studioReplay.js does): a missing helper
-// fails here, so the test can never pass over a re-implementation.
+// and edit paths and the icon generator share (builder-core geometry/vector-bounds.js); midas.js
+// imports it, so the studio and this test run the same code.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-
-const src = fs.readFileSync(new URL('../src/engine/midas.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-
-function sliceFunction(name) {
-    const head = src.indexOf(`\nfunction ${name}(`) >= 0 ? src.indexOf(`\nfunction ${name}(`) + 1 : src.indexOf(`function ${name}(`);
-    if (head < 0) throw new Error(`midas.js has no function ${name}`);
-    const lineEnd = src.indexOf('\n', head);
-    const firstLine = src.slice(head, lineEnd);
-    if (/\}\s*$/.test(firstLine) && (firstLine.match(/\{/g) || []).length === (firstLine.match(/\}/g) || []).length) return firstLine;
-    return src.slice(head, src.indexOf('\n}\n', head) + 2);
-}
-
-const fns = ['pathCurveBounds', 'pathContours', 'normalizeVectorGeometry'];
-const body = `${fns.map(sliceFunction).join('\n')}\nreturn { ${fns.join(', ')} };`;
-const { pathCurveBounds, pathContours, normalizeVectorGeometry } = new Function(body)();
+import { pathCurveBounds, pathContours, normalizeVectorGeometry } from '@midas/builder-core';
 
 const pt = (x, y, out, inn) => ({ x, y, ...(out ? { out } : {}), ...(inn ? { in: inn } : {}) });
 const approx = (v, e = 1e-9) => Math.abs(v) < e ? 0 : v;
