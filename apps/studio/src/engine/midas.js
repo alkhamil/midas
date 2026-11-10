@@ -8,7 +8,7 @@ import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
 import { VAR_TYPES } from './varTypes.js';
 import { boot } from '../boot.js';
-import { AtlasPacker, marginFor, planLayer, resolveTileSet, edgePadding, rasterMargin, placeQuad } from './atlasPacker.js';
+import { AtlasPacker, marginFor, planLayer, resolveTileSet, placeInAtlas, edgePadding, rasterMargin, placeQuad } from './atlasPacker.js';
 import { commitAffectsComponents, layerFlagsOf } from '@midas/builder-core';
 import { boundsIn, descendantsOf, effectBleed, planRasterRoots } from './rasterRoutes.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
@@ -7323,9 +7323,14 @@ function hashString(s) {
 // Fields that place a layer rather than paint it: two layers that differ only in these share one raster.
 const PLACEMENT_FIELDS = new Set(['id', 'name', 'parentId', 'x', 'y', 'rotation', 'version', 'flipX', 'flipY']);
 class Atlas {
-    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.latest = new Map(); this.keys = new WeakMap(); this.latestRoot = new Map(); this.latestTiles = new Map(); this.packer = new AtlasPacker(this.size, this.layers); this.epoch = 0; this.full = false; this.inFlight = 0; this.budgetEnd = Infinity; this.deferred = false; this.rastered = 0; this.canvas = document.createElement('canvas'); }
+    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.latest = new Map(); this.keys = new WeakMap(); this.latestRoot = new Map(); this.latestTiles = new Map(); this.packer = new AtlasPacker(this.size, this.layers); this.epoch = 0; this.frame = 0; this.full = false; this.inFlight = 0; this.budgetEnd = Infinity; this.deferred = false; this.rastered = 0; this.canvas = document.createElement('canvas'); }
     /** A frame starts: an atlas that filled up during the last one is emptied now, when no instance holds an entry. */
-    beginFrame() { if (this.full) { this.full = false; this.reset(); } this.inFlight = 0; }
+    beginFrame() { this.frame++; if (this.full) { this.full = false; this.reset(); } this.inFlight = 0; }
+    /** Marks an entry as used by this frame: a page holding one is never evicted while the frame runs (placeInAtlas). */
+    touch(entry) { if (entry) entry.used = this.frame; return entry; }
+    clearAll() { this.reset(); }
+    /** A page was freed: the last-raster maps forget the entries that lived on it. */
+    onEvict(page) { for (const map of [this.latest, this.latestRoot]) for (const [k, v] of map) if (v.entry.page === page) map.delete(k); }
     reset() { this.entries.clear(); this.latest.clear(); this.latestRoot.clear(); this.latestTiles.clear(); this.packer.reset(); this.epoch++; }
     /** What a layer's raster depends on, as a key: layers with the same content share their rasters, wherever they are placed. */
     contentKeyOf(n) {
@@ -7363,6 +7368,7 @@ class Atlas {
                 // While the zoom moves the layer keeps the raster it has, drawn at the new size; the sharp one follows once the zoom settles.
                 const prev = this.latest.get(latestKey);
                 if (prev) {
+                    this.touch(prev.entry);
                     this.deferred = true;
                     this.inFlight++;
                     out.push({ entry: prev.entry, ox: -prev.entry.padding, oy: -prev.entry.padding });
@@ -7394,6 +7400,8 @@ class Atlas {
         if (!pending)
             this.latestTiles.set(latestKey, out);
         else if (set === previous) {
+            for (const t of set)
+                this.touch(t.entry);
             this.deferred = true;
             this.inFlight += set.length;
         }
@@ -7410,7 +7418,7 @@ class Atlas {
     }
     entryOf(n, res, images, mode, t, padding, key) {
         if (this.entries.has(key))
-            return this.entries.get(key);
+            return this.touch(this.entries.get(key));
         if (n.type === 'image' && !images.get(n.assetId))
             return null;
         if (needsRasterFill(n) && getFills(n).some(f => f.visible !== false && f.type === 'image' && f.image && images.doc.data.assets[f.image] && !images.get(f.image)))
@@ -7450,23 +7458,10 @@ class Atlas {
         this.rastered++;
         const scale = entryScaleFor(width, height, res, this.size);
         const w = Math.max(1, Math.ceil(width * scale)), h = Math.max(1, Math.ceil(height * scale));
-        let slot = this.packer.alloc(w, h);
-        if (!slot && this.inFlight > 0) {
-            // Full while this frame already holds entries: clearing now would overwrite what its instances sample. The next frame starts empty (beginFrame).
-            this.full = true;
-            this.deferred = true;
+        // Full: the least recently used page the frame does not use is freed; when every page is in use the next frame starts empty (beginFrame), never mid-frame.
+        const slot = placeInAtlas(this, w, h);
+        if (!slot)
             return null;
-        }
-        if (!slot) {
-            // Atlas penuh: buang semuanya dan mulai lagi (ring buffer) daripada membuat WebGPU error.
-            this.entries.clear();
-            this.latest.clear();
-            this.latestRoot.clear();
-            this.packer.reset();
-            slot = this.packer.alloc(w, h);
-            if (!slot)
-                return null;
-        }
         const { x, y, page } = slot;
         // The copy covers the entry's 2-texel gutter too (transparent): the sampler reads into it at a quad's edge, and a gutter left
         // over from an earlier entry shows as a line along the node's edge. The canvas only grows, so a leaf paints on it as it is; a subtree
@@ -7479,7 +7474,7 @@ class Atlas {
         ctx.reset();
         paint(ctx, scale);
         this.device.queue.copyExternalImageToTexture({ source: this.canvas }, { texture: this.texture, origin: [x, y, page], premultipliedAlpha: true }, [w + 2, h + 2]);
-        const entry = { u: x / this.size, v: y / this.size, du: w / this.size, dv: h / this.size, page, padding, w: width, h: height, key };
+        const entry = { u: x / this.size, v: y / this.size, du: w / this.size, dv: h / this.size, page, padding, w: width, h: height, key, used: this.frame };
         this.entries.set(key, entry);
         return entry;
     }
@@ -7726,9 +7721,11 @@ class Renderer {
         if (!atlas.entries.has(key) && performance.now() > atlas.budgetEnd && atlas.rastered > 0) {
             // Over this frame's budget: the root keeps its last raster, or waits for the next frame.
             atlas.deferred = true;
-            return atlas.latestRoot.get(root.node.id) ?? null;
+            const last = atlas.latestRoot.get(root.node.id) ?? null;
+            atlas.touch(last?.entry);
+            return last;
         }
-        const entry = atlas.entries.get(key) ?? atlas.rasterize(key, width, height, res, bleed, (ctx, scale) => {
+        const entry = atlas.touch(atlas.entries.get(key)) ?? atlas.rasterize(key, width, height, res, bleed, (ctx, scale) => {
             // The members relative to the root's opacity, made only when the entry is painted.
             const members = p.members.map(s => ({ ...s, opacity: s.opacity / opacity })), backdrop = p.backdrop.map(s => ({ ...s, opacity: s.opacity / opacity }));
             const t = new DOMMatrix([scale, 0, 0, scale, -scale * offX, -scale * offY]).multiply(new DOMMatrix(inv));

@@ -13,6 +13,10 @@ export class AtlasPacker {
     reset() {
         this.pages = [{ y: 1, rows: [] }];
     }
+    /** Empty one page (its entries are gone): the rest of the atlas stays. */
+    resetPage(page) {
+        this.pages[page] = { y: 1, rows: [] };
+    }
     /** Cari tempat untuk item w × h (piksel). Mengembalikan { x, y, page } atau null bila atlas penuh. */
     alloc(w, h) {
         const size = this.size;
@@ -151,4 +155,48 @@ export function resolveTileSet({ fresh, complete, previous, needed, coarse }) {
     }
     const stand = coarse();
     return stand ? [stand] : [];
+}
+
+/** The page whose entries were all last used before `frame`, least recently used first; -1 when every page holds something the frame uses. */
+function leastRecentPage(entries, pageCount, frame) {
+    const last = new Array(pageCount).fill(-1);
+    for (const e of entries.values())
+        if (e.page < pageCount)
+            last[e.page] = Math.max(last[e.page], e.used ?? -1);
+    let best = -1;
+    for (let p = 0; p < pageCount; p++)
+        if (last[p] < frame && (best < 0 || last[p] < last[best]))
+            best = p;
+    return best;
+}
+
+/**
+ * A slot for an entry of w x h texels. A full atlas frees the least recently used page that holds nothing the current frame uses (its entries are
+ * dropped, `atlas.onEvict(page)` lets the owner forget references to them) and tries again; when every page is in use the frame already holds entries,
+ * so `full` is set (the atlas is emptied at the next frame, never mid-frame); with nothing held this frame it is emptied at once.
+ * @param {{ packer: AtlasPacker, entries: Map<string, {page: number, used?: number}>, frame: number, inFlight: number, full: boolean, deferred?: boolean, clearAll: () => void, onEvict?: (page: number) => void }} atlas
+ * @returns {{ x: number, y: number, page: number } | null}
+ */
+export function placeInAtlas(atlas, w, h) {
+    let slot = atlas.packer.alloc(w, h);
+    while (!slot) {
+        const page = leastRecentPage(atlas.entries, atlas.packer.pages.length, atlas.frame);
+        if (page < 0)
+            break;
+        for (const [key, e] of atlas.entries)
+            if (e.page === page)
+                atlas.entries.delete(key);
+        atlas.packer.resetPage(page);
+        atlas.onEvict?.(page);
+        slot = atlas.packer.alloc(w, h);
+    }
+    if (slot)
+        return slot;
+    if (atlas.inFlight > 0) {
+        atlas.full = true;
+        atlas.deferred = true;
+        return null;
+    }
+    atlas.clearAll();
+    return atlas.packer.alloc(w, h);
 }
