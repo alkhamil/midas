@@ -397,9 +397,9 @@ function renderTemplate(n, template, parent, scope) {
             if (def.slot !== undefined && template.anatomy.some(s => s.id === def.slot && s.managed)) continue;
             const comp = scope.byId.get(props[def.component]);
             if (!comp) continue;
-            // One positioned wrapper of the slot's class (its size and colour are the class's), holding the component's vectors at their own offsets, like the nested icon of a managed slot.
-            const vectors = scope.childrenOf(comp.id).filter(c => VECTOR.includes(c.type)).map(vec => renderNode({ ...vec, vars: { ...vec.vars, 'fills.0': vec.vars?.['fills.0'] ?? def.tokens.colour } }, comp, scope, true)).filter(Boolean);
-            inner.push({ tag: 'div', attrs: { class: `${template.id}-${def.slot}` }, style: { position: 'relative', flexShrink: '0', overflowX: 'clip', overflowY: 'clip', ...(isAutoLayout(comp) ? flexOf(comp, vectors.length) : {}) }, children: vectors });
+            // One positioned wrapper of the slot's class (its size and colour are the class's), holding the component's frame as a single svg that scales into it.
+            const vectors = scope.childrenOf(comp.id).filter(c => VECTOR.includes(c.type)).map(vec => ({ ...vec, vars: { ...vec.vars, 'fills.0': vec.vars?.['fills.0'] ?? def.tokens.colour } }));
+            inner.push({ tag: 'div', attrs: { class: `${template.id}-${def.slot}` }, style: { position: 'relative', flexShrink: '0', overflowX: 'clip', overflowY: 'clip' }, html: frameSvg(comp, vectors, scope), children: [] });
         }
         out.push({ tag: 'div', nodeId: group?.id, attrs: { class: `${template.id}-${slot.id}`, ...pressAttrsOf(template, slot.id) }, style: {}, children: inner });
     }
@@ -685,10 +685,38 @@ function vectorMarkup(n, scope, icon = false) {
  * @returns {string}
  */
 function svgMarkup(n, attrs) {
+    const { defs, body } = svgParts(n, attrs);
+    return `<svg width="${n.w}" height="${n.h}" viewBox="0 0 ${n.w} ${n.h}" overflow="visible" style="position:absolute;left:0;top:0;display:block;overflow:visible">${defs}${body}</svg>`;
+}
+
+/**
+ * The defs and the shape of one outline, without the svg that holds them (see svgMarkup).
+ * @param {any} n
+ * @param {string} attrs
+ */
+function svgParts(n, attrs) {
     const prefix = `${String(n.id).replace(/[^A-Za-z0-9_-]/g, '_')}-`;
     const extra = svgStrokeExtra(n, svgNumber, escapeAttr, prefix);
-    const body = svgShapeEl(n, svgNumber, attrs) + extra.el;
-    return `<svg width="${n.w}" height="${n.h}" viewBox="0 0 ${n.w} ${n.h}" overflow="visible" style="position:absolute;left:0;top:0;display:block;overflow:visible">${extra.defs}${body}</svg>`;
+    return { defs: extra.defs, body: svgShapeEl(n, svgNumber, attrs) + extra.el };
+}
+
+/**
+ * A component's vectors as ONE svg whose viewBox is the component's frame, at the full size of its holder: the icon scales with the holder, uniformly
+ * (the svg keeps its aspect), as a nested instance sized to a slot does. Each vector sits where its frame lays it: filling its axis, or at its own offset.
+ * @param {any} comp
+ * @param {any[]} vectors
+ * @param {any} scope
+ * @returns {string}
+ */
+function frameSvg(comp, vectors, scope) {
+    const auto = isAutoLayout(comp), pad = Number(comp.padding) || 0;
+    const shapes = vectors.map(vec => {
+        const fillH = auto && vec.layoutSizingH === 'fill', fillV = auto && vec.layoutSizingV === 'fill';
+        const box = { ...vec, w: fillH ? comp.w - 2 * pad : vec.w, h: fillV ? comp.h - 2 * pad : vec.h };
+        const { defs, body } = svgParts(box, `${fillAttrs(box, scope, true)} ${svgStrokeAttrs(box, svgNumber, escapeAttr, true)}`);
+        return `<g transform="translate(${svgNumber(auto ? pad : vec.x)} ${svgNumber(auto ? pad : vec.y)})">${defs}${body}</g>`;
+    });
+    return `<svg viewBox="0 0 ${comp.w} ${comp.h}" width="100%" height="100%" overflow="visible" style="display:block;overflow:visible">${shapes.join('')}</svg>`;
 }
 
 /**

@@ -111,6 +111,6 @@ test('Play draws a swap icon from its component in the slot colour, hidden until
     const peek = find(root, 'toggly-peek');
     assert.ok(peek, 'the swap icon is drawn without a canvas layer');
     assert.equal(peek.style.position, 'relative', 'a positioned wrapper of the slot class');
-    assert.match(peek.children[0].html, /fill="currentColor"/, 'in the slot colour');
-    assert.match(peek.children[0].html, /viewBox="0 0 16 16"/, 'at its own box, not the 24 viewBox');
+    assert.match(peek.html, /fill="currentColor"/, 'in the slot colour');
+    assert.match(peek.html, /viewBox="0 0 24 24"/, 'the frame box, scaled to the wrapper');
 });

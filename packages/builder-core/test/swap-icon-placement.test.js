@@ -9,6 +9,7 @@ import { toDomTree } from '../src/prototype/dom-tree.js';
 import { generateComponent } from '../src/behavior-engine/codegen.js';
 import { modelFor, instanceFor } from './helpers/box-template.js';
 import { computed, elementsOf } from './helpers/play-compute.js';
+import { ICON_SET, iconNodes } from '../src/behavior-engine/icon-set.js';
 
 const input = TEMPLATES.get('input');
 const model = modelFor(input);
@@ -17,16 +18,16 @@ const css = Object.entries(out.files).find(([name]) => name.endsWith('.css'))[1]
 const jsx = out.files['Input.jsx'];
 
 const comp = (id, name) => ({ id, name: 'Icon/' + name, type: 'frame', parentId: null, x: 0, y: 0, w: 24, h: 24, layout: 'horizontal', fills: [], layoutSizingH: 'fixed', layoutSizingV: 'fixed', component: true });
-const vec = (id, parentId, w) => ({ id, name: 'v', type: 'path', parentId, x: 0, y: 0, w, h: w, points: [{ x: 0, y: 0 }, { x: 16, y: 0 }, { x: 16, y: 16 }, { x: 0, y: 16 }], fills: [{ type: 'solid', color: '#20202a', opacity: 1, visible: true }], strokeWidth: 0, rotation: 0, opacity: 1, visible: true, locked: false });
+const vec = (id, parentId, w) => ({ id, name: 'v', type: 'path', parentId, x: 0, y: 0, w, h: w, pathW: 16, pathH: 16, points: [{ x: 0, y: 0 }, { x: 16, y: 0 }, { x: 16, y: 16 }, { x: 0, y: 16 }], fills: [{ type: 'solid', color: '#20202a', opacity: 1, visible: true }], strokeWidth: 0, rotation: 0, opacity: 1, visible: true, locked: false });
 const library = [comp('c-on', 'eye'), vec('c-on-v', 'c-on', 16), comp('c-off', 'eyeOff'), vec('c-off-v', 'c-off', 16), comp('c-on2', 'eye2'), vec('c-on2-v', 'c-on2', 12)];
 
 /** Play's tree for a password Input; the eye-off layer is auto layout like a real nested icon (so it carries an inline display). */
-function playTree(extra = {}) {
+function playTree(extra = {}, lib = library) {
     const nodes = instanceFor(model, { kind: 'password', eyeOnIcon: 'c-on', eyeOffIcon: 'c-off', ...extra });
     for (const n of nodes) if (n.behavior?.slot === 'eyeOff') n.layout = 'horizontal';
     const top = { id: 'top', name: 'Top', type: 'frame', parentId: null, layout: 'vertical', x: 0, y: 0, w: 400, h: 400, fills: [], layoutSizingH: 'hug', layoutSizingV: 'hug' };
     nodes[0].parentId = 'top';
-    return toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [top, model.frame, ...model.created, ...nodes, ...library] }], variables: model.variables }, 'top').root;
+    return toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [top, model.frame, ...model.created, ...nodes, ...lib] }], variables: model.variables }, 'top').root;
 }
 
 /** Whether an element is displayed under the stylesheet: an inline display wins over a rule unless the rule is !important. */
@@ -65,16 +66,13 @@ test('Play: the swapped-in eye is a positioned wrapper holding its vector (an ab
     const tree = playTree();
     const eyeOn = eyesOf(tree).find(({ el }) => el.attrs.class === 'input-eyeOn').el;
     assert.equal(eyeOn.style.position, 'relative', 'the wrapper is the containing block');
-    assert.equal(eyeOn.html, undefined, 'the wrapper holds no markup of its own');
-    assert.equal(eyeOn.style.display, 'flex', 'an auto layout icon keeps its flow');
-    assert.equal(eyeOn.children.length, 1);
-    assert.match(eyeOn.children[0].html, /^<svg /);
+    assert.match(eyeOn.html, /^<svg viewBox="0 0 24 24" width="100%"/, 'the wrapper holds one svg of the icon frame, at the wrapper size');
 });
 
 test('Play: the eyes follow the picker choices', () => {
     const tree = playTree({ eyeOnIcon: 'c-on2' });
     const eyeOn = eyesOf(tree).find(({ el }) => el.attrs.class === 'input-eyeOn').el;
-    assert.match(eyeOn.children[0].html, /^<svg width="12" height="12"/, 'the picked component is drawn');
+    assert.notEqual(eyeOn.html, eyesOf(playTree()).find(({ el }) => el.attrs.class === 'input-eyeOn').el.html, 'the picked component is drawn, not the default');
 });
 
 test('Play: both eyes share the hover rule and the disabled behaviour', () => {
@@ -89,4 +87,16 @@ test('the export: a stylesheet hides the off-state eye of the same attribute, an
     assert.ok(css.includes('.input:not([data-revealed]) .input-eyeOn {\n  display: none !important;\n}'));
     assert.ok(css.includes('.input[data-revealed] .input-eyeOff {\n  display: none !important;\n}'));
     assert.ok(!/display: initial/.test(css), 'no rule resets display to initial');
+});
+
+// The real icon set: a 24 frame holding a 24 path that fills it. The swapped-in eye has no instance sized to the slot, so it must scale into the wrapper itself.
+test('Play: a real icon (24 frame, fill-sized 24 path) is drawn as one svg of the frame viewBox at the wrapper size, uniformly', () => {
+    const real = [...ICON_SET.filter(e => e.role === 'eyeOn' || e.role === 'eyeOff')].flatMap(e => iconNodes(e, key => 'real-' + key));
+    const tree = playTree({ eyeOnIcon: 'real-Icon/eye', eyeOffIcon: 'real-Icon/eyeOff' }, real);
+    const wrapper = eyesOf(tree).find(({ el }) => el.attrs.class === 'input-eyeOn').el;
+    assert.equal(wrapper.children.length, 0, 'the wrapper holds one svg and nothing else');
+    const svg = wrapper.html;
+    assert.match(svg, /^<svg viewBox="0 0 24 24" width="100%" height="100%"/, 'the frame box scales to the wrapper');
+    assert.ok(!/preserveAspectRatio="none"/.test(svg), 'never stretched');
+    assert.ok(!/width="24"/.test(svg), 'no fixed 24px svg inside a smaller slot');
 });
