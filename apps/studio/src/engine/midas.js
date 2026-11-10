@@ -8,7 +8,7 @@ import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
 import { VAR_TYPES } from './varTypes.js';
 import { boot } from '../boot.js';
-import { AtlasPacker, tileGrid, edgePadding, rasterMargin, placeQuad } from './atlasPacker.js';
+import { AtlasPacker, marginFor, planLayer, edgePadding, rasterMargin, placeQuad } from './atlasPacker.js';
 import { commitAffectsComponents, layerFlagsOf } from '@midas/builder-core';
 import { boundsIn, descendantsOf, effectBleed, planRasterRoots } from './rasterRoutes.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
@@ -7340,27 +7340,26 @@ class Atlas {
         this.keys.set(n, { version: n.version, key });
         return key;
     }
-    /** The margin of a layer's entry: a transparent border of at least two texels, and the stroke a raster-only layer needs. */
+    /** The margin of a layer's entry: a transparent border of at least two texels, and the stroke a raster-only layer needs (capped in texels: marginFor). */
     paddingOf(n, res) {
-        // Raster-only paths carry stroke padding; the geometry stays editable in the document.
-        const basePad = n.type === 'path' || n.type === 'line' ? (n.strokeWidth || 0) / 2 + 1 : (needsRasterFill(n) || needsRasterShape(n)) ? (n.strokeWidth || 0) + 1 : 0;
-        // Always a transparent border of 2 texels (edgePadding): the bilinear sampler at the edge of a quad would otherwise pick up the
-        // neighbouring atlas entry (thin streaks along text boxes while zooming).
-        return Math.max(basePad, edgePadding(res));
+        return marginFor(this.basePadOf(n), res);
+    }
+    /** The margin in world units the layer's own painting needs around its box. Raster-only paths carry stroke padding; the geometry stays editable in the document. */
+    basePadOf(n) {
+        return n.type === 'path' || n.type === 'line' ? (n.strokeWidth || 0) / 2 + 1 : (needsRasterFill(n) || needsRasterShape(n)) ? (n.strokeWidth || 0) + 1 : 0;
     }
     /**
-     * The entries a layer is drawn with at `res`: one per tile (tileGrid) that meets `view`, a rect in the layer's own units. Each entry
-     * comes with its offset from the layer's origin, so its quad lands on its tile.
+     * The entries a layer is drawn with: one per tile (planLayer) that meets `view`, a rect in the layer's own units, at `res` or lower when
+     * the tiles in view would pass the layer's budget. Each entry comes with its offset from the layer's origin, so its quad lands on its tile.
      */
-    tilesFor(n, res, images, mode, view, stale = false) {
-        const padding = this.paddingOf(n, res), grid = tileGrid(n.w, n.h, res, this.size, padding);
+    tilesFor(n, requested, images, mode, view, stale = false) {
+        // The margin keeps a transparent border of 2 texels (edgePadding) so the bilinear sampler never reads a neighbouring entry.
+        const { res, padding, tiles: grid, total } = planLayer(n.w, n.h, requested, this.size, this.basePadOf(n), view), tiled = total > 1;
         const content = this.contentKeyOf(n), base = `${content}:${res}${mode ? ':' + mode : ''}`, latestKey = `${content}:${mode}`;
         const out = [];
         let pending = false;
         for (const t of grid) {
-            if (t.x > view.x + view.w || t.x + t.w < view.x || t.y > view.y + view.h || t.y + t.h < view.y)
-                continue;
-            if ((stale || performance.now() > this.budgetEnd) && grid.length === 1 && !this.entries.has(base)) {
+            if ((stale || performance.now() > this.budgetEnd) && !tiled && !this.entries.has(base)) {
                 // While the zoom moves the layer keeps the raster it has, drawn at the new size; the sharp one follows once the zoom settles.
                 const prev = this.latest.get(latestKey);
                 if (prev) {
@@ -7370,7 +7369,7 @@ class Atlas {
                     continue;
                 }
             }
-            const key = grid.length > 1 ? `${base}:${t.x},${t.y}` : base;
+            const key = tiled ? `${base}:${t.x},${t.y}` : base;
             if (!this.entries.has(key) && performance.now() > this.budgetEnd && this.rastered > 0) {
                 this.deferred = true;
                 pending = true;
@@ -7378,17 +7377,17 @@ class Atlas {
             }
             const entry = this.entryOf(n, res, images, mode, t, padding, key);
             if (!entry) {
-                pending = grid.length > 1;
+                pending = tiled;
                 continue;
             }
             this.inFlight++;
-            if (grid.length === 1)
+            if (!tiled)
                 this.latest.set(latestKey, { entry });
             out.push({ entry, ox: t.x - padding, oy: t.y - padding });
         }
         // A tiled layer shows its sharp tiles only once every tile in view is ready; until then its coarse raster (one entry that fits the atlas, kept across zooms)
         // stays on screen, so no band of the layer is blank or doubled while the tiles are made.
-        if (pending && grid.length > 1) {
+        if (pending && tiled) {
             const coarse = this.coarseOf(n, images, mode);
             return coarse ? [coarse] : [];
         }

@@ -87,3 +87,48 @@ export function tileGrid(width, height, res, size, padding, maxTexels = MAX_TILE
             out.push({ x, y, w: Math.min(room, width - x), h: Math.min(room, height - y) });
     return out;
 }
+
+/** The most tiles of one layer in view at once: well below the 64 entries an atlas holds, so a few layers share it. */
+export const MAX_LAYER_TILES = 16;
+
+/** The most texels of margin an entry carries around its tile: a stroke's margin in world units grows with the zoom and must not eat the tile. */
+export const MAX_MARGIN_TEXELS = 64;
+
+/** The lowest raster scale a layer is lowered to when it cannot fit its budget. */
+const MIN_PLAN_RES = 1 / 16;
+
+/** The margin of an entry in world units: what the layer needs (`basePad`), at most MAX_MARGIN_TEXELS texels, and never under the sampler's two texels. */
+export function marginFor(basePad, res) {
+    return Math.max(Math.min(basePad, MAX_MARGIN_TEXELS / Math.max(res, 1e-9)), edgePadding(res));
+}
+
+/**
+ * The tiles of a layer in view at a raster scale, and the scale itself: the requested `res`, lowered in quarter-octave steps until the tiles
+ * in `view` (a rect in the layer's units) are at most `maxTiles`. Tiles keep their size (a tile is as large as the entry budget allows);
+ * the scale gives way, so a layer never takes more of the atlas than its budget.
+ * @returns {{ res: number, padding: number, tiles: { x: number, y: number, w: number, h: number }[], total: number }}
+ */
+export function planLayer(width, height, res, size, basePad, view, maxTiles = MAX_LAYER_TILES) {
+    let r = res, plan;
+    for (let step = 0; step < 400; step++) {
+        const padding = marginFor(basePad, r), fit = Math.min(size - 4, MAX_TILE_TEXELS) / Math.max(r, 1e-9) - 2 * padding;
+        const room = fit >= 1 ? Math.floor(fit) : fit;
+        const cols = Math.max(1, Math.ceil(width / room)), rows = Math.max(1, Math.ceil(height / room));
+        const single = width <= room && height <= room;
+        const tiles = [];
+        // A single tile (the whole layer) counts only while it meets the view; tiles of a grid are the ones the view reaches.
+        const x0 = single ? 0 : Math.max(0, Math.floor(view.x / room)), x1 = single ? 0 : Math.min(cols - 1, Math.floor((view.x + view.w) / room));
+        const y0 = single ? 0 : Math.max(0, Math.floor(view.y / room)), y1 = single ? 0 : Math.min(rows - 1, Math.floor((view.y + view.h) / room));
+        const outside = single && (width < view.x || view.x + view.w < 0 || height < view.y || view.y + view.h < 0);
+        for (let iy = y0; iy <= y1 && !outside; iy++)
+            for (let ix = x0; ix <= x1; ix++) {
+                const x = single ? 0 : ix * room, y = single ? 0 : iy * room;
+                tiles.push({ x, y, w: single ? width : Math.min(room, width - x), h: single ? height : Math.min(room, height - y) });
+            }
+        plan = { res: r, padding, tiles, total: single ? 1 : cols * rows };
+        if (tiles.length <= maxTiles || r <= MIN_PLAN_RES)
+            break;
+        r /= 2 ** .25;
+    }
+    return plan;
+}
