@@ -42,8 +42,8 @@ for (const template of BUILT_IN_TEMPLATES.values()) {
     });
 }
 
-test('input (password): the eye box and one eye per state, no unused layer', () => {
+test('input (password): the eye box and the hidden-state eye, no unused layer', () => {
     const input = BUILT_IN_TEMPLATES.get('input');
-    assert.deepEqual(unusedLayersOf(input, { kind: 'password', passwordVisible: true }), []);
-    assert.deepEqual(unusedLayersOf(input, { kind: 'password', passwordVisible: false }), []);
+    assert.deepEqual(unusedLayersOf(input, { kind: 'password' }), []);
+    assert.deepEqual(unusedLayersOf(input, { kind: 'password', disabled: true }), []);
 });

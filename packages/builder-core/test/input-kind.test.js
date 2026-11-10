@@ -63,11 +63,14 @@ test('a prop that applies to one kind shows for that kind only', () => {
     const shown = kind => new Set(rowsOf({ kind }).map(r => r.prop));
     const text = shown('text'), password = shown('password'), area = shown('textarea');
     for (const prop of ['allowClear', 'hasPrefix', 'hasSuffix', 'showCount']) assert.ok(text.has(prop), `text shows ${prop}`);
-    for (const prop of ['visibilityToggle', 'rows', 'autoSize', 'resize']) assert.ok(!text.has(prop), `text hides ${prop}`);
-    assert.ok(password.has('visibilityToggle') && password.has('hasPrefix') && password.has('hasSuffix'));
+    for (const prop of ['eyeOnIcon', 'eyeOffIcon', 'rows', 'autoSize', 'resize']) assert.ok(!text.has(prop), `text hides ${prop}`);
+    assert.ok(password.has('eyeOnIcon') && password.has('eyeOffIcon') && password.has('hasPrefix') && password.has('hasSuffix'));
     for (const prop of ['allowClear', 'showCount', 'rows', 'autoSize', 'resize']) assert.ok(!password.has(prop), `password hides ${prop}`);
     for (const prop of ['rows', 'autoSize', 'resize', 'showCount']) assert.ok(area.has(prop), `textarea shows ${prop}`);
-    for (const prop of ['allowClear', 'hasPrefix', 'hasSuffix', 'visibilityToggle']) assert.ok(!area.has(prop), `textarea hides ${prop}`);
+    for (const prop of ['allowClear', 'hasPrefix', 'hasSuffix', 'eyeOnIcon', 'eyeOffIcon']) assert.ok(!area.has(prop), `textarea hides ${prop}`);
+    const labels = new Map(rowsOf({ kind: 'password' }).map(r => [r.prop, r.label]));
+    assert.equal(labels.get('eyeOnIcon'), 'Icon eyeOn', 'the revealed eye picker');
+    assert.equal(labels.get('eyeOffIcon'), 'Icon eyeOff', 'the hidden eye picker');
     assert.ok(!area.has('minRows') && !area.has('maxRows'), 'min and max rows need autoSize');
     assert.ok(rowsOf({ kind: 'textarea', autoSize: true }).some(r => r.prop === 'minRows'));
 });
@@ -75,8 +78,6 @@ test('a prop that applies to one kind shows for that kind only', () => {
 test('a fresh Input holds the placeholder only; each kind adds exactly the layers it needs', () => {
     assert.deepEqual(names({}), ['placeholder']);
     assert.deepEqual(names({ kind: 'password' }), ['placeholder', 'eyeBox', 'eyeOff']);
-    assert.deepEqual(names({ kind: 'password', passwordVisible: true }), ['placeholder', 'eyeBox', 'eyeOn']);
-    assert.deepEqual(names({ kind: 'password', visibilityToggle: false }), ['placeholder']);
     assert.deepEqual(names({ kind: 'textarea' }), ['placeholder'], 'no footer without a count or a grip');
     assert.deepEqual(names({ kind: 'textarea', resize: 'vertical' }), ['placeholder', 'resizeHandle'], 'the grip is a layer of the box, not of a footer');
     assert.deepEqual(names({ kind: 'textarea', showCount: true }), ['placeholder', 'footer', 'countArea']);
@@ -96,16 +97,15 @@ test('switching the kind makes and removes exactly the layers: the eye for passw
 
 test('no kind holds a hidden, transparent or zero-size node, and the typed text and choices stay in the props across a switch', () => {
     const dead = n => n.visible === false || n.opacity === 0 || (n.w === 0 && n.h === 0 && n.layoutSizingH === 'fixed' && n.layoutSizingV === 'fixed' && !n.vars?.w && !n.vars?.h);
-    for (const props of [{}, { kind: 'password' }, { kind: 'password', passwordVisible: true }, { kind: 'textarea' }, { kind: 'textarea', resize: 'vertical', showCount: true, value: 'abc' }, { disabled: true, kind: 'textarea' }]) {
+    for (const props of [{}, { kind: 'password' }, { kind: 'textarea' }, { kind: 'textarea', resize: 'vertical', showCount: true, value: 'abc' }, { disabled: true, kind: 'textarea' }]) {
         assert.deepEqual(nodesOf(props).filter(dead).map(n => n.name), [], JSON.stringify(props));
     }
     const typed = { value: 'secret', hasSuffix: true, suffixText: 'kg' };
     assert.equal(resolveProps(input, { ...base, ...typed, kind: 'textarea' }).value, 'secret', 'the value is not lost');
 });
 
-test('the canvas value of a password is bullets while hidden; the layout is a row for text and password, a column for the text area', () => {
+test('the canvas value of a password is always bullets (the reveal is Play- and export-local); the layout is a row for text and password, a column for the text area', () => {
     assert.equal(nodesOf({ kind: 'password', value: 'abc' }).find(n => n.name === 'value').text, '•••');
-    assert.equal(nodesOf({ kind: 'password', value: 'abc', passwordVisible: true }).find(n => n.name === 'value').text, 'abc');
     assert.equal(nodesOf({ kind: 'text', value: 'abc' }).find(n => n.name === 'value').text, 'abc', 'a plain input shows its text');
     assert.equal(nodesOf({}) [0].layout, 'horizontal');
     assert.equal(nodesOf({ kind: 'password' })[0].layout, 'horizontal');
@@ -229,7 +229,7 @@ test('the export carries Input.Password and Input.TextArea, one element chosen b
     assert.match(jsx, /Input\.Password = function Password\(props\) \{\s*return <Input \{\.\.\.props\} kind="password" \/>;/);
     assert.match(jsx, /Input\.TextArea = function TextArea\(props\) \{\s*return <Input \{\.\.\.props\} kind="textarea" \/>;/);
     assert.match(jsx, /const Control = kind === "textarea" \? "textarea" : "input";/);
-    assert.match(jsx, /type=\{\(kind === "password"\) && !passwordVisible \? "password" : undefined\}/);
+    assert.match(jsx, /type=\{\(kind === "password"\) && !revealed \? "password" : undefined\}/);
     assert.match(jsx, /data-kind=\{kind\}/);
     assert.match(jsx, /className="input-resizeHandle" onPointerDown=/);
     assert.match(jsx, /const startResizeDrag = function startResizeDrag/);

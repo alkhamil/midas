@@ -1,6 +1,7 @@
-// Password (Input's password kind) through the real studio path: Generate Design System makes the Input master and its demo, then the kind and the
-// visibility are set through the editor's edit path (setInstanceValueTo, which applies the role defaults). The eye box and one eye exist per state,
-// each eye takes the role glyph from the file, a picker swap keeps one eye layer with its bindings, and a text kind has no eye.
+// Password (Input's password kind) through the real studio path: Generate Design System makes the Input master and its demo, then the kind is set
+// through the editor's edit path (setInstanceValueTo, which applies the role defaults). The canvas holds the eye box with the eye-off layer alone;
+// the revealed eye is prop-only, remembered for Play and the export. A picker swap of the eye-off keeps one layer with its bindings, and a text
+// kind has no eye.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as core from '@midas/builder-core';
@@ -49,16 +50,14 @@ test('the password kind shows the eye box with the eye-off slot, whose icon is t
     assert.equal(demo.behavior.props.eyeOffIcon, glyph.id, 'the eye-off slot holds the eye-off glyph');
 });
 
-test('a visible password shows the eye-on slot alone, with the eye glyph; hiding it again swaps back', () => {
+test('choosing the revealed eye adds no canvas layer; the choice is remembered for Play and the export', () => {
     const replay = generate();
     const { demo, layers } = demoOf(replay);
     setProp(replay, demo, 'kind', 'password');
-    setProp(replay, demo, 'passwordVisible', true);
-    assert.deepEqual(slotsOf(layers()).filter(s => s.startsWith('eye')), ['eyeBox', 'eyeOn']);
     const eye = replay.doc.nodes.find(n => n.component === true && n.name === 'Icon/eye');
-    assert.equal(demo.behavior.props.eyeOnIcon, eye.id);
-    setProp(replay, demo, 'passwordVisible', false);
-    assert.deepEqual(slotsOf(layers()).filter(s => s.startsWith('eye')), ['eyeBox', 'eyeOff']);
+    setProp(replay, demo, 'eyeOnIcon', eye.id);
+    assert.deepEqual(slotsOf(layers()).filter(s => s.startsWith('eye')), ['eyeBox', 'eyeOff'], 'no eye-on layer');
+    assert.equal(demo.behavior.props.eyeOnIcon, eye.id, 'the choice is kept in the prop');
 });
 
 test('a picker swap of one eye keeps exactly one eye layer, with its size and colour bound', () => {

@@ -17,8 +17,8 @@ import { computed, elementsOf } from './helpers/play-compute.js';
 
 const SIZES = ['xs', 'sm', 'md', 'lg', 'xl'];
 const GLYPH_CASES = [
-    { id: 'input', label: 'password', kind: { kind: 'password' }, slots: ['eyeOn', 'eyeOff'],
-        states: { default: {}, disabled: { disabled: true }, visible: { passwordVisible: true }, 'no toggle': { visibilityToggle: false }, 'with suffix': { hasSuffix: true, suffixText: 'kg' } } },
+    { id: 'input', label: 'password', kind: { kind: 'password' }, slots: ['eyeOff', 'eyeOn'],
+        states: { default: {}, disabled: { disabled: true }, 'with suffix': { hasSuffix: true, suffixText: 'kg' } } },
     { id: 'input', label: 'textarea grip', kind: { kind: 'textarea' }, slots: ['resizeHandle'],
         states: { default: { resize: 'vertical' }, none: {}, counted: { resize: 'vertical', showCount: true, value: 'abc' }, disabled: { resize: 'vertical', disabled: true } } },
     { id: 'inputnumber', label: 'inputnumber', kind: {}, slots: ['stepUp', 'stepDown'],

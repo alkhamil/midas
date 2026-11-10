@@ -8,6 +8,6 @@ import { iconBoundKeysOf } from '../src/behavior-engine/anatomy.js';
 test('the icon pass lists the managed icon slots only, never a managed text slot', () => {
     const input = TEMPLATES.get('input');
     const keys = iconBoundKeysOf(input).map(k => k.key);
-    assert.deepEqual(keys, ['prefixIcon', 'clear', 'suffixIcon', 'eyeOn', 'eyeOff']);
+    assert.deepEqual(keys, ['prefixIcon', 'clear', 'suffixIcon', 'eyeOff'], 'the prop-only swap icon takes no canvas binding');
     for (const slot of input.anatomy.filter(s => s.managed && s.kind !== 'icon')) assert.ok(!keys.includes(slot.id), `${slot.id} is text`);
 });

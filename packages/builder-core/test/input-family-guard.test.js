@@ -22,8 +22,7 @@ const CASES = [
         { on: { hasSuffix: true, suffixText: 'kg' }, added: ['suffixText'], why: 'a suffix text' },
     ] },
     { id: 'input', label: 'input (password)', kind: { kind: 'password' }, options: [
-        { off: { visibilityToggle: false }, gone: ['eyeBox', 'eyeOff'], why: 'the eye is made with visibilityToggle and removed without it' },
-        { on: { passwordVisible: true }, swap: { gone: ['eyeOff'], added: ['eyeOn'] }, why: 'a shown password swaps the closed eye for the open one' },
+        { on: { eyeOnIcon: 'Icon/eye' }, added: [], why: 'the revealed eye is prop-only: choosing it adds no canvas layer' },
         { on: { hasSuffix: true, suffixText: 'kg' }, added: ['suffixText'], why: 'a suffix text' },
         { on: { hasPrefix: true, prefixText: 'USD' }, added: ['prefixText'], why: 'a prefix text' },
     ] },
