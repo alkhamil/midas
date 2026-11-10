@@ -7417,7 +7417,7 @@ class Atlas {
      */
     rasterize(key, width, height, res, padding, paint, exact = false) {
         this.rastered++;
-        const scale = Math.min(res, (this.size - 4) / Math.max(width, 1), (this.size - 4) / Math.max(height, 1));
+        const scale = entryScaleFor(width, height, res, this.size);
         const w = Math.max(1, Math.ceil(width * scale)), h = Math.max(1, Math.ceil(height * scale));
         let slot = this.packer.alloc(w, h);
         if (!slot) {
@@ -7474,6 +7474,20 @@ function rasterPlanOf(raw) {
         roots.set(id, { root, reasons, members: deferFrameStrokes(raw.filter(s => members.has(s.node.id))), backdrop });
     }
     return { roots, skip, index };
+}
+
+// The raster scale for a zoom: texels per world unit at (and just above) device pixels, from fit-zoom
+// out to the closest zoom-in. The camera reaches 256x and DPR caps at 3, so 1024 covers the range;
+// past it the atlas side (not this number) is the bound. Quarter steps keep nearby zooms on one
+// raster; the settle frame after a zoom re-rasterizes at the new scale. Pure, so the test cuts it out.
+// The texels per world unit an entry is rastered at: the requested scale, down only so the entry
+// (the tile plus its margin) fits the atlas side. Pure, so the test cuts it out.
+function entryScaleFor(tileW, tileH, res, atlasSize) {
+    return Math.min(res, (atlasSize - 4) / Math.max(tileW, 1), (atlasSize - 4) / Math.max(tileH, 1));
+}
+function resolutionForZoom(zoom, dpr, quality = 1) {
+    const need = Math.max(zoom * dpr, 1e-9);
+    return Math.min(1024, Math.max(1 / 16, 2 ** (Math.ceil(Math.log2(need) * 4) / 4))) * quality;
 }
 class Renderer {
     /**
@@ -7715,7 +7729,7 @@ class Renderer {
         // Small vectors (24px icons) are zoomed far past 4×: keep their raster matched to the zoom. Atlas.get still caps big layers to the page size.
         // Skala raster mengikuti zoom (pangkat 2 di atas piksel layar). Batas bawahnya 1/16, bukan 0,5: pada zoom jauh (mis. saat
         // page dibuka dengan "fit") raster 0,5 membuat ribuan teks/path memenuhi atlas dan diraster ulang setiap frame.
-        const resolution = clamp(2 ** (Math.ceil(Math.log2(camera.zoom * this.dpr) * 4) / 4), 1 / 16, 32) * quality;
+        const resolution = resolutionForZoom(camera.zoom, this.dpr, quality);
         // The raster roots in view, each with its entry, in paint order.
         const z = camera.zoom, vx0 = originX - 100, vy0 = originY - 100, vx1 = originX + this.width / z + 100, vy1 = originY + this.height / z + 100;
         // Sharp rasters are made within a frame's time budget; the rest keep their stale raster and the next frame continues.
