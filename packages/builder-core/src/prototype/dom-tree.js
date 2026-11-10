@@ -711,10 +711,10 @@ function svgParts(n, attrs) {
 function frameSvg(comp, vectors, scope) {
     const auto = isAutoLayout(comp), pad = Number(comp.padding) || 0;
     const shapes = vectors.map(vec => {
-        const fillH = auto && vec.layoutSizingH === 'fill', fillV = auto && vec.layoutSizingV === 'fill';
+        const flow = auto && vec.layoutPositioning !== 'absolute', fillH = flow && vec.layoutSizingH === 'fill', fillV = flow && vec.layoutSizingV === 'fill';
         const box = { ...vec, w: fillH ? comp.w - 2 * pad : vec.w, h: fillV ? comp.h - 2 * pad : vec.h };
         const { defs, body } = svgParts(box, `${fillAttrs(box, scope, true)} ${svgStrokeAttrs(box, svgNumber, escapeAttr, true)}`);
-        return `<g transform="translate(${svgNumber(auto ? pad : vec.x)} ${svgNumber(auto ? pad : vec.y)})">${defs}${body}</g>`;
+        return `<g transform="translate(${svgNumber(flow ? pad : vec.x)} ${svgNumber(flow ? pad : vec.y)})">${defs}${body}</g>`;
     });
     return `<svg viewBox="0 0 ${comp.w} ${comp.h}" width="100%" height="100%" overflow="visible" style="display:block;overflow:visible">${shapes.join('')}</svg>`;
 }

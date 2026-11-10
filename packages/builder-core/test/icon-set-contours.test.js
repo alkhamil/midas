@@ -7,11 +7,16 @@ import { iconNodes, ICON_SET } from '../src/behavior-engine/icon-set.js';
 const idOf = key => `id-${key.replace(/[^a-z0-9]/gi, '')}`;
 const square = (x, y, s) => [{ x, y }, { x: x + s, y }, { x: x + s, y: y + s }, { x, y: y + s }];
 
+/** A node's outline moved back by its offset in the frame: the entry's own coordinates (the node's box is the tight bounds, see icon-tight-box.test.js). */
+const inFrame = (pts, node) => pts.map(p => ({ ...p, x: p.x + node.x, y: p.y + node.y, ...(p.in ? { in: { x: p.in.x + node.x, y: p.in.y + node.y } } : {}), ...(p.out ? { out: { x: p.out.x + node.x, y: p.out.y + node.y } } : {}) }));
+const near = (a, b) => { assert.equal(a.length, b.length); a.forEach((p, i) => { for (const k of ['x', 'y']) assert.ok(Math.abs(p[k] - b[i][k]) < 1e-9, k + ' ' + p[k] + ' vs ' + b[i][k]); for (const h of ['in', 'out']) { assert.equal(!!p[h], !!b[i][h]); if (p[h]) for (const k of ['x', 'y']) assert.ok(Math.abs(p[h][k] - b[i][h][k]) < 1e-9, h); } }); };
+
 test('a multi-contour entry round-trips to the vector node: every contour and the fill rule are carried', () => {
     const entry = { name: 'ring', role: 'test', closed: true, points: square(2, 2, 20), contours: [{ points: square(8, 8, 8), closed: true }], fillRule: 'evenodd' };
     const path = iconNodes(entry, idOf)[1];
-    assert.deepEqual(path.points, entry.points, 'the outer contour is the points');
-    assert.deepEqual(path.contours, entry.contours, 'the inner contour is carried, unchanged');
+    near(inFrame(path.points, path), entry.points);
+    assert.equal(path.contours.length, 1, 'the inner contour is carried');
+    near(inFrame(path.contours[0].points, path), entry.contours[0].points);
     assert.equal(path.fillRule, 'evenodd', 'the fill rule is carried');
 });
 
@@ -19,7 +24,7 @@ test('the vector node takes a copy: changing the entry afterwards does not chang
     const entry = { name: 'ring', role: 'test', closed: true, points: square(2, 2, 20), contours: [{ points: square(8, 8, 8), closed: true }], fillRule: 'evenodd' };
     const path = iconNodes(entry, idOf)[1];
     entry.contours[0].points[0].x = 99;
-    assert.equal(path.contours[0].points[0].x, 8);
+    assert.equal(path.contours[0].points[0].x + path.x, 8);
 });
 
 test('a fill rule without extra contours is carried too', () => {

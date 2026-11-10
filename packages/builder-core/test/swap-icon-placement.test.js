@@ -99,4 +99,8 @@ test('Play: a real icon (24 frame, fill-sized 24 path) is drawn as one svg of th
     assert.match(svg, /^<svg viewBox="0 0 24 24" width="100%" height="100%"/, 'the frame box scales to the wrapper');
     assert.ok(!/preserveAspectRatio="none"/.test(svg), 'never stretched');
     assert.ok(!/width="24"/.test(svg), 'no fixed 24px svg inside a smaller slot');
+    // The glyph is the tight box of the path, placed at its offset in the frame (the Scale-constrained vector of iconNodes).
+    const glyph = real.find(n => n.id === 'real-Icon/eye/path');
+    assert.ok(glyph.x > 0 && glyph.y > 0, 'the eye does not touch the frame edge, so the offset is real');
+    assert.ok(svg.includes(`<g transform="translate(${glyph.x} ${glyph.y})">`), 'the glyph sits at its tight offset in the frame');
 });

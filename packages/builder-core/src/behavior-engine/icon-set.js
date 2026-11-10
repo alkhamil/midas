@@ -2,6 +2,7 @@
 // (see createdIconDefaults), so a file with no icon has empty slots. The Design System bundle creates what the file lacks from this set: one icon per role the
 // registry's schemas ask for. A template that needs an icon of its own adds it here (a name, a role and a vector path); nothing in the bundle names a template.
 import { iconDefsOf } from './anatomy.js';
+import { normalizeVectorGeometry } from '../geometry/vector-bounds.js';
 
 /** The file convention for an icon component's name. */
 export const ICON_PREFIX = 'Icon/';
@@ -205,18 +206,20 @@ export function planIcons({ pages, roles }, set = ICON_SET) {
 }
 
 /**
- * An icon's nodes: the component frame and its vector path, as the engine's icon slots expect them (an auto layout frame, a filled path). `idOf(key)` gives each an id.
+ * An icon's nodes: the component frame and its vector path, as the engine's icon slots expect them (an auto layout frame, a filled path in its tight box). `idOf(key)` gives each an id.
  * @param {typeof ICON_SET[number]} entry
  * @param {(key: string) => string} idOf
  */
 export function iconNodes(entry, idOf) {
+    // The vector is the tight box of its outline, placed at that offset in the frame (see normalizeVectorGeometry).
+    const tight = normalizeVectorGeometry({ points: entry.points, contours: entry.contours, closed: entry.closed }, 1, 1);
     const id = idOf(`${ICON_PREFIX}${entry.name}`), pathId = idOf(`${ICON_PREFIX}${entry.name}/path`);
     const root = { id, name: ICON_PREFIX + entry.name, type: 'frame', parentId: null, x: 0, y: 0, w: SIZE, h: SIZE, component: true, layout: 'horizontal', gap: 0, padding: 0, layoutSizingH: 'fixed', layoutSizingV: 'fixed', fills: [], clip: false, stroke: '#000000', strokeWidth: 0, radius: 0, opacity: 1, visible: true, locked: false, rotation: 0, version: 0 };
     const path = {
-        id: pathId, name: entry.name, type: 'path', parentId: id, x: 0, y: 0, w: SIZE, h: SIZE, pathW: SIZE, pathH: SIZE, closed: entry.closed,
-        // The path fills its frame, so in an instance sized to a slot (the icon size) it scales with it; a fixed path would stay SIZE px and show a corner of the outline.
-        layoutSizingH: 'fill', layoutSizingV: 'fill',
-        points: structuredClone(entry.points), ...(entry.contours ? { contours: structuredClone(entry.contours) } : {}), ...(entry.fillRule ? { fillRule: entry.fillRule } : {}),
+        id: pathId, name: entry.name, type: 'path', parentId: id, x: tight.dx, y: tight.dy, w: tight.w, h: tight.h, pathW: tight.w, pathH: tight.h, closed: entry.closed,
+        // The glyph follows its frame by Scale, out of the flow: an instance sized to a slot (the icon size) scales it with the frame, uniformly (the frame is square), and it stays tight.
+        layoutPositioning: 'absolute', constraintH: 'scale', constraintV: 'scale', layoutSizingH: 'fixed', layoutSizingV: 'fixed',
+        points: tight.points, ...(tight.contours ? { contours: tight.contours } : {}), ...(entry.fillRule ? { fillRule: entry.fillRule } : {}),
         fills: [{ type: 'solid', color: '#20202a', opacity: 1, visible: true }], stroke: '#20202a', strokeWidth: 0,
         rotation: 0, opacity: 1, visible: true, locked: false, clip: false, radius: 0, version: 0,
     };

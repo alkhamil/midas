@@ -119,14 +119,15 @@ test('the outline commands walk the same segments, so the closing curve is drawn
     assert.deepEqual(pathCommands(path).filter(c => c.op === 'L'), [], 'no straight segment');
 });
 
-test('the icon path fills its component frame, so it scales with the icon: an instance at the icon size draws the whole outline, not a corner of it', () => {
+test('the icon path follows its component frame by Scale, so an instance at the icon size draws the whole outline, not a corner of it (see icon-tight-box.test.js)', () => {
     for (const entry of ICON_SET) {
         const [root, path] = iconNodes(entry, key => key);
-        assert.equal(root.layout, 'horizontal', 'an auto layout frame lays the path out');
-        assert.deepEqual([path.layoutSizingH, path.layoutSizingV], ['fill', 'fill']);
-        assert.deepEqual([path.pathW, path.pathH], [root.w, root.h], 'the outline is drawn in the box it scales from');
+        assert.equal(root.layout, 'horizontal', 'an auto layout frame holds the path');
+        assert.deepEqual([path.layoutPositioning, path.constraintH, path.constraintV], ['absolute', 'scale', 'scale']);
+        assert.deepEqual([path.pathW, path.pathH], [path.w, path.h], 'the outline is drawn in its own box');
     }
 });
+
 
 test('the close icon is a closed filled 12-point polygon in the 24 x 24 box, with straight edges (no handles), and Tag asks for it by the close role', () => {
     const close = ICON_SET.find(e => e.name === 'close');

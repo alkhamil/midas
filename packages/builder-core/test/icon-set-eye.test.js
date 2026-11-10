@@ -5,6 +5,10 @@ import assert from 'node:assert/strict';
 import { ICON_SET, iconNodes, planIcons } from '../src/behavior-engine/icon-set.js';
 import { glyphFields } from '../src/behavior-engine/glyphs.js';
 
+/** A node's outline moved back by its offset in the frame: the entry's own coordinates (the node's box is the tight bounds, see icon-tight-box.test.js). */
+const inFrame = (pts, node) => pts.map(p => ({ ...p, x: p.x + node.x, y: p.y + node.y, ...(p.in ? { in: { x: p.in.x + node.x, y: p.in.y + node.y } } : {}), ...(p.out ? { out: { x: p.out.x + node.x, y: p.out.y + node.y } } : {}) }));
+const near = (a, b) => { assert.equal(a.length, b.length); a.forEach((p, i) => { for (const k of ['x', 'y']) assert.ok(Math.abs(p[k] - b[i][k]) < 1e-9, k + ' ' + p[k] + ' vs ' + b[i][k]); for (const h of ['in', 'out']) { assert.equal(!!p[h], !!b[i][h]); if (p[h]) for (const k of ['x', 'y']) assert.ok(Math.abs(p[h][k] - b[i][h][k]) < 1e-9, h); } }); };
+
 const idOf = key => `id-${key.replace(/[^a-z0-9]/gi, '')}`;
 
 for (const [name, role] of [['eye', 'eyeOn'], ['eyeOff', 'eyeOff']]) {
@@ -16,11 +20,12 @@ for (const [name, role] of [['eye', 'eyeOn'], ['eyeOff', 'eyeOff']]) {
         assert.equal(entry.fillRule, 'evenodd');
     });
 
-    test(`${name}: the vector node is the solar glyph's layer, with every sub-path, its handles and the fill rule (no geometry change)`, () => {
+    test(`${name}: the vector node is the solar glyph's layer, with every sub-path, its handles and the fill rule (translated into the tight box, no other change)`, () => {
         const glyph = glyphFields(name);
         const path = iconNodes(ICON_SET.find(e => e.name === name), idOf)[1];
-        assert.deepEqual(path.points, glyph.points, 'the first sub-path and its handles');
-        assert.deepEqual(path.contours, glyph.contours, 'every other sub-path, with its handles');
+        near(inFrame(path.points, path), glyph.points);
+        assert.equal(path.contours.length, glyph.contours.length, 'every other sub-path');
+        path.contours.forEach((c, i) => near(inFrame(c.points, path), glyph.contours[i].points));
         assert.equal(path.fillRule, glyph.fillRule, 'the even-odd fill rule');
     });
 }
