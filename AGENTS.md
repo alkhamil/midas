@@ -96,6 +96,7 @@
 - Play draws a managed text layer with its slot class (`<template>-<slot>`, as the export) and leaves its bound typography to the stylesheet; a template's instance layers get plain ids.
 - Locked for Batch 2a (partly implemented; Tag and Divider not yet registered): Tag and Badge colour presets: the eight base palettes (primary, secondary, tertiary, info, danger, warning, success, neutral); no hue presets. Divider: no text = the root stroke draws the line; hasText = the root stroke is removed and two line segments sit before and after the text, both removed when hasText is off; a fixed token sizes the short side for start and end; vertical has no text. Typography: generic `fontStyle` and `textDecoration` fields, underline and delete composed into one value; code and mark style the root frame (token fill, padding, radius, border) with no extra layers. Avatar: image content via a generic image-fill prop on the frame, last.
 
+- Password eye toggle without props is blocked: the toggle, mask and state-attribute paths all require a stored boolean prop, and panel picker visibility shares `iconDefOn` with canvas planning (both pickers on implies both canvas layers). Play draws managed slots from layers while the export draws from props, so a hidden eye’s swap never appears in Play until a re-sync; the solar eye geometry parses clean. No new mechanism invented.
 ## Code map
 
 - Button template: `packages/builder-core/src/templates/button.js`. Engine: `packages/builder-core/src/behavior-engine/` (`codegen.js`, `preview.js`, `anatomy.js`, `icon-slot.js`, `display.js`).
@@ -117,6 +118,7 @@
 - Border width is a variable: the Button/Input root stroke binds `strokeWidth` to `border-width` (`Semantic/lineWidth`, 1), so the designer changes it through the variables, never a literal; the focus ring derives from `outline-width` (`Semantic/controlOutlineWidth`, 2).
 - Outline/ring/wave: `outline-color` is always 0% at rest (alias to Semantic `outlineTransparent`, itself a 0% Primitive derive); `outline-color-active` is the interaction colour. The outline width includes the border: the ring starts back at the border's inner edge (an inside stroke), so the visible ring is width minus border with no gap (the `outline-width` token, `outline: { offset: 0 }`, the engine emits `outline-offset: -border` from the resolved binding, `outline: none` when the border spans the width, `outline-swallowed` warns); never drawn on canvas (the canvas preview only recolors fill/stroke), no panel controls. Ring (`:focus-visible`) and wave (click, `data-wave-on`) are DOM-only behaviors configured by schema `interaction`.
 
+- `icon-button-wave` pinned Input hash is stale at HEAD (actual `595275bc2b1258a3` vs pinned `83551c0642aa0803`); fails on a clean tree, needs a diff-then-repin pass.
 ## Antrean
 
 - Fase 1 batch 1 done: Input template exists, `control` kind is generic (real `<input>` in Play/codegen). Single-line only.
