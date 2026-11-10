@@ -8,7 +8,7 @@ import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
 import { VAR_TYPES } from './varTypes.js';
 import { boot } from '../boot.js';
-import { AtlasPacker, marginFor, planLayer, resolveTileSet, placeInAtlas, edgePadding, rasterMargin, placeQuad } from './atlasPacker.js';
+import { AtlasPacker, marginFor, planLayer, resolveTileSet, placeInAtlas, tileQuad, fullQuad, edgePadding, rasterMargin, placeQuad } from './atlasPacker.js';
 import { commitAffectsComponents, layerFlagsOf } from '@midas/builder-core';
 import { boundsIn, descendantsOf, effectBleed, planRasterRoots } from './rasterRoutes.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
@@ -7371,7 +7371,7 @@ class Atlas {
                     this.touch(prev.entry);
                     this.deferred = true;
                     this.inFlight++;
-                    out.push({ entry: prev.entry, ox: -prev.entry.padding, oy: -prev.entry.padding });
+                    out.push({ entry: prev.entry, ...fullQuad(prev.entry) });
                     continue;
                 }
             }
@@ -7389,7 +7389,7 @@ class Atlas {
             this.inFlight++;
             if (!tiled)
                 this.latest.set(latestKey, { entry });
-            out.push({ entry, ox: t.x - padding, oy: t.y - padding, rect: t });
+            out.push({ entry, rect: t, ...tileQuad(t, padding, n.w, n.h, entry) });
         }
         if (!tiled)
             return out;
@@ -7414,7 +7414,7 @@ class Atlas {
         if (!entry)
             return null;
         this.inFlight++;
-        return { entry, ox: -padding, oy: -padding };
+        return { entry, ...fullQuad(entry) };
     }
     entryOf(n, res, images, mode, t, padding, key) {
         if (this.entries.has(key))
@@ -7856,10 +7856,10 @@ class Renderer {
                 const tileAt = placeQuad(m, originX, originY, first.ox, first.oy);
                 d[base + 4] = tileAt.x;
                 d[base + 5] = tileAt.y;
-                d[base + 6] = first.entry.w;
-                d[base + 7] = first.entry.h;
+                d[base + 6] = first.w;
+                d[base + 7] = first.h;
                 d[base + 18] = 2;
-                d.set([first.entry.u, first.entry.v, first.entry.du, first.entry.dv], base + 20);
+                d.set(first.uv, base + 20);
                 d[base + 31] = first.entry.page;
             }
         };

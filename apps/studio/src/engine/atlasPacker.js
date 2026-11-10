@@ -200,3 +200,23 @@ export function placeInAtlas(atlas, w, h) {
     atlas.clearAll();
     return atlas.packer.alloc(w, h);
 }
+
+/**
+ * Where a tile's entry is drawn: the tile itself, plus the margin only on the sides that are the layer's edge (a stroke or a glyph may paint there), so
+ * neighbouring tiles' quads meet exactly instead of overlapping by their margins. `ox`/`oy`/`w`/`h` are in the layer's units from its origin; `uv` is the
+ * matching rect of the entry, the margin giving the sampler its neighbours.
+ * @param {{ x: number, y: number, w: number, h: number }} t the tile
+ * @param {{ u: number, v: number, du: number, dv: number, w: number, h: number }} entry the tile's entry (w, h in world units, margin included)
+ * @returns {{ ox: number, oy: number, w: number, h: number, uv: number[] }}
+ */
+export function tileQuad(t, padding, layerW, layerH, entry) {
+    const x0 = t.x <= 0 ? -padding : t.x, y0 = t.y <= 0 ? -padding : t.y;
+    const x1 = t.x + t.w >= layerW - 1e-9 ? layerW + padding : t.x + t.w, y1 = t.y + t.h >= layerH - 1e-9 ? layerH + padding : t.y + t.h;
+    const fx = (x0 - (t.x - padding)) / entry.w, fy = (y0 - (t.y - padding)) / entry.h, fw = (x1 - x0) / entry.w, fh = (y1 - y0) / entry.h;
+    return { ox: x0, oy: y0, w: x1 - x0, h: y1 - y0, uv: [entry.u + fx * entry.du, entry.v + fy * entry.dv, fw * entry.du, fh * entry.dv] };
+}
+
+/** The quad of an entry drawn whole (a single tile, a stale raster, the coarse stand-in): the entry and its margin, the full UV rect. */
+export function fullQuad(entry) {
+    return { ox: -entry.padding, oy: -entry.padding, w: entry.w, h: entry.h, uv: [entry.u, entry.v, entry.du, entry.dv] };
+}
