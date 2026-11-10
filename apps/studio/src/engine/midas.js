@@ -12017,6 +12017,8 @@ function pointerDown(e) {
             return;
         }
     }
+    // Leaving path edit onto empty canvas keeps the vector selected: back to its bounding box.
+    let exitedPathEdit = null;
     if (state.pathEdit) {
         const handle = pathHandleAt(p);
         if (handle) {
@@ -12024,8 +12026,10 @@ function pointerDown(e) {
             state.gesture = { kind: 'path-edit', id: state.pathEdit, handle, start: w, original: structuredClone(doc.get(state.pathEdit)) };
             return;
         }
-        else
+        else {
+            exitedPathEdit = state.pathEdit;
             state.pathEdit = null;
+        }
     }
     if (state.tool === 'pen') {
         if (state.pen.length >= 2) {
@@ -12175,7 +12179,7 @@ function pointerDown(e) {
     else {
         const old = e.shiftKey ? new Set(state.selection) : new Set();
         if (!e.shiftKey)
-            select([]);
+            select(exitedPathEdit && doc.get(exitedPathEdit) ? [exitedPathEdit] : []);
         state.gesture = { kind: 'marquee', start: p, old, deep: e.ctrlKey || e.metaKey, clickId: ctrlClickId };
         state.marquee = { x: p.x, y: p.y, w: 0, h: 0 };
         invalidate();
@@ -22630,6 +22634,15 @@ document.addEventListener('keydown', e => {
             finishPen();
         else if (activeNode()?.type === 'text')
             startText(activeNode(), true);
+        else if (activeNode()?.type === 'path') {
+            const hit = activeNode();
+            e.preventDefault();
+            select([hit.id]);
+            state.pathEdit = hit.id;
+            state.activePathPoint = null;
+            invalidate();
+            toast('Vector edit mode. Drag anchors or Bézier handles. Escape to finish.');
+        }
         else if (state.selection.size) {
             // Enter dives into the selected frame / group: its children (siblings of each other) get selected.
             const kids = selected().flatMap(n => doc.children(n.id)).filter(c => !c.locked && c.visible !== false);

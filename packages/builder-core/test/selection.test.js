@@ -141,3 +141,27 @@ test('a component set picks its variants directly: a plain click on a variant do
     assert.equal(pickIn(['S', 'S1', 'N1']), 'S1');
     assert.equal(pickIn(['S', 'S2', 'N2'], ['S1']), 'S2');
 });
+
+// Vectors are path nodes (pen paths and glyph-derived vectors alike): a single click selects the path
+// itself, so the canvas shows the normal bounding box — never the anchors. A double-click on the
+// selected path is left to the canvas: drill on a leaf picks nothing, so the canvas enters path edit
+// through the layer under the cursor instead.
+const vectorPage = tree([
+    { id: 'D', type: 'frame' },
+    { id: 'H', parentId: 'D', type: 'path' },
+    { id: 'J', parentId: 'D', type: 'path' },
+]);
+const pickV = (path, selection = [], modifiers = {}) => resolveSelectTarget({ path: vectorPage.path(path), selection: selection.map(id => vectorPage.get(id)), ...modifiers });
+
+test('a single click on a vector selects the vector itself', () => {
+    assert.equal(pickV(['D', 'H']), 'H');
+});
+
+test('a single click on a sibling vector selects the sibling', () => {
+    assert.equal(pickV(['D', 'J'], ['H']), 'J');
+});
+
+test('double-click drills from the frame to the vector, then leaves the selected vector alone for path edit', () => {
+    assert.equal(pickV(['D', 'H'], ['D'], { drill: true }), 'H');
+    assert.equal(pickV(['D', 'H'], ['H'], { drill: true }), null);
+});
