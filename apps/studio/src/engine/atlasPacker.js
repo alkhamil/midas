@@ -220,3 +220,23 @@ export function tileQuad(t, padding, layerW, layerH, entry) {
 export function fullQuad(entry) {
     return { ox: -entry.padding, oy: -entry.padding, w: entry.w, h: entry.h, uv: [entry.u, entry.v, entry.du, entry.dv] };
 }
+
+/** Whether a node of w x h units with a stroke of `strokeW` can put a pixel on screen: it has area or a stroke (a zero-height frame has neither). */
+export function hasDrawableArea(w, h, strokeW) {
+    return (w > 0 && h > 0) || strokeW > 0;
+}
+
+/**
+ * A raster quad with its edges on device pixels. (x, y) is the quad's origin relative to the camera origin, (w, h) its size in the node's own units,
+ * `m` the node's matrix, `zoom` x `dpr` the device pixels per world unit. Both edges of each axis are rounded, so quads that share an edge keep sharing it.
+ * Null when the matrix rotates, skews or flips (a quad there is not a pixel-aligned rectangle), or when a side would collapse to nothing.
+ * @returns {{ x: number, y: number, w: number, h: number } | null}
+ */
+export function snapQuad(x, y, w, h, m, zoom, dpr) {
+    if (m[1] !== 0 || m[2] !== 0 || !(m[0] > 0) || !(m[3] > 0))
+        return null;
+    const k = zoom * dpr, x0 = Math.round(x * k), x1 = Math.round((x + m[0] * w) * k), y0 = Math.round(y * k), y1 = Math.round((y + m[3] * h) * k);
+    if (x1 <= x0 || y1 <= y0)
+        return null;
+    return { x: x0 / k, y: y0 / k, w: (x1 - x0) / (k * m[0]), h: (y1 - y0) / (k * m[3]) };
+}

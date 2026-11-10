@@ -8,7 +8,7 @@ import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
 import { VAR_TYPES } from './varTypes.js';
 import { boot } from '../boot.js';
-import { AtlasPacker, marginFor, planLayer, resolveTileSet, placeInAtlas, tileQuad, fullQuad, edgePadding, rasterMargin, placeQuad } from './atlasPacker.js';
+import { AtlasPacker, marginFor, planLayer, resolveTileSet, placeInAtlas, tileQuad, fullQuad, hasDrawableArea, snapQuad, edgePadding, rasterMargin, placeQuad } from './atlasPacker.js';
 import { commitAffectsComponents, layerFlagsOf } from '@midas/builder-core';
 import { boundsIn, descendantsOf, effectBleed, planRasterRoots } from './rasterRoutes.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
@@ -7801,6 +7801,9 @@ class Renderer {
         // The Behavior preview colours the root's fill and stroke for this draw only: the document keeps its own colours.
         const preview = this.canvasPreview?.() ?? null;
         const push = (s, n, clipId, shadow = null, tile = null) => {
+            // No area and no stroke: nothing to draw (a zero-height frame was a half-alpha line as wide as the frame).
+            if (!hasDrawableArea(n.w, n.h, this.paintOf(n).strokeW))
+                return;
             // The instance is written field by field: an array literal per call was the largest allocation in a frame.
             const base = count++ * 32, d = this.instanceData, m = s.matrix, sub = preview?.id === n.id ? preview.colors : null, desc = this.paintOf(n);
             const fill = sub ? color(sub.fill ?? topColorOf(n), topOpacityOf(n)) : desc.fill, stroke = sub ? color(sub.stroke ?? n.stroke, n.strokeOpacity ?? 1) : desc.stroke;
@@ -7853,11 +7856,12 @@ class Renderer {
                 }
                 for (const t of rest)
                     push(s, n, clipId, null, t);
-                const tileAt = placeQuad(m, originX, originY, first.ox, first.oy);
-                d[base + 4] = tileAt.x;
-                d[base + 5] = tileAt.y;
-                d[base + 6] = first.w;
-                d[base + 7] = first.h;
+                // Edges on device pixels (upright quads), so a texel row is not smeared over two pixel rows; neighbouring tiles keep sharing their edge.
+                const tileAt = placeQuad(m, originX, originY, first.ox, first.oy), snapped = snapQuad(tileAt.x, tileAt.y, first.w, first.h, m, camera.zoom, this.dpr);
+                d[base + 4] = snapped?.x ?? tileAt.x;
+                d[base + 5] = snapped?.y ?? tileAt.y;
+                d[base + 6] = snapped?.w ?? first.w;
+                d[base + 7] = snapped?.h ?? first.h;
                 d[base + 18] = 2;
                 d.set(first.uv, base + 20);
                 d[base + 31] = first.entry.page;
@@ -7877,8 +7881,8 @@ class Renderer {
         const pushRoot = r => {
             const s = r.p.root, base = count++ * 32, d = this.instanceData, m = s.matrix;
             const clipId = writeClips(s.clips.filter(c => !c.mask));
-            const rootAt = placeQuad(m, originX, originY, r.offX, r.offY);
-            d.set([m[0], m[1], m[2], m[3], rootAt.x, rootAt.y, r.entry.w, r.entry.h], base);
+            const rootAt = placeQuad(m, originX, originY, r.offX, r.offY), snapped = snapQuad(rootAt.x, rootAt.y, r.entry.w, r.entry.h, m, camera.zoom, this.dpr);
+            d.set([m[0], m[1], m[2], m[3], snapped?.x ?? rootAt.x, snapped?.y ?? rootAt.y, snapped?.w ?? r.entry.w, snapped?.h ?? r.entry.h], base);
             d.set([0, 0, 0, 0], base + 8);
             d.set([0, 0, 0, 0], base + 12);
             d.set([0, 0, 0, s.opacity], base + 16);
