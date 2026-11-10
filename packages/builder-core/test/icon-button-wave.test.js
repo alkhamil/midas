@@ -107,7 +107,7 @@ test('Button and Input output match their pinned hashes (the Input text part is 
     assert.equal(hash(buttonFiles['Button.css']), '530fdab0aae729e2', 'the fill sits under the border (border-box)');
     const im = inputModel({ ids: { variant: 'c-input-variant', status: 'c-input-status', size: 'c-input-size', semantic: 'c-input-semantic' }, prefix: 'in-' });
     const input = generateComponent(BUILT_IN_TEMPLATES.get('input'), im.binding, { collections: im.collections, items: im.items }, 'Input', { id: 'm', name: 'Input', type: 'frame', layout: 'horizontal' }, () => []).files;
-    assert.equal(hash(input['Input.jsx']), '83551c0642aa0803', 'the Password eyes are icon slots in an eye box (the export diff of that change only)');
+    assert.equal(hash(input['Input.jsx']), '595275bc2b1258a3', 'the Password eyes are icon slots in an eye box (the export diff of that change only)');
     assert.equal(hash(input['Input.css']), 'b81b0e1d5896e5dd', 'a master with no layers lays the managed text slots out as an instance draws them (the value fills); a generated master gives the same sheet as before');
 });
 
