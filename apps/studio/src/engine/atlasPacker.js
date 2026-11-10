@@ -132,3 +132,23 @@ export function planLayer(width, height, res, size, basePad, view, maxTiles = MA
     }
     return plan;
 }
+
+const boundsOf = rects => rects.reduce((b, r) => b ? { x0: Math.min(b.x0, r.x), y0: Math.min(b.y0, r.y), x1: Math.max(b.x1, r.x + r.w), y1: Math.max(b.y1, r.y + r.h) } : { x0: r.x, y0: r.y, x1: r.x + r.w, y1: r.y + r.h }, null);
+
+/**
+ * What a tiled layer draws this frame. `fresh` are the tiles of the current scale that are ready (`complete`: all those in view are); `needed` are
+ * the rects of the tiles in view. While some are missing the last complete set (`previous`, drawn while its entries are alive and its tiles cover the
+ * needed ones) stays on screen; only without one is `coarse()` (a function: the stand-in is made on demand) used, and without that nothing is drawn.
+ * @param {{ fresh: object[], complete: boolean, previous: { tiles: object[], alive: boolean } | null, needed: {x:number,y:number,w:number,h:number}[], coarse: () => object | null }} p
+ */
+export function resolveTileSet({ fresh, complete, previous, needed, coarse }) {
+    if (complete)
+        return fresh;
+    if (previous?.alive && previous.tiles.length && needed.length) {
+        const have = boundsOf(previous.tiles.map(t => t.rect)), want = boundsOf(needed);
+        if (have.x0 <= want.x0 + 1e-9 && have.y0 <= want.y0 + 1e-9 && have.x1 >= want.x1 - 1e-9 && have.y1 >= want.y1 - 1e-9)
+            return previous.tiles;
+    }
+    const stand = coarse();
+    return stand ? [stand] : [];
+}

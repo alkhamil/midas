@@ -8,7 +8,7 @@ import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
 import { VAR_TYPES } from './varTypes.js';
 import { boot } from '../boot.js';
-import { AtlasPacker, marginFor, planLayer, edgePadding, rasterMargin, placeQuad } from './atlasPacker.js';
+import { AtlasPacker, marginFor, planLayer, resolveTileSet, edgePadding, rasterMargin, placeQuad } from './atlasPacker.js';
 import { commitAffectsComponents, layerFlagsOf } from '@midas/builder-core';
 import { boundsIn, descendantsOf, effectBleed, planRasterRoots } from './rasterRoutes.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
@@ -7323,10 +7323,10 @@ function hashString(s) {
 // Fields that place a layer rather than paint it: two layers that differ only in these share one raster.
 const PLACEMENT_FIELDS = new Set(['id', 'name', 'parentId', 'x', 'y', 'rotation', 'version', 'flipX', 'flipY']);
 class Atlas {
-    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.latest = new Map(); this.keys = new WeakMap(); this.latestRoot = new Map(); this.packer = new AtlasPacker(this.size, this.layers); this.epoch = 0; this.full = false; this.inFlight = 0; this.budgetEnd = Infinity; this.deferred = false; this.rastered = 0; this.canvas = document.createElement('canvas'); }
+    constructor(device, invalidate) { this.device = device; this.invalidate = invalidate; this.size = Math.min(2048, device.limits.maxTextureDimension2D); this.layers = 4; this.texture = device.createTexture({ label: 'Midas raster atlas', size: [this.size, this.size, this.layers], format: 'rgba8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT }); this.entries = new Map(); this.latest = new Map(); this.keys = new WeakMap(); this.latestRoot = new Map(); this.latestTiles = new Map(); this.packer = new AtlasPacker(this.size, this.layers); this.epoch = 0; this.full = false; this.inFlight = 0; this.budgetEnd = Infinity; this.deferred = false; this.rastered = 0; this.canvas = document.createElement('canvas'); }
     /** A frame starts: an atlas that filled up during the last one is emptied now, when no instance holds an entry. */
     beginFrame() { if (this.full) { this.full = false; this.reset(); } this.inFlight = 0; }
-    reset() { this.entries.clear(); this.latest.clear(); this.latestRoot.clear(); this.packer.reset(); this.epoch++; }
+    reset() { this.entries.clear(); this.latest.clear(); this.latestRoot.clear(); this.latestTiles.clear(); this.packer.reset(); this.epoch++; }
     /** What a layer's raster depends on, as a key: layers with the same content share their rasters, wherever they are placed. */
     contentKeyOf(n) {
         const cached = this.keys.get(n);
@@ -7383,15 +7383,21 @@ class Atlas {
             this.inFlight++;
             if (!tiled)
                 this.latest.set(latestKey, { entry });
-            out.push({ entry, ox: t.x - padding, oy: t.y - padding });
+            out.push({ entry, ox: t.x - padding, oy: t.y - padding, rect: t });
         }
-        // A tiled layer shows its sharp tiles only once every tile in view is ready; until then its coarse raster (one entry that fits the atlas, kept across zooms)
-        // stays on screen, so no band of the layer is blank or doubled while the tiles are made.
-        if (pending && tiled) {
-            const coarse = this.coarseOf(n, images, mode);
-            return coarse ? [coarse] : [];
+        if (!tiled)
+            return out;
+        // A tiled layer shows its fresh tiles only once every tile in view is ready; until then the last complete set it drew stays on screen (as a single
+        // tile keeps its last raster), and only without one that covers the view is the coarse raster (4 texels per unit) used: no band is blank or doubled.
+        const previous = this.latestTiles.get(latestKey);
+        const set = resolveTileSet({ fresh: out, complete: !pending, needed: grid, previous: previous && { tiles: previous, alive: previous.every(t => this.entries.get(t.entry.key) === t.entry) }, coarse: () => this.coarseOf(n, images, mode) });
+        if (!pending)
+            this.latestTiles.set(latestKey, out);
+        else if (set === previous) {
+            this.deferred = true;
+            this.inFlight += set.length;
         }
-        return out;
+        return set;
     }
     /** The whole layer as one entry at the density the atlas allows (at most 4 texels per unit): the stand-in for a tiled layer, valid at every zoom. */
     coarseOf(n, images, mode) {
@@ -7473,7 +7479,7 @@ class Atlas {
         ctx.reset();
         paint(ctx, scale);
         this.device.queue.copyExternalImageToTexture({ source: this.canvas }, { texture: this.texture, origin: [x, y, page], premultipliedAlpha: true }, [w + 2, h + 2]);
-        const entry = { u: x / this.size, v: y / this.size, du: w / this.size, dv: h / this.size, page, padding, w: width, h: height };
+        const entry = { u: x / this.size, v: y / this.size, du: w / this.size, dv: h / this.size, page, padding, w: width, h: height, key };
         this.entries.set(key, entry);
         return entry;
     }
