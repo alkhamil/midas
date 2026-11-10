@@ -7121,12 +7121,16 @@ function paintText(ctx, n) {
     ctx.globalAlpha = baseAlpha;
     return l;
 }
-// Strokes the shader cannot draw (inside/outside, dashes, per-side widths, miter joins) go through the raster path.
+// An inside stroke of a plain box (uniform sides, solid, round join) is the band between its outline and the outline inset by its width: the shader draws it itself.
+function insideStrokeOnShader(n) {
+    return n.strokeAlign === 'inside' && RECT_LIKE.includes(n.type) && n.type !== 'image' && strokeSidesUniform(n) && (!n.strokeStyle || n.strokeStyle === 'solid') && (!n.strokeJoin || n.strokeJoin === 'round');
+}
+// Strokes the shader cannot draw (outside, dashes, per-side widths, miter joins) go through the raster path.
 function strokeNeedsRaster(n) {
     if (!strokeIsOn(n) || ['path', 'line', 'image', 'text'].includes(n.type))
         return false;
     const rl = RECT_LIKE.includes(n.type);
-    if (n.strokeAlign && n.strokeAlign !== 'center' && strokeClosed(n))
+    if (n.strokeAlign && n.strokeAlign !== 'center' && strokeClosed(n) && !insideStrokeOnShader(n))
         return true;
     if (n.strokeStyle && n.strokeStyle !== 'solid')
         return true;
@@ -7278,7 +7282,7 @@ fn sdRound4(p:vec2<f32>,size:vec2<f32>,rr:vec4<f32>)->f32 {let c=p-size*.5;let t
  var fill=item.fill;
  if(item.params.x> -999.){let axis=vec2(cos(item.params.x),sin(item.params.x));let len=max(dot(abs(axis),item.box.zw),.001);let t=clamp(dot(v.local-item.box.zw*.5,axis)/len+.5,0.,1.);fill=mix(fill,item.fill2,t);}
  var alpha=fill.a*coverage;var rgb=fill.rgb*alpha;
- if(item.props.y>0.){let sc=1.-smoothstep(-aa,aa,abs(d)-item.props.y*.5);let sa=item.stroke.a*sc;rgb=item.stroke.rgb*sa+rgb*(1.-sa);alpha=sa+alpha*(1.-sa);}
+ if(item.props.y>0.){let sc=1.-smoothstep(-aa,aa,abs(d+select(0.,item.props.y*.5,item.uv.x==1.))-item.props.y*.5);let sa=item.stroke.a*sc;rgb=item.stroke.rgb*sa+rgb*(1.-sa);alpha=sa+alpha*(1.-sa);}
  return vec4(rgb,alpha)*item.props.w*clipAlpha;
 }`;
 // A frame's stroke sits above its children (Figma): an inner field whose fill covers the whole frame must not hide the border.
@@ -7684,6 +7688,7 @@ class Renderer {
             angle: linear ? (top.angle ?? 90) * Math.PI / 180 : -1000,
             radius: n.radius || 0,
             strokeW: n.strokeVisible === false ? 0 : (n.strokeWidth || 0),
+            strokeInside: insideStrokeOnShader(n) ? 1 : 0,
             ellipse: n.type === 'ellipse' ? 1 : 0,
             raster: ['text', 'path', 'line', 'image'].includes(n.type) || needsRasterFill(n) || needsRasterShape(n),
             drop: simpleDropOf(n),
@@ -7812,6 +7817,7 @@ class Renderer {
                 d[base + 20 + i] = 0;
                 d[base + 24 + i] = desc.color2[i];
             }
+            d[base + 20] = desc.strokeInside;
             d[base + 16] = desc.radius;
             d[base + 17] = desc.strokeW;
             d[base + 18] = desc.ellipse;
