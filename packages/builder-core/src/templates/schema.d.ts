@@ -140,6 +140,8 @@ export interface IconSlotDef {
     slot?: string;
     component: string;
     tokens: { colour: string; disabledColour: string; size: string };
+    /** A prop-only icon shown by a local interaction state instead of a canvas layer: it renders from its component prop where the toggle's press sits. */
+    swap?: { by: string; is: boolean };
 }
 
 /** A persistent state: the boolean prop that turns it on, and the base tokens it replaces. */
@@ -221,7 +223,7 @@ export interface TemplateSchema {
     /** A click in Play turns the state prop on (and off, unless `once`) and ends the state `clears` names; both are booleans a state with an attribute follows. */
     toggle?: { prop: string, clears?: string, once?: boolean };
     /** Pressable glyph slots: a click either flips a boolean state prop (`toggle`) or steps the control's number (`step`, 1 or -1). */
-    press?: ({ slot: string, toggle: string } | { slot: string, step: 1 | -1 } | { slot: string, dismiss: true })[];
+    press?: ({ slot: string, toggle: string } | { slot: string, toggleState: string } | { slot: string, step: 1 | -1 } | { slot: string, dismiss: true })[];
     sampleProps?: Record<string, string | number | boolean>;
     anatomy: AnatomySlot[];
     /** The managed icon slots; absent or empty for a template with none. */

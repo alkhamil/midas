@@ -4,9 +4,9 @@
 import { previewOf } from './preview.js';
 import { variableProps } from './registry.js';
 import { resolveProps } from './instance-props.js';
-import { NODE_PROPERTIES, LOADING_OPACITY, alignValuesOf, enumAttrOf, canvasPartsOf, fieldWritersOf, placeholderPartOf, stateAttributesOf, targetKindOf } from './display.js';
+import { NODE_PROPERTIES, LOADING_OPACITY, alignValuesOf, enumAttrOf, canvasPartsOf, fieldWritersOf, localAttrOf, maskUnlessOf, placeholderPartOf, stateAttributesOf, targetKindOf, toggleStatesOf } from './display.js';
 import { pathCommands, svgPathD } from '../geometry/shapes.js';
-import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf } from './anatomy.js';
+import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf, swapDefsOf } from './anatomy.js';
 import { cssVarOf, splitColor, tokenValueOf } from './tokens.js';
 import { glyphFillRuleAttr, glyphPathD } from './glyphs.js';
 import { commitNumber, resizeHeight, resizeLimits, startResizeDrag } from '../prototype/press.js';
@@ -146,6 +146,7 @@ function pressHandlerJsx(template, slot) {
     const entry = (template.press ?? []).find(p => p.slot === slot.id);
     if (!entry) return '';
     const disabled = disabledPropsOf(template);
+    if (entry.toggleState !== undefined) return ` onClick={() => { ${disabled ? `if (!(${disabled})) ` : ''}set${entry.toggleState[0].toUpperCase()}${entry.toggleState.slice(1)}(!${entry.toggleState}); }}`;
     if (entry.dismiss) return ` onClick={() => { ${disabled ? `if (!(${disabled})) { setDismissed(true); onClose?.(); }` : 'setDismissed(true); onClose?.();'} }}`;
     if (entry.resize) return ` onPointerDown={(e) => { ${disabled ? `if (${disabled}) return; ` : ''}const drag = startResizeDrag(e.currentTarget.closest("[data-field-box]"), e.clientY, (el) => getComputedStyle(el)); if (!drag) return; e.preventDefault(); const move = (m) => drag.move(m.clientY); const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); }; window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); }}`;
     return entry.toggle !== undefined ? ` onClick={() => { ${disabled ? `if (!(${disabled})) ` : ''}${toggleCallback(entry.toggle)}?.(!${entry.toggle}); }}` : ` onClick={() => { ${disabled ? `if (!(${disabled})) ` : ''}onStep?.(${entry.step}); }}`;
@@ -179,13 +180,16 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     }
     // A pressable glyph reports its press: a toggle the next value of its prop, a step its direction.
     if (controlOf(template)?.number) params.push('onCommit');
-    for (const entry of (template.press ?? []).filter(p => !p.resize)) { const name = entry.toggle !== undefined ? toggleCallback(entry.toggle) : entry.dismiss ? 'onClose' : 'onStep'; if (!params.includes(name)) params.push(name); }
+    for (const entry of (template.press ?? []).filter(p => !p.resize && p.toggleState === undefined)) { const name = entry.toggle !== undefined ? toggleCallback(entry.toggle) : entry.dismiss ? 'onClose' : 'onStep'; if (!params.includes(name)) params.push(name); }
     // A derived boolean (the value has reached a limit) is read from the others in the component, never passed in.
     // A `when` rule holds as its condition does; a limit rule reads its value against the limit.
     const derivedLines = Object.entries(template.props).filter(([, def]) => def.derived !== undefined).map(([prop, { derived }]) => derived.when !== undefined ? `  const ${prop} = ${shownJsx(derived.when)};` : `  const ${prop} = ${derived.limit} != null && Number(${derived.value}) ${derived.cmp === 'gte' ? '>=' : '<='} ${derived.limit} && String(${derived.value} ?? "") !== "";`);
     // A control that is a textarea for one kind and an input for the others is one element chosen by the props.
     // A dismiss press keeps the element in local state: it is drawn until the click, then not at all (the export has no exit motion).
     const dismissLines = (template.press ?? []).some(p => p.dismiss) ? ['  const [dismissed, setDismissed] = useState(false);', '  if (dismissed) return null;'] : [];
+    // A toggleState press keeps its interaction state local too: false until the click, flipped by it, with no prop and no callback.
+    const toggleStates = toggleStatesOf(template);
+    const localLines = toggleStates.map(s => `  const [${s}, set${s[0].toUpperCase()}${s.slice(1)}] = useState(false);`);
     const controlLines = controlOf(template)?.multiline?.when ? [`  const Control = ${shownJsx(controlOf(template).multiline.when)} ? "textarea" : "input";`] : [];
     const slotted = (template.slots ?? []).length > 0;
     // The props that write a gap or a width reach the stylesheet as custom properties on the root (a width of none is not set); a layout is a data attribute.
@@ -267,7 +271,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
                     ...canvasPartsOf(template).filter(part => part.replaces === slot.id).map(part => `${part.shownWhen.prop} !== true`),
                     ...canvasPartsOf(template).filter(part => part.side).flatMap(part => Object.entries(template.props[part.side].slots ?? {}).filter(([, mapped]) => [mapped].flat().includes(slot.id)).map(([value]) => `!(${part.shownWhen.prop} === true && ${part.side} === "${value}")`)),
                 ];
-                out.push(`{${[...(typeof def.show === 'string' ? [def.show] : def.show === undefined ? [] : [shownJsx(def.show)]), ...(def.hideWhenEmpty !== undefined ? [`${def.hideWhenEmpty} !== ''`] : []), ...(cond ? [cond] : []), ...replacedBy].join(' && ')} && <span className="${template.id}-${slot.id}">{${def.component}}</span>}`);
+                out.push(`{${[...(typeof def.show === 'string' ? [def.show] : def.show === undefined ? [] : [shownJsx(def.show)]), ...(def.hideWhenEmpty !== undefined ? [`${def.hideWhenEmpty} !== ''`] : []), ...(cond ? [cond] : []), ...replacedBy, ...(def.swap ? [swapCondJsx(def.swap)] : [])].join(' && ')} && <span className="${template.id}-${slot.id}">{${def.component}}</span>}`);
             }
         }
         else problems.push({ slot: slot.id, reason: 'unsupported-slot' });
@@ -278,6 +282,12 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         const inner = [];
         for (const child of template.anatomy.filter(c => c.parent === slot.id)) emitSlot(child, inner);
         for (const part of parented(slot.id)) inner.push(framePartJsx(part));
+        // A swap icon with no canvas layer is drawn from its component prop, like a managed slot's icon, gated by its show and its swap state.
+        for (const def of swapDefsOf(template, slot.id)) {
+            if (def.slot === undefined || template.anatomy.some(s => s.id === def.slot && s.managed)) continue;
+            const conds = [...(typeof def.show === 'string' ? [def.show] : def.show === undefined ? [] : [shownJsx(def.show)]), swapCondJsx(def.swap)];
+            inner.push(`{${conds.join(' && ')} && <span className="${template.id}-${def.slot}">{${def.component}}</span>}`);
+        }
         const indented = inner.map(line => line.split('\n').map(l => '  ' + l).join('\n')).join('\n');
         const div = `<div className="${template.id}-${slot.id}"${pressHandlerJsx(template, slot)}>\n${indented}\n</div>`;
         out.push(slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${div}}` : div);
@@ -306,6 +316,8 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         ...dims.map(dim => `data-${dim}={${dim}}`),
         // A persistent state the stylesheet selects as an attribute (`[data-checked]`) is written from its prop.
         ...stateAttributesOf(template).map(({ attr, prop }) => `${attr}={${prop} || undefined}`),
+        // A local interaction state is the root's own: written from the local, absent while false, so the stylesheet can follow it.
+        ...toggleStatesOf(template).map(state => `${localAttrOf(state)}={${state} || undefined}`),
         // A toggle control says its state to assistive technology: true, false, or mixed while the state it clears holds.
         ...(template.toggle ? [`aria-checked={${template.toggle.clears ? `${template.toggle.clears} ? "mixed" : ` : ''}${template.toggle.prop} ? "true" : "false"}`] : []),
         ...fieldWritersOf(template).filter(w => w.field === 'layout').map(w => `data-${w.prop}={${w.prop}}`),
@@ -334,6 +346,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             `  const blocked = ${blockClickProps.join(' || ') || 'false'};`,
             ...derivedLines,
             ...controlLines,
+            ...localLines,
             ...counts,
             '  return (',
             `    <${tag}`,
@@ -350,12 +363,13 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         ].join('\n');
     }
     return [
-        ...((template.press ?? []).some(p => p.dismiss) ? ["import { useState } from 'react';", ''] : []),
+        ...((template.press ?? []).some(p => p.dismiss || p.toggleState) ? ["import { useState } from 'react';", ''] : []),
         `export function ${name}({ ${params.join(', ')} }) {`,
         `  const blocked = ${blockClickProps.join(' || ') || 'false'};`,
         ...derivedLines,
         ...controlLines,
         ...dismissLines,
+        ...localLines,
         '  return (',
         `    <${tag}`,
         ...attrs.map(attr => `      ${attr}`),
@@ -384,6 +398,15 @@ const cssDecls = style => Object.entries(style).map(([prop, value]) => '  ' + pr
  * @param {any} cond
  * @returns {string}
  */
+/**
+ * The JSX clause a swap def adds to its element's gate: the local state it swaps by, negated for the side shown while the state is off.
+ * @param {{ by: string | object, is?: unknown }} swap
+ */
+function swapCondJsx(swap) {
+    const shown = typeof swap.by === 'string' ? swap.by : shownJsx(swap.by);
+    return swap.is === false ? (typeof swap.by === 'string' ? `!${shown}` : `!(${shown})`) : shown;
+}
+
 function shownJsx(cond) {
     if (cond.all) return cond.all.map(c => `(${shownJsx(c)})`).join(' && ');
     if (cond.any) return cond.any.map(c => `(${shownJsx(c)})`).join(' || ');
@@ -524,6 +547,24 @@ function iconHoverRules(template) {
     const guard = template.focusTarget === 'wrapper' ? ':not(:has(:disabled))' : notDisabledOf(template);
     return iconDefsOf(template).filter(def => def.tokens?.hoverColour !== undefined && def.slot !== undefined)
         .map(def => `.${template.id}${guard} .${template.id}-${def.slot}:hover {\n  color: var(${cssVarOf(template.id, def.tokens.hoverColour)});\n}\n`);
+}
+
+/**
+ * A swap icon's visibility follows its local state: the side shown while the state holds hides until it does, the side shown
+ * while it is off hides while it does. Play and the export share them; the export's JSX gates the same way.
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ * @returns {string[]}
+ */
+function swapRules(template) {
+    return iconDefsOf(template).filter(def => def.swap && def.slot !== undefined).flatMap(def => {
+        const by = def.swap.by;
+        const attr = toggleStatesOf(template).includes(by) ? `data-${by}` : stateAttributesOf(template).find(a => a.prop === (typeof by === 'string' ? by : by.prop))?.attr;
+        if (!attr) return [];
+        const sel = `.${template.id}[${attr}] .${template.id}-${def.slot}`;
+        return def.swap.is === true
+            ? [`.${template.id}-${def.slot} {\n  display: none;\n}\n`, `${sel} {\n  display: initial;\n}\n`]
+            : [`${sel} {\n  display: none;\n}\n`];
+    });
 }
 
 /**
@@ -852,7 +893,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     }
     // A hiding state takes the root out of Play and the export while it holds (the canvas keeps the node).
     for (const [state, def] of Object.entries(template.persistentStates)) if (def.hide === true) blocks.push(`.${template.id}${template.statePseudo[state]} {\n  display: none;\n}\n`);
-    blocks.push(...iconHoverRules(template), ...blockedRules(template));
+    blocks.push(...iconHoverRules(template), ...blockedRules(template), ...swapRules(template));
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
     blocks.push(...pressRules(template), ...glyphHoverRules(template), ...fieldRules(template), ...multilineRules(template), ...revealRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));

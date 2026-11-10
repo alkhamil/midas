@@ -15,11 +15,11 @@ import { glyphFillRuleAttr, glyphPathD } from '../behavior-engine/glyphs.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { componentNameOf, generateComponent, SPIN_ANIMATION } from '../behavior-engine/codegen.js';
-import { controlOf, iconDefOn, placementsOfDef, primarySlotOf, slotDefsOf } from '../behavior-engine/anatomy.js';
+import { controlOf, iconDefOn, placementsOfDef, primarySlotOf, slotDefsOf, swapDefsOf } from '../behavior-engine/anatomy.js';
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { repeatCount } from '../behavior-engine/slot-rules.js';
-import { attrOfProp, multilineOf, pressAttrsOf, ariaCheckedOf, canvasPartsOf, conditionHolds, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
+import { attrOfProp, localAttrOf, maskUnlessOf, multilineOf, pressAttrsOf, ariaCheckedOf, canvasPartsOf, conditionHolds, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, shadowCss, svgNumber } from '../geometry/format.js';
@@ -332,7 +332,11 @@ function renderTemplate(n, template, parent, scope) {
                 // The last committed value, which a blur restores when the typed text is not a number (see blurNumber).
                 if (control.number) inputAttrs['data-committed'] = String(props[control.value] ?? '');
                 // A masked input is a password field until the state that unmasks it holds; it says which root attribute that is, so a click can retype it.
-                if (control.maskUnless && (control.maskWhen === undefined || conditionHolds(control.maskWhen, props))) Object.assign(inputAttrs, { type: props[control.maskUnless] === true ? 'text' : 'password', 'data-mask-unless': attrOfProp(template, control.maskUnless) });
+                // The unmasking state is a boolean prop or a local interaction state of the template.
+                const mask = control.maskUnless && (control.maskWhen === undefined || conditionHolds(control.maskWhen, props)) ? maskUnlessOf(template) : null;
+                if (mask) Object.assign(inputAttrs, mask.kind === 'local'
+                    ? { type: 'password', 'data-mask-unless': localAttrOf(mask.name) }
+                    : { type: props[mask.name] === true ? 'text' : 'password', 'data-mask-unless': attrOfProp(template, mask.name) });
                 if (multilineOf(template, props)) {
                     // A multiline control is a textarea that wraps in the width the box leaves and hugs its height (field-sizing); its text is its value, not an attribute.
                     const { value, ...rest } = inputAttrs;
@@ -385,6 +389,21 @@ function renderTemplate(n, template, parent, scope) {
             if (!el) continue;
             if (part.spin) el.style.animation = SPIN_ANIMATION;
             inner.push(el);
+        }
+        // A swap icon has no canvas layer: draw the component's own vectors in the slot colour (currentColor, like a bound nested icon).
+        for (const def of swapDefsOf(template, slot.id)) {
+            if (!iconDefOn(def, props)) continue;
+            // A def with a managed slot of its own is drawn by the managed branch, from its canvas layer: only the layerless swap icon is drawn here.
+            if (def.slot !== undefined && template.anatomy.some(s => s.id === def.slot && s.managed)) continue;
+            const comp = scope.byId.get(props[def.component]);
+            if (!comp) continue;
+            for (const vec of scope.childrenOf(comp.id).filter(c => VECTOR.includes(c.type))) {
+                const v = { ...vec, vars: { ...vec.vars, 'fills.0': vec.vars?.['fills.0'] ?? def.tokens.colour } };
+                const el = renderNode(v, group ?? n, scope, true);
+                if (!el) continue;
+                const { position, left, top, width, height, ...style } = el.style;
+                inner.push({ ...el, attrs: { ...el.attrs, class: `${template.id}-${def.slot}` }, style });
+            }
         }
         out.push({ tag: 'div', nodeId: group?.id, attrs: { class: `${template.id}-${slot.id}`, ...pressAttrsOf(template, slot.id) }, style: {}, children: inner });
     }

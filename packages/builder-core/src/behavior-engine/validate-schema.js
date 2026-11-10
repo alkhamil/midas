@@ -374,6 +374,18 @@ function iconProblems(schema, allTokens) {
         else if (isPlainObject(icon.show) && typeof icon.show.is !== 'boolean') out.push(`${tag} show "is" must be true or false`);
         if (!component || component.source !== 'literal' || component.type !== 'iconComponent') out.push(`${tag} component "${icon.component}" is not an icon prop`);
         if (icon.hideWhenEmpty !== undefined && (props[icon.hideWhenEmpty]?.source !== 'literal' || props[icon.hideWhenEmpty]?.type !== 'string')) out.push(`${tag} hideWhenEmpty "${icon.hideWhenEmpty}" is not a string prop`);
+        // A swap icon follows a local interaction state instead of a canvas layer: it renders from its component where the toggle's press sits,
+        // and its slot needs no managed anatomy slot (one with anatomy still gets its layer, hidden by the state).
+        if (icon.swap !== undefined) {
+            if (!isPlainObject(icon.swap) || typeof icon.swap.by !== 'string' || typeof icon.swap.is !== 'boolean') out.push(`${tag} swap must be { by, is } with a press toggleState and true or false`);
+            else {
+                const press = (Array.isArray(schema.press) ? schema.press : []).find(p => isPlainObject(p) && p.toggleState === icon.swap.by);
+                const holder = (Array.isArray(schema.anatomy) ? schema.anatomy : []).find(s => isPlainObject(s) && s.id === press?.slot);
+                if (!press) out.push(`${tag} swap by "${icon.swap.by}" names no press toggleState`);
+                else if (holder?.kind !== 'frame') out.push(`${tag} swap by "${icon.swap.by}" sits on "${press.slot}", which is not a frame slot to draw the icon in`);
+            }
+            if (icon.placement !== undefined) out.push(`${tag} swap names a placement: a swap icon is prop-only or layered, never placed`);
+        }
         if (icon.placement !== undefined) {
             const placement = props[icon.placement];
             if (!placement || placement.source !== 'literal' || placement.type !== 'enum') out.push(`${tag} placement "${icon.placement}" is not an enum prop`);
@@ -385,10 +397,10 @@ function iconProblems(schema, allTokens) {
                     }
                 }
             }
-            if (icon.slot !== undefined && !managed.includes(icon.slot)) out.push(`${tag} slot "${icon.slot}" is not a managed anatomy slot`);
+            if (icon.slot !== undefined && !managed.includes(icon.slot) && icon.swap === undefined) out.push(`${tag} slot "${icon.slot}" is not a managed anatomy slot`);
         } else {
             if (!isName(icon.slot)) out.push(`${tag} needs a slot or a placement`);
-            else if (!managed.includes(icon.slot)) out.push(`${tag} slot "${icon.slot}" is not a managed anatomy slot`);
+            else if (!managed.includes(icon.slot) && icon.swap === undefined) out.push(`${tag} slot "${icon.slot}" is not a managed anatomy slot`);
         }
         for (const role of ['colour', 'disabledColour', 'size']) {
             if (!allTokens.includes(icon.tokens?.[role])) out.push(`${tag} ${role} token "${icon.tokens?.[role]}" is not a token`);
@@ -587,7 +599,8 @@ function controlProblems(schema) {
         }
     }
     for (const [field, cond] of [['maskWhen', control.maskWhen], ['multiline when', control.multiline?.when]]) if (cond !== undefined) out.push(...conditionProblems(cond, props, `control ${field}`));
-    if (control.maskUnless !== undefined && !(props[control.maskUnless]?.source === 'literal' && props[control.maskUnless]?.type === 'boolean')) out.push(`control maskUnless "${control.maskUnless}" is not a boolean prop`);
+    const toggleStates = (Array.isArray(schema.press) ? schema.press : []).filter(p => isPlainObject(p) && p.toggleState).map(p => p.toggleState);
+    if (control.maskUnless !== undefined && !(props[control.maskUnless]?.source === 'literal' && props[control.maskUnless]?.type === 'boolean') && !toggleStates.includes(control.maskUnless)) out.push(`control maskUnless "${control.maskUnless}" is neither a boolean prop nor a press toggleState`);
     for (const flag of ['hideWhenEmpty', 'hidePlaceholderWhenFilled']) {
         if (control[flag] !== undefined && typeof control[flag] !== 'boolean') out.push(`control ${flag} must be a boolean`);
     }
@@ -604,8 +617,9 @@ function controlProblems(schema) {
 }
 
 /**
- * Problems in the press actions: each entry names a glyph slot of the template and one action, `toggle` (a boolean prop that a state with an attribute follows) or
- * `step` (1 or -1, which needs a control with `number` limits).
+ * Problems in the press actions: each entry names a glyph slot of the template and one action: `toggle` (a boolean prop that a state with an attribute follows),
+ * `toggleState` (a local interaction state the press flips on the root, with no prop), `step` (1 or -1, which needs a control with `number` limits) or
+ * `dismiss`.
  * @param {any} schema
  * @returns {string[]}
  */
@@ -622,8 +636,9 @@ function pressProblems(schema) {
         for (const field of ['hoverFill', 'activeFill']) if (entry[field] !== undefined && !tokens.includes(entry[field])) out.push(`press ${field} "${entry[field]}" on "${entry.slot}" is not a token`);
         if (entry.glyph !== undefined && !(Array.isArray(schema.anatomy) && schema.anatomy.some(s => isPlainObject(s) && s.id === entry.glyph && s.parent === entry.slot))) out.push(`press glyph "${entry.glyph}" is not a slot inside "${entry.slot}"`);
         if (entry.blockedBy !== undefined && !stateAttributesOf(schema).some(a => a.prop === entry.blockedBy)) out.push(`press blockedBy "${entry.blockedBy}" is not a state with an attribute`);
-        const actions = ['toggle', 'step', 'resize', 'dismiss'].filter(k => entry[k] !== undefined);
-        if (actions.length !== 1) { out.push(`press on "${entry.slot}" needs exactly one of toggle, step, resize or dismiss`); continue; }
+        const actions = ['toggle', 'toggleState', 'step', 'resize', 'dismiss'].filter(k => entry[k] !== undefined);
+        if (actions.length !== 1) { out.push(`press on "${entry.slot}" needs exactly one of toggle, toggleState, step, resize or dismiss`); continue; }
+        if (entry.toggleState !== undefined && !/^[A-Za-z][A-Za-z0-9]*$/.test(entry.toggleState)) out.push(`press toggleState "${entry.toggleState}" on "${entry.slot}" is not a name a local state can be written as`);
         if (entry.resize !== undefined && !(entry.resize === true && schema.control?.multiline)) out.push(`press resize on "${entry.slot}" needs a multiline control`);
         if (entry.toggle !== undefined && !(props[entry.toggle]?.source === 'literal' && props[entry.toggle]?.type === 'boolean' && attrs.some(a => a.prop === entry.toggle))) out.push(`press toggle "${entry.toggle}" on "${entry.slot}" is not a boolean prop that a state with an attribute follows`);
         if (entry.step !== undefined) {

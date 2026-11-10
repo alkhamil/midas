@@ -116,6 +116,22 @@ export function ariaCheckedOf(template, props) {
 /** The root attribute a state prop is written as (`data-password-visible`), or undefined when no state with an attribute follows it. */
 export const attrOfProp = (template, prop) => stateAttributesOf(template).find(a => a.prop === prop)?.attr;
 
+/** The root attribute a local interaction state is written as (`data-revealed`): the state's kebab name. */
+export const localAttrOf = name => `data-${kebabOf(name)}`;
+
+/** The local interaction states of a template, in press order: the toggleState names of its press entries. */
+export const toggleStatesOf = template => [...new Set((template.press ?? []).filter(p => p.toggleState).map(p => p.toggleState))];
+
+/**
+ * What unmasks a masked control: a boolean prop, or a local interaction state of the template.
+ * @returns {{ kind: 'prop', name: string } | { kind: 'local', name: string } | null}
+ */
+export const maskUnlessOf = template => {
+    const m = template.control?.maskUnless;
+    if (m === undefined) return null;
+    return toggleStatesOf(template).includes(m) ? { kind: 'local', name: m } : { kind: 'prop', name: m };
+};
+
 /**
  * What a pressable glyph says about its click, as data attributes (Play reads them, see press.js): a toggle names the root attribute it flips, a step its direction.
  * @param {any} template
@@ -127,6 +143,7 @@ export function pressAttrsOf(template, slot) {
     if (!entry) return {};
     if (entry.resize) return { 'data-press': 'resize' };
     if (entry.dismiss) return { 'data-press': 'dismiss' };
+    if (entry.toggleState !== undefined) return { 'data-press': 'toggle', 'data-press-attr': localAttrOf(entry.toggleState) };
     return entry.toggle !== undefined ? { 'data-press': 'toggle', 'data-press-attr': attrOfProp(template, entry.toggle) } : { 'data-press': 'step', 'data-press-step': String(entry.step) };
 }
 
@@ -186,7 +203,8 @@ export const targetKindOf = (template, key) => {
     const slot = Array.isArray(template.anatomy) ? template.anatomy.find(s => s.id === key) : undefined;
     const part = Array.isArray(template.parts) ? template.parts.find(p => p.id === key) : undefined;
     const kind = slot ?? part;
-    if (!kind) return null;
+    // A prop-only swap icon names no anatomy slot or part; its def still decides the kind.
+    if (!kind) return (template.icons ?? []).some(d => d && typeof d === 'object' && d.slot === key) ? 'icon' : null;
     if (part?.arc) return 'arc';
     return kind.kind === 'icon' ? 'icon' : kind.kind === 'frame' ? 'frame' : kind.kind === 'glyph' ? 'glyph' : 'text';
 };

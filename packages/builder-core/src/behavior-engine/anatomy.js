@@ -63,6 +63,11 @@ export function slotDefsOf(template, slot) {
         : def.placement !== undefined && Object.values(template.props[def.placement]?.slots ?? {}).flat().includes(slot));
 }
 
+/** Swap icons drawn inside a container: prop-only defs whose toggleState press sits on the container. */
+export function swapDefsOf(template, slotId) {
+    return iconDefsOf(template).filter(d => d.swap && (template.press ?? []).some(p => p.toggleState === d.swap.by && p.slot === slotId));
+}
+
 /** The placement values of one def that show a slot. */
 export function placementsOfDef(template, def, slot) {
     if (def.placement === undefined) return [];
@@ -238,6 +243,8 @@ export function planAnatomy(template, values, children, flip = false) {
     const wanted = [];
     const replaced = new Set(replacedSlotsOf(template, values));
     for (const def of iconDefsOf(template)) {
+        // A swap icon without a managed anatomy slot is prop-only: Play and the export draw it from its component, so the canvas holds no layer for it.
+        if (def.swap && def.slot && !template.anatomy.some(s => s.id === def.slot && s.managed)) continue;
         const slots = def.placement !== undefined
             ? (iconDefOn(def, values) ? slotsOfValue(template, def.placement, values[def.placement]).filter(s => def.slot === undefined || s === def.slot) : [])
             : (iconDefOn(def, values) && def.slot ? [def.slot] : []);
