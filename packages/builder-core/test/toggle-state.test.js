@@ -78,9 +78,9 @@ test('the export holds a local revealed state, toggles it on click, and swaps th
 test('the stylesheet hides the swap icon until the local state holds, and hides the plain one while it does', () => {
     const model = modelFor(TOGGLY);
     const css = generateComponent(model.template, model.binding, model.variables, 'Toggly', model.frame, id => model.created.filter(n => n.parentId === id)).files['Toggly.css'];
-    assert.match(css, /\.toggly-peek \{\s*display: none;\s*\}/);
-    assert.match(css, /\.toggly\[data-revealed\] \.toggly-peek \{\s*display: initial;\s*\}/);
-    assert.match(css, /\.toggly\[data-revealed\] \.toggly-check \{\s*display: none;\s*\}/);
+    assert.match(css, /\.toggly:not\(\[data-revealed\]\) \.toggly-peek \{\s*display: none !important;\s*\}/);
+    assert.match(css, /\.toggly\[data-revealed\] \.toggly-check \{\s*display: none !important;\s*\}/);
+    assert.ok(!/display: initial/.test(css), 'the shown side is never reset');
 });
 
 test('Play: a click flips the local attribute and retypes a masked input; the canvas holds no swap layer', () => {
@@ -110,6 +110,7 @@ test('Play draws a swap icon from its component in the slot colour, hidden until
     const find = (el, cls) => el.attrs?.class === cls ? el : (el.children || []).map(c => find(c, cls)).find(Boolean);
     const peek = find(root, 'toggly-peek');
     assert.ok(peek, 'the swap icon is drawn without a canvas layer');
-    assert.match(peek.html, /fill="currentColor"/, 'in the slot colour');
-    assert.match(peek.html, /viewBox="0 0 16 16"/, 'at its own box, not the 24 viewBox');
+    assert.equal(peek.style.position, 'relative', 'a positioned wrapper of the slot class');
+    assert.match(peek.children[0].html, /fill="currentColor"/, 'in the slot colour');
+    assert.match(peek.children[0].html, /viewBox="0 0 16 16"/, 'at its own box, not the 24 viewBox');
 });

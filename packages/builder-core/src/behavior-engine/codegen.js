@@ -558,12 +558,11 @@ function iconHoverRules(template) {
 function swapRules(template) {
     return iconDefsOf(template).filter(def => def.swap && def.slot !== undefined).flatMap(def => {
         const by = def.swap.by;
-        const attr = toggleStatesOf(template).includes(by) ? `data-${by}` : stateAttributesOf(template).find(a => a.prop === (typeof by === 'string' ? by : by.prop))?.attr;
+        const attr = toggleStatesOf(template).includes(by) ? localAttrOf(by) : stateAttributesOf(template).find(a => a.prop === (typeof by === 'string' ? by : by.prop))?.attr;
         if (!attr) return [];
-        const sel = `.${template.id}[${attr}] .${template.id}-${def.slot}`;
-        return def.swap.is === true
-            ? [`.${template.id}-${def.slot} {\n  display: none;\n}\n`, `${sel} {\n  display: initial;\n}\n`]
-            : [`${sel} {\n  display: none;\n}\n`];
+        // Only the hidden side is written; the shown side keeps the display its element has. !important, because Play draws a nested icon with an inline display.
+        const hidden = def.swap.is === true ? `.${template.id}:not([${attr}]) .${template.id}-${def.slot}` : `.${template.id}[${attr}] .${template.id}-${def.slot}`;
+        return [`${hidden} {\n  display: none !important;\n}\n`];
     });
 }
 

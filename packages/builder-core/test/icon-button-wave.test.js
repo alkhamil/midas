@@ -108,7 +108,7 @@ test('Button and Input output match their pinned hashes (the Input text part is 
     const im = inputModel({ ids: { variant: 'c-input-variant', status: 'c-input-status', size: 'c-input-size', semantic: 'c-input-semantic' }, prefix: 'in-' });
     const input = generateComponent(BUILT_IN_TEMPLATES.get('input'), im.binding, { collections: im.collections, items: im.items }, 'Input', { id: 'm', name: 'Input', type: 'frame', layout: 'horizontal' }, () => []).files;
     assert.equal(hash(input['Input.jsx']), 'b7ac69e36e2a7eeb', 'the password eye swaps by a local revealed state (the export diff of that change only)');
-    assert.equal(hash(input['Input.css']), '0abd0446324a4f72', 'a master with no layers lays the managed text slots out as an instance draws them (the value fills); a generated master gives the same sheet as before, plus the swap rules');
+    assert.equal(hash(input['Input.css']), '4f62bd4061ece8a3', 'a master with no layers lays the managed text slots out as an instance draws them (the value fills); a generated master gives the same sheet as before, plus the swap rules (hide-only, !important)');
 });
 
 test('two wave templates on one page do not fight over the keyframes: one shared midas-wave in the colour the ring sets on its own element', () => {

@@ -397,13 +397,9 @@ function renderTemplate(n, template, parent, scope) {
             if (def.slot !== undefined && template.anatomy.some(s => s.id === def.slot && s.managed)) continue;
             const comp = scope.byId.get(props[def.component]);
             if (!comp) continue;
-            for (const vec of scope.childrenOf(comp.id).filter(c => VECTOR.includes(c.type))) {
-                const v = { ...vec, vars: { ...vec.vars, 'fills.0': vec.vars?.['fills.0'] ?? def.tokens.colour } };
-                const el = renderNode(v, group ?? n, scope, true);
-                if (!el) continue;
-                const { position, left, top, width, height, ...style } = el.style;
-                inner.push({ ...el, attrs: { ...el.attrs, class: `${template.id}-${def.slot}` }, style });
-            }
+            // One positioned wrapper of the slot's class (its size and colour are the class's), holding the component's vectors at their own offsets, like the nested icon of a managed slot.
+            const vectors = scope.childrenOf(comp.id).filter(c => VECTOR.includes(c.type)).map(vec => renderNode({ ...vec, vars: { ...vec.vars, 'fills.0': vec.vars?.['fills.0'] ?? def.tokens.colour } }, comp, scope, true)).filter(Boolean);
+            inner.push({ tag: 'div', attrs: { class: `${template.id}-${def.slot}` }, style: { position: 'relative', flexShrink: '0', overflowX: 'clip', overflowY: 'clip', ...(isAutoLayout(comp) ? flexOf(comp, vectors.length) : {}) }, children: vectors });
         }
         out.push({ tag: 'div', nodeId: group?.id, attrs: { class: `${template.id}-${slot.id}`, ...pressAttrsOf(template, slot.id) }, style: {}, children: inner });
     }
