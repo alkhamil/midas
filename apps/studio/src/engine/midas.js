@@ -12851,11 +12851,11 @@ function pathCurveBounds(points, closed) {
 function pathContours(n) {
     return [{ points: n.points || [], closed: n.closed }, ...(n.contours || []).map(c => ({ points: c.points || [], closed: c.closed !== false }))];
 }
-function normalizePath(n) {
-    if (!n?.points?.length)
-        return;
-    // Every sub-path of the vector counts: the box wraps all of them.
-    const subs = pathContours(n);
+// The tight box of vector geometry in its own path space, with the points moved into it: the pure core
+// of normalizePath, so creation and edit paths share one tested computation. sx/sy map path units onto the
+// node's current box (1 for a fresh path). Pure in, new arrays out; the node write stays with the caller.
+function normalizeVectorGeometry(shape, sx, sy) {
+    const subs = [{ points: shape.points || [], closed: shape.closed }, ...((shape.contours || []).map(c => ({ points: c.points || [], closed: c.closed !== false })))];
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const c of subs) {
         if (!c.points?.length)
@@ -12866,19 +12866,31 @@ function normalizePath(n) {
         maxX = Math.max(maxX, b.maxX);
         maxY = Math.max(maxY, b.maxY);
     }
-    const sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1), matrix = localMatrix(n), tl = point(matrix, minX * sx, minY * sy);
-    for (const c of subs)
-        for (const p of c.points || []) {
-            p.x = (p.x - minX) * sx;
-            p.y = (p.y - minY) * sy;
-            for (const key of ['in', 'out'])
-                if (p[key]) {
-                    p[key].x = (p[key].x - minX) * sx;
-                    p[key].y = (p[key].y - minY) * sy;
-                }
-        }
-    n.w = Math.max(.1, (maxX - minX) * sx);
-    n.h = Math.max(.1, (maxY - minY) * sy);
+    const shift = pts => (pts || []).map(p => {
+        const q = { ...p, x: (p.x - minX) * sx, y: (p.y - minY) * sy };
+        for (const key of ['in', 'out'])
+            if (p[key]) q[key] = { ...p[key], x: (p[key].x - minX) * sx, y: (p[key].y - minY) * sy };
+        return q;
+    });
+    return {
+        points: shift(shape.points),
+        ...(shape.contours ? { contours: shape.contours.map(c => ({ ...c, points: shift(c.points) })) } : {}),
+        w: Math.max(.1, (maxX - minX) * sx),
+        h: Math.max(.1, (maxY - minY) * sy),
+        dx: minX * sx,
+        dy: minY * sy,
+    };
+}
+function normalizePath(n) {
+    if (!n?.points?.length)
+        return;
+    // Every sub-path of the vector counts: the box wraps all of them (see normalizeVectorGeometry).
+    const sx = n.w / (n.pathW || n.w || 1), sy = n.h / (n.pathH || n.h || 1), matrix = localMatrix(n);
+    const g = normalizeVectorGeometry(n, sx, sy), tl = point(matrix, g.dx, g.dy);
+    n.points = g.points;
+    if (g.contours) n.contours = g.contours;
+    n.w = g.w;
+    n.h = g.h;
     n.pathW = n.w;
     n.pathH = n.h;
     Object.assign(n, xyForTopLeft(n, tl));
