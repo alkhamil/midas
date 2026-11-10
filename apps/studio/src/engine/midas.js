@@ -21927,7 +21927,13 @@ overlay.addEventListener('dblclick', e => {
             startText(hit, true);
     }
     else if (hit?.type === 'path') {
+        // Drilling onto a vector only selects it (its bounding box); a double-click on the already selected vector enters path edit.
+        const wasSelected = state.selection.size === 1 && state.selection.has(hit.id);
         select([hit.id]);
+        if (!wasSelected) {
+            invalidate();
+            return;
+        }
         state.pathEdit = hit.id;
         state.activePathPoint = null;
         invalidate();
