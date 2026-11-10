@@ -11357,7 +11357,39 @@ function selectionGeometry() {
         return null;
     return { matrix: [1, 0, 0, 1, b.x, b.y], w: b.w, h: b.h, node: null };
 }
-function handlesFor(g) { if (g.node?.type === 'line') { /* a line is edited by its two end points, like Figma */ return [['p1', 0], ['p2', g.w]].map(([name, x]) => { const p = point(g.matrix, x, g.h / 2); return { name, ...worldToScreen(p.x, p.y) }; }); } const positions = [['nw', 0, 0], ['ne', 1, 0], ['se', 1, 1], ['sw', 0, 1]]; const list = positions.map(([name, x, y]) => { const p = point(g.matrix, g.w * x, g.h * y); return { name, ...worldToScreen(p.x, p.y) }; }); const p = point(g.matrix, g.w / 2, -25 / state.camera.zoom); list.push({ name: 'rotate', ...worldToScreen(p.x, p.y) }); return list; }
+// Rotation without a top handle: hovering just outside a corner offers rotate for that corner. The
+// resize hit area (7px around every handle, as pointerDown and pointerMove test it) always wins: the
+// zone is a small wedge past it (7 to 16px from the corner, within ~37 degrees of the outward
+// diagonal) on the outer side only, so the two never overlap. Pure in screen px.
+function cornerRotateAt(corners, center, p) {
+    const INNER = 7, OUTER = 16, COS = 0.8;
+    let best = null;
+    for (const c of corners) {
+        const dx = p.x - c.x, dy = p.y - c.y, dist = Math.hypot(dx, dy);
+        if (dist <= INNER || dist > OUTER) continue;
+        const ox = c.x - center.x, oy = c.y - center.y, len = Math.hypot(ox, oy) || 1;
+        if ((dx * ox + dy * oy) / (dist * len) <= COS) continue;
+        if (!best || dist < best.dist) best = { hit: { name: 'rotate', corner: c.name }, dist };
+    }
+    return best ? best.hit : null;
+}
+// The corners and center of a selection box in screen px, for the corner rotate zone.
+function screenCornersOf(geo) {
+    const at = (x, y) => { const wpt = point(geo.matrix, x, y); return worldToScreen(wpt.x, wpt.y); };
+    const c = at(geo.w / 2, geo.h / 2);
+    return { corners: [{ name: 'nw', ...at(0, 0) }, { name: 'ne', ...at(geo.w, 0) }, { name: 'se', ...at(geo.w, geo.h) }, { name: 'sw', ...at(0, geo.h) }], center: { x: c.x, y: c.y } };
+}
+// The rotate cursor per corner: a curved double arrow turned to the corner, never the crosshair.
+function rotateCursorFor(corner) {
+    const deg = { ne: 0, se: 90, sw: 180, nw: 270 }[corner] ?? 0;
+    const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><g transform='rotate(" + deg + " 12 12)'><path d='M15.2 5.2A7.5 7.5 0 1 1 8.8 5.2' fill='none' stroke='black' stroke-width='2'/><path d='M12.2 5.8L15.2 5.2L13.7 2.5' fill='none' stroke='black' stroke-width='2'/><path d='M7.3 7.9L8.8 5.2L5.8 4.6' fill='none' stroke='black' stroke-width='2'/></g></svg>";
+    return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '") 12 12, auto';
+}
+// The rotation a drag gives: the pointer angle around the box center, snapped to 15 degrees with shift — the existing behavior, unchanged.
+function snapRotateDelta(delta, shift) {
+    return shift ? Math.round(delta / 15) * 15 : delta;
+}
+function handlesFor(g) { if (g.node?.type === 'line') { /* a line is edited by its two end points, like Figma */ return [['p1', 0], ['p2', g.w]].map(([name, x]) => { const p = point(g.matrix, x, g.h / 2); return { name, ...worldToScreen(p.x, p.y) }; }); } const positions = [['nw', 0, 0], ['ne', 1, 0], ['se', 1, 1], ['sw', 0, 1]]; const list = positions.map(([name, x, y]) => { const p = point(g.matrix, g.w * x, g.h * y); return { name, ...worldToScreen(p.x, p.y) }; }); return list; }
 // Within 4 px of a side of the selection box: that side's resize handle. Corners are handlesFor's; lines have none.
 function edgeHandleAt(g, p) {
     if (g.node?.type === 'line')
@@ -11653,25 +11685,9 @@ function drawOverlay() {
             const handles = handlesFor(g);
             c.strokeStyle = accent;
             c.fillStyle = '#ffffff';
-            const rot = handles.find(h => h.name === 'rotate');
-            if (rot) {
-                const top = point(g.matrix, g.w / 2, 0), t = worldToScreen(top.x, top.y);
-                c.beginPath();
-                c.moveTo(t.x, t.y);
-                c.lineTo(rot.x, rot.y);
-                c.stroke();
-            }
             for (const h of handles) {
-                if (h.name === 'rotate') {
-                    c.beginPath();
-                    c.arc(h.x, h.y, 3, 0, Math.PI * 2);
-                    c.fill();
-                    c.stroke();
-                }
-                else {
-                    c.fillRect(h.x - 3, h.y - 3, 6, 6);
-                    c.strokeRect(h.x - 3, h.y - 3, 6, 6);
-                }
+                c.fillRect(h.x - 3, h.y - 3, 6, 6);
+                c.strokeRect(h.x - 3, h.y - 3, 6, 6);
             }
         }
         if (arcNode && state.tool === 'select' && arcBigEnough(arcNode) && (state.arcShow || state.gesture?.kind === 'arc')) {
@@ -12099,7 +12115,9 @@ function pointerDown(e) {
     }
     const geo = selectionGeometry();
     if (geo) {
-        const handle = handlesFor(geo).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 7) || edgeHandleAt(geo, p);
+        // Resize wins its own area: the corner rotate zone starts past it (see cornerRotateAt).
+        const sc = geo.node?.type === 'line' ? null : screenCornersOf(geo);
+        const handle = handlesFor(geo).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 7) || edgeHandleAt(geo, p) || (sc && cornerRotateAt(sc.corners, sc.center, p));
         if (handle && (handle.name === 'p1' || handle.name === 'p2')) {
             const n = geo.node, other = point(doc.world(n.id).matrix, handle.name === 'p1' ? n.w : 0, n.h / 2), inv = n.parentId ? doc.world(n.parentId).inverse : identity();
             history.begin('Move line point');
@@ -12302,7 +12320,9 @@ function pointerMove(e) {
             const hit = (state.tool === 'select' ? frameLabelHit(p) : null) || selectTargetAt(w, { deep: e.ctrlKey || e.metaKey });
             const hover = hit?.id || null;
             const geo = selectionGeometry(), h = geo && (handlesFor(geo).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 7) || edgeHandleAt(geo, p));
-            overlay.style.cursor = h ? h.name === 'rotate' ? 'crosshair' : ({ nw: 'nwse-resize', ne: 'nesw-resize', se: 'nwse-resize', sw: 'nesw-resize', n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize' }[h.name] || 'move') : state.pathEdit ? 'crosshair' : state.space ? 'grab' : 'default';
+            const scm = !h && geo && geo.node?.type !== 'line' ? screenCornersOf(geo) : null;
+            const rz = scm ? cornerRotateAt(scm.corners, scm.center, p) : null;
+            overlay.style.cursor = h ? ({ nw: 'nwse-resize', ne: 'nesw-resize', se: 'nwse-resize', sw: 'nesw-resize', n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize' }[h.name] || 'move') : rz ? rotateCursorFor(rz.corner) : state.pathEdit ? 'crosshair' : state.space ? 'grab' : 'default';
             if (onBadge)
                 overlay.style.cursor = 'pointer';
             if (hover !== state.hover) {
@@ -12682,9 +12702,7 @@ function pointerMove(e) {
     }
     if (g.kind === 'rotate') {
         const a = Math.atan2(w.y - g.center.y, w.x - g.center.x), start = Math.atan2(g.start.y - g.center.y, g.start.x - g.center.x);
-        let delta = (a - start) * 180 / Math.PI;
-        if (e.shiftKey)
-            delta = Math.round(delta / 15) * 15;
+        let delta = snapRotateDelta((a - start) * 180 / Math.PI, e.shiftKey);
         for (const id of g.roots) {
             const n = doc.get(id), orig = g.originals.get(id);
             n.rotation = orig.rotation + delta;
