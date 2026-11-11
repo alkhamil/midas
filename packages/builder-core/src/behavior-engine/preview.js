@@ -3,6 +3,9 @@
 // token that does not resolve is reported by the resolver and left out: it is never replaced by the base token.
 import { resolveTokens, cssVarOf } from './tokens.js';
 
+/** The custom properties a typography token is written as, one per member (see typographyCss). */
+const TYPOGRAPHY_CSS_MEMBERS = ['font-family', 'font-size', 'font-weight', 'line-height', 'letter-spacing'];
+
 /**
  * The state an instance is in: every persistent state whose prop is true (their tokens merged), else the preview-only state asked
  * for, else the default. Unknown preview-only states are refused.
@@ -50,6 +53,14 @@ export function previewOf(template, binding, modes, variables, props, preview = 
     const { state, overrides } = activeStateOf(template, props, preview);
     for (const [base, stateToken] of Object.entries(overrides)) {
         const target = cssVarOf(template.id, base), source = cssVarOf(template.id, stateToken);
+        // A typography token is one custom property per member (font-size, ...): the state swaps each.
+        if (template.tokenKinds[base] === 'typography') {
+            for (const member of TYPOGRAPHY_CSS_MEMBERS) {
+                if (`${source}-${member}` in vars) vars[`${target}-${member}`] = vars[`${source}-${member}`];
+                else delete vars[`${target}-${member}`];
+            }
+            continue;
+        }
         if (source in vars) vars[target] = vars[source];
         else delete vars[target];
     }

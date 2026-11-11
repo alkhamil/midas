@@ -158,5 +158,18 @@
   "avatar-icon-size-sm": { "base": "Semantic/avatarIconSizeSM", "derive": { "from": "Primitives/size/14" } },
   "avatar-icon-size": { "base": "Semantic/avatarIconSizeMD", "derive": { "from": "Primitives/size/18" } },
   "avatar-icon-size-lg": { "base": "Semantic/avatarIconSizeLG", "derive": { "from": "Primitives/size/24" } },
-  "avatar-icon-size-xl": { "base": "Semantic/avatarIconSizeXL", "derive": { "from": "Primitives/size/24" } }
+  "avatar-icon-size-xl": { "base": "Semantic/avatarIconSizeXL", "derive": { "from": "Primitives/size/24" } },
+  "fg-secondary": { "base": "Semantic/colorTextSecondary" },
+  "success": { "base": "Semantic/colorSuccess" },
+  "text-xs-strong": { "base": "Semantic/textXsStrong" },
+  "text-sm-strong": { "base": "Semantic/textSmStrong" },
+  "text-base-strong": { "base": "Semantic/textBaseStrong" },
+  "text-xl-strong": { "base": "Semantic/textXlStrong" },
+  "padding-none": { "base": "Semantic/paddingNone", "derive": { "from": "Primitives/padding/0" } },
+  "radius-none": { "base": "Semantic/borderRadiusNone", "derive": { "from": "Primitives/radius/0" } },
+  "border-width-none": { "base": "Semantic/lineWidthNone", "derive": { "from": "Primitives/stroke/0" } },
+  "text-code-padding-y": { "base": "Semantic/textCodePaddingY", "derive": { "from": "Primitives/padding/2" } },
+  "text-code-padding": { "base": "Semantic/textCodePaddingX", "derive": { "from": "Primitives/padding/4" } },
+  "code-bg": { "base": "Semantic/colorCodeBg", "derive": { "from": "Primitives/neutral/500", "opacity": 10 } },
+  "mark-bg": { "base": "Semantic/colorMarkBg", "derive": { "from": "Primitives/warning/200" } }
 }

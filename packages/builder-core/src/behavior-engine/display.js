@@ -78,7 +78,14 @@ export const LOADING_OPACITY = 0.65;
 
 export const NODE_FIELDS = {
     frame: { visible: { kind: 'boolean' }, primaryAlign: { kind: 'boolean', values: { true: 'end', false: 'start' } }, layout: { kind: 'enum', options: ['horizontal', 'vertical'] }, gap: { kind: 'number' }, width: { kind: 'number' }, opacity: { kind: 'boolean', values: { true: LOADING_OPACITY } }, imageFill: { kind: 'image' } },
-    text: { text: { kind: 'string' }, visible: { kind: 'boolean' }, width: { kind: 'number' }, heightSizing: { kind: 'enum', options: ['hug', 'fill'] } },
+    // fontStyle: a boolean writes italic or normal. textDecoration: flags, each boolean prop that names one adds it to the one value (underline and line-through compose
+    // as `underline line-through`, none is `none`). maxLines: a number clamps the text to that many lines (no number is no clamp).
+    text: {
+        text: { kind: 'string' }, visible: { kind: 'boolean' }, width: { kind: 'number' }, heightSizing: { kind: 'enum', options: ['hug', 'fill'] },
+        fontStyle: { kind: 'boolean', values: { true: 'italic', false: 'normal' } },
+        textDecoration: { kind: 'boolean', flags: ['underline', 'line-through'] },
+        maxLines: { kind: 'number' },
+    },
     arc: { visible: { kind: 'boolean' } },
 };
 
@@ -366,7 +373,26 @@ export const VARIABLE_KEYS = {
 function nodeWritersOf(template) {
     return Object.entries(template.props)
         .filter(([, def]) => def.source === 'literal')
-        .flatMap(([prop, def]) => [/** @type {any} */ (def).node, .../** @type {any} */ (def).nodes ?? []].filter(Boolean).map(n => ({ prop, key: n.key, field: n.field, values: n.values })));
+        .flatMap(([prop, def]) => [/** @type {any} */ (def).node, .../** @type {any} */ (def).nodes ?? []].filter(Boolean).map(n => ({ prop, key: n.key, field: n.field, values: n.values, flag: n.flag })));
+}
+
+/**
+ * The text decoration of the lines that are on, one value for the node, Play and the export: `underline`, `line-through`, both as `underline line-through`, or `none`.
+ * @param {string[]} lines the decoration lines that are on (any order)
+ * @returns {string}
+ */
+export function textDecorationOf(lines) {
+    return NODE_FIELDS.text.textDecoration.flags.filter(f => lines.includes(f)).join(' ') || 'none';
+}
+
+/**
+ * Which decoration lines a node's `textDecoration` value draws: the canvas draws the underline and the strike from this, not from an exact match.
+ * @param {unknown} value
+ * @returns {{ underline: boolean, strike: boolean }}
+ */
+export function decorationLinesOf(value) {
+    const words = String(value ?? 'none').split(/\s+/);
+    return { underline: words.includes('underline'), strike: words.includes('line-through') };
 }
 
 /**
@@ -395,9 +421,20 @@ export function multilineOf(template, props) {
 export function literalFields(template, props) {
     /** @type {{ key: string, field: string, value: unknown }[]} */
     const out = [];
-    for (const { prop, key, field, values } of nodeWritersOf(template)) {
+    /** @type {Map<string, { entry: { key: string, field: string, value: unknown }, on: Set<string> }>} the one entry of a field several flag props write */
+    const flagged = new Map();
+    for (const { prop, key, field, values, flag } of nodeWritersOf(template)) {
         const spec = NODE_FIELDS[targetKindOf(template, key)][field];
         const raw = props[prop];
+        // Flag props compose into one value: the flags that are on, in the field's order (`underline line-through`), else `none`.
+        if (flag !== undefined) {
+            const id = `${key}\0${field}`;
+            if (!flagged.has(id)) { const entry = { key, field, value: 'none' }; flagged.set(id, { entry, on: new Set() }); out.push(entry); }
+            const held = flagged.get(id);
+            if (raw === true) held.on.add(flag);
+            held.entry.value = textDecorationOf([...held.on]);
+            continue;
+        }
         // An enum prop may write a different value to each of its options (the kind lays the box out as a row or a column).
         if (values) out.push({ key, field, value: values[String(raw)] });
         else if (spec.kind === 'boolean') out.push({ key, field, value: spec.values[String(raw === true)] });
@@ -419,7 +456,7 @@ export function literalFieldNames(template) {
 }
 
 /** The node fields a prop's field writes: `width` is a fixed width (or hug), so it owns the width, its sizing and, for a text, whether it measures itself. */
-const OWNED_NODE_FIELDS = { width: ['w', 'layoutSizingH', 'autoW'], heightSizing: ['layoutSizingV'], imageFill: ['fills'] };
+const OWNED_NODE_FIELDS = { width: ['w', 'layoutSizingH', 'autoW'], heightSizing: ['layoutSizingV'], imageFill: ['fills'], maxLines: ['maxLines', 'textTruncate'] };
 
 /**
  * The fills of a node that holds a picture: its colour fills stay (the first is hidden while the picture shows, so a transparent picture shows no colour under it) and the
@@ -450,6 +487,8 @@ export function nodeFieldPatch(field, value, type, node) {
     }
     if (field === 'heightSizing') return { layoutSizingV: value };
     if (field === 'gap') return { gap: value == null ? 0 : value };
+    // A number of lines clamps the text to them; none removes the clamp (the canvas keeps its own line count for when it is turned on again).
+    if (field === 'maxLines') return value == null ? { textTruncate: false } : { textTruncate: true, maxLines: value };
     if (field === 'opacity') return { opacity: value ?? 1 };
     return { [field]: value };
 }
@@ -468,6 +507,9 @@ export function fieldStyleOf(template, props, assets = {}) {
         const { prop, field } = writer;
         if (field === 'layout') attrs[`data-${prop}`] = String(props[prop]);
         else if (field === 'primaryAlign') attrs[`data-${prop}-align`] = alignValueOf(writer, props[prop]);
+        // A text style the stylesheet draws from a data attribute on the root (italic, an underline or a strike line), and a line clamp from its count.
+        else if (field === 'fontStyle' || writer.flag !== undefined) { if (props[prop] === true) attrs[`data-${kebabOf(prop)}`] = ''; }
+        else if (field === 'maxLines') { if (props[prop] != null) { attrs[`data-${kebabOf(prop)}`] = ''; vars[`--${template.id}-${kebabOf(prop)}`] = String(props[prop]); } }
         else if ((field === 'gap' || field === 'width') && props[prop] != null) vars[`--${template.id}-${prop}`] = `${props[prop]}px`;
         // A picture is a data attribute that clears the colour under it, and the asset's source as the root's own background image: not a custom property, which Chrome drops
         // above about 2 MB (a picture is a data URL of any size here). The export carries a short URL as a custom property the stylesheet reads.
@@ -482,7 +524,7 @@ export function fieldStyleOf(template, props, assets = {}) {
  * @param {import('../templates/schema.js').TemplateSchema} template
  */
 export function fieldWritersOf(template) {
-    return nodeWritersOf(template).filter(({ field }) => ['layout', 'gap', 'width', 'primaryAlign', 'imageFill'].includes(field));
+    return nodeWritersOf(template).filter(({ field }) => ['layout', 'gap', 'width', 'primaryAlign', 'imageFill', 'fontStyle', 'textDecoration', 'maxLines'].includes(field));
 }
 
 /**

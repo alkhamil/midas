@@ -822,6 +822,9 @@ function nodeProblems(schema) {
                 }
                 continue;
             }
+            // A field made of flags (the text decoration) takes boolean props that each name the flag they add; no other field takes a flag.
+            if (field.flags !== undefined && !field.flags.includes(node.flag)) { out.push(`prop "${name}" writes "${node.field}", so its node must name a flag of ${field.flags.join(' or ')}`); continue; }
+            if (field.flags === undefined && node.flag !== undefined) { out.push(`prop "${name}" names a flag, which "${node.field}" does not take`); continue; }
             if (def.type !== field.kind) out.push(`prop "${name}" is ${def.type} but writes "${node.field}", which takes ${field.kind}`);
             else if (field.kind === 'enum') for (const option of def.options ?? []) if (!field.options.includes(option)) out.push(`prop "${name}" offers "${option}", which "${node.field}" does not take`);
         }

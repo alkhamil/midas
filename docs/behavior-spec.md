@@ -101,6 +101,8 @@ Divider (`antd-divider`, Batch 2a): done, canvas, Play and export. Rules are man
 
 Avatar (`antd-avatar`, Batch 2a): done. Color (the eight presets, default neutral), Variant (filled | solid, as Tag), Shape (circle, square) and Size (24/32/40 over xs..xl) are variable dimensions; `content` (text, icon) adds the label or the icon layer, none hidden (`showIcon` is derived from it). The icon is the default disc until a user glyph is added to `ICON_SET`. Stage 2 done: `content: image` with a generic `image` prop (`src`) that writes an image fill on the box (an uploaded asset in the file, a URL string in the export); canvas and Play are checked in Chrome (`avatar.browser.test.mjs`), the exported CSS is not rendered in a browser.
 
+Text (`antd-text`, Typography stage 1): Type and Size modes; strong, italic, underline, strikethrough, code, mark and disabled as props. Italic, the decoration lines and a line clamp are generic text node fields; code and mark style the root frame through state-swapped padding, radius and border-width tokens (applied on the canvas, in Play and in the export). Canvas, Play and the export agree in Chrome at DPR 1 and 2 for every type and style. Title, Paragraph and Link follow.
+
 Phase 1 batch 1 (Input): schema, `control` kind, input-model, Play/codegen rendering and regression tests done (builder-core 760 + studio 46 green, 0 failures). Single-line Input only; TextArea/Password/Search/OTP out of scope.
 
 Input wrapper parity (2026-10-31): the wrapper owns box visuals and interaction states (`focusTarget: "wrapper"`, `:has()` selectors in codegen), the inner control owns text only; the testing fixture mirrors the antd size demo.

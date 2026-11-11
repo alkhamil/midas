@@ -4,13 +4,14 @@
 import { previewOf } from './preview.js';
 import { variableProps } from './registry.js';
 import { resolveProps } from './instance-props.js';
-import { NODE_PROPERTIES, LOADING_OPACITY, alignValuesOf, enumAttrOf, canvasPartsOf, fieldWritersOf, localAttrOf, maskUnlessOf, placeholderPartOf, stateAttributesOf, targetKindOf, toggleStatesOf } from './display.js';
+import { NODE_PROPERTIES, LOADING_OPACITY, textDecorationOf, alignValuesOf, enumAttrOf, canvasPartsOf, fieldWritersOf, localAttrOf, maskUnlessOf, placeholderPartOf, stateAttributesOf, targetKindOf, toggleStatesOf } from './display.js';
 import { pathCommands, svgPathD } from '../geometry/shapes.js';
 import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf, swapDefsOf } from './anatomy.js';
 import { cssVarOf, splitColor, tokenValueOf } from './tokens.js';
 import { glyphFillRuleAttr, glyphPathD } from './glyphs.js';
 import { commitNumber, resizeHeight, resizeLimits, startResizeDrag } from '../prototype/press.js';
 import { glyphTests } from './validate-schema.js';
+import { stateSwaps } from './state-bindings.js';
 
 /** The CSS justify-content of an alignment: start and end are the flex ends, centre is centre. */
 const justifyOf = side => (side === 'center' ? 'center' : `flex-${side}`);
@@ -205,7 +206,9 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         varPairs.push(`'--${template.id}-${kebabCase(ml.rows)}': ${ml.rows}`);
         for (const key of [ml.minRows, ml.maxRows]) varPairs.push(`'--${template.id}-${kebabCase(key)}': ${ml.autoSize} && ${key} != null ? ${key} : undefined`);
     }
-    const varsExpr = varPairs.length ? `{ ${varPairs.join(', ')} }` : null;
+    // A line clamp reaches the stylesheet as its count (no count is no clamp).
+    for (const w of fieldWritersOf(template).filter(w => w.field === 'maxLines')) varPairs.push(`'--${template.id}-${kebabCase(w.prop)}': ${w.prop} ?? undefined`);
+    const varsExpr = varPairs.length ?`{ ${varPairs.join(', ')} }` : null;
     // Whatever turns the disabled state on: its own prop, and the prop of each state that is an alias of it (the Input's Read only).
     const disabledProp = disabledPropsOf(template);
     const children = [];
@@ -328,6 +331,9 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         ...(template.toggle ? [`aria-checked={${template.toggle.clears ? `${template.toggle.clears} ? "mixed" : ` : ''}${template.toggle.prop} ? "true" : "false"}`] : []),
         ...fieldWritersOf(template).filter(w => w.field === 'layout').map(w => `data-${w.prop}={${w.prop}}`),
         ...fieldWritersOf(template).filter(w => w.field === 'imageFill').map(w => `data-${w.prop}={${w.prop} ? "" : undefined}`),
+        // The text styles are data attributes the stylesheet draws: italic, each decoration line, and a line clamp while it has a count.
+        ...fieldWritersOf(template).filter(w => w.field === 'fontStyle' || w.flag !== undefined).map(w => `data-${kebabCase(w.prop)}={${w.prop} || undefined}`),
+        ...fieldWritersOf(template).filter(w => w.field === 'maxLines').map(w => `data-${kebabCase(w.prop)}={${w.prop} != null ? "" : undefined}`),
         ...(ml ? [`data-${kebabCase(ml.resize)}={${ml.resize}}`, `data-${kebabCase(ml.autoSize)}={${ml.autoSize} || undefined}`] : []),
         // A prop that aligns the row's content to the end says which end as a data attribute (a Switch's handle).
         ...fieldWritersOf(template).filter(w => w.field === 'primaryAlign').map(w => `data-${w.prop}-align={${alignExprOf(w)}}`),
@@ -474,7 +480,9 @@ function displayRules(template, master, childrenOf, geometry) {
         // A root that draws no border of its own (Switch is a button) must not show the browser's default button border.
         if (key === 'root' && !('stroke' in (template.display.root ?? {}))) decls.push('  border: 0;\n');
         // The root draws its own border, so the children sit inside the compensated padding.
-        if (key === 'root' && 'stroke' in (template.display.root ?? {})) { const w = rootBorderWidthOf(master); decls.push(`  border-width: ${w}px;\n`, `  border-style: ${w === 0 ? 'none' : lineStyleOf(master)};\n`);
+        if (key === 'root' && 'stroke' in (template.display.root ?? {})) { const w = rootBorderWidthOf(master); const swapped = stateSwaps(template, 'root', 'strokeWidth');
+        // A state that swaps the border width (the code span's border) makes it the token's value, read from its custom property, not the master's number.
+        decls.push(`  border-width: ${swapped ? `var(${cssVarOf(template.id, template.display.root.strokeWidth)})` : `${w}px`};\n`, `  border-style: ${w === 0 && !swapped ? 'none' : lineStyleOf(master)};\n`);
         decls.push(`  background-clip: border-box;\n`); }
         if (key === 'root' && (template.interaction?.wave || template.anatomy.some(s => s.corner) || 'stroke' in (template.display.root ?? {}))) decls.push('  position: relative;\n');
         // A box of the anatomy (a group frame) draws its own border the same way, from its own layer: its size includes the border.
@@ -511,7 +519,7 @@ function displayRules(template, master, childrenOf, geometry) {
             const { css, perMember } = NODE_PROPERTIES[kind][prop];
             if (!css || !tokens.includes(source)) continue;
             if (perMember) { for (const name of css) decls.push(`  ${name}: var(${cssVarOf(template.id, source)}-${name});\n`); continue; }
-            for (const name of [css].flat()) { if (key === 'root' && (prop === 'paddingX' || prop === 'paddingY' || prop === 'paddingStart' || prop === 'paddingEnd')) { const bw = rootBorderWidthOf(master); if (bw > 0) { decls.push(`  ${name}: max(0px, calc(var(${cssVarOf(template.id, source)}) - ${bw}px));\n`); continue; } } decls.push(`  ${name}: var(${cssVarOf(template.id, source)});\n`); }
+            for (const name of [css].flat()) { if (key === 'root' && (prop === 'paddingX' || prop === 'paddingY' || prop === 'paddingStart' || prop === 'paddingEnd')) { const bw = rootBorderWidthOf(master); if (stateSwaps(template, 'root', 'strokeWidth')) { decls.push(`  ${name}: max(0px, calc(var(${cssVarOf(template.id, source)}) - var(${cssVarOf(template.id, template.display.root.strokeWidth)})));\n`); continue; } if (bw > 0) { decls.push(`  ${name}: max(0px, calc(var(${cssVarOf(template.id, source)}) - ${bw}px));\n`); continue; } } decls.push(`  ${name}: var(${cssVarOf(template.id, source)});\n`); }
         }
         if (kind === 'line') decls.push(...lineDecls(template, key, props, tokens));
         if (!decls.length) return '';
@@ -762,8 +770,21 @@ function multilineRules(template) {
  * @returns {string[]}
  */
 function fieldRules(template) {
-    return fieldWritersOf(template).flatMap(({ prop, key, field, values }) => {
+    // The decoration lines of one layer compose: one rule per line on its own, then one for every pair (more specific, so it wins) with the value the node holds.
+    const flagWriters = fieldWritersOf(template).filter(w => w.flag !== undefined);
+    return fieldWritersOf(template).flatMap(({ prop, key, field, values, flag }) => {
         const target = key === 'root' ? '' : ` .${template.id}-${key}`;
+        if (field === 'fontStyle') return [`.${template.id}[data-${kebabCase(prop)}]${target} {\n  font-style: italic;\n}\n`];
+        if (flag !== undefined) {
+            const same = flagWriters.filter(w => w.key === key && w.field === field);
+            const rules = [`.${template.id}[data-${kebabCase(prop)}]${target} {\n  text-decoration: ${flag};\n}\n`];
+            if (same[same.length - 1].prop === prop) {
+                const all = same.map(w => `[data-${kebabCase(w.prop)}]`).join('');
+                if (same.length > 1) rules.push(`.${template.id}${all}${target} {\n  text-decoration: ${textDecorationOf(same.map(w => w.flag))};\n}\n`);
+            }
+            return rules;
+        }
+        if (field === 'maxLines') return [`.${template.id}[data-${kebabCase(prop)}]${target} {\n  display: -webkit-box;\n  -webkit-box-orient: vertical;\n  -webkit-line-clamp: var(--${template.id}-${kebabCase(prop)});\n  overflow: hidden;\n}\n`];
         if (field === 'layout') {
             // A slot that fills the width it is given takes the cross axis of a vertical root and what is left of the row in a horizontal one (flowSizing, per option).
             const fills = key === 'root' ? (template.slots ?? []).filter(slot => slot.fill).map(slot => slot.id) : [];
@@ -918,7 +939,8 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
             // A click-blocking prop held hides the interaction states, like disabled does; a persistent state it carries (a checked Switch that loads) still applies, as the canvas binds it.
             const blockedGuard = !persistent && (template.element.blockClickProps?.length ?? 0) ? ':not([data-blocked])' : '';
             const noDisabled = wrapperTarget ? ':not(:has(:disabled))' : notDisabledOf(template);
-            const guard = state === disabledState ? '' : `${noDisabled}${blockedGuard}`;
+            // A marker state (strong, code) says how the text looks, not what it is doing: a disabled element keeps it, so it carries no disabled guard.
+            const guard = state === disabledState || persistent?.marker === true ? '' : `${noDisabled}${blockedGuard}`;
             if (!Object.keys(delta).length) continue;
             // A preview state does not apply while a state the root says as an attribute replaces the tokens it changes (the checked look wins over hover).
             const replaced = persistent ? '' : stateAttributesOf(template).filter(a => Object.keys(template.persistentStates[a.state].tokens).some(base => Object.hasOwn(template.previewStates[state] ?? {}, base))).map(a => `:not(${template.statePseudo[a.state]})`).join('');

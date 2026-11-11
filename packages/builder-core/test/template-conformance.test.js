@@ -24,6 +24,7 @@ const MODELS = {
     'antd-tag': generated('antd-tag'),
     'antd-divider': generated('antd-divider'),
     'antd-avatar': generated('antd-avatar'),
+    'antd-text': generated('antd-text'),
     switch: generated('switch'),
     radio: generated('radio'),
     inputnumber: generated('inputnumber'),
