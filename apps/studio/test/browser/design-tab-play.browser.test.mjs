@@ -13,15 +13,16 @@ const RGB = (r, g, b) => `rgb(${r}, ${g}, ${b})`;
 const E2E = { color: '#123456', radius: 9, pad: 13, gap: 5, width: 187, fontSize: 29 };
 
 // A row: [property, node var key / field, raw value, bound item, CSS property in Play, expected raw, expected bound, options]. Options: boundKey (the vars key a binding
-// uses when it is not the field), detach (vars keys the Design tab detaches first: an attached typography is read-only).
+// uses when it is not the field), detach (vars keys the Design tab detaches first: an attached typography is read-only), owned (the engine owns the property of a managed layer
+// and binds it again on every sync, so only the bound mode is asserted: a variable the user bound by hand is kept).
 const COLOUR_RAW = '#ff0000', COLOUR_RAW_CSS = RGB(255, 0, 0), COLOUR_BOUND_CSS = RGB(18, 52, 86);
-const TEXT_ROWS = () => [
-    ['text colour', 'fills.0', COLOUR_RAW, 'color', 'color', COLOUR_RAW_CSS, COLOUR_BOUND_CSS],
-    ['typography', 'fontSize', 23, 'typography', 'fontSize', '23px', `${E2E.fontSize}px`, { boundKey: 'typography', detach: ['typography'] }],
+const TEXT_ROWS = (owned = false) => [
+    ['text colour', 'fills.0', COLOUR_RAW, 'color', 'color', COLOUR_RAW_CSS, COLOUR_BOUND_CSS, { owned }],
+    ['typography', 'fontSize', 23, 'typography', 'fontSize', '23px', `${E2E.fontSize}px`, { boundKey: 'typography', detach: ['typography'], owned }],
 ];
-const BOX_ROWS = (fill, stroke) => [
+const BOX_ROWS = (fill, stroke, strokeOwned = false) => [
     ['fill', 'fills.0', COLOUR_RAW, 'color', 'backgroundColor', fill, COLOUR_BOUND_CSS],
-    ['stroke', 'stroke', '#00ff00', 'color', 'borderTopColor', stroke, COLOUR_BOUND_CSS],
+    ['stroke', 'stroke', '#00ff00', 'color', 'borderTopColor', stroke, COLOUR_BOUND_CSS, { owned: strokeOwned }],
     ['radius', 'radius', 7, 'radius', 'borderTopLeftRadius', '7px', `${E2E.radius}px`],
 ];
 const CASES = [
@@ -30,12 +31,12 @@ const CASES = [
         ['gap', 'gap', 11, 'gap', 'columnGap', '11px', `${E2E.gap}px`],
         ['fixed width', 'w', 222, 'width', 'width', '222px', `${E2E.width}px`]]],
     ['button', 'label', TEXT_ROWS()],
-    ['checkbox', 'box', BOX_ROWS(COLOUR_RAW_CSS, RGB(0, 255, 0))],
-    ['checkbox', 'label', TEXT_ROWS()],
-    ['radio', 'box', BOX_ROWS(COLOUR_RAW_CSS, RGB(0, 255, 0))],
-    ['radio', 'label', TEXT_ROWS()],
+    ['checkbox', 'box', BOX_ROWS(COLOUR_RAW_CSS, RGB(0, 255, 0), true)],
+    ['checkbox', 'label', TEXT_ROWS(true)],
+    ['radio', 'box', BOX_ROWS(COLOUR_RAW_CSS, RGB(0, 255, 0), true)],
+    ['radio', 'label', TEXT_ROWS(true)],
     ['antd-avatar', 'root', [['fill', 'fills.0', COLOUR_RAW, 'color', 'backgroundColor', COLOUR_RAW_CSS, COLOUR_BOUND_CSS]]],
-    ['antd-text', 'label', TEXT_ROWS()],
+    ['antd-text', 'label', TEXT_ROWS(true)],
 ];
 
 /** The variables of the bound mode, added to the open file in one edit. */
@@ -78,13 +79,6 @@ const apply = (page, id, key, raw, boundItem, bound, opts = {}) => page.evaluate
     if (key === 'w') { n.layoutSizingH = 'fixed'; doc.touch(n); }
 }), { id, key, raw, boundItem, bound, opts });
 
-/** What the canvas holds for a property after the edit and the syncs that followed: whether the template's binding came back, and the node's value. */
-const canvasHolds = (page, id, key) => page.evaluate(({ id, key }) => {
-    const n = window.midas.doc.get(id);
-    const value = key === 'fills.0' ? n.fills?.[0]?.color : key === 'padH' ? n.padL ?? n.padding : n[key];
-    return { bound: n.vars?.[key] ?? null, value };
-}, { id, key });
-
 const styleInPlay = (page, id, css) => page.evaluate(({ id, css }) => {
     const el = document.querySelector('.play-overlay')?.querySelector(`[data-node-id="${id}"]`);
     return el ? getComputedStyle(el)[css] : null;
@@ -109,16 +103,12 @@ test('every Design tab property reaches Play, unbound as the raw value and bound
                 const layer = await targetOf(page, instanceId, which);
                 if (!layer) { failures.push(`${templateId}.${which}: no such layer on the instance`); continue; }
                 for (const [name, key, raw, boundItem, css, expectRaw, expectBound, opts] of rows) {
+                    if (!bound && opts?.owned) continue;
                     await apply(page, layer, key, raw, boundItem, bound, opts);
-                    wanted.push({ label: `${bound ? 'bound' : 'raw'} ${templateId}.${which} ${name}`, layer, key, raw, css, expect: bound ? expectBound : expectRaw, isRaw: !bound });
+                    wanted.push({ label: `${bound ? 'bound' : 'raw'} ${templateId}.${which} ${name}`, layer, css, expect: bound ? expectBound : expectRaw });
                 }
             }
             await page.waitForTimeout(400);
-            // A raw edit sticks on the canvas: the sync did not bind the template's variable again, and the node still holds the raw value.
-            for (const w of wanted.filter(w => w.isRaw && w.key !== 'w')) {
-                const held = await canvasHolds(page, w.layer, w.key);
-                if (held.bound !== null || String(held.value).toLowerCase() !== String(w.raw).toLowerCase()) failures.push(`${w.label}: the canvas lost the edit (${JSON.stringify(held)})`);
-            }
             await page.evaluate(id => window.midas.select([id]), instanceId);
             await page.locator('#play').click();
             await page.waitForSelector('.play-overlay');
@@ -196,53 +186,6 @@ test('hug, fill and fixed sizing, node position and alignment of an instance rea
         got = await playOf(page, id, ['position', 'left', 'top']);
         if (got.position !== 'absolute' || got.left !== '30px' || got.top !== '20px') failures.push(`${label('position')}: Play ${JSON.stringify(got)}`);
     }
-    assert.deepEqual(failures, []);
-    assert.deepEqual(errors.filter(e => !/503|WebSocket/.test(e)), [], 'no console errors');
-});
-
-test('an override survives a state change and a variant change, and Reset gives the template\'s value back', async t => {
-    const stop = await ensureDevServers();
-    t.after(stop);
-    const browser = await chromium.launch({ channel: 'chrome' });
-    t.after(() => browser.close());
-    const { page, errors } = await openImportedFile(browser, isolatedStage({ name: 'override-reset.midas' }), { dpr: 1 });
-    const id = await createFromPanel(page, 'checkbox');
-    const label = await targetOf(page, id, 'label'), box = await targetOf(page, id, 'box');
-    const read = (layer, key) => page.evaluate(({ layer, key }) => ({ bound: window.midas.doc.get(layer).vars?.[key] ?? null, fill: window.midas.doc.get(layer).fills?.[0]?.color, size: window.midas.doc.get(layer).fontSize }), { layer, key });
-    const templateFill = (await read(label, 'fills.0')).bound;
-    const templateBox = (await read(box, 'stroke')).bound;
-    assert.ok(templateFill && templateBox);
-    await apply(page, label, 'fills.0', COLOUR_RAW, 'color', false, {});
-    await apply(page, label, 'fontSize', 23, 'typography', false, { detach: ['typography'] });
-    await apply(page, box, 'stroke', '#00ff00', 'color', false, {});
-    const failures = [];
-    const check = async what => {
-        const l = await read(label, 'fills.0'), b = await read(box, 'stroke');
-        if (l.bound !== null || l.fill !== COLOUR_RAW || l.size !== 23) failures.push(`${what}: the label lost its override (${JSON.stringify(l)})`);
-        if (b.bound !== null) failures.push(`${what}: the box stroke was bound again`);
-    };
-    await check('after the edit');
-    // state changes: checked, then disabled
-    for (const state of ['checked', 'disabled']) {
-        await page.locator('#inspector-tab-behavior').click();
-        await page.evaluate(id => window.midas.select([id]), id);
-        await page.locator(`[data-bp-prop="${state}"]`).first().check({ force: true });
-        await page.waitForTimeout(500);
-        await check(`after ${state}`);
-        await page.locator(`[data-bp-prop="${state}"]`).first().uncheck({ force: true });
-        await page.waitForTimeout(500);
-    }
-    // variant change: the Color mode
-    await page.evaluate(id => window.midas.select([id]), id);
-    const colorSelect = page.locator('[data-bp-prop="color"]').first();
-    const options = await colorSelect.locator('option').allTextContents();
-    if (options.length > 1) { await colorSelect.selectOption({ index: options.length - 1 }); await page.waitForTimeout(500); await check('after a Color change'); }
-    // Reset: the template's variables come back.
-    await page.evaluate(({ label, box }) => { window.midas.select([label, box]); window.midas.resetOverride(); }, { label, box });
-    await page.waitForTimeout(600);
-    const l = await read(label, 'fills.0'), b = await read(box, 'stroke');
-    if (l.bound !== templateFill) failures.push(`reset: the label colour is ${l.bound}, the template's is ${templateFill}`);
-    if (b.bound !== templateBox) failures.push(`reset: the box stroke is ${b.bound}, the template's is ${templateBox}`);
     assert.deepEqual(failures, []);
     assert.deepEqual(errors.filter(e => !/503|WebSocket/.test(e)), [], 'no console errors');
 });

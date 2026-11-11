@@ -1,6 +1,6 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { textWriteBacks, resetOverride, noteEngineBinding, decorationLinesOf, pinnedFrame, markManagedContainers, rowsBounds, nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, ICONS_SECTION, defaultIconOf, roleIconsOf, iconRolesOf, iconNodes, planIcons, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, managedSlotLayer, managedPartLayer, planManagedTextBindings, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, previewStateOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, pathSegments, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix, pathCurveBounds, pathContours, normalizeVectorGeometry } from '@midas/builder-core';
+import { textWriteBacks, decorationLinesOf, pinnedFrame, markManagedContainers, rowsBounds, nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, ICONS_SECTION, defaultIconOf, roleIconsOf, iconRolesOf, iconNodes, planIcons, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, managedSlotLayer, managedPartLayer, planManagedTextBindings, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, previewStateOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, pathSegments, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix, pathCurveBounds, pathContours, normalizeVectorGeometry } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { slotRowHtml } from './slotRow.js';
 import { openPlay } from './play.js';
@@ -10310,7 +10310,6 @@ function applyStateBindings(inst, ops) {
         const vars = varsWithOp(n.vars, op);
         if (vars) n.vars = vars;
         else delete n.vars;
-        noteEngineBinding(n, op.prop, op.value);
         doc.touch(n, { structure: false }); // only the variable bindings change
     }
 }
@@ -13175,31 +13174,7 @@ function resetSelectedOverrides() { transaction('Reset overrides', () => { for (
             x.overrides = {};
         doc.touch(x);
     }
-    resetTemplateOverrides([r, ...pageTree(page, r.id)]);
 } }); }
-/**
- * Reset to the template: the properties the user overrode on a template layer (a detached or re-bound colour, typography, size...) go back to the template's variables.
- * keys limits it to those vars keys; without it every key the engine binds on the layer. Runs inside a transaction; the owning instance syncs, which binds them again.
- */
-function resetTemplateOverrides(layers, keys) {
-    const owners = new Set();
-    for (const x of layers) {
-        // A layer copied from the master takes the master's binding back; a managed layer with no master layer is bound again by the sync.
-        const source = x.sourceId ? allNodes().find(m => m.id === x.sourceId) : null;
-        const wanted = keys ?? [...new Set([...(x.engineBound ?? []), ...Object.keys(source?.vars ?? {})])];
-        if (!wanted.length) continue;
-        for (const key of wanted) {
-            resetOverride(x, key);
-            if (source?.vars?.[key] !== undefined) x.vars = { ...(x.vars ?? {}), [key]: source.vars[key] };
-        }
-        doc.touch(x);
-        const owner = [x, ...doc.ancestors(x)].find(a => a.isInstance && a.sourceId);
-        if (owner) owners.add(owner);
-    }
-    for (const inst of owners) syncInstance(inst);
-}
-/** Reset one property (its vars key: fills.0, stroke, typography, radius...) of the selected template layers to the template's default. */
-function resetOverride_(keys) { transaction('Reset to template', () => resetTemplateOverrides(selected().filter(isTemplateLayer), keys)); }
 function createFromInstance() { detachSelectedInstances(); makeComponent(); }
 // The scene the shared boolean geometry reads: a node's children and its matrix in the scene.
 const sceneOf = { children: id => doc.children(id), world: id => doc.world(id).matrix };
@@ -23014,7 +22989,7 @@ invalidate();
 // Dokumen starter (tidak ada file yang bisa dibuka) sengaja TIDAK langsung disimpan: ia baru dibuat di server saat pertama
 // kali diedit. Dulu setiap boot tanpa file menyimpan "Untitled" baru, sehingga file yang sudah dihapus tampak muncul lagi.
 // Explicit, inspectable automation surface. This is the same model and command path used by the UI.
-window.midas = { resetOverride: resetOverride_, thumbCache, ensureThumb, componentById, doc, history, state, renderer, actions, select, fit, setTool, setProperty, transaction, createAtCenter, insertAsset, instantiate, doExport, save, importDocument, importImage, exportSVG, render: invalidate, ready: true, version: '0.1.0' };
+window.midas = { thumbCache, ensureThumb, componentById, doc, history, state, renderer, actions, select, fit, setTool, setProperty, transaction, createAtCenter, insertAsset, instantiate, doExport, save, importDocument, importImage, exportSVG, render: invalidate, ready: true, version: '0.1.0' };
 
 $('#open-variables')?.addEventListener('click', () => toggleVarsWindow());
 $('#go-home').addEventListener('click', () => showHome());

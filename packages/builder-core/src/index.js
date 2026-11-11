@@ -34,7 +34,6 @@ export * from './behavior-engine/glyphs.js';
 export * from './behavior-engine/instance-vars.js';
 export * from './behavior-engine/layers.js';
 export * from './behavior-engine/edits.js';
-export * from './behavior-engine/overrides.js';
 export * from './behavior-engine/icon-slot.js';
 export * from './behavior-engine/variant-style.js';
 export * from './behavior-engine/auto-fix.js';

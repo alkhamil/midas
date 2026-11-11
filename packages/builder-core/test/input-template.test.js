@@ -177,8 +177,7 @@ test('a new, a matched and a rebound master carry identical placeholder bindings
     const frame3 = blankFrame();
     const made = applyTemplateToFrame(INPUT, { frame: frame3, children: [], binding: model.binding, variables, idOf });
     const nodes = [frame3, ...made.created];
-    // An unbound master: no variables, and none the engine bound before (a binding the engine made and the user removed would be an override).
-    for (const node of nodes) { delete node.vars; delete node.engineBound; }
+    for (const node of nodes) delete node.vars;
     const layers = masterLayersByKey(INPUT, frame3, nodes);
     assert.deepEqual(layers.map(l => l.key).sort(), ['placeholder', 'root']);
     const planned = planBindTokens({ template: INPUT, binding: model.binding, layers, variables });
