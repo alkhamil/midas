@@ -99,6 +99,8 @@ Local Fase 0 triage (2026-10-31, pre-merge master): Button stroke/label/icon-slo
 
 Divider (`antd-divider`, Batch 2a): done, canvas, Play and export. Rules are managed vector line nodes (anatomy `kind: 'line'`); Text, Orientation, Placement, Plain, Style (solid, dashed, dotted) and Size are props; layers come and go with the props, none hidden. Canvas and Play are compared in Chrome (`divider.browser.test.mjs`); the exported CSS is not rendered in a browser. Details in `AGENTS.md`.
 
+Avatar (`antd-avatar`, Batch 2a, stage 1): done in the engine (template, roles, tests); canvas, Play and the export not looked at in a browser. Color (the eight presets, default neutral), Variant (filled | solid, as Tag), Shape (circle, square) and Size (24/32/40 over xs..xl) are variable dimensions; `content` (text, icon) adds the label or the icon layer, none hidden (`showIcon` is derived from it). The icon is the default disc until a user glyph is added to `ICON_SET`. Stage 2, not built: the image content (a generic image-fill prop on the box).
+
 Phase 1 batch 1 (Input): schema, `control` kind, input-model, Play/codegen rendering and regression tests done (builder-core 760 + studio 46 green, 0 failures). Single-line Input only; TextArea/Password/Search/OTP out of scope.
 
 Input wrapper parity (2026-10-31): the wrapper owns box visuals and interaction states (`focusTarget: "wrapper"`, `:has()` selectors in codegen), the inner control owns text only; the testing fixture mirrors the antd size demo.

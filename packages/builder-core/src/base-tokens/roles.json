@@ -138,9 +138,7 @@
   "badge-status-default": { "base": "Semantic/presetNeutralSolid", "derive": { "from": "Primitives/neutral/500" } },
   "badge-status-error": { "base": "Semantic/presetDangerSolid", "derive": { "from": "Primitives/danger/500" } },
   "badge-status-warning": { "base": "Semantic/presetWarningSolid", "derive": { "from": "Primitives/warning/500" } },
-  "divider-space-sm": { "base": "Semantic/paddingXS" },
   "divider-space-md": { "base": "Semantic/paddingMD" },
-  "divider-space-lg": { "base": "Semantic/paddingXL" },
   "divider-short": { "base": "Semantic/dividerShort", "derive": { "from": "Primitives/size/24" } },
   "divider-vertical-height": { "base": "Semantic/dividerVerticalHeight", "derive": { "from": "Primitives/size/12" } },
   "text-lg-strong": { "base": "Semantic/textLgStrong" },
@@ -150,5 +148,15 @@
   "tag-height-lg": { "base": "Semantic/tagHeightLG", "derive": { "from": "Primitives/size/28" } },
   "tag-height-xl": { "base": "Semantic/tagHeightXL", "derive": { "from": "Primitives/size/28" } },
   "tag-padding-x": { "base": "Semantic/tagPaddingX", "derive": { "from": "Primitives/padding/8" } },
-  "tag-icon-size": { "base": "Semantic/tagIconSize", "derive": { "from": "Primitives/size/12" } }
+  "tag-icon-size": { "base": "Semantic/tagIconSize", "derive": { "from": "Primitives/size/12" } },
+  "avatar-size-xs": { "base": "Semantic/avatarSizeXS", "derive": { "from": "Primitives/size/24" } },
+  "avatar-size-sm": { "base": "Semantic/avatarSizeSM", "derive": { "from": "Primitives/size/24" } },
+  "avatar-size": { "base": "Semantic/avatarSizeMD", "derive": { "from": "Primitives/size/32" } },
+  "avatar-size-lg": { "base": "Semantic/avatarSizeLG", "derive": { "from": "Primitives/size/40" } },
+  "avatar-size-xl": { "base": "Semantic/avatarSizeXL", "derive": { "from": "Primitives/size/40" } },
+  "avatar-icon-size-xs": { "base": "Semantic/avatarIconSizeXS", "derive": { "from": "Primitives/size/14" } },
+  "avatar-icon-size-sm": { "base": "Semantic/avatarIconSizeSM", "derive": { "from": "Primitives/size/14" } },
+  "avatar-icon-size": { "base": "Semantic/avatarIconSizeMD", "derive": { "from": "Primitives/size/18" } },
+  "avatar-icon-size-lg": { "base": "Semantic/avatarIconSizeLG", "derive": { "from": "Primitives/size/24" } },
+  "avatar-icon-size-xl": { "base": "Semantic/avatarIconSizeXL", "derive": { "from": "Primitives/size/24" } }
 }
