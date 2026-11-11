@@ -56,8 +56,8 @@ export async function ensureDevServers() {
  * Opens the studio signed in as the seed admin and imports the .midas file at `filePath`. Returns the page and the console errors
  * collected since the import. Errors from unauthenticated requests before sign-in are not collected.
  */
-export async function openImportedFile(browser, filePath) {
-    const page = await browser.newPage({ viewport: { width: 1400, height: 900 }, deviceScaleFactor: 2 });
+export async function openImportedFile(browser, filePath, { dpr = 2 } = {}) {
+    const page = await browser.newPage({ viewport: { width: 1400, height: 900 }, deviceScaleFactor: dpr });
     const errors = [];
     page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
@@ -230,20 +230,22 @@ export async function pixelDiff(browser, fileA, fileB, fileOut, { tolerance = 16
 
 /**
  * The number of ink pixels (luminance under 200) in a rectangle of a screenshot, in device pixels: a glyph or a drawn icon has ink, an
- * empty box has none.
+ * empty box has none. With `faint`, ink is any pixel that differs from the rectangle's own top-left pixel by a few levels (a light rule on a light background).
  */
-export async function inkIn(browser, file, rect) {
+export async function inkIn(browser, file, rect, { faint = false } = {}) {
     const page = await browser.newPage();
     try {
-        return await page.evaluate(async ([src, r]) => {
+        return await page.evaluate(async ([src, r, faint]) => {
             const img = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = src; });
             const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
             const g = c.getContext('2d'); g.drawImage(img, 0, 0);
             const d = g.getImageData(r.x, r.y, r.w, r.h).data;
+            const lum = i => 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+            const ref = lum(0);
             let ink = 0;
-            for (let i = 0; i < d.length; i += 4) if (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2] < 200) ink++;
+            for (let i = 0; i < d.length; i += 4) if (faint ? Math.abs(lum(i) - ref) > 6 : lum(i) < 200) ink++;
             return ink;
-        }, [dataUrlOf(file), rect]);
+        }, [dataUrlOf(file), rect, faint]);
     }
     finally {
         await page.close();

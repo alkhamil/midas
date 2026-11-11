@@ -137,6 +137,8 @@ export async function playTree(page, rootId, name) {
         return { rootWidth: r0.width, rootHeight: r0.height, boxes, unmapped };
     }, rootId);
     if (measured) {
+        // A component far down the Design System page (the Divider is made last) is scrolled to before its shot.
+        await page.locator(`.play-overlay [data-node-id="${rootId}"]`).scrollIntoViewIfNeeded();
         const r = await page.locator(`.play-overlay [data-node-id="${rootId}"]`).boundingBox();
         await page.screenshot({ path: resolve(ARTIFACTS, `${name}-play.png`), clip: { x: r.x - PAD, y: r.y - PAD, width: Math.round(r.width + PAD * 2), height: Math.round(r.height + PAD * 2) } });
     }

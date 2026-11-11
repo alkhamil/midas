@@ -180,13 +180,63 @@ test('the Style mode sets the dash of every line: solid has none, dashed is dash
     for (const name of ['lineBefore', 'lineAfter', 'lineVertical']) assert.equal(inst({ hasText: true, orientation: name === 'lineVertical' ? 'vertical' : 'horizontal' }).find(n => n.name === name).type, 'line', `${name} can take the dash`);
 });
 
-test('the export and Play report the line slots they cannot draw yet (no emitter), loudly, instead of leaving them out', () => {
-    const out = generateComponent(model.template, model.binding, model.variables, 'Divider', model.frame, id => model.created.filter(n => n.parentId === id));
-    assert.deepEqual([...new Set(out.problems.filter(p => p.reason === 'unsupported-slot').map(p => p.slot))].sort(), ['lineAfter', 'lineAfterShort', 'lineBefore', 'lineBeforeShort', 'lineVertical']);
-    const nodes = instanceFor(model, { hasText: true });
-    const play = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [model.frame, ...model.created, ...nodes] }], variables: model.variables }, nodes[0].id);
-    assert.equal(play.root, null, 'Play draws no Divider until the line has an emitter');
-    assert.ok(play.problems.some(p => p.reason === 'unsupported-slot'));
+const generated = () => generateComponent(model.template, model.binding, model.variables, 'Divider', model.frame, id => model.created.filter(n => n.parentId === id));
+
+test('the export draws every line slot: no unsupported-slot, a rule per slot by its border, the Style modes as border styles', () => {
+    const out = generated();
+    assert.deepEqual(out.problems, []);
+    const css = out.files['Divider.css'], jsx = out.files['Divider.jsx'];
+    for (const slot of ['lineBefore', 'lineBeforeShort', 'lineAfter', 'lineAfterShort', 'lineVertical']) assert.match(jsx, new RegExp(`<span className="antd-divider-${slot}" />`), slot);
+    assert.match(css, /\.antd-divider-lineBefore \{[^}]*border-top: var\([^)]*\) solid var\([^)]*\);[^}]*height: 0;[^}]*flex: 1 1 0;/);
+    assert.match(css, /\.antd-divider-lineBeforeShort \{[^}]*width: var\(/);
+    assert.match(css, /\.antd-divider-lineVertical \{[^}]*border-left: [^}]*width: 0;[^}]*height: var\(/);
+    const styleModes = model.variables.collections.find(c => c.id === model.binding.variables.lineStyle).modes;
+    for (const [name, style] of [['dashed', 'dashed'], ['dotted', 'dotted']]) {
+        const id = styleModes.find(m => m.name === name).id;
+        const rule = css.split('\n\n').find(block => block.includes(`[data-lineStyle="${id}"] .antd-divider-lineBefore`));
+        assert.ok(rule && rule.includes(`border-style: ${style};`), `${name}: the line takes the ${style} border`);
+    }
+});
+
+/** Play's tree for an instance under these props with a Style applied to its lines, as the studio writes it. */
+function play(props, style = 'solid') {
+    const nodes = inst(props);
+    for (const n of nodes.slice(1)) if (n.type === 'line') Object.assign(n, variantStrokePatch(n, style));
+    nodes[0].w = 343;
+    const { root, problems } = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [model.frame, ...model.created, ...nodes] }], variables: model.variables }, nodes[0].id);
+    assert.deepEqual(problems, []);
+    return { root, nodes };
+}
+const dashOf = el => (/stroke-dasharray="([^"]*)"/.exec(el.html ?? '') ?? [])[1];
+
+test('Play draws the Divider from the same nodes as the canvas: each layer in order, each line with the dash of its node', () => {
+    for (const [style, dash] of [['solid', undefined], ['dashed', '4 4'], ['dotted', '0 3']]) {
+        for (const placement of ['start', 'center', 'end']) {
+            const { root, nodes } = play({ hasText: true, placement }, style);
+            assert.equal(root.children.length, 3, `${style} ${placement}`);
+            assert.deepEqual(root.children.map(c => c.nodeId), nodes.slice(1).map(n => n.id), 'same layers, same order');
+            const lines = root.children.filter(c => c.html);
+            assert.equal(lines.length, 2);
+            for (const line of lines) assert.equal(dashOf(line), dash, `${style}: the dash of the node`);
+            assert.equal(root.children[1].text, 'Text');
+        }
+    }
+});
+
+test('Play: a filling line spans its row (flex, svg 100%), a short side keeps its token, a vertical divider is one line', () => {
+    const start = play({ hasText: true, placement: 'start' }).root.children;
+    assert.equal(start[0].style.flex, undefined, 'the short side does not flex');
+    assert.equal(start[2].style.flex, '1 1 auto');
+    assert.match(start[2].html, /<svg width="100%" height="1"[^>]*><line x1="0" y1="0.5" x2="100%" y2="0.5"/);
+    const end = play({ hasText: true, placement: 'end' }).root.children;
+    assert.equal(end[0].style.flex, '1 1 auto');
+    assert.equal(end[2].style.flex, undefined);
+    const centre = play({ hasText: true, placement: 'center' }).root.children;
+    assert.equal(centre[0].style.flex, centre[2].style.flex, 'centre: both share the row equally');
+    const vertical = play({ orientation: 'vertical' }, 'dashed').root.children;
+    assert.equal(vertical.length, 1);
+    assert.equal(dashOf(vertical[0]), '4 4');
+    assert.equal(play({}).root.children.length, 1, 'no text: one line');
 });
 
 test('a line slot must name its axis, be managed and optional, and be a layer of the root', () => {

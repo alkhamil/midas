@@ -251,6 +251,22 @@ function templateOf(n, scope) {
 }
 
 /**
+ * The svg of a line layer redrawn to span its box: `html` is the markup the generic node drawing made (one path with the stroke's attributes). A horizontal rule is as wide as
+ * its box and as tall as its stroke, a vertical one the reverse, with the stroke centred on the box's zero-size axis.
+ * @param {string} html
+ * @param {'horizontal' | 'vertical'} axis
+ * @returns {string}
+ */
+function lineSvg(html, axis) {
+    const attrs = /<path d="[^"]*" ([^>]*?)\s*\/>/.exec(html)?.[1] ?? '';
+    const thick = Number(/stroke-width="([^"]*)"/.exec(attrs)?.[1] ?? 1), half = thick / 2;
+    const frame = 'position:absolute;display:block;overflow:visible';
+    return axis === 'horizontal'
+        ? `<svg width="100%" height="${thick}" overflow="visible" style="${frame};left:0;top:${-half}px"><line x1="0" y1="${half}" x2="100%" y2="${half}" ${attrs} /></svg>`
+        : `<svg width="${thick}" height="100%" overflow="visible" style="${frame};top:0;left:${-half}px"><line x1="${half}" y1="0" x2="${half}" y2="100%" ${attrs} /></svg>`;
+}
+
+/**
  * A template instance: the element the codegen exports, with its mode attributes, its disabled state and its anatomy in order.
  * The order is the schema order, as the codegen writes it; the planner keeps the stored children at the visual positions
  * it means, so Play draws what the canvas draws (a flipped root reads its stored children back to front).
@@ -361,6 +377,15 @@ function renderTemplate(n, template, parent, scope) {
         else if (slot.kind === 'glyph') {
             // A glyph is drawn from its definition (the export's markup), always; the stylesheet shows it while the root's state attribute is on.
             out.push({ tag: 'span', attrs: { class: `${template.id}-${slot.id}`, ...pressAttrsOf(template, slot.id) }, style: {}, html: `<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="${glyphPathD(slot.glyph)}" fill="currentColor"${glyphFillRuleAttr(slot.glyph)} /></svg>`, children: [] });
+        }
+        else if (slot.kind === 'line') {
+            // A rule is drawn from its own layer, the vector line node of the canvas: its stroke colour, width and dash are the node's.
+            const layer = below(n.id).find(c => c.behavior?.slot === slot.id);
+            const el = layer && layer.visible !== false ? renderNode(layer, n, scope, false) : null;
+            // The line's svg is the stroke's own thickness along the cross axis (a zero-size svg is not drawn) and spans its box along the axis, so a rule is as long as the box Play lays out,
+            // not the length the canvas had. The stroke is centred on the box's zero-size axis, as on the canvas.
+            if (el) el.html = lineSvg(el.html, slot.axis);
+            if (el) out.push(el);
         }
         else if (slot.managed) {
             // The slot's own layer draws the icon its nested instance holds.

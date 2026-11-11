@@ -260,6 +260,10 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             // A glyph is drawn from its definition, always: the stylesheet shows it while its state attribute is on (see glyphRules), so Play and the export need no layer.
             out.push(glyphJsx(template, slot));
         }
+        else if (slot.kind === 'line') {
+            // A rule is an empty element drawn by its border (see lineDecls); it exists while its condition holds.
+            out.push(`{(${shownJsx(slot.shownWhen)}) && <span className="${template.id}-${slot.id}" />}`);
+        }
         else if (slot.managed) {
             const defs = slotDefsOf(template, slot.id);
             if (!defs.length) problems.push({ slot: slot.id, reason: 'unsupported-slot' });
@@ -506,6 +510,7 @@ function displayRules(template, master, childrenOf, geometry) {
             if (perMember) { for (const name of css) decls.push(`  ${name}: var(${cssVarOf(template.id, source)}-${name});\n`); continue; }
             for (const name of [css].flat()) { if (key === 'root' && (prop === 'paddingX' || prop === 'paddingY' || prop === 'paddingStart' || prop === 'paddingEnd')) { const bw = rootBorderWidthOf(master); if (bw > 0) { decls.push(`  ${name}: max(0px, calc(var(${cssVarOf(template.id, source)}) - ${bw}px));\n`); continue; } } decls.push(`  ${name}: var(${cssVarOf(template.id, source)});\n`); }
         }
+        if (kind === 'line') decls.push(...lineDecls(template, key, props, tokens));
         if (!decls.length) return '';
         const selector = key === 'root' ? `.${template.id}` : `.${template.id}-${key}`;
         const rule = `${selector} {\n${decls.join('')}}\n`;
@@ -526,6 +531,25 @@ function displayRules(template, master, childrenOf, geometry) {
  * @param {{ collections?: any[], items?: any[] }} variables
  * @param {any[]} problems
  */
+/**
+ * The declarations of a line slot: an empty block whose one border is the rule, along the slot's axis. The colour and the width are its tokens; the style is solid here
+ * and the Style mode's rule (see the variant styles below) makes it dashed or dotted. A rule that fills takes what is left of the row; a fixed one keeps its token's length.
+ * @param {any} template
+ * @param {string} key the slot id
+ * @param {Record<string, string>} props the slot's display mapping
+ * @param {string[]} tokens
+ * @returns {string[]}
+ */
+function lineDecls(template, key, props, tokens) {
+    const slot = template.anatomy.find(s => s.id === key);
+    const v = prop => (props[prop] !== undefined && tokens.includes(props[prop]) ? `var(${cssVarOf(template.id, props[prop])})` : undefined);
+    const side = slot.axis === 'horizontal' ? 'top' : 'left';
+    const decls = ['  display: block;\n', '  box-sizing: content-box;\n', '  flex-shrink: 0;\n', `  border-${side}: ${v('strokeWidth')} solid ${v('stroke')};\n`];
+    if (slot.axis === 'horizontal') decls.push('  height: 0;\n', slot.fill === true ? '  flex: 1 1 0;\n' : `  width: ${v('width')};\n`);
+    else decls.push('  width: 0;\n', `  height: ${v('height')};\n`);
+    return decls;
+}
+
 /**
  * The CSS line style of a master's stroke: its own Solid, Dash or Dots. A Variant that sets a style (dashed) overrides it by its
  * attribute rule, so the master's style is the default of every Variant that sets none.
@@ -847,7 +871,10 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
         const collection = (variables.collections || []).find(c => c.id === binding.variables[dim]);
         for (const [key, rule] of Object.entries(def.styles ?? {})) {
             const mode = collection && modeOfStyleKey(collection.modes || [], key);
-            if (mode) blocks.push(`.${template.id}[data-${dim}="${mode.id}"] {\n  border-style: ${rule.borderStyle};\n}\n`);
+            if (!mode) continue;
+            // The root draws the style as its border; a line slot draws it as its rule.
+            const selectors = [`.${template.id}[data-${dim}="${mode.id}"]`, ...template.anatomy.filter(s => s.kind === 'line').map(s => `.${template.id}[data-${dim}="${mode.id}"] .${template.id}-${s.id}`)];
+            blocks.push(`${selectors.join(',\n')} {\n  border-style: ${rule.borderStyle};\n}\n`);
         }
     }
     const { disabledState } = template.element;
