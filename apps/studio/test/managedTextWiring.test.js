@@ -47,11 +47,13 @@ test('managed text layers are found by the template anatomy: a slot marker whose
 });
 
 test('applyLiteralFields writes the primary layer under the template\'s primary slot, and a managed text layer by its slot id', () => {
-    const fields = body('applyLiteralFields');
-    assert.ok(fields.includes('[template.primarySlot]: label'), 'the target key is the primary slot, not a fixed label');
-    assert.ok(!/root: inst, label,/.test(fields), 'no fixed label key remains');
-    assert.ok(fields.includes('managedTextLayersOf(inst, template)') && fields.includes('c.behavior.slot'), 'managed text layers are targets by slot id');
-    assert.ok(fields.includes('slotShown(template'), 'a managed slot\'s visibility follows slotShown, which a text slot answers from its own condition');
+    // The targets are one helper, shared by the prop-to-canvas write and the canvas-to-prop text write-back.
+    const targets = body('literalTargetsOf');
+    assert.ok(body('applyLiteralFields').includes('literalTargetsOf(inst, master, template)'));
+    assert.ok(targets.includes('[template.primarySlot]: label'), 'the target key is the primary slot, not a fixed label');
+    assert.ok(!/root: inst, label,/.test(targets), 'no fixed label key remains');
+    assert.ok(targets.includes('managedTextLayersOf(inst, template)') && targets.includes('c.behavior.slot'), 'managed text layers are targets by slot id');
+    assert.ok(body('applyLiteralFields').includes('slotShown(template'), 'a managed slot\'s visibility follows slotShown, which a text slot answers from its own condition');
 });
 
 // ---- The replayed sequence: the same builder-core calls syncInstance and applyLiteralFields make, over a plain node list. ----

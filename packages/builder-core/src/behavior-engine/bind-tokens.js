@@ -9,6 +9,7 @@ import { varsWithBinding } from './edits.js';
 import { setStrokeWeight, strokePaintMissing } from '../geometry/shapes.js';
 import { fixBoundAxes } from '../geometry/autolayout.js';
 import { stateTokenOf } from './state-bindings.js';
+import { isOverridden, noteEngineBinding } from './overrides.js';
 
 /** @param {string} name */
 
@@ -42,9 +43,11 @@ export function planBindTokens({ template, binding, layers, variables }) {
             const known = new Set(items.map(i => i.id));
             for (const varKey of VARIABLE_KEYS[prop] || []) {
                 if (node.vars?.[varKey] !== undefined && known.has(node.vars[varKey])) continue;
+                // The user detached it: their raw value stands.
+                if (isOverridden(node, varKey)) continue;
                 ops.push({ key, varKey, itemId: item.id });
             }
-            if (prop === 'stroke' && strokePaintMissing(node) && !ops.some(o => o.key === key && o.varKey === 'stroke')) {
+            if (prop === 'stroke' && !isOverridden(node, 'stroke') && strokePaintMissing(node) && !ops.some(o => o.key === key && o.varKey === 'stroke')) {
                 // The template owns the stroke: a master with no paint still gets the stroke op, so one bind adds and binds it.
                 ops.push({ key, varKey: 'stroke', itemId: item.id });
             }
@@ -96,7 +99,8 @@ export function planManagedTextBindings({ template, binding, props, layers, vari
             const want = state?.on ? stateHit.item : base.item;
             for (const varKey of VARIABLE_KEYS[prop] || []) {
                 const current = node.vars?.[varKey];
-                const ours = current === undefined || !known.has(current) || current === base.item.id || current === stateHit?.item.id;
+                // A key the engine bound that is gone now was detached by the user: it is theirs (see overrides.js).
+                const ours = (current === undefined ? !isOverridden(node, varKey) : (!known.has(current) || current === base.item.id || current === stateHit?.item.id));
                 if (ours && current !== want.id) ops.push({ key, varKey, itemId: want.id });
             }
         }
@@ -119,6 +123,7 @@ export function applyBindTokens(layers, ops) {
         if (!layer) continue;
         const n = layer.node;
         n.vars = varsWithBinding(n.vars, op.varKey, op.itemId);
+        noteEngineBinding(n, op.varKey, op.itemId);
         if (op.varKey === 'fills.0') delete n.vars.fill;
         if (op.varKey === 'stroke') {
             if (!(n.strokeWidth > 0)) setStrokeWeight(n, 1);

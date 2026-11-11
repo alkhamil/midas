@@ -69,7 +69,7 @@ test('Play draws a control slot as an input holding the value, while the canvas 
             isInstance: true, sourceId: 'm',
             behavior: { version: BEHAVIOR_DATA_VERSION, props: { label: 'Name', value: 'Ada', placeholder: 'Type a name' } },
         };
-        const { root } = toDomTree(doc([m, labelLayer('m', { layoutSizingH: 'fill' }), labelLayer('i', { layoutSizingH: 'fill' }), inst]), 'i');
+        const { root } = toDomTree(doc([m, labelLayer('m', { layoutSizingH: 'fill' }), labelLayer('i', { layoutSizingH: 'fill', text: 'Ada' }), inst]), 'i');
         const input = root.children.find(c => c.attrs?.class === 'input-label');
         assert.equal(input.tag, 'input');
         assert.equal(input.attrs.value, 'Ada');

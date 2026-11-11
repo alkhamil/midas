@@ -14,12 +14,14 @@ import { cssVarOf } from '../behavior-engine/tokens.js';
 import { glyphFillRuleAttr, glyphPathD } from '../behavior-engine/glyphs.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
+import { previewOf } from '../behavior-engine/preview.js';
+import { overrideStyleOf } from './node-overrides.js';
 import { componentNameOf, generateComponent, SPIN_ANIMATION } from '../behavior-engine/codegen.js';
 import { controlOf, iconDefOn, placementsOfDef, primarySlotOf, slotDefsOf, swapDefsOf } from '../behavior-engine/anatomy.js';
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { repeatCount } from '../behavior-engine/slot-rules.js';
-import { attrOfProp, elementTagOf, localAttrOf, maskUnlessOf, multilineOf, pressAttrsOf, ariaCheckedOf, canvasPartsOf, conditionHolds, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
+import { attrOfProp, elementTagOf, maskedOn, localAttrOf, maskUnlessOf, multilineOf, pressAttrsOf, ariaCheckedOf, canvasPartsOf, conditionHolds, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, shadowCss, svgNumber } from '../geometry/format.js';
@@ -330,14 +332,16 @@ function renderTemplate(n, template, parent, scope) {
             if (isControl) {
                 // The input is a transparent text layer over the label node: the placeholder shown is the placeholder part's node text.
                 const placeholder = partLayerOf(n, 'placeholder', scope);
+                // The value is the text the value layer holds (the canvas is the source); a masked control's layer holds bullets, so its value is the prop's.
+                const valueText = !maskedOn(template, props) && typeof labelEntry?.node?.text === 'string' ? labelEntry.node.text : String(props[control.value] ?? '');
                 // The value wins: with a value the placeholder is not shown, whatever its layer says (control.hidePlaceholderWhenFilled).
                 // A read-only input shows its value, never the placeholder, even while the value is empty.
-                const outranked = placeholderPartOf(template) !== undefined && (String(props[control.value] ?? '') !== '' || (control.readonly && props[control.readonly] === true));
+                const outranked = placeholderPartOf(template) !== undefined && (valueText !== '' || (control.readonly && props[control.readonly] === true));
                 const showsPlaceholder = !!placeholder && placeholder.visible !== false && !outranked;
                 // The input is the one box of the value or the placeholder that shows: while the value is empty and the placeholder shows, the
                 // input is the placeholder's box (its node id is the placeholder's), otherwise the value layer's. Its size is the canvas's.
-                const covered = showsPlaceholder && String(props[control.value] ?? '') === '' ? placeholder : labelEntry?.node;
-                const inputAttrs = { class: `${template.id}-${slot.id}`, value: String(props[control.value] ?? ''), 'data-node-id': covered?.id, 'data-role': 'value' };
+                const covered = showsPlaceholder && valueText === '' ? placeholder : labelEntry?.node;
+                const inputAttrs = { class: `${template.id}-${slot.id}`, value: valueText, 'data-node-id': covered?.id, 'data-role': 'value' };
                 if (showsPlaceholder && String(placeholder.text ?? '') !== '') inputAttrs.placeholder = String(placeholder.text);
                 Object.assign(style, labelLayoutOf(covered, covered === placeholder ? n : labelEntry?.parent ?? n));
                 // A hugging width is the text's (field-sizing), so it follows the value as it is typed; a fixed one is the layer's.
@@ -351,7 +355,7 @@ function renderTemplate(n, template, parent, scope) {
                 // A numeric control carries its limits for a press on its arrows (see press.js).
                 if (control.number) for (const [field, prop] of Object.entries(control.number)) if (props[prop] != null) inputAttrs[`data-num-${field}`] = String(props[prop]);
                 // The last committed value, which a blur restores when the typed text is not a number (see blurNumber).
-                if (control.number) inputAttrs['data-committed'] = String(props[control.value] ?? '');
+                if (control.number) inputAttrs['data-committed'] = valueText;
                 // A masked input is a password field until the state that unmasks it holds; it says which root attribute that is, so a click can retype it.
                 // The unmasking state is a boolean prop or a local interaction state of the template.
                 const mask = control.maskUnless && (control.maskWhen === undefined || conditionHolds(control.maskWhen, props)) ? maskUnlessOf(template) : null;
@@ -370,12 +374,18 @@ function renderTemplate(n, template, parent, scope) {
                 drawFrameParts(out);
                 if (slot.optional) {
                     // An optional text slot (an affix) is drawn from its own layer, as the canvas draws it: shown while the layer is, with the text it holds.
-                    const layer = below(n.id).find(c => c.name === slot.id && c.type === 'text');
+                    // The layer is the slot's by its marker, or by its master layer's name (a layer renamed on the canvas keeps its slot).
+                    const layer = below(n.id).find(c => c.type === 'text' && (c.behavior?.slot === slot.id || (c.name === slot.id && !c.behavior?.slot) || scope.byId.get(c.sourceId)?.name === slot.id));
                     const el = layer && layer.visible !== false ? renderNode(layer, scope.byId.get(layer.parentId) ?? n, scope, false) : null;
                     // The counter is the text of its own layer, marked so Play can update it as the value is typed.
                     if (el) out.push(slot.text?.counter ? { ...el, attrs: { ...el.attrs, 'data-role': 'count' } } : el);
                 }
-                else out.push({ tag: 'span', nodeId: slot.id === primarySlotOf(template) ? labelEntry?.node?.id : undefined, attrs: { class: `${template.id}-${slot.id}` }, style, text: String(props[slot.id] ?? ''), children: [] });
+                else {
+                    // The canvas layer is the text's source: the label is the layer labelEntryOf finds, and what it holds is what Play draws. A template with no such layer falls back to the prop.
+                    const primary = slot.id === primarySlotOf(template);
+                    const held = primary ? labelEntry?.node?.text : undefined;
+                    out.push({ tag: 'span', nodeId: primary ? labelEntry?.node?.id : undefined, attrs: { class: `${template.id}-${slot.id}` }, style, text: typeof held === 'string' ? held : String(props[slot.id] ?? ''), children: [] });
+                }
             }
         }
         else if (slot.kind === 'frame') emitContainer(slot, out);
@@ -476,6 +486,26 @@ function renderTemplate(n, template, parent, scope) {
     }
     // A link's href is its text prop; Play draws it (and keeps a click from leaving the stage, see play.js), the canvas has none.
     if (template.element.hrefProp && String(props[template.element.hrefProp] ?? '') !== '' && !(template.element.disabledState !== undefined && stateOn(template, template.element.disabledState, props))) attrs.href = String(props[template.element.hrefProp]);
+    // What the designer set on the instance's own layers that the template's tokens do not give: bound to a variable it resolves, unbound it is the raw value (see node-overrides.js).
+    const modes = Object.fromEntries(variableProps(template).map(([dim]) => [dim, attrs[`data-${dim}`] || null]));
+    const tokenVars = previewOf(template, binding, modes, scope.variables, props).vars;
+    const keyOf = new Map([[n.id, 'root']]);
+    for (const key of Object.keys(template.display)) {
+        if (key === 'root') continue;
+        const layer = below(n.id).find(c => c.behavior?.slot === key || c.behavior?.group === key || c.behavior?.part === key) ?? (key === primarySlotOf(template) ? labelEntry?.node : undefined);
+        if (layer) keyOf.set(layer.id, key);
+    }
+    const drawOverrides = (el, node) => {
+        const key = node && keyOf.get(node.id);
+        if (!key) return;
+        const drawn = overrideStyleOf({ template, key, node, tokenVars, variables: scope.variables, modeOf: c => (c ? resolveMode(c, node, scope.byId, scope.pageVarModes) : null) });
+        // A text whose colour Play left to the stylesheet (a hover rule recolours it) keeps it there.
+        if (node.type === 'text' && node.behavior?.slot !== undefined && !('color' in el.style)) delete drawn.color;
+        Object.assign(el.style, drawn);
+    };
+    drawOverrides({ style }, n);
+    const visit = els => { for (const el of els) { if (el.nodeId !== undefined) drawOverrides(el, scope.byId.get(el.nodeId)); visit(el.children); } };
+    visit(children);
     return { tag, nodeId: n.id, attrs, style, children };
 }
 

@@ -428,6 +428,35 @@ export function multilineOf(template, props) {
 }
 
 /**
+ * The prop that stores the text of a display key's layer: the literal prop whose `node` is `{ key, field: 'text' }`. Undefined when the key has none.
+ * @param {any} template
+ * @param {string} key
+ * @returns {string | undefined}
+ */
+export function textPropOfKey(template, key) {
+    return nodeWritersOf(template).find(w => w.key === key && w.field === 'text')?.prop;
+}
+
+/**
+ * The canvas is the source of truth for text: the props to write back so each text prop holds the text its layer shows. A layer is read through
+ * `textOf(key)` (undefined when the instance has no layer for it). A masked control's layer holds bullets, not the value, so it is never written back.
+ * @param {any} template
+ * @param {Record<string, unknown>} props the instance's resolved props
+ * @param {(key: string) => string | undefined} textOf
+ * @returns {Record<string, string>} prop -> text, only where the layer and the prop differ
+ */
+export function textWriteBacks(template, props, textOf) {
+    /** @type {Record<string, string>} */
+    const out = {};
+    for (const { prop, key, field } of nodeWritersOf(template)) {
+        if (field !== 'text' || masked(template, prop, props)) continue;
+        const text = textOf(key);
+        if (typeof text === 'string' && text !== String(props[prop] ?? '')) out[prop] = text;
+    }
+    return out;
+}
+
+/**
  * The node fields the literal props write, with the value each one writes. A boolean writes the field value its `values` map gives.
  * @param {import('../templates/schema.js').TemplateSchema} template
  * @param {Record<string, unknown>} props the instance's resolved literal props
