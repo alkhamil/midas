@@ -171,7 +171,7 @@ export function compare(canvas, play) {
  * layer, the outline on each side, the root width and the pixel share. Returns the measurements and the gate failures (empty when the
  * pair passes); the pair images are written under the pair name.
  */
-export async function measurePair(page, browser, id, label, pair) {
+export async function measurePair(page, browser, id, label, pair, { outline = true } = {}) {
     await page.evaluate(() => window.midas.select([]));
     await page.mouse.move(2, 2);
     await page.waitForTimeout(150);
@@ -181,10 +181,10 @@ export async function measurePair(page, browser, id, label, pair) {
     if (!play) return { failures: [label + ': Play draws no component'] };
     const { rows, unmapped } = compare(canvas, play);
     const diff = await pixelDiff(browser, resolve(ARTIFACTS, pair + '-canvas.png'), resolve(ARTIFACTS, pair + '-play.png'), resolve(ARTIFACTS, pair + '-diff.png'), { inset: PAD * 2, tolerance: 24 });
-    const edges = await edgeCheck(browser, resolve(ARTIFACTS, pair + '-canvas.png'), resolve(ARTIFACTS, pair + '-play.png'), { inset: PAD * 2 });
+    const edges = outline ? await edgeCheck(browser, resolve(ARTIFACTS, pair + '-canvas.png'), resolve(ARTIFACTS, pair + '-play.png'), { inset: PAD * 2 }) : { found: true, delta: 0 };
     const failures = [];
-    if (!edges.found) failures.push(label + ': the outline is not found on both shots');
-    else if (edges.delta > TOLERANCE_PX) failures.push(label + ': the outline differs by ' + edges.delta.toFixed(2) + ' px (width, height or centre)');
+    if (outline && !edges.found) failures.push(label + ': the outline is not found on both shots');
+    else if (outline && edges.delta > TOLERANCE_PX) failures.push(label + ': the outline differs by ' + edges.delta.toFixed(2) + ' px (width, height or centre)');
     const rootRow = rows[0];
     if (Math.abs(rootRow.canvas.w - rootRow.play.w) > ROOT_WIDTH_TOLERANCE_PX) failures.push(label + ': root width ' + rootRow.canvas.w.toFixed(4) + ' on the canvas, ' + rootRow.play.w.toFixed(4) + ' in Play');
     if (diff.sizeA.join() !== diff.sizeB.join()) failures.push(label + ': canvas and Play crops differ in size');

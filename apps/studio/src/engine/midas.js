@@ -1334,6 +1334,7 @@ function writeVarMode(nodes, collectionId, modeId) {
         else delete n.varModes;
         doc.touch(n);
         applyVariantStroke(n);
+        applyTypeGlyph(n);
         // A mode change can turn a bound stroke opaque: its paint must draw at once, on the node and under it.
         if (n.id) for (const x of subtreeOf(n.id)) repairBoundStroke(x);
     }
@@ -9803,7 +9804,7 @@ function anatomyPlanOf(inst) {
                 // The planner orders a root slot among the root's direct children: a layer hanging
                 // under a container carries its container, so its content never moves a root index.
                 const holderOf = c => { const p = c.parentId === inst.id ? null : doc.get(c.parentId); return p ? p.behavior?.group ?? p.behavior?.slot : undefined; };
-                return managedLayersOf(inst, managedTemplateOf(inst)).map(c => ({ id: c.id, slot: c.behavior?.slot ?? null, name: c.name, component: iconOfSlot(c), ...(holderOf(c) === undefined ? {} : { parent: holderOf(c) }) }));
+                return managedLayersOf(inst, managedTemplateOf(inst)).map(c => ({ id: c.id, slot: c.behavior?.slot ?? c.propBind?.slot ?? null, name: c.name, component: iconOfSlot(c), ...(holderOf(c) === undefined ? {} : { parent: holderOf(c) }) }));
             })(),
         });
     });
@@ -10026,6 +10027,13 @@ function syncInstance(inst) {
                 // A line made by the sync draws the instance's Style from the start (a Variant writes it on the layers it finds).
                 if (n.type === 'line') applyVariantStroke(inst, n);
             }
+            else if (managedTemplateOf(inst)?.slots?.some(s => s.id === op.slot)) {
+                // A content slot the props show: its layer is the slot's (propBind), empty until a component is put in (layerSpecsOf makes the same layer).
+                const def = managedTemplateOf(inst).slots.find(s => s.id === op.slot);
+                const holder = containerOf(inst, op.parent);
+                const n = doc.add(node('frame', { parentId: holder.id, name: def.name, w: 0, h: 0, layout: def.layout, gap: 0, padding: 0, fills: [], clip: false, layoutSizingH: def.fill === true ? 'fill' : 'hug', layoutSizingV: 'hug', propBind: { slot: op.slot } }));
+                placeAmongChildren(holder, n, op.index);
+            }
             else {
                 const holder = containerOf(inst, op.parent);
                 const n = doc.add(node('frame', { parentId: holder.id, name: op.slot, w: 16, h: 16, gap: 0, clip: false, behavior: managedBehavior(op.slot) }));
@@ -10041,11 +10049,12 @@ function syncInstance(inst) {
         const partTemplate = managedTemplateOf(inst);
         const partMaster = componentById(inst.sourceId);
         if (partTemplate && partMaster && syncParts(inst)) doc.touch(inst);
-        applyStateBindings(inst, stateBindingsOf(inst));
         applyManagedTextBindings(inst);
         applyLiteralFields(inst);
         const missingIconVars = applyIconSlotBindings(inst);
         if (missingIconVars.length) toast(`The icon needs ${missingIconVars.join(' and ')}.`);
+        // The state plan runs after the icon pass: a managed icon rests on its base size, and a state swaps it from there.
+        applyStateBindings(inst, stateBindingsOf(inst));
     });
     return reason ?? null;
 }
@@ -10275,6 +10284,8 @@ function copyPairsOf(inst, master) {
         const copy = key !== undefined ? copies.find(c => c.sourceId === m.id) : undefined;
         if (copy) pairs.push({ key, instance: { id: copy.id, vars: copy.vars }, master: { vars: m.vars } });
     }
+    // A managed slot the master holds no layer for (an icon, made on the instance) rests on the base token (planStateBindings has no master for it).
+    for (const c of copies) if (c.behavior?.slot !== undefined && !pairs.some(p => p.instance.id === c.id)) pairs.push({ key: c.behavior.slot, instance: { id: c.id, vars: c.vars }, master: null });
     return pairs;
 }
 /** The variable bindings an instance's persistent states need now (disabled -> bg-disabled and fg-disabled), from planStateBindings. */
@@ -10339,6 +10350,23 @@ function defaultIconId() {
 function roleIconIds() {
     return roleIconsOf(doc.data.pages);
 }
+/** The instance's mode name for each variable prop of its template (the modes a role map reads: an Alert's type picks its glyph). */
+function instanceModeNamesOf(inst, binding) {
+    const collections = varStore().collections || [];
+    return Object.fromEntries(Object.entries(instanceModesOf(inst, binding)).map(([prop, id]) => [prop, collections.find(c => c.id === binding.variables[prop])?.modes.find(m => m.id === id)?.name ?? null]));
+}
+/** A mode change makes an icon slot that holds a default glyph of its mode take the glyph of the new mode (a glyph the designer picked stays). */
+function applyTypeGlyph(inst) {
+    const binding = inst.isInstance ? componentById(inst.sourceId)?.behavior : null;
+    const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
+    if (!template || !inst.behavior) return;
+    const props = inst.behavior.props ?? {};
+    const writes = newlyShownIconDefaults(template, props, props, defaultIconId(), roleIconIds(), instanceModeNamesOf(inst, binding));
+    if (Object.keys(writes).length === 0) return;
+    inst.behavior = { ...inst.behavior, props: { ...props, ...writes } };
+    doc.touch(inst);
+    syncInstance(inst);
+}
 function setInstanceValueTo(inst, prop, value) {
     let next;
     try {
@@ -10347,7 +10375,7 @@ function setInstanceValueTo(inst, prop, value) {
         // default icon, in the component's own prop.
         const binding = componentById(inst.sourceId)?.behavior;
         const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
-        if (template) next = { ...next, props: { ...next.props, ...newlyShownIconDefaults(template, inst.behavior?.props ?? {}, next.props ?? {}, defaultIconId(), roleIconIds()) } };
+        if (template) next = { ...next, props: { ...next.props, ...newlyShownIconDefaults(template, inst.behavior?.props ?? {}, next.props ?? {}, defaultIconId(), roleIconIds(), instanceModeNamesOf(inst, binding)) } };
     }
     catch (err) { toast(err.message); return false; }
     let reason = null;

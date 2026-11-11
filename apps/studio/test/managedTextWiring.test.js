@@ -27,9 +27,9 @@ test('syncInstance: makes a text layer for an insert of a managed text slot, the
     const sync = body('syncInstance');
     assert.ok(sync.includes('managedTextSlotOf(inst, op.slot)'), 'an insert of a text or control slot takes the text path');
     assert.ok(sync.indexOf('managedSlotLayer(') < sync.indexOf("node('frame'"), 'the text layer is made before the icon frame fallback');
-    const order = ['applyStateBindings(', 'applyManagedTextBindings(', 'applyLiteralFields(', 'applyIconSlotBindings('].map(call => sync.indexOf(call));
+    const order = ['applyManagedTextBindings(', 'applyLiteralFields(', 'applyIconSlotBindings(', 'applyStateBindings('].map(call => sync.indexOf(call));
     assert.ok(order.every(at => at >= 0), 'each step is called');
-    assert.deepEqual([...order].sort((a, b) => a - b), order, 'state bindings, managed text bindings, literal fields, icon bindings, in that order');
+    assert.deepEqual([...order].sort((a, b) => a - b), order, 'managed text bindings, literal fields, icon bindings, then state bindings (a state swaps a managed icon from its base size)');
     assert.ok(sync.includes('doc.remove([op.id])'), 'a remove op removes the layer, text or icon alike');
 });
 

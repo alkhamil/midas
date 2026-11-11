@@ -5,6 +5,7 @@ import { TEMPLATES } from './registry.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
 import { resolveProps } from './instance-props.js';
 import { conditionHolds } from './display.js';
+import { iconRoleOf } from './icon-set.js';
 
 /** @typedef {import('../templates/schema.js').TemplateSchema} TemplateSchema */
 /** @typedef {{ id: string, slot: string | null, name?: string, component?: string | null, parent?: string }} ChildLayer  an instance's child, in order; slot is its managed slot marker; name is its layer name (an anatomy slot's id for the layers the anatomy names); component is the icon component the slot shows (null for the placeholder); parent is the container group the layer hangs under, absent for a direct child */
@@ -25,7 +26,12 @@ import { conditionHolds } from './display.js';
  * @returns {number}
  */
 export function indexAmongLaterSlots(template, slot, layers) {
-    const rank = (/** @type {string | null | undefined} */ id) => id === undefined || id === null ? -1 : template.anatomy.findIndex(s => s.id === id);
+    // A content slot ranks after every anatomy slot, in its own order (see planAnatomy).
+    const rank = (/** @type {string | null | undefined} */ id) => {
+        if (id === undefined || id === null) return -1;
+        const at = template.anatomy.findIndex(s => s.id === id);
+        return at >= 0 ? at : (template.slots ?? []).findIndex(s => s.id === id) >= 0 ? template.anatomy.length + (template.slots ?? []).findIndex(s => s.id === id) : -1;
+    };
     const own = rank(slot);
     const at = layers.findIndex(layer => rank(layer.slot ?? layer.name) > own);
     return at === -1 ? layers.length : at;
@@ -109,23 +115,35 @@ function iconDefShown(template, def, values) {
  * @param {Record<string, unknown>} next the stored props after it
  * @param {string | null} defaultIcon the id of the default icon, or null when the document has none
  * @param {Record<string, string>} [roleIcons] the file's glyph for each role (roleIconsOf): a def that names a role takes its glyph, else the default
+ * @param {Record<string, string | null>} [modes] the instance's mode name for each variable prop (a role map reads its type from here: variable props are not stored)
  * @returns {Record<string, string>} prop name to icon id
  */
-export function newlyShownIconDefaults(template, prev, next, defaultIcon, roleIcons = {}) {
+export function newlyShownIconDefaults(template, prev, next, defaultIcon, roleIcons = {}, modes = {}) {
     if (!defaultIcon && Object.keys(roleIcons).length === 0) return {};
     const before = prev === null ? null : resolveProps(template, /** @type {any} */ (prev)), after = resolveProps(template, /** @type {any} */ (next));
     /** @type {Record<string, string>} */
     const writes = {};
     for (const def of iconDefsOf(template)) {
         if (!def.component) continue;
-        const fallback = (def.role !== undefined && roleIcons[def.role]) || defaultIcon;
+        const role = def.role !== undefined ? iconRoleOf(def, { ...after, ...modes }) : null;
+        const fallback = (role !== null && roleIcons[role]) || defaultIcon;
         if (!fallback) continue;
         // An always visible slot is never switched on: it takes the default icon while none was ever chosen (no stored value), and an icon cleared on purpose (stored null) stays cleared.
         if (def.show === undefined) {
             if ((prev === null || prev[def.component] === undefined) && next[def.component] == null) writes[def.component] = fallback;
             continue;
         }
-        if ((before !== null && iconDefShown(template, def, before)) || !iconDefShown(template, def, after)) continue;
+        const shownNow = iconDefShown(template, def, after);
+        // A glyph picked by its mode (a role map) follows the mode: a slot that is shown with no glyph, or with one of the file's role glyphs (its own default
+        // from another mode), takes the glyph of the current mode. A glyph the user picked is none of those, and stays.
+        if (typeof def.role === 'object') {
+            if (!shownNow) continue;
+            const stored = next[def.component];
+            const isRoleGlyph = stored != null && Object.values(def.role.map).some(r => roleIcons[r] === stored);
+            if ((stored == null || isRoleGlyph) && stored !== fallback) writes[def.component] = fallback;
+            continue;
+        }
+        if ((before !== null && iconDefShown(template, def, before)) || !shownNow) continue;
         if (after[def.component] == null) writes[def.component] = fallback;
     }
     return writes;
@@ -139,8 +157,17 @@ export function newlyShownIconDefaults(template, prev, next, defaultIcon, roleIc
  * @param {string | null} defaultIcon the id of the default icon, or null when the document has none
  * @returns {Record<string, string>} prop name to icon id
  */
-export function createdIconDefaults(template, props, defaultIcon, roleIcons = {}) {
-    return newlyShownIconDefaults(template, null, props, defaultIcon, roleIcons);
+export function createdIconDefaults(template, props, defaultIcon, roleIcons = {}, modes = defaultModesOf(template)) {
+    return newlyShownIconDefaults(template, null, props, defaultIcon, roleIcons, modes);
+}
+
+/**
+ * The mode each variable prop of a template starts in: its default mode name (a new instance, before any mode is chosen).
+ * @param {TemplateSchema} template
+ * @returns {Record<string, string | null>}
+ */
+export function defaultModesOf(template) {
+    return Object.fromEntries(Object.entries(template.props).filter(([, def]) => def.source === 'variable').map(([prop, def]) => [prop, /** @type {any} */ (def).defaultMode ?? null]));
 }
 
 /**
@@ -239,6 +266,9 @@ export function replacedSlotsOf(template, values) {
 }
 
 export function planAnatomy(template, values, children, flip = false) {
+    // A layer is planned by its slot only when the template makes that slot conditional (a content slot with shownWhen); a content slot the
+    // props do not gate is the instance's own and is never removed here, so its layer reads as no slot.
+    children = children.map(c => (c.slot !== null && !template.anatomy.some(s => s.id === c.slot) && !(template.slots ?? []).some(s => s.id === c.slot && s.shownWhen !== undefined) ? { ...c, slot: null } : c));
     /** @type {{ slot: string, component: string | null }[]} */
     const wanted = [];
     const replaced = new Set(replacedSlotsOf(template, values));
@@ -258,6 +288,8 @@ export function planAnatomy(template, values, children, flip = false) {
     for (const slot of template.anatomy) {
         if (slot.managed && slot.kind !== 'icon' && conditionHolds(slot.shownWhen, values) && holderAllows(template, slot, values) && !wanted.some(w => w.slot === slot.id)) wanted.push({ slot: slot.id, component: null });
     }
+    // A content slot the props show while they hold is a layer only while its condition holds (never hidden): its content is the instance's own.
+    for (const slot of template.slots ?? []) if (slot.shownWhen !== undefined && conditionHolds(slot.shownWhen, values) && !wanted.some(w => w.slot === slot.id)) wanted.push({ slot: slot.id, component: null });
     const want = new Set(wanted.map(w => w.slot));
     /** @type {AnatomyOp[]} */
     const ops = [];
@@ -274,7 +306,8 @@ export function planAnatomy(template, values, children, flip = false) {
     // The slots before the primary text part go first. A template with no primary part orders against its first required text slot.
     const primary = primarySlotOf(template);
     const textIndex = primary !== null ? template.anatomy.findIndex(s => s.id === primary) : template.anatomy.findIndex(s => (s.kind === 'text' || s.kind === 'control') && !s.optional);
-    const slotIndex = slot => template.anatomy.findIndex(s => s.id === slot);
+    // A content slot ranks after every anatomy slot, in its own order (it is the last layer, as the codegen draws it).
+    const slotIndex = slot => { const at = template.anatomy.findIndex(s => s.id === slot); return at >= 0 ? at : template.anatomy.length + (template.slots ?? []).findIndex(s => s.id === slot); };
     const queue = [...wanted].sort((a, b) => slotIndex(a.slot) - slotIndex(b.slot));
     // A slot anatomically before the label goes first; one after it goes before the first layer the anatomy puts after it, else last.
     // Slots are placed in anatomy order.

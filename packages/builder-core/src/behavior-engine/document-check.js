@@ -138,7 +138,7 @@ function checkAnatomy(n, nodes, children, page) {
     // A conditional container is an instance layer marked by its slot, not its group: its content counts all the same, down through the containers (one level of nesting).
     const walk = (list, parent) => list.flatMap(c => [{ node: c, ...(parent === undefined ? {} : { parent }) }, ...(c.behavior?.group !== undefined || c.behavior?.slot !== undefined ? walk(children.get(c.id) || [], c.behavior.group ?? c.behavior.slot) : [])]);
     const layers = walk(kids).map(({ node: c, parent }) => ({
-        id: c.id, slot: c.behavior?.slot ?? null, name: c.name,
+        id: c.id, slot: c.behavior?.slot ?? c.propBind?.slot ?? null, name: c.name,
         ...(parent === undefined ? {} : { parent }),
         // A slot shows the icon its nested instance is an instance of (null for the placeholder).
         component: c.behavior && 'slot' in c.behavior ? (children.get(c.id) || []).find(x => x.isInstance && x.sourceId)?.sourceId ?? null : undefined,

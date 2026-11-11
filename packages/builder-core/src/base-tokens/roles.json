@@ -44,6 +44,8 @@
   "input-padding-x-xl": { "base": "Semantic/inputPaddingXxl" },
   "padding-y-xs": { "base": "Semantic/paddingYxs" },
   "padding-y-sm": { "base": "Semantic/paddingYsm" },
+  "alert-padding-x": { "base": "Semantic/paddingSM" },
+  "alert-padding-y": { "base": "Semantic/paddingXS" },
   "button-padding-y-md": { "base": "Semantic/buttonPaddingYmd" },
   "button-padding-y-lg": { "base": "Semantic/buttonPaddingYlg" },
   "button-padding-y-xl": { "base": "Semantic/buttonPaddingYxl" },

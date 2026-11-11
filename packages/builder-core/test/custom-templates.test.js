@@ -61,14 +61,14 @@ test('the document\'s templates are checked as a whole: its shape, its version, 
 });
 
 test('activating the document\'s templates puts them in the registry beside the built-in ones, and activating another document replaces them', () => {
-    assert.deepEqual([...TEMPLATES.keys()], ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'inputnumber', 'antd-badge', 'antd-tag', 'antd-divider', 'antd-avatar', 'antd-text', 'antd-title', 'antd-paragraph', 'antd-link']);
+    assert.deepEqual([...TEMPLATES.keys()], ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'inputnumber', 'antd-badge', 'antd-tag', 'antd-divider', 'antd-avatar', 'antd-text', 'antd-title', 'antd-paragraph', 'antd-link', 'antd-alert']);
     activateDocumentTemplates(behaviorOf(custom()));
-    assert.deepEqual([...TEMPLATES.keys()], ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'inputnumber', 'antd-badge', 'antd-tag', 'antd-divider', 'antd-avatar', 'antd-text', 'antd-title', 'antd-paragraph', 'antd-link', 'custom-card']);
+    assert.deepEqual([...TEMPLATES.keys()], ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'inputnumber', 'antd-badge', 'antd-tag', 'antd-divider', 'antd-avatar', 'antd-text', 'antd-title', 'antd-paragraph', 'antd-link', 'antd-alert', 'custom-card']);
     assert.equal(TEMPLATES.get('custom-card').name, 'Card');
     activateDocumentTemplates(behaviorOf(custom('custom-field')));
-    assert.deepEqual([...TEMPLATES.keys()], ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'inputnumber', 'antd-badge', 'antd-tag', 'antd-divider', 'antd-avatar', 'antd-text', 'antd-title', 'antd-paragraph', 'antd-link', 'custom-field']);
+    assert.deepEqual([...TEMPLATES.keys()], ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'inputnumber', 'antd-badge', 'antd-tag', 'antd-divider', 'antd-avatar', 'antd-text', 'antd-title', 'antd-paragraph', 'antd-link', 'antd-alert', 'custom-field']);
     activateDocumentTemplates(undefined);
-    assert.deepEqual([...TEMPLATES.keys()], ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'inputnumber', 'antd-badge', 'antd-tag', 'antd-divider', 'antd-avatar', 'antd-text', 'antd-title', 'antd-paragraph', 'antd-link']);
+    assert.deepEqual([...TEMPLATES.keys()], ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'inputnumber', 'antd-badge', 'antd-tag', 'antd-divider', 'antd-avatar', 'antd-text', 'antd-title', 'antd-paragraph', 'antd-link', 'antd-alert']);
 });
 
 test('a malformed document fails to activate with an explicit error and leaves the registry as it was', () => {

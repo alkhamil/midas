@@ -15,7 +15,7 @@ test('the icon prefix is the file convention, Icon/', () => {
 
 test('the registry asks for five roles: default, close (Tag), eyeOn and eyeOff (Password), copy (Paragraph); every other icon slot takes the default icon', () => {
     const roles = iconRolesOf([...BUILT_IN_TEMPLATES.values()]);
-    assert.deepEqual(roles, ['default', 'eyeOn', 'eyeOff', 'close', 'copy']);
+    assert.deepEqual(roles, ['default', 'eyeOn', 'eyeOff', 'close', 'copy', 'alertSuccess', 'alertInfo', 'alertWarning', 'alertError']);
     // The slots behind them, by template: the close def names its role, every other icon def is a default-role slot.
     const slots = [...BUILT_IN_TEMPLATES.values()].flatMap(t => iconDefsOf(t).map(d => `${t.id}.${d.slot ?? d.placement}`));
     assert.ok(slots.includes('icon-button.icon') && slots.includes('input.clear') && slots.includes('button.iconStart'));

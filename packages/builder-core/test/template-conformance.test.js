@@ -22,6 +22,7 @@ const MODELS = {
     checkbox: generated('checkbox'),
     'antd-badge': generated('antd-badge'),
     'antd-tag': generated('antd-tag'),
+    'antd-alert': generated('antd-alert'),
     'antd-divider': generated('antd-divider'),
     'antd-avatar': generated('antd-avatar'),
     'antd-text': generated('antd-text'),
@@ -62,7 +63,8 @@ const conditionalParts = template => {
 const requiredKeys = template => [
     ...template.anatomy.filter(slot => !slot.managed && slot.kind !== 'icon').map(slot => slot.id),
     ...canvasPartsOf(template).filter(part => !conditionalParts(template).has(part.id)).map(part => part.id),
-    ...(template.slots ?? []).map(slot => slot.id),
+    // A content slot the props show while they hold is an instance layer, like a conditional part: the master holds it only at the sample props.
+    ...(template.slots ?? []).filter(slot => slot.shownWhen === undefined).map(slot => slot.id),
 ];
 /** Whether a layer is the one a key stands for: by name, as a canvas part, or as the content slot the key names. */
 const isLayerOf = (n, key) => n.name === key || n.behavior?.part === key || n.propBind?.slot === key;

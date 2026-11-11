@@ -30,7 +30,7 @@ function asChildren(root, nodes) {
     const groups = new Map(kids.filter(c => c.behavior?.group !== undefined).map(c => [c.id, c.behavior.group]));
     return nodes.filter(n => n !== root).map(n => {
         const holder = n.parentId === root.id ? null : groups.get(n.parentId);
-        return { id: n.id, slot: n.behavior?.slot ?? null, name: n.name, component: null, ...(holder == null ? {} : { parent: holder }) };
+        return { id: n.id, slot: n.behavior?.slot ?? n.propBind?.slot ?? null, name: n.name, component: null, ...(holder == null ? {} : { parent: holder }) };
     });
 }
 
@@ -64,7 +64,7 @@ for (const template of TEMPLATES.values()) {
 
     test(`${template.id}: toggling an optional prop on adds only conditional layers, and off removes them again`, () => {
         const model = modelFor(template);
-        const keysOf = nodes => new Set(nodes.slice(1).map(n => n.behavior?.slot ?? n.behavior?.part ?? n.name));
+        const keysOf = nodes => new Set(nodes.slice(1).map(n => n.behavior?.slot ?? n.propBind?.slot ?? n.behavior?.part ?? n.name));
         const base = new Set(keysOf(instanceFor(model, {})));
         for (const on of toggles(template)) {
             const nodes = instanceFor(model, on);
@@ -74,7 +74,8 @@ for (const template of TEMPLATES.values()) {
             for (const key of added) {
                 const slot = template.anatomy.find(s => s.id === key);
                 const part = (template.parts ?? []).find(p => p.id === key);
-                assert.ok(slot?.managed || (part && part.shownWhen !== undefined), `${template.id} ${key} is a managed slot or a conditional part`);
+                const content = (template.slots ?? []).find(s => s.id === key);
+                assert.ok(slot?.managed || content?.shownWhen !== undefined || (part && part.shownWhen !== undefined), `${template.id} ${key} is a managed slot or a conditional part`);
             }
             // Toggling back off removes exactly the managed layers the toggle added (parts never reach the plan: instanceOf shows they are gone).
             const off = instanceFor(model, {});

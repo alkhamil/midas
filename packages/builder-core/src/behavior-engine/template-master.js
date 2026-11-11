@@ -180,6 +180,8 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
         if (spec.role === 'slot') continue;
         // A conditional container is an instance layer while its condition is off at the sample props: the master holds none.
         if (spec.role === 'group' && spec.slot?.shownWhen !== undefined && !conditionHolds(spec.slot.shownWhen, defaults)) continue;
+        // A content slot the props show while they hold is a layer of the instance only while its condition holds (the master holds none).
+        if (spec.role === 'content' && spec.content.shownWhen !== undefined && !conditionHolds(spec.content.shownWhen, defaults)) continue;
         const node = nodeOf(spec, template, binding, idOf, holder.id);
         // A conditional part (the spinner, a shown placeholder, a required mark) is an instance layer while its condition is off
         // at the sample props: the master holds none, and an instance makes one while the condition holds. Anything else is built as before.
@@ -385,6 +387,9 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
     // A conditional container the props hide leaves no master copy on the instance (what it holds goes with it, so nothing dangles).
     const shownWhenOf = id => template.anatomy.find(s => s.id === id)?.shownWhen;
     const hiddenGroups = new Set(subtree.filter(n => n.behavior?.group !== undefined && shownWhenOf(n.behavior.group) !== undefined && !conditionHolds(shownWhenOf(n.behavior.group), resolved)).map(n => n.id));
+    // A content slot the props hide has no copy either (the master holds one only while its condition holds at the sample props).
+    const slotShownWhen = slotId => template.slots?.find(s => s.id === slotId)?.shownWhen;
+    for (const n of subtree) if (n.propBind?.slot !== undefined && slotShownWhen(n.propBind.slot) !== undefined && !conditionHolds(slotShownWhen(n.propBind.slot), resolved)) hiddenGroups.add(n.id);
     for (const n of subtree) {
         if (hiddenGroups.has(n.id) || hiddenGroups.has(n.parentId)) continue;
         // A part copy takes its visibility and text from the writes for its key; a text layer takes the text its prop writes.
@@ -447,7 +452,10 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
     for (const stub of rooted.filter(s => s.anatomy >= labelIndex).sort((a, b) => a.anatomy - b.anatomy)) {
         layers.splice(indexAmongLaterSlots(template, stub.node.behavior.slot, layers), 0, stub.node);
     }
-    return [root, ...layers, ...inContainer.map(s => s.node)];
+    // A content slot the props show while they hold is made on the instance when the subtree does not hold it: an empty frame, last (as its codegen draws it).
+    const contentLayers = (template.slots ?? []).filter(slot => slot.shownWhen !== undefined && conditionHolds(slot.shownWhen, resolved) && !subtree.some(n => n.propBind?.slot === slot.id))
+        .map(slot => ({ ...nodeOf({ key: slot.id, role: 'content', type: 'frame', content: slot }, template, null, () => id(`slot-${slot.id}`), root.id), sourceId: undefined, isInstance: false, component: false, overrides: {} }));
+    return [root, ...layers, ...inContainer.map(s => s.node), ...contentLayers];
 }
 
 /**

@@ -185,6 +185,8 @@ export function diagnoseDocument(doc) {
             if (spec.role === 'slot' || present.has(spec.key)) continue;
             if ((spec.role === 'part' || spec.role === 'text') && spec.part?.shownWhen !== undefined && !sampleShown.has(spec.key)) continue;
             if (spec.role === 'group' && spec.slot?.shownWhen !== undefined && !conditionHolds(spec.slot.shownWhen, resolveProps(template, template.sampleProps ?? {}))) continue;
+            // A content slot the props show while they hold is an instance layer while its condition is off at the sample props.
+            if (spec.role === 'content' && spec.content.shownWhen !== undefined && !conditionHolds(spec.content.shownWhen, resolveProps(template, template.sampleProps ?? {}))) continue;
             out.push({ severity: 'warning', code: 'part-missing', node: m.name, nodeId: m.id, layer: spec.key, message: `${m.name}: the ${spec.key} layer is missing: ${template.name} needs it. Auto Fix adds it.` });
         }
         const known = new Set(items.map(i => i.id));

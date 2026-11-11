@@ -435,7 +435,7 @@ const RESERVED_WORDS = new Set(['await', 'break', 'case', 'catch', 'class', 'con
 /** The props every generated component has besides its own: `children` is the single slot's, the rest pass through to the root. */
 const GENERATED_PROPS = ['children', 'className', 'style', 'ref', 'key'];
 /** The fields of a content slot definition. They are the names and settings of Figma's slot property, so the generator can write them into it. */
-const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'onlyAccepts', 'showEmpty', 'fillCounter', 'layout', 'repeat', 'fill'];
+const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'onlyAccepts', 'showEmpty', 'fillCounter', 'layout', 'repeat', 'fill', 'shownWhen'];
 
 /**
  * Problems in the content slots a template declares (`slots`): a frame of the component that instances fill with their own layers. A slot's id
@@ -488,6 +488,8 @@ function slotProblems(schema, templateIds) {
         for (const flag of ['showEmpty', 'fillCounter', 'fill']) {
             if (slot[flag] !== undefined && typeof slot[flag] !== 'boolean') out.push(`${tag} ${flag} must be a boolean`);
         }
+        // A slot the props show while they hold (a layer only then): its condition is a test over the template's props.
+        if (slot.shownWhen !== undefined) out.push(...conditionProblems(slot.shownWhen, props, `${tag} shownWhen`));
         if (slot.repeat !== undefined) {
             const target = isName(slot.repeat) ? props[slot.repeat] : undefined;
             if (!isName(slot.repeat)) out.push(`${tag} repeat must be the name of a number prop`);

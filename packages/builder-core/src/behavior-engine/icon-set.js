@@ -12,6 +12,18 @@ const SIZE = 24;
 /** The control distance of a bezier circle, for a radius of 10: radius times 0.5523. */
 const K = 5.523;
 const at = (x, y, inX, inY, outX, outY) => ({ x, y, in: { x: inX, y: inY }, out: { x: outX, y: outY } });
+const discPoints = () => [at(12, 2, 12 - K, 2, 12 + K, 2), at(22, 12, 22, 12 - K, 22, 12 + K), at(12, 22, 12 + K, 22, 12 - K, 22), at(2, 12, 2, 12 + K, 2, 12 - K)];
+const rect = (x0, y0, x1, y1) => ({ points: [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }], closed: true });
+/** The close cross of ICON_SET, scaled about the centre: the mark cut out of a type's disc. */
+const CROSS_POINTS = [[5.293, 6.707], [6.707, 5.293], [12, 10.586], [17.293, 5.293], [18.707, 6.707], [13.414, 12], [18.707, 17.293], [17.293, 18.707], [12, 13.414], [6.707, 18.707], [5.293, 17.293], [10.586, 12]];
+const scaledCross = k => ({ points: CROSS_POINTS.map(([x, y]) => ({ x: 12 + (x - 12) * k, y: 12 + (y - 12) * k })), closed: true });
+/** The Alert type glyphs: a disc with its mark cut out (even-odd), one per type (the marks: a check, an i, a bar with a dot, a cross). */
+const ALERT_ICONS = [
+    { name: 'alert-success', role: 'alertSuccess', closed: true, fillRule: 'evenodd', points: discPoints(), contours: [{ points: [{ x: 6.5, y: 12.2 }, { x: 7.9, y: 10.8 }, { x: 10.4, y: 13.3 }, { x: 16.1, y: 7.6 }, { x: 17.5, y: 9 }, { x: 10.4, y: 16.1 }], closed: true }] },
+    { name: 'alert-info', role: 'alertInfo', closed: true, fillRule: 'evenodd', points: discPoints(), contours: [rect(10.8, 6.5, 13.2, 9), rect(10.8, 10.7, 13.2, 17.5)] },
+    { name: 'alert-warning', role: 'alertWarning', closed: true, fillRule: 'evenodd', points: discPoints(), contours: [rect(10.8, 6.5, 13.2, 14), rect(10.8, 15.8, 13.2, 18.2)] },
+    { name: 'alert-error', role: 'alertError', closed: true, fillRule: 'evenodd', points: discPoints(), contours: [scaledCross(0.55)] },
+];
 
 /**
  * The icons the bundle creates. `role` is the need they fill (`default`: the icon every slot takes until the designer chooses one), `points` the closed outline
@@ -22,6 +34,7 @@ const at = (x, y, inX, inY, outX, outY) => ({ x, y, in: { x: inX, y: inY }, out:
 export const ICON_SET = [
     // A disc: neutral for a button's icon and for the clear icon, which takes the same default.
     { name: 'circle', role: 'default', closed: true, points: [at(12, 2, 12 - K, 2, 12 + K, 2), at(22, 12, 22, 12 - K, 22, 12 + K), at(12, 22, 12 + K, 22, 12 - K, 22), at(2, 12, 2, 12 + K, 2, 12 - K)] },
+    ...ALERT_ICONS,
     // A close cross: one closed polygon of straight edges (no handles), the close of a dismissible element (Tag).
     { name: 'close', role: 'close', closed: true, points: [[5.293, 6.707], [6.707, 5.293], [12, 10.586], [17.293, 5.293], [18.707, 6.707], [13.414, 12], [18.707, 17.293], [17.293, 18.707], [12, 13.414], [6.707, 18.707], [5.293, 17.293], [10.586, 12]].map(([x, y]) => ({ x, y })) },
     // A copy glyph: a solid square in front of the corner of another (an outline in an L), the copy of a text (Paragraph's copyable).
@@ -160,7 +173,21 @@ export const ICON_SET = [
 ];
 
 /**
- * The icon roles a set of templates asks for, in order: one per icon def that holds an icon component (a def says its role, `default` when it says none).
+ * The role an icon def's default glyph takes for the stored props. A def names a role (a string), or a prop whose mode picks it (`{ prop, map }`:
+ * Alert's type picks the glyph of its type); a mode the map does not name, and a def with no role, take `default`.
+ * @param {{ role?: string | { prop: string, map: Record<string, string> } }} def
+ * @param {Record<string, unknown>} props the resolved props of the instance
+ * @returns {string}
+ */
+export function iconRoleOf(def, props) {
+    const role = def.role ?? 'default';
+    if (typeof role === 'string') return role;
+    return role.map[String(props[role.prop])] ?? 'default';
+}
+
+/**
+ * The icon roles a set of templates asks for, in order: one per icon def that holds an icon component (a def says its role, `default` when it says none;
+ * a mode-picked role contributes every role its map names).
  * @param {{ icons?: any[] }[]} templates
  * @returns {string[]}
  */
@@ -168,8 +195,9 @@ export function iconRolesOf(templates) {
     const roles = [];
     for (const template of templates) {
         for (const def of iconDefsOf(template)) {
-            const role = def.role ?? 'default';
-            if (def.component && !roles.includes(role)) roles.push(role);
+            if (!def.component) continue;
+            const names = typeof def.role === 'object' ? Object.values(def.role.map) : [def.role ?? 'default'];
+            for (const role of names) if (!roles.includes(role)) roles.push(role);
         }
     }
     return roles;

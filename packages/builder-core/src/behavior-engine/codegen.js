@@ -312,7 +312,9 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         // A repeating slot draws its children `<id>Copies` times (0 while they are empty), in one slot element; without copies it is empty like any other.
         const element = slot.repeat ? `<div className="${template.id}-${slot.id}">{Array.from({ length: ${slot.id}Copies }, (_, i) => <Fragment key={i}>{${prop}}</Fragment>)}</div>` : `<div className="${template.id}-${slot.id}">{${prop}}</div>`;
         const guard = slot.repeat ? `${slot.id}Copies > 0` : `filled(${prop})`;
-        children.push(slot.showEmpty === true ? element : `{${guard} && ${element}}`);
+        // A slot the props show while they hold is drawn exactly while its condition holds, empty or not (the layer the canvas holds).
+        if (slot.shownWhen !== undefined) children.push(`{(${shownJsx(slot.shownWhen)}) && ${element}}`);
+        else children.push(slot.showEmpty === true ? element : `{${guard} && ${element}}`);
     }
     const { attrs: tagAttrs, blockClickProps } = template.element;
     // An element whose tag follows a mode (a Title's level) is a local `Tag` read from the mode's id; any other has its fixed tag.
@@ -909,7 +911,8 @@ ${on}:has(:disabled) ${glyph} {
  */
 function slotRules(template, master, childrenOf) {
     return (template.slots ?? []).map(slot => {
-        const node = childrenOf(master.id).find(c => c.propBind?.slot === slot.id) ?? { type: 'frame', layout: slot.layout, w: 0, h: 0, layoutSizingH: 'hug', layoutSizingV: 'hug' };
+        // A slot the master holds no layer for (a conditional one, off at the sample props) is styled as the layer an instance makes of it (no gap, no padding, hugging).
+        const node = childrenOf(master.id).find(c => c.propBind?.slot === slot.id) ?? { type: 'frame', layout: slot.layout, w: 0, h: 0, gap: 0, padding: 0, layoutSizingH: slot.fill === true ? 'fill' : 'hug', layoutSizingV: 'hug' };
         return `.${template.id}-${slot.id} {
 ${cssDecls({ ...flexOf(node, 0), ...flowSizing(node, master) }).join('')}}
 `;
