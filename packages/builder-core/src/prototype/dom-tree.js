@@ -288,7 +288,7 @@ function renderTemplate(n, template, parent, scope) {
     }
     const props = resolveProps(template, n.behavior?.props ?? {});
     // The layout, gap and width props reach the stylesheet's rules as the export gives them: a data attribute and custom properties on the root.
-    const fields = fieldStyleOf(template, props);
+    const fields = fieldStyleOf(template, props, scope.assets);
     Object.assign(attrs, fields.attrs);
     // A persistent state the stylesheet selects as an attribute is drawn from its prop, as the export writes it.
     for (const { attr, prop } of stateAttributesOf(template)) if (props[prop] === true) attrs[attr] = true;
@@ -464,7 +464,7 @@ function renderTemplate(n, template, parent, scope) {
     // The stroke overlay is absolutely positioned, so it is not a laid-out child.
     // A top-level component that hugs its content is inline-flex, so it keeps its natural width in the frame (as the export's root does).
     const flowCount = children.length - (strokeEl ? 1 : 0);
-    const style = { display: ownSizingOf(n, 'h') === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...fields.vars, ...placement(n, parent, scope.responsive), ...rootLayoutOf(instanceLayoutOf(master, n), flowCount) };
+    const style = { display: ownSizingOf(n, 'h') === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...fields.vars, ...fields.style, ...placement(n, parent, scope.responsive), ...rootLayoutOf(instanceLayoutOf(master, n), flowCount) };
     // The host draws its own border, and the box is positioned for it.
     if (hasStroke) {
         Object.assign(style, useSvg ? { borderWidth: '0px', borderStyle: 'none', ...(template.display.root.paddingX ? { paddingInline: `var(${cssVarOf(template.id, template.display.root.paddingX)})` } : {}), ...(template.display.root.paddingY ? { paddingBlock: `var(${cssVarOf(template.id, template.display.root.paddingY)})` } : {}) } : (() => { const uniform = strokeSidesUniform(shape); if (!uniform) { const s = strokeSideWidths(shape); const per = {}; for (const [k, v] of [['Top', s.t], ['Right', s.r], ['Bottom', s.b], ['Left', s.l]]) { per[`border${k}Width`] = `${v}px`; per[`border${k}Style`] = v > 0 ? lineStyle : 'none'; if (!bound && v > 0) per[`border${k}Color`] = colorWithAlpha(shape.stroke, shape.strokeOpacity); } per.backgroundClip = 'border-box'; return per; } return bw > 0 ? { borderWidth: `${bw}px`, borderStyle: lineStyle, ...(bound ? {} : { borderColor: colorWithAlpha(shape.stroke, shape.strokeOpacity) }), backgroundClip: 'border-box' } : { borderWidth: '0px', borderStyle: 'none' }; })()); if (hasStroke && !style.position) style.position = 'relative';

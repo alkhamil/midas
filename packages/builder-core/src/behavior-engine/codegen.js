@@ -86,7 +86,7 @@ const slotPropsOf = template => (template.slots ?? []).map(slot => ({ prop: temp
 
 /** The TypeScript type of a schema prop: a variable prop is the mode id string, a literal its type, an enum its union, an icon a ReactNode. */
 const typeOfProp = def => def.source === 'variable' ? 'string' : def.type === 'enum' ? def.options.map(o => JSON.stringify(o).replace(/"/g, "'")).join(' | ')
-    : def.type === 'number' ? (def.default === null ? 'number | null' : 'number') : def.type === 'iconComponent' ? 'ReactNode' : def.type;
+    : def.type === 'number' ? (def.default === null ? 'number | null' : 'number') : def.type === 'iconComponent' ? 'ReactNode' : def.type === 'image' ? 'string' : def.type;
 
 /** The props type and the imports of a slotted component (the conventions of play-from-tsx.md 2.1). */
 function propsTypeOf(template, name, elementType, attrType) {
@@ -197,6 +197,8 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         const none = template.props[w.prop].default === null ? `${w.prop} == null ? undefined : ` : '';
         return `'--${template.id}-${w.prop}': ${none}\`\${${w.prop}}px\``;
     });
+    // A picture reaches the stylesheet as a url() custom property (the export takes the source as a string), and a data attribute says it shows.
+    for (const w of fieldWritersOf(template).filter(w => w.field === 'imageFill')) varPairs.push("'--" + template.id + '-' + w.prop + "': " + w.prop + ' ? `url("${' + w.prop + '}")` : undefined');
     // A multiline control's rows reach the stylesheet as custom properties (the height is rows x line height + padding, see multilineRules).
     const ml = controlOf(template)?.multiline;
     if (ml) {
@@ -325,6 +327,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         // A toggle control says its state to assistive technology: true, false, or mixed while the state it clears holds.
         ...(template.toggle ? [`aria-checked={${template.toggle.clears ? `${template.toggle.clears} ? "mixed" : ` : ''}${template.toggle.prop} ? "true" : "false"}`] : []),
         ...fieldWritersOf(template).filter(w => w.field === 'layout').map(w => `data-${w.prop}={${w.prop}}`),
+        ...fieldWritersOf(template).filter(w => w.field === 'imageFill').map(w => `data-${w.prop}={${w.prop} ? "" : undefined}`),
         ...(ml ? [`data-${kebabCase(ml.resize)}={${ml.resize}}`, `data-${kebabCase(ml.autoSize)}={${ml.autoSize} || undefined}`] : []),
         // A prop that aligns the row's content to the end says which end as a data attribute (a Switch's handle).
         ...fieldWritersOf(template).filter(w => w.field === 'primaryAlign').map(w => `data-${w.prop}-align={${alignExprOf(w)}}`),
@@ -770,6 +773,15 @@ function fieldRules(template) {
         }
         // A prop that aligns the content to the end: one rule per side, selected on the data attribute the root carries.
         if (field === 'primaryAlign') return alignValuesOf({ values }).map(side => `.${template.id}[data-${prop}-align="${side}"]${target} {\n  justify-content: ${justifyOf(side)};\n}\n`);
+        // A picture covers the box over a clear background (the colour under it does not show through a transparent picture).
+        if (field === 'imageFill') return [`.${template.id}[data-${prop}] {
+  background-image: var(--${template.id}-${prop});
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: transparent;
+}
+`];
         const own = key === 'root' ? `.${template.id}` : `.${template.id}-${key}`;
         return [`${own} {
   ${field === 'gap' ? `gap: var(--${template.id}-${prop})` : `width: var(--${template.id}-${prop}, auto)`};

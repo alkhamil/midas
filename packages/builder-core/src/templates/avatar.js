@@ -3,9 +3,9 @@ import { COLOR_PRESETS, presetRoleMap } from './color-presets.js';
 
 /** @typedef {import('./schema.js').TemplateSchema} TemplateSchema */
 
-// Avatar (antd Avatar): a square box (the Size on both axes) holding label or an icon, round or square by Shape. The content picks which managed layer
+// Avatar (antd Avatar): a square box (the Size on both axes) holding a label, an icon or a picture, round or square by Shape. The content picks which managed layer
 // the instance holds (text or icon), so none is ever hidden. Color picks one of the eight presets and Variant (filled, solid) which of its colours the box takes. Size and radius are tokens: the Size is antd's 24 / 32 / 40, the square radius is the
-// Size radius and a circle is the full radius. Ant Design structure only. The image content (a fill on the box) is a later stage.
+// Size radius and a circle is the full radius. Ant Design structure only. The picture is an image fill on the box (`src`), over the colour.
 
 /** The icon follows the text colour and the Size mode's icon size. Avatar has no disabled state, so its disabled colour is the same colour. */
 const AVATAR_ICON_TOKENS = { colour: 'fg', disabledColour: 'fg', size: 'iconSize' };
@@ -31,9 +31,11 @@ export const AVATAR = {
         variant: { source: 'variable', collection: 'Variant', modes: ['filled', 'solid'], defaultMode: 'solid' },
         shape: { source: 'variable', collection: 'Shape', modes: ['circle', 'square'], defaultMode: 'circle' },
         size: { source: 'variable', collection: 'Size', modes: SIZE_MODES, defaultMode: DEFAULT_SIZE_MODE, standard: true },
-        content: { source: 'literal', type: 'enum', options: ['text', 'icon'], default: 'text', control: 'segmented' },
+        content: { source: 'literal', type: 'enum', options: ['text', 'icon', 'image'], default: 'text', control: 'segmented' },
         label: { source: 'literal', type: 'string', default: 'U', node: { key: 'label', field: 'text' }, visibleIf: { prop: 'content', is: 'text' }, remembered: true },
         icon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'content', is: 'icon' }, remembered: true },
+        // The picture: an uploaded asset (the export takes a URL string). A fill on the root, over the colour; hidden props resolve to nothing, so only the image content shows it.
+        src: { source: 'literal', type: 'image', default: null, visibleIf: { prop: 'content', is: 'image' }, node: { key: 'root', field: 'imageFill' }, remembered: true },
         // Read from content, never stored: whether the icon layer exists.
         showIcon: { source: 'literal', type: 'boolean', default: false, derived: { when: { prop: 'content', is: 'icon' } } },
     },

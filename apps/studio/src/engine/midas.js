@@ -3228,22 +3228,55 @@ function editFill(i, key, v, live) {
         document.getElementById('fill-image-input').click();
     }
 }
-async function applyFillImage(file) {
+/**
+ * An image file as a data URL, checked for type, size and pixels. Null (with a toast) when it is refused.
+ */
+async function readImageFile(file) {
     if (!file)
-        return;
+        return null;
     if (!file.type.startsWith('image/')) {
         toast('Choose an image file.');
-        return;
+        return null;
     }
     if (file.size > 25 * 1024 * 1024) {
         toast('Please use an image under 25 MB.');
-        return;
+        return null;
     }
     try {
         const url = await new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = reject; r.readAsDataURL(file); });
         const img = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = () => reject(new Error('Could not decode this image.')); i.src = url; });
         if (img.naturalWidth * img.naturalHeight > 64e6)
             throw new Error('Image exceeds the 64 megapixel limit.');
+        return url;
+    }
+    catch (e) {
+        toast(e.message || 'Could not read the image.');
+        return null;
+    }
+}
+/** The Behavior panel's picture: the chosen file becomes an asset of the document and the prop holds its id. */
+async function pickBehaviorImage(owner, prop, file) {
+    const url = await readImageFile(file);
+    if (!url) return;
+    const id = uid();
+    doc.data.assets[id] = url;
+    whenAllPagesLoaded(() => { if (!setInstanceValueTo(owner, prop, id)) renderInspector(); });
+}
+/**
+ * The image prop an instance draws as its root's picture (a prop of type image writing the root's image fill), or null. That fill belongs to the prop: a
+ * replacement from the Fill panel changes the prop, or the next sync would put the old asset back.
+ */
+function pictureProp(inst) {
+    const binding = inst.isInstance ? componentById(inst.sourceId)?.behavior : null;
+    const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
+    const entry = template && Object.entries(template.props).find(([, def]) => def.type === 'image' && def.node?.key === 'root' && def.node.field === 'imageFill');
+    return entry ? entry[0] : null;
+}
+async function applyFillImage(file) {
+    const url = await readImageFile(file);
+    if (!url)
+        return;
+    try {
         const idx = state.fillPickIndex ?? 0;
         transaction('Replace image', () => {
             const id = uid();
@@ -3252,6 +3285,14 @@ async function applyFillImage(file) {
                 if (n.type === 'group' || n.type === 'text')
                     continue;
                 const fills = n.fills;
+                // The picture of a template instance is its prop's: the prop takes the new asset and the sync redraws the fill.
+                const prop = fills[idx]?.type === 'image' ? pictureProp(n) : null;
+                if (prop) {
+                    n.behavior = setInstanceValue(n, componentById(n.sourceId), prop, id);
+                    doc.touch(n);
+                    syncInstance(n);
+                    continue;
+                }
                 if (!fills[idx])
                     fills.unshift({ type: 'image', image: id, mode: 'fill', scale: 1, opacity: 1, visible: true });
                 else {
@@ -3288,6 +3329,14 @@ document.addEventListener('click', e => {
         closeFillPicker();
         transaction('Remove fill', () => { for (const n of selected()) {
             const fills = n.fills;
+            // The picture of a template instance is its prop's: removing it clears the prop, and the sync shows the colour again.
+            const prop = fills[i]?.type === 'image' ? pictureProp(n) : null;
+            if (prop) {
+                n.behavior = setInstanceValue(n, componentById(n.sourceId), prop, null);
+                doc.touch(n);
+                syncInstance(n);
+                continue;
+            }
             if (fills[i]) {
                 fills.splice(i, 1);
                 remapFillVars(n, i + 1, -1, i);
@@ -9657,6 +9706,21 @@ function onBehaviorClick(e) {
         // The picker lists every component on every page, so it opens once the lazy pages have arrived.
         return whenAllPagesLoaded(() => openSwapPicker(iconButton, { current: iconButton.dataset.bpValue || null, icons: true, scopePage: pageOfNode(owner)?.name ?? null, onPick: id => whenAllPagesLoaded(() => setInstanceValueTo(owner, iconButton.dataset.bpProp || 'icon', id)) }));
     }
+    // A picture row: pick an image file (an asset of the document) or remove the chosen one.
+    const imagePick = e.target.closest?.('[data-bp-action="image-pick"]');
+    if (imagePick) {
+        const owner = activeNode(), prop = imagePick.dataset.bpProp;
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = () => pickBehaviorImage(owner, prop, input.files[0]);
+        return input.click();
+    }
+    const imageClear = e.target.closest?.('[data-bp-action="image-clear"]');
+    if (imageClear) {
+        const owner = activeNode();
+        return whenAllPagesLoaded(() => { if (!setInstanceValueTo(owner, imageClear.dataset.bpProp, null)) renderInspector(); });
+    }
     // A segmented enum (the Input's Text|Icon kind) writes its option like the dropdown it replaces.
     const segment = e.target.closest?.('[data-bp-action="segment"]');
     if (segment) {
@@ -10129,8 +10193,9 @@ function applyLiteralFields(inst) {
         if (!n) continue;
         // A field a prop writes is a node field or several (a width is a width and its sizing): each is written when it differs.
         let changed = false;
-        for (const [name, v] of Object.entries(nodeFieldPatch(field, value, n.type))) {
-            if (n[name] === v) continue;
+        for (const [name, v] of Object.entries(nodeFieldPatch(field, value, n.type, n))) {
+            // A list (the fills a picture writes) is the same when it holds the same data, so a sync that changes nothing touches nothing.
+            if (n[name] === v || (v && typeof v === 'object' && JSON.stringify(n[name]) === JSON.stringify(v))) continue;
             n[name] = v;
             changed = true;
         }

@@ -76,6 +76,7 @@ export function valueProblem(def, value) {
     if (def.type === 'enum' && !def.options.includes(/** @type {string} */ (value))) return `expects one of ${def.options.join(', ')}`;
     if (def.type === 'number' && /** @type {any} */ (def).decimal === true && value !== null && !(typeof value === 'number' && Number.isFinite(value))) return 'expects a number, or nothing';
     if (def.type === 'number' && /** @type {any} */ (def).decimal !== true && value !== null && !(Number.isInteger(value) && value >= 0)) return 'expects a whole number, 0 or more, or nothing';
+    if (def.type === 'image' && value !== null && typeof value !== 'string') return 'expects an asset id or null';
     if (def.type === 'iconComponent' && value !== null && typeof value !== 'string') return 'expects an icon id or null';
     return null;
 }

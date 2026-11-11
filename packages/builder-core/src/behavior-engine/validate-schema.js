@@ -1,7 +1,7 @@
 import { GLYPHS } from './glyphs.js';
 import { NODE_FIELDS, STATE_ATTRIBUTE, displayProblems, enumAttrOf, stateAttributesOf, targetKindOf } from './display.js';
 
-const LITERAL_TYPES = ['boolean', 'string', 'number', 'enum', 'iconComponent'];
+const LITERAL_TYPES = ['boolean', 'string', 'number', 'enum', 'iconComponent', 'image'];
 
 /** @param {unknown} v */
 export const isPlainObject = v => v !== null && typeof v === 'object' && !Array.isArray(v);

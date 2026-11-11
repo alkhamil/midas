@@ -380,7 +380,7 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
     const root = { ...copy(master, null), behavior: { version: BEHAVIOR_DATA_VERSION, props: { ...props } }, varModes: { ...varModes } };
     // The fields a prop writes beyond visible and text (a layout, a gap, a width) are the instance's own from the start.
     const fieldWrites = writes.filter(w => !['visible', 'text'].includes(w.field));
-    for (const w of fieldWrites.filter(w => w.key === 'root')) Object.assign(root, nodeFieldPatch(w.field, w.value, root.type));
+    for (const w of fieldWrites.filter(w => w.key === 'root')) Object.assign(root, nodeFieldPatch(w.field, w.value, root.type, root));
     const out = [root];
     // A conditional container the props hide leaves no master copy on the instance (what it holds goes with it, so nothing dangles).
     const shownWhenOf = id => template.anatomy.find(s => s.id === id)?.shownWhen;
@@ -398,7 +398,7 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
         const visible = writes.find(w => w.key === key && w.field === 'visible');
         if (visible) next.visible = visible.value;
         if (n.behavior?.slot !== undefined) next.visible = slotShown(template, n.behavior.slot, resolved);
-        for (const w of fieldWrites.filter(w => w.key === key)) Object.assign(next, nodeFieldPatch(w.field, w.value, next.type));
+        for (const w of fieldWrites.filter(w => w.key === key)) Object.assign(next, nodeFieldPatch(w.field, w.value, next.type, next));
         const text = writes.find(w => w.key === key && w.field === 'text');
         if (text && 'text' in next) next.text = text.value;
         out.push(next);

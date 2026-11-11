@@ -77,7 +77,7 @@ export const NODE_PROPERTIES = {
 export const LOADING_OPACITY = 0.65;
 
 export const NODE_FIELDS = {
-    frame: { visible: { kind: 'boolean' }, primaryAlign: { kind: 'boolean', values: { true: 'end', false: 'start' } }, layout: { kind: 'enum', options: ['horizontal', 'vertical'] }, gap: { kind: 'number' }, width: { kind: 'number' }, opacity: { kind: 'boolean', values: { true: LOADING_OPACITY } } },
+    frame: { visible: { kind: 'boolean' }, primaryAlign: { kind: 'boolean', values: { true: 'end', false: 'start' } }, layout: { kind: 'enum', options: ['horizontal', 'vertical'] }, gap: { kind: 'number' }, width: { kind: 'number' }, opacity: { kind: 'boolean', values: { true: LOADING_OPACITY } }, imageFill: { kind: 'image' } },
     text: { text: { kind: 'string' }, visible: { kind: 'boolean' }, width: { kind: 'number' }, heightSizing: { kind: 'enum', options: ['hug', 'fill'] } },
     arc: { visible: { kind: 'boolean' } },
 };
@@ -402,6 +402,7 @@ export function literalFields(template, props) {
         if (values) out.push({ key, field, value: values[String(raw)] });
         else if (spec.kind === 'boolean') out.push({ key, field, value: spec.values[String(raw === true)] });
         else if (spec.kind === 'number') out.push({ key, field, value: raw == null ? null : Number(raw) });
+        else if (spec.kind === 'image') out.push({ key, field, value: raw == null || raw === '' ? null : String(raw) });
         else out.push({ key, field, value: masked(template, prop, props) ? '•'.repeat(String(raw).length) : String(raw) });
     }
     return out;
@@ -418,7 +419,20 @@ export function literalFieldNames(template) {
 }
 
 /** The node fields a prop's field writes: `width` is a fixed width (or hug), so it owns the width, its sizing and, for a text, whether it measures itself. */
-const OWNED_NODE_FIELDS = { width: ['w', 'layoutSizingH', 'autoW'], heightSizing: ['layoutSizingV'] };
+const OWNED_NODE_FIELDS = { width: ['w', 'layoutSizingH', 'autoW'], heightSizing: ['layoutSizingV'], imageFill: ['fills'] };
+
+/**
+ * The fills of a node that holds a picture: its colour fills stay (the first is hidden while the picture shows, so a transparent picture shows no colour under it) and the
+ * picture is one image fill after them, covering the box. A picture the node already has keeps everything but its asset (hidden, mode, scale, opacity are the designer's, set in
+ * the Fill panel); only the asset is the prop's. No asset removes the picture and shows the colour again. The result is the whole `fills` list.
+ * @param {unknown} asset the asset id, or nothing
+ * @param {{ fills?: any[] } | undefined} node
+ */
+function imageFillPatch(asset, node) {
+    const colours = (node?.fills ?? []).filter(f => f.type !== 'image').map((f, i) => (i === 0 ? { ...f, visible: asset == null } : f));
+    const own = (node?.fills ?? []).find(f => f.type === 'image');
+    return { fills: asset == null ? colours : [...colours, own ? { ...own, image: asset } : { type: 'image', image: asset, mode: 'fill', scale: 1, opacity: 1, visible: true }] };
+}
 
 /**
  * What a field write puts on a node: the field itself, except `width`, which is a fixed width (its sizing fixed, and a text no longer measures itself) or, with
@@ -428,7 +442,8 @@ const OWNED_NODE_FIELDS = { width: ['w', 'layoutSizingH', 'autoW'], heightSizing
  * @param {string} type the node's type (`text` or a frame)
  * @returns {Record<string, unknown>}
  */
-export function nodeFieldPatch(field, value, type) {
+export function nodeFieldPatch(field, value, type, node) {
+    if (field === 'imageFill') return imageFillPatch(value, node);
     if (field === 'width') {
         if (value == null) return type === 'text' ? { layoutSizingH: 'hug', autoW: true } : { layoutSizingH: 'hug' };
         return type === 'text' ? { w: value, layoutSizingH: 'fixed', autoW: false } : { w: value, layoutSizingH: 'fixed' };
@@ -446,17 +461,20 @@ export function nodeFieldPatch(field, value, type) {
  * @param {Record<string, unknown>} props the resolved props
  * @returns {{ attrs: Record<string, string>, vars: Record<string, string> }}
  */
-export function fieldStyleOf(template, props) {
+export function fieldStyleOf(template, props, assets = {}) {
     /** @type {Record<string, string>} */
-    const attrs = {}, vars = {};
+    const attrs = {}, vars = {}, style = {};
     for (const writer of nodeWritersOf(template)) {
         const { prop, field } = writer;
         if (field === 'layout') attrs[`data-${prop}`] = String(props[prop]);
         else if (field === 'primaryAlign') attrs[`data-${prop}-align`] = alignValueOf(writer, props[prop]);
         else if ((field === 'gap' || field === 'width') && props[prop] != null) vars[`--${template.id}-${prop}`] = `${props[prop]}px`;
+        // A picture is a data attribute that clears the colour under it, and the asset's source as the root's own background image: not a custom property, which Chrome drops
+        // above about 2 MB (a picture is a data URL of any size here). The export carries a short URL as a custom property the stylesheet reads.
+        else if (field === 'imageFill' && props[prop] != null && assets[String(props[prop])]) { attrs[`data-${prop}`] = ''; style.backgroundImage = `url("${assets[String(props[prop])]}")`; }
     }
     const multiline = multilineStyleOf(template, props);
-    return { attrs: { ...attrs, ...multiline.attrs }, vars: { ...vars, ...multiline.vars } };
+    return { attrs: { ...attrs, ...multiline.attrs }, vars: { ...vars, ...multiline.vars }, style };
 }
 
 /**
@@ -464,7 +482,7 @@ export function fieldStyleOf(template, props) {
  * @param {import('../templates/schema.js').TemplateSchema} template
  */
 export function fieldWritersOf(template) {
-    return nodeWritersOf(template).filter(({ field }) => ['layout', 'gap', 'width', 'primaryAlign'].includes(field));
+    return nodeWritersOf(template).filter(({ field }) => ['layout', 'gap', 'width', 'primaryAlign', 'imageFill'].includes(field));
 }
 
 /**

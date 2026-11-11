@@ -159,6 +159,11 @@ export function instancePanel(instance, master, collections, modes) {
             for (const row of iconRowsOf(template, values, name)) rows.push(row);
             continue;
         }
+        // A picture is chosen from the file's uploads (an asset id), or removed.
+        if (def.type === 'image') {
+            rows.push({ prop: name, kind: 'image', value: values[name] ?? null, label: def.label ?? 'Image' });
+            continue;
+        }
         // A prop that needs collections is disabled while one of them is unbound on the master, naming the
         // missing collections: no silent skip.
         const hint = missingRequires(template, binding, name);
