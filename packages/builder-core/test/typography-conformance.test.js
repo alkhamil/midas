@@ -22,10 +22,11 @@ test('every text part of every registered template declares a typography role', 
 
 test('every declared role is a typography token of the template, and its tokens are of kind typography', () => {
     for (const template of TEMPLATES.values()) {
-        const fromSize = template.tokens.fromSize ?? [];
+        // The typography tokens live in the collection that picks the text style: Size, or a Title's Level.
+        const styled = Object.values(template.tokens).flat();
         for (const part of textParts(template)) {
             const token = `${part.typography}Typography`;
-            assert.ok(fromSize.includes(token), `${template.id}.${part.id} needs token ${token} in fromSize`);
+            assert.ok(styled.includes(token), `${template.id}.${part.id} needs token ${token}`);
             assert.equal(template.tokenKinds[token], 'typography', `${token} is typography`);
             assert.ok(template.display[part.id]?.typography === token, `${template.id}.${part.id} is displayed through ${token}`);
         }
@@ -50,7 +51,7 @@ test('Auto Fix on every registered template creates typography variables aliasin
         applyAutoFix(store, binding, planAutoFix({ template, binding, variables: store, layers: [] }), uid);
         const doc = { variables: store, pages: [{ name: 'p', nodes: [{ id: 'm', name: 'M', component: true, behavior: binding }] }] };
         assert.deepEqual(diagnoseDocument(doc).filter(f => f.severity === 'error'), [], template.id);
-        const typography = store.items.filter(i => i.type === 'typography' && store.collections.find(c => c.id === i.collectionId)?.name.endsWith(' Size'));
+        const typography = store.items.filter(i => i.type === 'typography' && store.collections.find(c => c.id === i.collectionId)?.name.endsWith(' Size') || store.collections.find(c => c.id === i.collectionId)?.name.endsWith(' Level'));
         assert.equal(typography.length, Object.values(template.tokenKinds).filter(k => k === 'typography').length, `${template.id} typography variables`);
         for (const item of typography) {
             for (const value of Object.values(item.values)) {

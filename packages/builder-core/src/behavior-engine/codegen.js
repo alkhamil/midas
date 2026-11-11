@@ -4,7 +4,7 @@
 import { previewOf } from './preview.js';
 import { variableProps } from './registry.js';
 import { resolveProps } from './instance-props.js';
-import { NODE_PROPERTIES, LOADING_OPACITY, textDecorationOf, alignValuesOf, enumAttrOf, canvasPartsOf, fieldWritersOf, localAttrOf, maskUnlessOf, placeholderPartOf, stateAttributesOf, targetKindOf, toggleStatesOf } from './display.js';
+import { NODE_PROPERTIES, LOADING_OPACITY, elementTagOf, textDecorationOf, alignValuesOf, enumAttrOf, canvasPartsOf, fieldWritersOf, localAttrOf, maskUnlessOf, placeholderPartOf, stateAttributesOf, targetKindOf, toggleStatesOf } from './display.js';
 import { pathCommands, svgPathD } from '../geometry/shapes.js';
 import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf, swapDefsOf } from './anatomy.js';
 import { cssVarOf, splitColor, tokenValueOf } from './tokens.js';
@@ -173,7 +173,7 @@ function counterJsx(template, slot) {
 /** The element of a glyph slot: a span of the slot's class holding the definition's outline as an SVG, in currentColor. */
 export const glyphJsx = (template, slot) => `<span className="${template.id}-${slot.id}"${pressHandlerJsx(template, slot)}><svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="${glyphPathD(slot.glyph)}" fill="currentColor"${glyphFillRuleAttr(slot.glyph)} /></svg></span>`;
 
-function componentSource(template, name, problems, partWidthOf = part => part.arc.width) {
+function componentSource(template, name, problems, partWidthOf = part => part.arc.width, tagMap = null) {
     const params = Object.entries(template.props).filter(([, def]) => def.derived === undefined).map(([prop, def]) => (def.source === 'variable' ? prop : `${prop} = ${JSON.stringify(def.default)}`));
     for (const event of template.events) {
         if (!DOM_EVENT[event.name]) problems.push({ event: event.name, reason: 'no-dom-event' });
@@ -313,12 +313,16 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         const guard = slot.repeat ? `${slot.id}Copies > 0` : `filled(${prop})`;
         children.push(slot.showEmpty === true ? element : `{${guard} && ${element}}`);
     }
-    const { tag, attrs: tagAttrs, blockClickProps } = template.element;
+    const { attrs: tagAttrs, blockClickProps } = template.element;
+    // An element whose tag follows a mode (a Title's level) is a local `Tag` read from the mode's id; any other has its fixed tag.
+    const tag = tagMap ? 'Tag' : template.element.tag;
+    const fixedTag = template.element.tag;
     const dims = variableProps(template).map(([prop]) => prop);
     const attrs = [
         ...Object.entries(tagAttrs).map(([key, value]) => `${key === 'tabindex' ? 'tabIndex' : key}="${value}"`),
         slotted ? `className={['${template.id}', className].filter(Boolean).join(' ')}` : `className="${template.id}"`,
         ...(slotted ? ['ref={ref}', varsExpr ? `style={{ ...${varsExpr}, ...style } as CSSProperties}` : 'style={style}'] : varsExpr ? [`style={${varsExpr}}`] : []),
+        ...(template.element.hrefProp ? [`href={${template.element.hrefProp} || undefined}`] : []),
         ...(template.interaction?.wave ? ['data-wave'] : []),
         ...(template.interaction?.wave && !template.events.some(event => event.name === 'onClick') ? ['onClick={(e) => { if (blocked) return; waveDown(e.currentTarget); }}'] : []),
         ...(template.interaction?.wave ? [`onAnimationEnd={(e) => { if (e.animationName === '${WAVE_KEYFRAMES}') e.currentTarget.removeAttribute('data-wave-on'); }}`] : []),
@@ -346,7 +350,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     ];
     const indent = (/** @type {string} */ text, /** @type {number} */ n) => text.split('\n').map(line => ' '.repeat(n) + line).join('\n');
     if (slotted) {
-        const [attrType, elementType] = ELEMENT_TYPES[tag] ?? ['HTMLAttributes', `HTMLElementTagNameMap['${tag}']`];
+        const [attrType, elementType] = ELEMENT_TYPES[fixedTag] ?? ['HTMLAttributes', `HTMLElementTagNameMap['${fixedTag}']`];
         const slotParams = [...params, ...slotPropsOf(template).map(s => s.prop), 'className', 'style', '...rest'];
         const needsFilled = template.slots.some(slot => slot.showEmpty !== true || slot.repeat);
         const counts = slotPropsOf(template).filter(({ slot }) => slot.repeat).map(({ prop, slot }) => {
@@ -377,8 +381,10 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     }
     return [
         ...((template.press ?? []).some(p => p.dismiss || p.toggleState) ? ["import { useState } from 'react';", ''] : []),
+        ...(tagMap ? [`const TAGS = ${JSON.stringify(tagMap)};`, ''] : []),
         `export function ${name}({ ${params.join(', ')} }) {`,
         `  const blocked = ${blockClickProps.join(' || ') || 'false'};`,
+        ...(tagMap ? [`  const Tag = TAGS[${template.element.tagBy.prop}] ?? ${JSON.stringify(template.element.tag)};`] : []),
         ...derivedLines,
         ...controlLines,
         ...dismissLines,
@@ -978,6 +984,20 @@ export function componentNameOf(template) {
 }
 
 /**
+ * The tag of each mode id of the prop a template's element tag follows (`element.tagBy`), or null for a fixed tag: the export reads it from the mode a Title is in.
+ * @param {any} template
+ * @param {{ variables: Record<string, string | null> }} binding
+ * @param {{ collections?: any[] }} variables
+ * @returns {Record<string, string> | null}
+ */
+function tagMapOf(template, binding, variables) {
+    const by = template.element.tagBy;
+    if (!by) return null;
+    const collection = (variables.collections || []).find(c => c.id === binding.variables[by.prop]);
+    return Object.fromEntries((collection?.modes || []).map(m => [m.id, elementTagOf(template, m.name)]));
+}
+
+/**
  * The component and its stylesheet for a bound master. Refused (no files) when anything is unresolved, with the reasons.
  * @param {import('../templates/schema.js').TemplateSchema} template
  * @param {{ variables: Record<string, string | null> }} binding the master's binding
@@ -993,7 +1013,7 @@ export function generateComponent(template, binding, variables, name, master, ch
     if (typeof childrenOf !== 'function') throw new Error('generateComponent needs a childrenOf lookup');
     /** @type {any[]} */
     const problems = [];
-    const jsx = componentSource(template, name, problems, partWidthOf(master, childrenOf));
+    const jsx = componentSource(template, name, problems, partWidthOf(master, childrenOf), tagMapOf(template, binding, variables));
     const css = stylesheet(template, binding, variables, problems, master, childrenOf);
     if (problems.length) return { files: null, problems };
     return { files: { [`${name}.${template.slots?.length ? 'tsx' : 'jsx'}`]: jsx, [`${name}.css`]: css }, problems: [] };

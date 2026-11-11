@@ -129,6 +129,17 @@ export function ariaCheckedOf(template, props) {
     return props[template.toggle.prop] === true ? 'true' : 'false';
 }
 
+/**
+ * The tag of a template's element for a mode of the prop its tag follows (`element.tagBy`, a Title's level), else its fixed tag. The mode is matched by its name.
+ * @param {any} template
+ * @param {string | undefined} modeName
+ * @returns {string}
+ */
+export function elementTagOf(template, modeName) {
+    const by = template.element.tagBy;
+    return (by && modeName !== undefined && Object.entries(by.tags).find(([mode]) => mode.toLowerCase() === String(modeName).toLowerCase())?.[1]) || template.element.tag;
+}
+
 /** The root attribute a state prop is written as (`data-password-visible`), or undefined when no state with an attribute follows it. */
 export const attrOfProp = (template, prop) => stateAttributesOf(template).find(a => a.prop === prop)?.attr;
 

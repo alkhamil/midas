@@ -16,7 +16,15 @@ const TEXT = [
     { name: 'Text xl label strong, 120 x 28', w: 120, h: 28, basePad: 0 },
     { name: 'Text label across a 343 frame', w: 343, h: 20, basePad: 0 },
 ];
-const LAYERS = [...TEXT];
+/** The Title's label at its five levels (heading styles 40 to 24px; the element is not a layer). */
+const TITLE = [
+    { name: 'Title h1 label, 160 x 48', w: 160, h: 48, basePad: 0 },
+    { name: 'Title h3 label, 120 x 36', w: 120, h: 36, basePad: 0 },
+    { name: 'Title h5 label across a 343 frame', w: 343, h: 28, basePad: 0 },
+];
+/** Each template is one set: its layers share the atlas (two templates are never on screen at the deepest zoom together). */
+const SETS = { Text: TEXT, Title: TITLE };
+const LAYERS = [...TEXT, ...TITLE];
 const WIDE = [{ name: 'text across a 1200 frame', w: 1200, h: 24, basePad: 0 }, { name: 'text across a 4000 frame', w: 4000, h: 24, basePad: 0 }];
 
 test('zoom 46.69 at DPR 1, 2 and 3: each text layer stays within the tiles-in-view budget, the margin cap and the entry size', () => {
@@ -59,11 +67,11 @@ function entriesFor(layers, zoom, dpr) {
 }
 
 test('zoom 46.69 at DPR 1, 2 and 3: the layers of the template are placed in the atlas once, kept, and never evict a page or reset the atlas', () => {
-    for (const dpr of [1, 2, 3]) {
+    for (const [set, layers] of Object.entries(SETS)) for (const dpr of [1, 2, 3]) {
         const a = fakeAtlas();
-        const entries = entriesFor(LAYERS, 46.69, dpr);
+        const entries = entriesFor(layers, 46.69, dpr);
         let missing = a.draw(entries);
-        assert.equal(missing, 0, `dpr ${dpr}: every entry found a slot`);
+        assert.equal(missing, 0, `${set} dpr ${dpr}: every entry found a slot`);
         const placed = a.entries.size;
         for (let f = 0; f < 30; f++) missing += a.draw(entries);
         assert.equal(missing, 0);
@@ -80,11 +88,13 @@ test('a sweep: any zoom and DPR keeps the layers within the tile budget and in t
             const plan = planLayer(layer.w, layer.h, resFor(zoom, dpr), ATLAS, layer.basePad, viewOf(layer, zoom));
             assert.ok(plan.tiles.length <= MAX_LAYER_TILES, `${layer.name} zoom ${zoom} dpr ${dpr}: ${plan.tiles.length}`);
         }
-        const a = fakeAtlas();
-        const entries = entriesFor(LAYERS, zoom, dpr);
-        let missing = a.draw(entries);
-        for (let f = 0; f < 5; f++) missing += a.draw(entries);
-        assert.equal(missing, 0, `zoom ${zoom} dpr ${dpr}: every entry is placed`);
-        assert.equal(a.resets, 0, `zoom ${zoom} dpr ${dpr}: no reset`);
+        for (const [set, layers] of Object.entries(SETS)) {
+            const a = fakeAtlas();
+            const entries = entriesFor(layers, zoom, dpr);
+            let missing = a.draw(entries);
+            for (let f = 0; f < 5; f++) missing += a.draw(entries);
+            assert.equal(missing, 0, `${set} zoom ${zoom} dpr ${dpr}: every entry is placed`);
+            assert.equal(a.resets, 0, `${set} zoom ${zoom} dpr ${dpr}: no reset`);
+        }
     }
 });

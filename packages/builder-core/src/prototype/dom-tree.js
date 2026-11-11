@@ -19,7 +19,7 @@ import { controlOf, iconDefOn, placementsOfDef, primarySlotOf, slotDefsOf, swapD
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { repeatCount } from '../behavior-engine/slot-rules.js';
-import { attrOfProp, localAttrOf, maskUnlessOf, multilineOf, pressAttrsOf, ariaCheckedOf, canvasPartsOf, conditionHolds, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
+import { attrOfProp, elementTagOf, localAttrOf, maskUnlessOf, multilineOf, pressAttrsOf, ariaCheckedOf, canvasPartsOf, conditionHolds, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
 import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, shadowCss, svgNumber } from '../geometry/format.js';
@@ -281,10 +281,13 @@ function renderTemplate(n, template, parent, scope) {
     const binding = master.behavior;
     const control = controlOf(template);
     const attrs = { ...template.element.attrs, class: template.id };
+    let tag = template.element.tag;
     if (template.interaction?.wave) attrs['data-wave'] = '';
     for (const [dim] of variableProps(template)) {
         const collection = (scope.variables.collections || []).find(c => c.id === binding.variables[dim]);
         attrs[`data-${dim}`] = collection ? resolveMode(collection, n, scope.byId, scope.pageVarModes) ?? '' : '';
+        // The element's tag may follow a mode (a Title's level): the mode's name picks it, never its id.
+        if (template.element.tagBy?.prop === dim) tag = elementTagOf(template, collection?.modes.find(m => m.id === attrs[`data-${dim}`])?.name);
     }
     const props = resolveProps(template, n.behavior?.props ?? {});
     // The layout, gap and width props reach the stylesheet's rules as the export gives them: a data attribute and custom properties on the root.
@@ -469,7 +472,9 @@ function renderTemplate(n, template, parent, scope) {
     if (hasStroke) {
         Object.assign(style, useSvg ? { borderWidth: '0px', borderStyle: 'none', ...(template.display.root.paddingX ? { paddingInline: `var(${cssVarOf(template.id, template.display.root.paddingX)})` } : {}), ...(template.display.root.paddingY ? { paddingBlock: `var(${cssVarOf(template.id, template.display.root.paddingY)})` } : {}) } : (() => { const uniform = strokeSidesUniform(shape); if (!uniform) { const s = strokeSideWidths(shape); const per = {}; for (const [k, v] of [['Top', s.t], ['Right', s.r], ['Bottom', s.b], ['Left', s.l]]) { per[`border${k}Width`] = `${v}px`; per[`border${k}Style`] = v > 0 ? lineStyle : 'none'; if (!bound && v > 0) per[`border${k}Color`] = colorWithAlpha(shape.stroke, shape.strokeOpacity); } per.backgroundClip = 'border-box'; return per; } return bw > 0 ? { borderWidth: `${bw}px`, borderStyle: lineStyle, ...(bound ? {} : { borderColor: colorWithAlpha(shape.stroke, shape.strokeOpacity) }), backgroundClip: 'border-box' } : { borderWidth: '0px', borderStyle: 'none' }; })()); if (hasStroke && !style.position) style.position = 'relative';
     }
-    return { tag: template.element.tag, nodeId: n.id, attrs, style, children };
+    // A link's href is its text prop; Play draws it (and keeps a click from leaving the stage, see play.js), the canvas has none.
+    if (template.element.hrefProp && String(props[template.element.hrefProp] ?? '') !== '') attrs.href = String(props[template.element.hrefProp]);
+    return { tag, nodeId: n.id, attrs, style, children };
 }
 
 

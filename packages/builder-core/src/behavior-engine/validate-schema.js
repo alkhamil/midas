@@ -350,6 +350,16 @@ function elementProblems(schema) {
         const def = isPlainObject(schema.props) ? schema.props[prop] : undefined;
         if (!def || def.source !== 'literal' || def.type !== 'boolean') out.push(`element blockClickProps names "${prop}", which is not a boolean prop`);
     }
+    const props = isPlainObject(schema.props) ? schema.props : {};
+    // The tag may follow a variable prop's mode (a Title's level: h1 to h5): every mode names its tag, matched by the mode's name.
+    if (el.tagBy !== undefined) {
+        const def = isPlainObject(el.tagBy) ? props[el.tagBy.prop] : undefined;
+        if (!def || def.source !== 'variable') out.push('element tagBy must name a variable prop');
+        else if (!isPlainObject(el.tagBy.tags)) out.push('element tagBy needs the tag of each mode');
+        else for (const mode of def.modes ?? []) if (!isName(el.tagBy.tags[mode])) out.push(`element tagBy has no tag for the mode "${mode}"`);
+    }
+    // A link: the element's href is a text prop (Play and the export write it, the canvas has none).
+    if (el.hrefProp !== undefined && !(props[el.hrefProp]?.source === 'literal' && props[el.hrefProp]?.type === 'string')) out.push(`element hrefProp "${el.hrefProp}" is not a text prop`);
     return out;
 }
 

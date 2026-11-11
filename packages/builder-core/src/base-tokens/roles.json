@@ -171,5 +171,10 @@
   "text-code-padding-y": { "base": "Semantic/textCodePaddingY", "derive": { "from": "Primitives/padding/2" } },
   "text-code-padding": { "base": "Semantic/textCodePaddingX", "derive": { "from": "Primitives/padding/4" } },
   "code-bg": { "base": "Semantic/colorCodeBg", "derive": { "from": "Primitives/neutral/500", "opacity": 10 } },
-  "mark-bg": { "base": "Semantic/colorMarkBg", "derive": { "from": "Primitives/warning/200" } }
+  "mark-bg": { "base": "Semantic/colorMarkBg", "derive": { "from": "Primitives/warning/200" } },
+  "heading-1": { "base": "Semantic/heading1" },
+  "heading-2": { "base": "Semantic/heading2" },
+  "heading-3": { "base": "Semantic/heading3" },
+  "heading-4": { "base": "Semantic/heading4" },
+  "heading-5": { "base": "Semantic/heading5" }
 }

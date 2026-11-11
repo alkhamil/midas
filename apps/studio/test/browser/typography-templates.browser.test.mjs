@@ -42,13 +42,28 @@ const TEXT = {
     }),
 };
 
+const TITLE = {
+    id: 'antd-title',
+    name: 'title',
+    scenarios: [
+        ...['h1', 'h2', 'h3', 'h4', 'h5'].map(level => [`level-${level}`, { level }]),
+        ...['default', 'secondary', 'success', 'warning', 'danger'].map(type => [`type-${type}`, { level: 'h2', type }]),
+        ['italic', { type: 'default', italic: true }],
+        ['underline-strikethrough', { italic: false, underline: true, strikethrough: true }],
+        ['code', { underline: false, strikethrough: false, code: true }],
+        ['mark', { code: false, mark: true }],
+        ['code-mark', { code: true, mark: true }],
+        ['disabled', { code: false, mark: false, disabled: true }],
+    ],
+};
+
 /** The state of the props after each scenario: later scenarios build on earlier ones. */
 function stateAfter(scenarios) {
     const state = {};
     return scenarios.map(([name, props]) => { Object.assign(state, props); return [name, props, { ...state }]; });
 }
 
-for (const template of [TEXT]) for (const dpr of (process.env.DPRS ?? "1,2").split(",").map(Number)) {
+for (const template of [TEXT, TITLE]) for (const dpr of (process.env.DPRS ?? "1,2").split(",").map(Number)) {
     test(`${template.name}: canvas and Play agree at DPR ${dpr}, for every type and style`, async t => {
         const stop = await ensureDevServers();
         t.after(stop);
