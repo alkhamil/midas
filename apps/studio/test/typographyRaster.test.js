@@ -29,9 +29,14 @@ const PARAGRAPH = [
     { name: 'expand text, 48 x 20', w: 48, h: 20, basePad: 0 },
     { name: 'copy icon, 16 x 16 path', w: 16, h: 16, basePad: 1 },
 ];
+/** The Link's label: one text layer like Text's (the anchor is the root frame, not a layer). */
+const LINK = [
+    { name: 'Link md label, 32 x 20', w: 32, h: 20, basePad: 0 },
+    { name: 'Link xl label strong, 80 x 28', w: 80, h: 28, basePad: 0 },
+];
 /** Each template is one set: its layers share the atlas (two templates are never on screen at the deepest zoom together). */
-const SETS = { Text: TEXT, Title: TITLE, Paragraph: PARAGRAPH };
-const LAYERS = [...TEXT, ...TITLE, ...PARAGRAPH];
+const SETS = { Text: TEXT, Title: TITLE, Paragraph: PARAGRAPH, Link: LINK };
+const LAYERS = [...TEXT, ...TITLE, ...PARAGRAPH, ...LINK];
 const WIDE = [{ name: 'text across a 1200 frame', w: 1200, h: 24, basePad: 0 }, { name: 'text across a 4000 frame', w: 4000, h: 24, basePad: 0 }];
 
 test('zoom 46.69 at DPR 1, 2 and 3: each text layer stays within the tiles-in-view budget, the margin cap and the entry size', () => {

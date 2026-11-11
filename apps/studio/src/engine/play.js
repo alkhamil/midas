@@ -487,6 +487,8 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
     overlay.addEventListener('click', e => {
         // A key press (Enter on a focused control) is a click with no pointer: it is not a press the chrome judges.
         if (e.detail === 0) press = null;
+        // A link draws its href, but a click in Play stays in Play: the stage is not a page to leave.
+        if (e.target.closest?.('.play-stage a[href]')) e.preventDefault();
         finishPress();
         const waveHost = e.target.closest?.('.play-stage [data-wave]');
         if (waveHost && !waveHost.hasAttribute('data-blocked')) showWave(waveHost);

@@ -75,13 +75,27 @@ const PARAGRAPH = {
     ],
 };
 
+const LINK = {
+    id: 'antd-link',
+    name: 'link',
+    scenarios: [
+        ['plain', { type: 'default', href: 'https://example.com' }],
+        ...['secondary', 'success', 'warning', 'danger'].map(type => [`type-${type}`, { type }]),
+        ['strong', { type: 'default', strong: true }],
+        ['underline', { strong: false, underline: true }],
+        ['italic-strikethrough', { underline: false, italic: true, strikethrough: true }],
+        ['code', { italic: false, strikethrough: false, code: true }],
+        ['disabled', { code: false, disabled: true }],
+    ],
+};
+
 /** The state of the props after each scenario: later scenarios build on earlier ones. */
 function stateAfter(scenarios) {
     const state = {};
     return scenarios.map(([name, props]) => { Object.assign(state, props); return [name, props, { ...state }]; });
 }
 
-for (const template of [TEXT, TITLE, PARAGRAPH]) for (const dpr of (process.env.DPRS ?? "1,2").split(",").map(Number)) {
+for (const template of [TEXT, TITLE, PARAGRAPH, LINK]) for (const dpr of (process.env.DPRS ?? "1,2").split(",").map(Number)) {
     test(`${template.name}: canvas and Play agree at DPR ${dpr}, for every type and style`, async t => {
         const stop = await ensureDevServers();
         t.after(stop);
@@ -163,6 +177,50 @@ for (const dpr of (process.env.DPRS ?? '1,2').split(',').map(Number)) {
         await copier.click();
         const copied = await page.evaluate(() => navigator.clipboard.readText());
         assert.match(copied, /^Ant Design, a design language/, 'the text is on the clipboard');
+        assert.deepEqual(errors, [], 'no console errors');
+    });
+}
+
+for (const dpr of (process.env.DPRS ?? '1,2').split(',').map(Number)) {
+    test(`link: in Play the anchor carries its href, recolours on hover and pressed, stays on the stage when clicked, and a disabled link does none of it (DPR ${dpr})`, async t => {
+        const stop = await ensureDevServers();
+        t.after(stop);
+        mkdirSync(ARTIFACTS, { recursive: true });
+        const browser = await chromium.launch({ channel: 'chrome' });
+        t.after(() => browser.close());
+        const { page, errors } = await openImportedFile(browser, isolatedStage({ name: 'typo-link-play.midas' }), { dpr });
+        const id = await createFromPanel(page, 'antd-link');
+        await setProp(page, 'href', 'https://example.com/away');
+        await openPlay(page, id);
+        const anchor = page.locator('.play-overlay a.antd-link');
+        assert.equal(await anchor.getAttribute('href'), 'https://example.com/away');
+        const label = page.locator('.play-overlay .antd-link-label');
+        const colour = () => label.evaluate(el => getComputedStyle(el).color);
+        const rest = await colour();
+        await anchor.hover();
+        await page.waitForTimeout(150);
+        const hover = await colour();
+        assert.notEqual(hover, rest, 'hover recolours');
+        await page.mouse.down();
+        await page.waitForTimeout(100);
+        const pressed = await colour();
+        assert.notEqual(pressed, hover, 'pressed recolours again');
+        await page.screenshot({ path: resolve(ARTIFACTS, `typo-link-${dpr}x-play-pressed.png` )});
+        await page.mouse.up();
+        const url = page.url();
+        await page.waitForTimeout(300);
+        assert.equal(page.url(), url, 'a click does not leave the studio');
+        assert.equal(await page.locator('.play-overlay').count(), 1, 'Play is still open');
+        await page.keyboard.press('Escape');
+        await page.waitForSelector('.play-overlay', { state: 'detached' });
+        await setProp(page, 'disabled', true);
+        await openPlay(page, id);
+        const off = page.locator('.play-overlay .antd-link');
+        assert.equal(await off.getAttribute('href'), null, 'a disabled link has no href');
+        const dRest = await label.evaluate(el => getComputedStyle(el).color);
+        await off.hover({ force: true });
+        await page.waitForTimeout(150);
+        assert.equal(await label.evaluate(el => getComputedStyle(el).color), dRest, 'a disabled link does not hover');
         assert.deepEqual(errors, [], 'no console errors');
     });
 }

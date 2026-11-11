@@ -110,7 +110,7 @@ function renderNode(n, parent, scope, icon = false) {
         const style = { ...base, ...textStyle(n), ...effectStyle(n, scope, true) };
         if (slotClass && n.vars?.typography !== undefined) for (const key of ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing']) delete style[key];
         // A text a press recolours on hover (the expand control) takes its colour from the stylesheet too: an inline colour would win over the hover rule.
-        if (owner && (owner.press ?? []).some(p => p.glyph === n.behavior.slot && p.hoverFill !== undefined)) delete style.color;
+        if (owner && ((owner.press ?? []).some(p => p.glyph === n.behavior.slot && p.hoverFill !== undefined) || Object.values(owner.previewStates ?? {}).some(over => owner.display[n.behavior.slot]?.fill in over))) delete style.color;
         const element = textElement(n, style);
         return slotClass ? { ...element, attrs: { ...element.attrs, class: slotClass } } : element;
     }
@@ -475,7 +475,7 @@ function renderTemplate(n, template, parent, scope) {
         Object.assign(style, useSvg ? { borderWidth: '0px', borderStyle: 'none', ...(template.display.root.paddingX ? { paddingInline: `var(${cssVarOf(template.id, template.display.root.paddingX)})` } : {}), ...(template.display.root.paddingY ? { paddingBlock: `var(${cssVarOf(template.id, template.display.root.paddingY)})` } : {}) } : (() => { const uniform = strokeSidesUniform(shape); if (!uniform) { const s = strokeSideWidths(shape); const per = {}; for (const [k, v] of [['Top', s.t], ['Right', s.r], ['Bottom', s.b], ['Left', s.l]]) { per[`border${k}Width`] = `${v}px`; per[`border${k}Style`] = v > 0 ? lineStyle : 'none'; if (!bound && v > 0) per[`border${k}Color`] = colorWithAlpha(shape.stroke, shape.strokeOpacity); } per.backgroundClip = 'border-box'; return per; } return bw > 0 ? { borderWidth: `${bw}px`, borderStyle: lineStyle, ...(bound ? {} : { borderColor: colorWithAlpha(shape.stroke, shape.strokeOpacity) }), backgroundClip: 'border-box' } : { borderWidth: '0px', borderStyle: 'none' }; })()); if (hasStroke && !style.position) style.position = 'relative';
     }
     // A link's href is its text prop; Play draws it (and keeps a click from leaving the stage, see play.js), the canvas has none.
-    if (template.element.hrefProp && String(props[template.element.hrefProp] ?? '') !== '') attrs.href = String(props[template.element.hrefProp]);
+    if (template.element.hrefProp && String(props[template.element.hrefProp] ?? '') !== '' && !(template.element.disabledState !== undefined && stateOn(template, template.element.disabledState, props))) attrs.href = String(props[template.element.hrefProp]);
     return { tag, nodeId: n.id, attrs, style, children };
 }
 

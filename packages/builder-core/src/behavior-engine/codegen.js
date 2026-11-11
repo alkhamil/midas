@@ -323,7 +323,8 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         ...Object.entries(tagAttrs).map(([key, value]) => `${key === 'tabindex' ? 'tabIndex' : key}="${value}"`),
         slotted ? `className={['${template.id}', className].filter(Boolean).join(' ')}` : `className="${template.id}"`,
         ...(slotted ? ['ref={ref}', varsExpr ? `style={{ ...${varsExpr}, ...style } as CSSProperties}` : 'style={style}'] : varsExpr ? [`style={${varsExpr}}`] : []),
-        ...(template.element.hrefProp ? [`href={${template.element.hrefProp} || undefined}`] : []),
+        // A link has no href while it is disabled.
+        ...(template.element.hrefProp ? [`href={${disabledProp ? `${disabledProp} ? undefined : ` : ''}${template.element.hrefProp} || undefined}`] : []),
         ...(template.interaction?.wave ? ['data-wave'] : []),
         ...(template.interaction?.wave && !template.events.some(event => event.name === 'onClick') ? ['onClick={(e) => { if (blocked) return; waveDown(e.currentTarget); }}'] : []),
         ...(template.interaction?.wave ? [`onAnimationEnd={(e) => { if (e.animationName === '${WAVE_KEYFRAMES}') e.currentTarget.removeAttribute('data-wave-on'); }}`] : []),
@@ -484,6 +485,8 @@ function displayRules(template, master, childrenOf, geometry) {
         }
         // A root with no focus ring of its own (Checkbox, Radio, Switch draw focus on the box border) must not show the browser's default one.
         if (key === 'root' && !template.outline) decls.push('  outline: none;\n');
+        // An anchor has no underline of its own (the browser draws one): the underline prop draws it on the label.
+        if (key === 'root' && template.element.hrefProp) decls.push('  text-decoration: none;\n');
         // A root that draws no border of its own (Switch is a button) must not show the browser's default button border.
         if (key === 'root' && !('stroke' in (template.display.root ?? {}))) decls.push('  border: 0;\n');
         // The root draws its own border, so the children sit inside the compensated padding.
