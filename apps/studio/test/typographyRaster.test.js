@@ -22,9 +22,16 @@ const TITLE = [
     { name: 'Title h3 label, 120 x 36', w: 120, h: 36, basePad: 0 },
     { name: 'Title h5 label across a 343 frame', w: 343, h: 28, basePad: 0 },
 ];
+/** The Paragraph: its wrapped label (a text layer, 343 wide, up to five rows), the expand text, and the copy icon (a 16 x 16 vector, the only vector layer). */
+const PARAGRAPH = [
+    { name: 'Paragraph label, 343 x 40', w: 343, h: 40, basePad: 0 },
+    { name: 'Paragraph label expanded, 343 x 100', w: 343, h: 100, basePad: 0 },
+    { name: 'expand text, 48 x 20', w: 48, h: 20, basePad: 0 },
+    { name: 'copy icon, 16 x 16 path', w: 16, h: 16, basePad: 1 },
+];
 /** Each template is one set: its layers share the atlas (two templates are never on screen at the deepest zoom together). */
-const SETS = { Text: TEXT, Title: TITLE };
-const LAYERS = [...TEXT, ...TITLE];
+const SETS = { Text: TEXT, Title: TITLE, Paragraph: PARAGRAPH };
+const LAYERS = [...TEXT, ...TITLE, ...PARAGRAPH];
 const WIDE = [{ name: 'text across a 1200 frame', w: 1200, h: 24, basePad: 0 }, { name: 'text across a 4000 frame', w: 4000, h: 24, basePad: 0 }];
 
 test('zoom 46.69 at DPR 1, 2 and 3: each text layer stays within the tiles-in-view budget, the margin cap and the entry size', () => {

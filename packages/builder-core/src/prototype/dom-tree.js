@@ -109,6 +109,8 @@ function renderNode(n, parent, scope, icon = false) {
         const slotClass = owner ? `${owner.id}-${n.behavior.slot}` : null;
         const style = { ...base, ...textStyle(n), ...effectStyle(n, scope, true) };
         if (slotClass && n.vars?.typography !== undefined) for (const key of ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing']) delete style[key];
+        // A text a press recolours on hover (the expand control) takes its colour from the stylesheet too: an inline colour would win over the hover rule.
+        if (owner && (owner.press ?? []).some(p => p.glyph === n.behavior.slot && p.hoverFill !== undefined)) delete style.color;
         const element = textElement(n, style);
         return slotClass ? { ...element, attrs: { ...element.attrs, class: slotClass } } : element;
     }

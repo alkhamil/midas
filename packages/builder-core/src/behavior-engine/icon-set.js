@@ -24,6 +24,8 @@ export const ICON_SET = [
     { name: 'circle', role: 'default', closed: true, points: [at(12, 2, 12 - K, 2, 12 + K, 2), at(22, 12, 22, 12 - K, 22, 12 + K), at(12, 22, 12 + K, 22, 12 - K, 22), at(2, 12, 2, 12 + K, 2, 12 - K)] },
     // A close cross: one closed polygon of straight edges (no handles), the close of a dismissible element (Tag).
     { name: 'close', role: 'close', closed: true, points: [[5.293, 6.707], [6.707, 5.293], [12, 10.586], [17.293, 5.293], [18.707, 6.707], [13.414, 12], [18.707, 17.293], [17.293, 18.707], [12, 13.414], [6.707, 18.707], [5.293, 17.293], [10.586, 12]].map(([x, y]) => ({ x, y })) },
+    // A copy glyph: a solid square in front of the corner of another (an outline in an L), the copy of a text (Paragraph's copyable).
+    { name: 'copy', role: 'copy', closed: true, points: [{ x: 4, y: 4 }, { x: 15, y: 4 }, { x: 15, y: 6.5 }, { x: 6.5, y: 6.5 }, { x: 6.5, y: 15 }, { x: 4, y: 15 }], contours: [{ points: [{ x: 9, y: 9 }, { x: 20, y: 9 }, { x: 20, y: 20 }, { x: 9, y: 20 }], closed: true }] },
     // The solar eye glyph (CC BY 4.0), converted losslessly: every sub-path with its handles, the even-odd fill rule.
     {
         name: 'eye', role: 'eyeOn', closed: true, fillRule: 'evenodd',

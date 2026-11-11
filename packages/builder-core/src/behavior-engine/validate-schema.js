@@ -652,8 +652,12 @@ function pressProblems(schema) {
         for (const field of ['hoverFill', 'activeFill']) if (entry[field] !== undefined && !tokens.includes(entry[field])) out.push(`press ${field} "${entry[field]}" on "${entry.slot}" is not a token`);
         if (entry.glyph !== undefined && !(Array.isArray(schema.anatomy) && schema.anatomy.some(s => isPlainObject(s) && s.id === entry.glyph && s.parent === entry.slot))) out.push(`press glyph "${entry.glyph}" is not a slot inside "${entry.slot}"`);
         if (entry.blockedBy !== undefined && !stateAttributesOf(schema).some(a => a.prop === entry.blockedBy)) out.push(`press blockedBy "${entry.blockedBy}" is not a state with an attribute`);
-        const actions = ['toggle', 'toggleState', 'step', 'resize', 'dismiss'].filter(k => entry[k] !== undefined);
-        if (actions.length !== 1) { out.push(`press on "${entry.slot}" needs exactly one of toggle, toggleState, step, resize or dismiss`); continue; }
+        const actions = ['toggle', 'toggleState', 'step', 'resize', 'dismiss', 'copy'].filter(k => entry[k] !== undefined);
+        if (actions.length !== 1) { out.push(`press on "${entry.slot}" needs exactly one of toggle, toggleState, step, resize, dismiss or copy`); continue; }
+        // copy: the text slot whose text the click puts on the clipboard (it is a text prop of the template).
+        if (entry.copy !== undefined && !((Array.isArray(schema.anatomy) ? schema.anatomy : []).some(s => isPlainObject(s) && s.id === entry.copy && s.kind === 'text') && props[entry.copy]?.source === 'literal' && props[entry.copy]?.type === 'string')) out.push(`press copy "${entry.copy}" on "${entry.slot}" is not a text slot with a text prop`);
+        // expand: the toggleState `expanded` also lifts the line clamp of the text a prop clamps (maxLines).
+        if (entry.expand !== undefined && !(entry.expand === true && entry.toggleState === 'expanded' && Object.values(props).some(p => isPlainObject(p) && (isPlainObject(p.node) && p.node.field === 'maxLines')))) out.push(`press expand on "${entry.slot}" needs toggleState "expanded" and a prop that writes maxLines`);
         if (entry.toggleState !== undefined && !/^[A-Za-z][A-Za-z0-9]*$/.test(entry.toggleState)) out.push(`press toggleState "${entry.toggleState}" on "${entry.slot}" is not a name a local state can be written as`);
         if (entry.resize !== undefined && !(entry.resize === true && schema.control?.multiline)) out.push(`press resize on "${entry.slot}" needs a multiline control`);
         if (entry.toggle !== undefined && !(props[entry.toggle]?.source === 'literal' && props[entry.toggle]?.type === 'boolean' && attrs.some(a => a.prop === entry.toggle))) out.push(`press toggle "${entry.toggle}" on "${entry.slot}" is not a boolean prop that a state with an attribute follows`);

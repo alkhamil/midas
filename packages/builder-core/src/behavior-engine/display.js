@@ -79,11 +79,13 @@ export const LOADING_OPACITY = 0.65;
 export const NODE_FIELDS = {
     frame: { visible: { kind: 'boolean' }, primaryAlign: { kind: 'boolean', values: { true: 'end', false: 'start' } }, layout: { kind: 'enum', options: ['horizontal', 'vertical'] }, gap: { kind: 'number' }, width: { kind: 'number' }, opacity: { kind: 'boolean', values: { true: LOADING_OPACITY } }, imageFill: { kind: 'image' } },
     // fontStyle: a boolean writes italic or normal. textDecoration: flags, each boolean prop that names one adds it to the one value (underline and line-through compose
-    // as `underline line-through`, none is `none`). maxLines: a number clamps the text to that many lines (no number is no clamp).
+    // as `underline line-through`, none is `none`).
     text: {
         text: { kind: 'string' }, visible: { kind: 'boolean' }, width: { kind: 'number' }, heightSizing: { kind: 'enum', options: ['hug', 'fill'] },
         fontStyle: { kind: 'boolean', values: { true: 'italic', false: 'normal' } },
         textDecoration: { kind: 'boolean', flags: ['underline', 'line-through'] },
+        // textTruncate clamps the text to its maxLines (a number of rows); a prop writes each.
+        textTruncate: { kind: 'boolean', values: { true: true, false: false } },
         maxLines: { kind: 'number' },
     },
     arc: { visible: { kind: 'boolean' } },
@@ -169,6 +171,8 @@ export function pressAttrsOf(template, slot) {
     const entry = (template.press ?? []).find(p => p.slot === slot);
     if (!entry) return {};
     if (entry.resize) return { 'data-press': 'resize' };
+    // A copy press says which text it copies: the class of that slot's element, which Play reads the text from.
+    if (entry.copy !== undefined) return { 'data-press': 'copy', 'data-press-copy': `${template.id}-${entry.copy}` };
     if (entry.dismiss) return { 'data-press': 'dismiss' };
     if (entry.toggleState !== undefined) return { 'data-press': 'toggle', 'data-press-attr': localAttrOf(entry.toggleState) };
     return entry.toggle !== undefined ? { 'data-press': 'toggle', 'data-press-attr': attrOfProp(template, entry.toggle) } : { 'data-press': 'step', 'data-press-step': String(entry.step) };
@@ -467,7 +471,7 @@ export function literalFieldNames(template) {
 }
 
 /** The node fields a prop's field writes: `width` is a fixed width (or hug), so it owns the width, its sizing and, for a text, whether it measures itself. */
-const OWNED_NODE_FIELDS = { width: ['w', 'layoutSizingH', 'autoW'], heightSizing: ['layoutSizingV'], imageFill: ['fills'], maxLines: ['maxLines', 'textTruncate'] };
+const OWNED_NODE_FIELDS = { width: ['w', 'layoutSizingH', 'autoW'], heightSizing: ['layoutSizingV'], imageFill: ['fills'] };
 
 /**
  * The fills of a node that holds a picture: its colour fills stay (the first is hidden while the picture shows, so a transparent picture shows no colour under it) and the
@@ -498,8 +502,8 @@ export function nodeFieldPatch(field, value, type, node) {
     }
     if (field === 'heightSizing') return { layoutSizingV: value };
     if (field === 'gap') return { gap: value == null ? 0 : value };
-    // A number of lines clamps the text to them; none removes the clamp (the canvas keeps its own line count for when it is turned on again).
-    if (field === 'maxLines') return value == null ? { textTruncate: false } : { textTruncate: true, maxLines: value };
+    // A row count is at least one (the canvas never holds none).
+    if (field === 'maxLines') return { maxLines: value == null ? 1 : value };
     if (field === 'opacity') return { opacity: value ?? 1 };
     return { [field]: value };
 }
@@ -520,7 +524,8 @@ export function fieldStyleOf(template, props, assets = {}) {
         else if (field === 'primaryAlign') attrs[`data-${prop}-align`] = alignValueOf(writer, props[prop]);
         // A text style the stylesheet draws from a data attribute on the root (italic, an underline or a strike line), and a line clamp from its count.
         else if (field === 'fontStyle' || writer.flag !== undefined) { if (props[prop] === true) attrs[`data-${kebabOf(prop)}`] = ''; }
-        else if (field === 'maxLines') { if (props[prop] != null) { attrs[`data-${kebabOf(prop)}`] = ''; vars[`--${template.id}-${kebabOf(prop)}`] = String(props[prop]); } }
+        else if (field === 'textTruncate') { if (props[prop] === true) attrs[`data-${kebabOf(prop)}`] = ''; }
+        else if (field === 'maxLines') { if (props[prop] != null) vars[`--${template.id}-${kebabOf(prop)}`] = String(props[prop]); }
         else if ((field === 'gap' || field === 'width') && props[prop] != null) vars[`--${template.id}-${prop}`] = `${props[prop]}px`;
         // A picture is a data attribute that clears the colour under it, and the asset's source as the root's own background image: not a custom property, which Chrome drops
         // above about 2 MB (a picture is a data URL of any size here). The export carries a short URL as a custom property the stylesheet reads.
@@ -535,7 +540,7 @@ export function fieldStyleOf(template, props, assets = {}) {
  * @param {import('../templates/schema.js').TemplateSchema} template
  */
 export function fieldWritersOf(template) {
-    return nodeWritersOf(template).filter(({ field }) => ['layout', 'gap', 'width', 'primaryAlign', 'imageFill', 'fontStyle', 'textDecoration', 'maxLines'].includes(field));
+    return nodeWritersOf(template).filter(({ field }) => ['layout', 'gap', 'width', 'primaryAlign', 'imageFill', 'fontStyle', 'textDecoration', 'textTruncate', 'maxLines'].includes(field));
 }
 
 /**

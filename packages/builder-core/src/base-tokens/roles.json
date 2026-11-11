@@ -176,5 +176,9 @@
   "heading-2": { "base": "Semantic/heading2" },
   "heading-3": { "base": "Semantic/heading3" },
   "heading-4": { "base": "Semantic/heading4" },
-  "heading-5": { "base": "Semantic/heading5" }
+  "heading-5": { "base": "Semantic/heading5" },
+  "link": { "base": "Semantic/colorLink" },
+  "link-hover": { "base": "Semantic/colorLinkHover", "derive": { "from": "Primitives/primary/600" } },
+  "link-active": { "base": "Semantic/colorLinkActive", "derive": { "from": "Primitives/primary/700" } },
+  "success-hover": { "base": "Semantic/colorSuccessHover", "derive": { "from": "Primitives/success/600" } }
 }

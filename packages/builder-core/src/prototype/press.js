@@ -45,6 +45,14 @@ export function applyPress(target) {
         root.addEventListener?.('transitionend', e => { if (e.target === root) root.style.display = 'none'; });
         return true;
     }
+    // A disabled element does not copy, expand or toggle.
+    if (root.hasAttribute('aria-disabled')) return false;
+    // A copy puts the text of the slot it names on the clipboard.
+    if (glyph.getAttribute('data-press') === 'copy') {
+        const text = root.querySelector(`.${glyph.getAttribute('data-press-copy')}`)?.textContent ?? '';
+        globalThis.navigator?.clipboard?.writeText(text);
+        return true;
+    }
     const input = root.querySelector('input,textarea');
     if (input?.hasAttribute('disabled')) return false;
     const write = (name, on) => (on ? root.setAttribute(name, '') : root.removeAttribute(name));

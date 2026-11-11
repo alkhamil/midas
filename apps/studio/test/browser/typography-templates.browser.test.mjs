@@ -57,13 +57,31 @@ const TITLE = {
     ],
 };
 
+const PARAGRAPH = {
+    id: 'antd-paragraph',
+    name: 'paragraph',
+    scenarios: [
+        ['plain', { type: 'default' }],
+        ['ellipsis-2', { ellipsis: true, rows: 2 }],
+        ['ellipsis-3', { rows: 3 }],
+        ['ellipsis-expand', { expandable: true }],
+        ['ellipsis-expand-label', { expandText: 'More' }],
+        ['copyable', { expandable: false, ellipsis: false, copyable: true }],
+        ['ellipsis-expand-copyable', { ellipsis: true, rows: 2, expandable: true, copyable: true }],
+        ...['secondary', 'success', 'warning', 'danger'].map(type => [`type-${type}`, { type }]),
+        ['strong-italic', { type: 'default', strong: true, italic: true }],
+        ['code-mark', { strong: false, italic: false, code: true, mark: true }],
+        ['disabled', { code: false, mark: false, disabled: true }],
+    ],
+};
+
 /** The state of the props after each scenario: later scenarios build on earlier ones. */
 function stateAfter(scenarios) {
     const state = {};
     return scenarios.map(([name, props]) => { Object.assign(state, props); return [name, props, { ...state }]; });
 }
 
-for (const template of [TEXT, TITLE]) for (const dpr of (process.env.DPRS ?? "1,2").split(",").map(Number)) {
+for (const template of [TEXT, TITLE, PARAGRAPH]) for (const dpr of (process.env.DPRS ?? "1,2").split(",").map(Number)) {
     test(`${template.name}: canvas and Play agree at DPR ${dpr}, for every type and style`, async t => {
         const stop = await ensureDevServers();
         t.after(stop);
@@ -75,7 +93,7 @@ for (const template of [TEXT, TITLE]) for (const dpr of (process.env.DPRS ?? "1,
         const report = [];
         for (const [name, props, after] of stateAfter(template.scenarios)) {
             for (const [prop, value] of Object.entries(props)) {
-                if (typeof value === 'string') await setMode(page, prop, value);
+                if (['type', 'size', 'level'].includes(prop)) await setMode(page, prop, value);
                 else await setProp(page, prop, value);
             }
             await page.evaluate(() => window.midas.select([]));
@@ -95,6 +113,56 @@ for (const template of [TEXT, TITLE]) for (const dpr of (process.env.DPRS ?? "1,
             report.push({ scenario: name, props: after, rows });
         }
         writeFileSync(resolve(ARTIFACTS, `typo-${template.name}-${dpr}x.json`), JSON.stringify(report, null, 1));
+        assert.deepEqual(errors, [], 'no console errors');
+    });
+}
+
+/** Opens Play on the instance at actual size on a white background. */
+async function openPlay(page, id) {
+    await page.evaluate(i => window.midas.select([i]), id);
+    await page.locator('#play').click();
+    await page.waitForSelector('.play-overlay');
+    await page.locator('.play-overlay [aria-label="View options"]').click();
+    await page.locator('.play-overlay [data-mode="actual-size"]').click();
+    await page.waitForTimeout(400);
+}
+
+for (const dpr of (process.env.DPRS ?? '1,2').split(',').map(Number)) {
+    test(`paragraph: in Play the expand control lifts the clamp, the copy icon copies, and both recolour on hover (DPR ${dpr})`, async t => {
+        const stop = await ensureDevServers();
+        t.after(stop);
+        mkdirSync(ARTIFACTS, { recursive: true });
+        const browser = await chromium.launch({ channel: 'chrome' });
+        t.after(() => browser.close());
+        const { page, errors } = await openImportedFile(browser, isolatedStage({ name: `typo-paragraph-play.midas` }), { dpr });
+        await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://localhost:5174' });
+        const id = await createFromPanel(page, 'antd-paragraph');
+        for (const [prop, value] of [['ellipsis', true], ['rows', 1], ['expandable', true], ['copyable', true]]) await setProp(page, prop, value);
+        await openPlay(page, id);
+        const label = page.locator('.play-overlay .antd-paragraph-label');
+        const clamped = (await label.boundingBox()).height;
+        const color = loc => loc.evaluate(el => getComputedStyle(el).color);
+        const expandText = page.locator('.play-overlay .antd-paragraph-expandText');
+        const restColour = await color(expandText);
+        await expandText.hover();
+        await page.waitForTimeout(150);
+        assert.notEqual(await color(expandText), restColour, 'the expand text recolours on hover');
+        const copier = page.locator('.play-overlay .antd-paragraph-copy');
+        const copyRest = await color(copier);
+        await copier.hover();
+        await page.waitForTimeout(150);
+        assert.notEqual(await color(copier), copyRest, 'the copy icon recolours on hover');
+        await page.screenshot({ path: resolve(ARTIFACTS, `typo-paragraph-${dpr}x-play-hover.png`) });
+        await page.locator('.play-overlay .antd-paragraph-expander').click();
+        await page.waitForTimeout(200);
+        assert.ok((await label.boundingBox()).height > clamped + 1, 'expanded: the whole text shows');
+        assert.equal(await page.locator('.play-overlay .antd-paragraph[data-expanded]').count(), 1);
+        await page.locator('.play-overlay .antd-paragraph-expander').click();
+        await page.waitForTimeout(200);
+        assert.ok(Math.abs((await label.boundingBox()).height - clamped) < 0.5, 'a second click clamps again');
+        await copier.click();
+        const copied = await page.evaluate(() => navigator.clipboard.readText());
+        assert.match(copied, /^Ant Design, a design language/, 'the text is on the clipboard');
         assert.deepEqual(errors, [], 'no console errors');
     });
 }

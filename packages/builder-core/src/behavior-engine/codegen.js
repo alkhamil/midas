@@ -147,6 +147,7 @@ function pressHandlerJsx(template, slot) {
     const entry = (template.press ?? []).find(p => p.slot === slot.id);
     if (!entry) return '';
     const disabled = disabledPropsOf(template);
+    if (entry.copy !== undefined) return ` onClick={() => { ${disabled ? `if (!(${disabled})) { ` : '{ '}navigator.clipboard?.writeText(String(${entry.copy} ?? "")); onCopy?.(${entry.copy}); } }}`;
     if (entry.toggleState !== undefined) return ` onClick={() => { ${disabled ? `if (!(${disabled})) ` : ''}set${entry.toggleState[0].toUpperCase()}${entry.toggleState.slice(1)}(!${entry.toggleState}); }}`;
     if (entry.dismiss) return ` onClick={() => { ${disabled ? `if (!(${disabled})) { setDismissed(true); onClose?.(); }` : 'setDismissed(true); onClose?.();'} }}`;
     if (entry.resize) return ` onPointerDown={(e) => { ${disabled ? `if (${disabled}) return; ` : ''}const drag = startResizeDrag(e.currentTarget.closest("[data-field-box]"), e.clientY, (el) => getComputedStyle(el)); if (!drag) return; e.preventDefault(); const move = (m) => drag.move(m.clientY); const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); }; window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); }}`;
@@ -181,7 +182,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     }
     // A pressable glyph reports its press: a toggle the next value of its prop, a step its direction.
     if (controlOf(template)?.number) params.push('onCommit');
-    for (const entry of (template.press ?? []).filter(p => !p.resize && p.toggleState === undefined)) { const name = entry.toggle !== undefined ? toggleCallback(entry.toggle) : entry.dismiss ? 'onClose' : 'onStep'; if (!params.includes(name)) params.push(name); }
+    for (const entry of (template.press ?? []).filter(p => !p.resize && p.toggleState === undefined)) { const name = entry.toggle !== undefined ? toggleCallback(entry.toggle) : entry.dismiss ? 'onClose' : entry.copy !== undefined ? 'onCopy' : 'onStep'; if (!params.includes(name)) params.push(name); }
     // A derived boolean (the value has reached a limit) is read from the others in the component, never passed in.
     // A `when` rule holds as its condition does; a limit rule reads its value against the limit.
     const derivedLines = Object.entries(template.props).filter(([, def]) => def.derived !== undefined).map(([prop, { derived }]) => derived.when !== undefined ? `  const ${prop} = ${shownJsx(derived.when)};` : `  const ${prop} = ${derived.limit} != null && Number(${derived.value}) ${derived.cmp === 'gte' ? '>=' : '<='} ${derived.limit} && String(${derived.value} ?? "") !== "";`);
@@ -337,7 +338,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         ...fieldWritersOf(template).filter(w => w.field === 'imageFill').map(w => `data-${w.prop}={${w.prop} ? "" : undefined}`),
         // The text styles are data attributes the stylesheet draws: italic, each decoration line, and a line clamp while it has a count.
         ...fieldWritersOf(template).filter(w => w.field === 'fontStyle' || w.flag !== undefined).map(w => `data-${kebabCase(w.prop)}={${w.prop} || undefined}`),
-        ...fieldWritersOf(template).filter(w => w.field === 'maxLines').map(w => `data-${kebabCase(w.prop)}={${w.prop} != null ? "" : undefined}`),
+        ...fieldWritersOf(template).filter(w => w.field === 'textTruncate').map(w => `data-${kebabCase(w.prop)}={${w.prop} || undefined}`),
         ...(ml ? [`data-${kebabCase(ml.resize)}={${ml.resize}}`, `data-${kebabCase(ml.autoSize)}={${ml.autoSize} || undefined}`] : []),
         // A prop that aligns the row's content to the end says which end as a data attribute (a Switch's handle).
         ...fieldWritersOf(template).filter(w => w.field === 'primaryAlign').map(w => `data-${w.prop}-align={${alignExprOf(w)}}`),
@@ -699,6 +700,23 @@ function pressRules(template) {
 }
 
 /**
+ * What an expand press lifts: while the root says it is expanded (`data-expanded`, Play flips it, the export keeps it in local state), the line clamp of the text a prop clamps is gone.
+ * !important, because Play draws the clamp as the text layer's inline style.
+ * @param {any} template
+ * @returns {string[]}
+ */
+function expandRules(template) {
+    if (!(template.press ?? []).some(p => p.expand)) return [];
+    const writer = fieldWritersOf(template).find(w => w.field === 'maxLines');
+    return [`.${template.id}[${localAttrOf('expanded')}] .${template.id}-${writer.key} {
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  overflow: visible !important;
+}
+`];
+}
+
+/**
  * The hover colour of a glyph (`hoverFill`, a colour token): Play and the export only, the canvas is static. A disabled control never changes it.
  * @param {any} template
  * @returns {string[]}
@@ -790,7 +808,12 @@ function fieldRules(template) {
             }
             return rules;
         }
-        if (field === 'maxLines') return [`.${template.id}[data-${kebabCase(prop)}]${target} {\n  display: -webkit-box;\n  -webkit-box-orient: vertical;\n  -webkit-line-clamp: var(--${template.id}-${kebabCase(prop)});\n  overflow: hidden;\n}\n`];
+        // A clamp: while the root says it is on, the text shows its rows (the row count prop of the same layer) and cuts the rest.
+        if (field === 'textTruncate') {
+            const rows = fieldWritersOf(template).find(w => w.field === 'maxLines' && w.key === key);
+            return [`.${template.id}[data-${kebabCase(prop)}]${target} {\n  display: -webkit-box;\n  -webkit-box-orient: vertical;\n  -webkit-line-clamp: ${rows ? `var(--${template.id}-${kebabCase(rows.prop)})` : '1'};\n  overflow: hidden;\n}\n`];
+        }
+        if (field === 'maxLines') return [];
         if (field === 'layout') {
             // A slot that fills the width it is given takes the cross axis of a vertical root and what is left of the row in a horizontal one (flowSizing, per option).
             const fills = key === 'root' ? (template.slots ?? []).filter(slot => slot.fill).map(slot => slot.id) : [];
@@ -962,7 +985,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     blocks.push(...iconHoverRules(template), ...blockedRules(template), ...swapRules(template));
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
-    blocks.push(...pressRules(template), ...glyphHoverRules(template), ...fieldRules(template), ...multilineRules(template), ...revealRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
+    blocks.push(...expandRules(template), ...pressRules(template), ...glyphHoverRules(template), ...fieldRules(template), ...multilineRules(template), ...revealRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
     if (template.interaction || template.motion) blocks.push(reducedMotion(template));
     return blocks.join('\n');
 }
