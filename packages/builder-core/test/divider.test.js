@@ -138,7 +138,7 @@ test('no hidden layer: the master holds none, and no instance layer is hidden, t
     }
 });
 
-test('a line takes its colour, its width and its length from tokens: the border colour, the line width, the short or vertical length', () => {
+test('a line takes its colour, its width and its length from tokens: the border colour, the line width, the short length', () => {
     const line = nodeOf({}, 'lineBefore');
     assert.equal(item(line.vars.stroke).name, 'lineColor');
     assert.equal(item(line.vars.strokeWidth).name, 'lineWidth');
@@ -147,13 +147,15 @@ test('a line takes its colour, its width and its length from tokens: the border 
     assert.equal(valueOf(line.vars.stroke), variableValue(model.variables, border, modeNamed('Base')), 'the line colour is the border colour');
     assert.equal(valueOf(line.vars.strokeWidth), 1);
     assert.equal(strokeIsOn({ ...line, stroke: valueOf(line.vars.stroke), strokeWidth: valueOf(line.vars.strokeWidth) }), true);
-    assert.equal(valueOf(nodeOf({ orientation: 'vertical' }, 'lineVertical').vars.h), 12, 'a vertical line is as long as its token');
-    assert.equal(nodeOf({ orientation: 'vertical' }, 'lineVertical').layoutSizingV, 'fixed');
+    const vertical = nodeOf({ orientation: 'vertical' }, 'lineVertical');
+    assert.equal(vertical.layoutSizingV, 'fill', 'a vertical line fills the root height');
+    assert.equal(vertical.vars?.h, undefined, 'no length token binds it');
+    assert.equal(nodeOf({}, 'lineBefore').layoutSizingH, 'fill', 'a horizontal line fills the row');
     assert.equal(nodeOf({ orientation: 'vertical' }, 'lineVertical').w, 0, 'a vertical line is a line along y');
     assert.equal(nodeOf({}, 'lineBefore').h, 0, 'a horizontal line is a line along x');
 });
 
-test('the text takes the text colour and the heading typography; plain swaps the typography on the layer; the Size mode sets the space above and below', () => {
+test('the text takes the text colour and the heading typography; plain swaps the typography on the layer; the root has no padding', () => {
     const typographyOf = props => item(nodeOf({ hasText: true, ...props }, 'label').vars.typography).name;
     assert.equal(typographyOf({}), 'labelTypography');
     assert.equal(typographyOf({ plain: true }), 'plainTypography');
@@ -162,9 +164,8 @@ test('the text takes the text colour and the heading typography; plain swaps the
     assert.equal(styleOf('labelTypography'), 'textLgStrong');
     assert.equal(styleOf('plainTypography'), 'textBase');
     assert.equal(item(nodeOf({ hasText: true }, 'label').vars['fills.0']).name, 'labelColor');
-    const spaceY = model.variables.items.find(i => i.name === 'spaceY');
-    assert.deepEqual(['small', 'middle', 'large'].map(m => valueOf(spaceY.id, m)), [8, 16, 24], 'antd marginXS, margin, marginLG');
-    assert.equal(item(model.frame.vars.padV).name, 'spaceY', 'the root pads above and below by it');
+    assert.equal(model.variables.items.some(i => i.name === 'spaceY'), false, 'no padding variable');
+    assert.equal(model.frame.vars?.padV, undefined, 'the root is not padded above and below');
 });
 
 test('the Style mode sets the dash of every line: solid has none, dashed is dash 4, dotted is dots', () => {
@@ -189,7 +190,7 @@ test('the export draws every line slot: no unsupported-slot, a rule per slot by 
     for (const slot of ['lineBefore', 'lineBeforeShort', 'lineAfter', 'lineAfterShort', 'lineVertical']) assert.match(jsx, new RegExp(`<span className="antd-divider-${slot}" />`), slot);
     assert.match(css, /\.antd-divider-lineBefore \{[^}]*border-top: var\([^)]*\) solid var\([^)]*\);[^}]*height: 0;[^}]*flex: 1 1 0;/);
     assert.match(css, /\.antd-divider-lineBeforeShort \{[^}]*width: var\(/);
-    assert.match(css, /\.antd-divider-lineVertical \{[^}]*border-left: [^}]*width: 0;[^}]*height: var\(/);
+    assert.match(css, /\.antd-divider-lineVertical \{[^}]*border-left: [^}]*width: 0;[^}]*align-self: stretch;/);
     const styleModes = model.variables.collections.find(c => c.id === model.binding.variables.lineStyle).modes;
     for (const [name, style] of [['dashed', 'dashed'], ['dotted', 'dotted']]) {
         const id = styleModes.find(m => m.name === name).id;
@@ -245,4 +246,11 @@ test('a line slot must name its axis, be managed and optional, and be a layer of
     assert.match(problems(t => { delete t.anatomy[0].axis; }), /line slot "lineBefore" axis must be horizontal or vertical/);
     assert.match(problems(t => { delete t.anatomy[0].managed; }), /line slot "lineBefore" must be managed and optional/);
     assert.match(problems(t => { t.anatomy[0].parent = 'label'; }), /line slot "lineBefore" is a layer of the root/);
+});
+
+test('a vertical line fills the root height but is never shorter than its token, so a hugging root does not collapse it (canvas, Play and export)', () => {
+    const vertical = nodeOf({ orientation: 'vertical' }, 'lineVertical');
+    assert.equal(valueOf(vertical.vars.minH), 12);
+    assert.equal(vertical.h, 0, 'it starts with no length of its own: the token is the floor');
+    assert.match(generated().files['Divider.css'], /\.antd-divider-lineVertical \{[^}]*min-height: var\(--antd-divider-vertical-length\);/);
 });

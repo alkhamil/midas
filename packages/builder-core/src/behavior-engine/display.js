@@ -53,6 +53,8 @@ export const NODE_PROPERTIES = {
         strokeWidth: { kind: 'length' },
         width: { kind: 'length', css: null },
         height: { kind: 'length', css: null },
+        // The least length of a filling vertical rule: a hugging root would otherwise collapse it.
+        minHeight: { kind: 'length', css: 'min-height' },
     },
     // An arc part (the spinner) is an SVG drawn with `currentColor`: its colour is the CSS colour, and it is the icon size wide and high.
     arc: {

@@ -314,9 +314,9 @@ export function managedGlyphLayer(template, slotId, resolved, { id, parentId }) 
  */
 export function managedLineLayer(template, slotId, resolved, { id, parentId }) {
     const slot = template.anatomy.find(s => s.id === slotId);
-    const filled = slot.axis === 'horizontal' && slot.fill === true;
-    // A fixed line starts at a visible length along its axis (its length token replaces it when bound); a filling one takes the row's.
-    return { ...LAYER, id, name: slotId, parentId, type: 'line', w: slot.axis === 'horizontal' ? 16 : 0, h: slot.axis === 'vertical' ? 16 : 0, stroke: '#18181b', strokeWidth: 1, strokeAlign: 'center', fills: [], layoutSizingH: filled ? 'fill' : 'fixed', layoutSizingV: 'fixed', visible: slotShown(template, slotId, resolved), sourceId: undefined, isInstance: false, component: false, overrides: {}, behavior: { version: BEHAVIOR_DATA_VERSION, slot: slotId } };
+    const filled = slot.fill === true;
+    // A fixed line starts at a visible length along its axis (its length token replaces it when bound); a filling one takes the row's (vertical: the root's height).
+    return { ...LAYER, id, name: slotId, parentId, type: 'line', w: slot.axis === 'horizontal' ? 16 : 0, h: slot.axis === 'vertical' && !filled ? 16 : 0, stroke: '#18181b', strokeWidth: 1, strokeAlign: 'center', fills: [], layoutSizingH: filled && slot.axis === 'horizontal' ? 'fill' : 'fixed', layoutSizingV: filled && slot.axis === 'vertical' ? 'fill' : 'fixed', visible: slotShown(template, slotId, resolved), sourceId: undefined, isInstance: false, component: false, overrides: {}, behavior: { version: BEHAVIOR_DATA_VERSION, slot: slotId } };
 }
 
 /**

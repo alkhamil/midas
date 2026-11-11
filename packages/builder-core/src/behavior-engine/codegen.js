@@ -546,7 +546,7 @@ function lineDecls(template, key, props, tokens) {
     const side = slot.axis === 'horizontal' ? 'top' : 'left';
     const decls = ['  display: block;\n', '  box-sizing: content-box;\n', '  flex-shrink: 0;\n', `  border-${side}: ${v('strokeWidth')} solid ${v('stroke')};\n`];
     if (slot.axis === 'horizontal') decls.push('  height: 0;\n', slot.fill === true ? '  flex: 1 1 0;\n' : `  width: ${v('width')};\n`);
-    else decls.push('  width: 0;\n', `  height: ${v('height')};\n`);
+    else decls.push('  width: 0;\n', slot.fill === true ? '  align-self: stretch;\n' : `  height: ${v('height')};\n`);
     return decls;
 }
 
