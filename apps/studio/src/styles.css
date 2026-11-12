@@ -2496,14 +2496,9 @@ select.vw-text { cursor: pointer }
 .pk-tabs { display: flex; gap: 2px }
 .pk-tabs button { height: 28px; padding: 0 10px; border: 0; background: transparent; color: var(--muted); border-radius: 6px; cursor: pointer; font-size: 12px }
 .pk-tabs button.on { background: var(--field); color: var(--text); font-weight: 600 }
-.pk-types { display: flex; gap: 4px; padding: 4px 10px 8px; border-bottom: 1px solid var(--border) }
+.pk-types { display: flex; align-items: center; gap: 2px; padding: 4px 10px 8px; border-bottom: 1px solid var(--border) }
 .pk-types button { width: 30px; height: 30px; display: grid; place-items: center; border: 0; background: transparent; color: var(--muted); border-radius: 6px; cursor: pointer }
 .pk-types button.on { background: var(--field); color: var(--text) }
-.pk-stops { display: flex; gap: 6px; align-items: center; padding: 10px 10px 0 }
-.pk-stops button { height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 9px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text); font-size: 11.5px; cursor: pointer }
-.pk-stops button.on { border-color: var(--accent); background: var(--accent-bg) }
-.pk-stops i { width: 12px; height: 12px; border-radius: 3px; border: 1px solid #0003 }
-.pk-angle { margin-left: auto; width: 76px; height: 28px }
 .pk-sv { position: relative; margin: 10px; height: 168px; border-radius: 6px; cursor: crosshair; touch-action: none; background: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(var(--h), 100%, 50%)) }
 .pk-sv-h { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #0006, inset 0 0 0 1px #0004; pointer-events: none }
 .pk-sliders { display: flex; align-items: center; gap: 8px; padding: 0 10px }
@@ -2513,17 +2508,89 @@ select.vw-text { cursor: pointer }
 .pk-hue { background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) }
 .pk-alpha { background: linear-gradient(to right, transparent, var(--c)), var(--checker-sm) }
 .pk-hue i, .pk-alpha i { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #0006; background: transparent; pointer-events: none }
-.pk-hexrow { display: flex; align-items: center; gap: 6px; padding: 12px 10px 0 }
-.pk-fmt { height: 28px; padding: 0 8px; display: grid; place-items: center; border-radius: 6px; background: var(--field); font-size: 12px; color: var(--text-secondary) }
+.pk-hexrow { display: flex; align-items: center; gap: 4px; padding: 12px 10px 0 }
 .pk-hex, .pk-opin { height: 28px; border-radius: 6px; border: 1px solid transparent; background: var(--field); color: var(--text); padding: 0 8px; font-size: 12px; outline: none }
 .pk-hex { flex: 1; min-width: 0 }
-.pk-opin { width: 52px; text-align: right }
+.pk-opin { width: 40px; text-align: right }
 .pk-hex:focus, .pk-opin:focus { border-color: var(--accent) }
-.pk-sp { width: 1px }
+.pk-sp { flex: 1; min-width: 1px }
 .pk-pct { font-style: normal; color: var(--muted); font-size: 11px }
 .pk-pad { padding: 10px }
 .pk-search { margin: 10px }
 .pk-libs { max-height: 300px; overflow: auto; padding: 0 6px }
+.pk-hbtns { display: flex; align-items: center; gap: 2px }
+.pk-types button:disabled { opacity: .4; cursor: not-allowed }
+.pk-types button[data-pk-blend-open] { margin-left: auto }
+.pk-blend-menu { position: absolute; z-index: 2; right: 10px; top: 76px; min-width: 176px; padding: 6px 0; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow) }
+.pk-blend-group + .pk-blend-group { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--border) }
+.pk-blend-menu button { display: flex; align-items: center; gap: 6px; width: 100%; height: 26px; padding: 0 12px 0 8px; border: 0; background: transparent; color: var(--text); font-size: 12px; text-align: left; cursor: pointer }
+.pk-blend-menu button:hover:not(:disabled), .pk-blend-menu button.on { background: var(--accent-bg) }
+.pk-blend-menu button:disabled { color: var(--muted); cursor: not-allowed }
+.pk-blend-menu i { width: 14px; display: grid; place-items: center; flex: none }
+.pk-fmtsel { flex: none }
+.pk-fmtsel select { width: 64px; height: 28px; padding: 0 20px 0 8px; font-size: 12px }
+.pk-num { width: 0; flex: 1; min-width: 0; height: 28px; border-radius: 6px; border: 1px solid transparent; background: var(--field); color: var(--text); padding: 0 6px; font-size: 12px; outline: none }
+.pk-contrast { margin: 12px 10px 0; padding-top: 10px; border-top: 1px solid var(--border); display: grid; gap: 6px }
+.pk-ctitle { font-size: 11px; font-weight: 600; color: var(--text-secondary) }
+.pk-crow { display: grid; grid-template-columns: 84px 1fr auto; align-items: center; gap: 8px; font-size: 12px; color: var(--text) }
+.pk-cname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary) }
+.pk-cratio { font-variant-numeric: tabular-nums; font-weight: 600 }
+.pk-badges { display: flex; gap: 4px }
+.pk-badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-style: normal; font-weight: 600 }
+.pk-badge.ok { background: color-mix(in srgb, var(--success, #2fb344) 22%, transparent); color: var(--success, #2fb344) }
+.pk-badge.bad { background: color-mix(in srgb, var(--danger, #e5484d) 22%, transparent); color: var(--danger, #e5484d) }
+.pk-row { display: flex; align-items: center; gap: 4px; margin-bottom: 8px }
+.pk-modesel { width: 96px; height: 28px; font-size: 12px }
+.pk-ibtn { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); cursor: pointer }
+.pk-ibtn:hover:not(:disabled) { background: var(--field); color: var(--text) }
+.pk-ibtn:disabled { opacity: .35; cursor: not-allowed }
+.pk-preview { position: relative; width: 100%; box-sizing: border-box }
+.pk-drop { display: grid; place-content: center; gap: 6px; min-height: 120px; background-size: cover }
+.pk-upload { height: 26px; padding: 0 12px; border: 0; border-radius: 6px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer }
+.pk-upload.ghost { background: var(--field); color: var(--muted); cursor: not-allowed; font-weight: 500 }
+.pk-replace { width: 100%; height: 28px; margin-top: 6px; border: 0; border-radius: 6px; background: var(--field); color: var(--text); font-size: 12px; cursor: pointer }
+.pk-sliders2 { display: grid; gap: 4px; margin-top: 10px }
+.pk-slide { display: grid; grid-template-columns: 84px 1fr; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary) }
+.pk-slide input[type=range] { width: 100%; height: 16px; margin: 0; accent-color: var(--accent) }
+.pk-srcprev { height: 132px; border-radius: 6px; background: #111 center / contain no-repeat; display: grid; place-items: center }
+.pk-srcrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0 4px; font-size: 12px }
+.pk-srcname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text) }
+.pk-prow { display: grid; grid-template-columns: 76px 1fr; align-items: center; gap: 8px; min-height: 32px; font-size: 12px; color: var(--text-secondary) }
+.pk-fld { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border-radius: 6px; background: var(--field); color: var(--text) }
+.pk-fld b { font-weight: 500; color: var(--muted) }
+.pk-fld input { flex: 1; min-width: 0; width: 100%; border: 0; background: transparent; color: var(--text); font-size: 12px; outline: none }
+.pk-fld.off { opacity: .45 }
+.pk-stack { display: grid; gap: 4px }
+.pk-seg { display: flex; gap: 2px; padding: 2px; border-radius: 6px; background: var(--field) }
+.pk-seg button { flex: 1; height: 24px; display: grid; place-items: center; border: 0; border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer }
+.pk-seg button.on { background: var(--panel); color: var(--text) }
+.pk-align3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 4px; border-radius: 6px; background: var(--field) }
+.pk-align3 button { height: 22px; display: grid; place-items: center; border: 0; background: transparent; cursor: pointer }
+.pk-align3 i { width: 4px; height: 4px; border-radius: 50%; background: var(--muted) }
+.pk-align3 button.on i { width: 8px; height: 8px; border-radius: 2px; background: var(--accent) }
+.pk-gbar { position: relative; height: 24px; margin: 8px 6px 14px; border-radius: 6px; cursor: copy; touch-action: none }
+.pk-gh { position: absolute; top: 50%; width: 14px; height: 22px; margin: -11px 0 0 -7px; box-sizing: border-box; border: 2px solid #fff; border-radius: 4px; background: var(--c); box-shadow: 0 0 0 1px #0006; cursor: ew-resize }
+.pk-gh.sel { border-color: var(--accent); box-shadow: 0 0 0 1px #fff }
+.pk-shead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; font-size: 12px; font-weight: 600; color: var(--text) }
+.pk-stop-list { display: grid; gap: 2px }
+.pk-stop-row { display: flex; align-items: center; gap: 4px; padding: 2px 2px 2px 0; border-radius: 6px }
+.pk-stop-row.sel { background: var(--accent-bg) }
+.pk-stop-row .pk-fld { width: 58px; flex: none; padding: 0 4px; gap: 2px }
+.pk-stop-row .pk-fld input { text-align: right }
+.pk-stop-row .pk-hex { background: transparent; padding: 0 4px }
+.pk-swatch { position: relative; width: 20px; height: 20px; flex: none; border-radius: 4px; background: var(--c); box-shadow: 0 0 0 1px #0004; overflow: hidden; cursor: pointer }
+.pk-swatch input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer }
+.fill-picker { overflow-x: hidden }
+.pk-pad { overflow: hidden }
+.pk-num, .pk-fld input, .pk-opin { -moz-appearance: textfield; appearance: textfield }
+.pk-num::-webkit-inner-spin-button, .pk-num::-webkit-outer-spin-button, .pk-fld input::-webkit-inner-spin-button, .pk-fld input::-webkit-outer-spin-button, .pk-opin::-webkit-inner-spin-button, .pk-opin::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0 }
+.pk-stop-row > * { min-width: 0 }
+.pk-stop-row .pk-hex { flex: 1; width: 0 }
+.pk-slide input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer }
+.pk-slide input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: var(--field); box-shadow: inset 0 0 0 1px var(--border) }
+.pk-slide input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; margin-top: -3px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px #0007 }
+.pk-slide input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--field) }
+.pk-slide input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%; background: #fff }
 /* ===== effects rows / floating window / menu ===== */
 .fx-row { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 4px 0 8px; margin: 3px 0; border-radius: 6px; background: var(--field); cursor: pointer; color: var(--text); font-size: 12px }
 .fx-row:hover { background: var(--hover) }

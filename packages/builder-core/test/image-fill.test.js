@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { cssBackgroundOf, imageFillCss, imageFillLayout, imageFillStyleOf } from '../src/geometry/fills.js';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
-import { fieldStyleOf } from '../src/behavior-engine/display.js';
+import { fieldStyleOf, nodeFieldPatch } from '../src/behavior-engine/display.js';
 import { generateComponent } from '../src/behavior-engine/codegen.js';
 import { overflowOf, toDomTree } from '../src/prototype/dom-tree.js';
 import { modelFor, instanceFor } from './helpers/box-template.js';
@@ -74,6 +74,96 @@ test('every fit mode reaches the cover element in Play', () => {
         assert.equal(cover.style.backgroundSize, size, mode);
         assert.equal(cover.style.backgroundRepeat, repeat, mode);
     }
+});
+
+test('Play draws a crop, rotation and adjustment on the cover from the same SVG layer the canvas and the export read', () => {
+    const cover = play({ coverImage: 'a' }, { mode: 'crop', crop: { x: 0.25, y: 0.75, scale: 2 }, rotation: 15, adjust: { contrast: 0.2 } }).children.find(c => c.attrs.class === 'antd-card-belowBox');
+    assert.match(cover.style.backgroundImage, /^url\("data:image\/svg\+xml,/);
+    assert.equal(cover.style.backgroundSize, '100% 100%');
+    const svg = decodeURIComponent(cover.style.backgroundImage.slice(cover.style.backgroundImage.indexOf(',') + 1, cover.style.backgroundImage.indexOf('")')));
+    assert.match(svg, /rotate\(15 0.5 0.5\)/);
+    assert.match(svg, /slope="1.2"/);
+});
+
+test('Play draws a pattern on a template picture layer from the same SVG tile the canvas repeats', () => {
+    const nodes = instanceFor(model, { cover: true, coverImage: 'a' });
+    for (const n of nodes) if (n.behavior?.group === 'belowBox' || n.behavior?.slot === 'belowBox') n.fills = [{ type: 'pattern', image: 'a', tileType: 'HORIZONTAL_HEXAGONAL', scale: 2, spacingX: 3, spacingY: 4, align: 'center', opacity: 1, visible: true }];
+    for (const n of nodes) if (n.behavior?.group === 'belowBox' || n.behavior?.slot === 'belowBox') Object.assign(n.fills[0], { iw: 40, ih: 20 });
+    const root = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [model.frame, ...model.created, ...nodes] }], variables: model.variables, assets }, nodes[0].id).root;
+    const cover = root.children.find(c => /-(above|below)Box$/.test(c.attrs.class));
+    assert.match(cover.style.backgroundImage, /^url\("data:image\/svg\+xml,/);
+    assert.equal(cover.style.backgroundSize, '82.4px 83.2px');
+    const svg = decodeURIComponent(cover.style.backgroundImage.slice(cover.style.backgroundImage.indexOf(',') + 1, cover.style.backgroundImage.indexOf('")')));
+    assert.match(svg, /width="82.4" height="83.2"/);
+});
+
+test('Play draws a pattern with no measured tile at the nine point alignment the picker shows', () => {
+    const nodes = instanceFor(model, { cover: true, coverImage: 'a' });
+    for (const n of nodes) if (n.behavior?.group === 'belowBox' || n.behavior?.slot === 'belowBox') n.fills = [{ type: 'pattern', image: 'a', align: 'center', opacity: 1, visible: true }];
+    const root = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [model.frame, ...model.created, ...nodes] }], variables: model.variables, assets }, nodes[0].id).root;
+    const cover = root.children.find(c => /-(above|below)Box$/.test(c.attrs.class));
+    assert.equal(cover.style.backgroundImage, 'url("' + assets.a + '")');
+    assert.equal(cover.style.backgroundPosition, '50% 50%');
+});
+
+test('a video asset through a picture prop is a video source, kept with its mode and poster like an image', () => {
+    const videoAssets = { ...assets, v: 'data:video/mp4;base64,AAAA' };
+    assert.deepEqual(nodeFieldPatch('imageFill', 'v', 'frame', { fills: [] }, videoAssets), { fills: [{ type: 'video', video: 'v', mode: 'fill', scale: 1, opacity: 1, visible: true }] });
+    const own = { type: 'video', video: 'v', mode: 'fit', scale: 1, poster: 'a', opacity: 1, visible: true };
+    assert.deepEqual(nodeFieldPatch('imageFill', 'v', 'frame', { fills: [{ type: 'solid', color: '#ccc', visible: true }, own] }, videoAssets).fills, [{ type: 'solid', color: '#ccc', visible: true }, own], 'the same source keeps everything');
+    const swapped = nodeFieldPatch('imageFill', 'a', 'frame', { fills: [own] }, videoAssets).fills;
+    assert.equal(swapped[0].type, 'image', 'an image asset back on a video fill is an image fill');
+    assert.deepEqual(nodeFieldPatch('imageFill', null, 'frame', { fills: [own] }, videoAssets), { fills: [] }, 'no asset removes the picture');
+});
+
+test('Play draws a gradient on a template layer from the canvas fill, the same layer the export bakes', () => {
+    const root = play({}, { type: 'linear', angle: 0, color: '#000000', color2: '#ffffff' });
+    const cover = root.children.find(c => /-(above|below)Box$/.test(c.attrs.class));
+    assert.ok(cover.style.background.includes('linear-gradient(90deg, #000000, #ffffff)'), 'the canvas stops reach Play unchanged');
+});
+
+test('Play draws a pattern on a template layer from its live-linked source, the same tile the export repeats', () => {
+    const nodes = instanceFor(model, { cover: true, coverImage: 'a' });
+    const tile = { id: 'tile-src', name: 'Tile', type: 'frame', parentId: null, x: 0, y: 0, w: 80, h: 40, fills: [{ type: 'image', image: 'a', mode: 'fill', scale: 1, opacity: 1, visible: true }] };
+    for (const n of nodes) if (n.behavior?.group === 'belowBox' || n.behavior?.slot === 'belowBox') n.fills = [{ type: 'pattern', source: 'tile-src', tileType: 'RECTANGULAR', scale: 1, spacingX: 0, spacingY: 0, iw: 80, ih: 40, opacity: 1, visible: true }];
+    const root = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [model.frame, ...model.created, tile, ...nodes] }], variables: model.variables, assets }, nodes[0].id).root;
+    const cover = root.children.find(c => /-(above|below)Box$/.test(c.attrs.class));
+    assert.match(cover.style.backgroundImage, /^url\("data:image\/svg\+xml,/);
+    assert.equal(cover.style.backgroundSize, '80px 40px');
+});
+
+test('Play draws a video fill on a template picture layer as a video element, below the content and clipped to the box', () => {
+    const nodes = instanceFor(model, { cover: true, coverImage: 'a' });
+    for (const n of nodes) if (n.behavior?.group === 'belowBox' || n.behavior?.slot === 'belowBox') n.fills = [{ type: 'video', video: 'v', mode: 'fit', opacity: 1, visible: true }];
+    const withVideo = { ...assets, v: 'data:video/mp4;base64,AAAA' };
+    const root = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [model.frame, ...model.created, ...nodes] }], variables: model.variables, assets: withVideo }, nodes[0].id).root;
+    const cover = root.children.find(c => /-(above|below)Box$/.test(c.attrs.class));
+    const video = cover.children[0];
+    assert.equal(video.tag, 'video');
+    assert.equal(video.attrs.src, withVideo.v);
+    assert.deepEqual([video.attrs.autoplay, video.attrs.muted, video.attrs.loop, video.attrs.playsinline], [true, true, true, true]);
+    assert.ok(Object.keys(video.attrs).includes('playsinline'), 'the attribute name is the lowercase html form Play writes verbatim');
+    assert.equal(video.style.objectFit, 'contain');
+    assert.equal(video.style.position, 'absolute');
+    assert.equal(cover.style.overflow, 'hidden');
+});
+
+test('the exported video html carries lowercase playsinline, from the descriptor Play mounts verbatim', () => {
+    const nodes = instanceFor(model, { cover: true, coverImage: 'a' });
+    for (const n of nodes) if (n.behavior?.group === 'belowBox' || n.behavior?.slot === 'belowBox') n.fills = [{ type: 'video', video: 'v', mode: 'fit', opacity: 1, visible: true }];
+    const withVideo = { ...assets, v: 'data:video/mp4;base64,AAAA' };
+    const root = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [model.frame, ...model.created, ...nodes] }], variables: model.variables, assets: withVideo }, nodes[0].id).root;
+    const video = root.children.find(c => /-(above|below)Box$/.test(c.attrs.class)).children[0];
+    // The player mounts descriptor attributes under their own names (setAttribute with the key: booleans draw as empty-valued
+    // attributes, anything else as its string, false and undefined draw nothing). The html string below is what that mount writes.
+    const attrs = Object.entries(video.attrs ?? {})
+        .filter(([, value]) => value !== false && value !== undefined)
+        .map(([key, value]) => ` ${key}="${value === true ? '' : String(value).replace(/"/g, '&quot;')}"`)
+        .join('');
+    const html = `<${video.tag}${attrs}>`;
+    assert.ok(html.includes(' playsinline=""'), 'lowercase in the html string: ' + html);
+    assert.ok(!html.includes('playsInline') && !html.includes('playInline'), 'no camelcase variant: ' + html);
+    assert.ok(html.includes(' autoplay=""') && html.includes(' muted=""') && html.includes(' loop=""'), 'the defaults ride along: ' + html);
 });
 
 test('a picture on another layer than the root is not the root\'s: fieldStyleOf gives the root only the root writer\'s picture', () => {

@@ -39,7 +39,7 @@ test('the component follows the TSX conventions: typed props, forwardRef, classN
     assert.match(tsx, /export const CardTest = forwardRef<HTMLButtonElement, CardTestProps>\(function CardTest\(\{ [^}]*className, style, [^}]*\.\.\.rest \}, ref\) \{/);
     assert.match(tsx, /className=\{\['cardtest', className\]\.filter\(Boolean\)\.join\(' '\)\}/);
     assert.match(tsx, /\bref=\{ref\}/);
-    assert.match(tsx, /\bstyle=\{style\}/);
+    assert.match(tsx, /style=\{\{ \.\.\.\{[^}]*'--cardtest-rootFill': rootFill \?\? undefined[^}]*\}, \.\.\.style \} as CSSProperties\}/);
     assert.match(tsx, /\{\.\.\.rest\}/);
     assert.match(tsx, /className\?: string;/);
     assert.match(tsx, /style\?: CSSProperties;/);
@@ -86,7 +86,8 @@ test('a slot with showEmpty is always emitted, empty when its prop is; one witho
 
 test('filled says what ReactNode holds something: not undefined, null, a boolean or an empty string, and an array when one of its items does', () => {
     const tsx = tsxOf(HEADER);
-    const body = tsx.slice(tsx.indexOf('function filled'));
+    const cut = tsx.includes('type GradientFill') ? tsx.indexOf('type GradientFill') : undefined;
+    const body = tsx.slice(tsx.indexOf('function filled'), cut);
     // The helper is plain TypeScript in the component's file; run it to see what it answers.
     const filled = new Function(`${body.replace('node: ReactNode', 'node').replace('): boolean', ')')}; return filled;`)();
     for (const empty of [undefined, null, false, true, '', [], [null, false, '']]) assert.equal(filled(empty), false, JSON.stringify(empty));

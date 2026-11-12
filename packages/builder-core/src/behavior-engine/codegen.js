@@ -2,7 +2,7 @@
 // component (JSX) and its stylesheet out. Both come from the schema and the same resolver the preview uses, so the same inputs
 // give the same text. If any token is unresolved for any mode, nothing is written: the result has no files and lists the reasons.
 import { previewOf } from './preview.js';
-import { imageFillLayout } from '../geometry/fills.js';
+import { getFills, gradientCss, imageAdjustFilter, imageFillLayout, imageRotationOf, isGradientFill, patternLayout, topFillOf, videoObjectFit, videoObjectPosition } from '../geometry/fills.js';
 import { variableProps } from './registry.js';
 import { emptySlotFloor, slotHolderLayout } from './content-slots.js';
 import { resolveProps } from './instance-props.js';
@@ -111,8 +111,108 @@ function contentSlotJsx(template, prop, slot) {
  * @param {any} template
  * @returns {string[]}
  */
+function imageTileBases(template, master, childrenOf) {
+    return fieldWritersOf(template).filter(w => w.field === 'imageFill').map(w => {
+        const layer = w.key === 'root' ? master : childrenOf(master.id).find(c => c.behavior?.group === w.key || c.behavior?.slot === w.key);
+        const f = layer?.fills?.find(x => x.type === 'image');
+        return { prop: w.prop, iw: f?.iw, ih: f?.ih, scale: f?.scale || 1 };
+    });
+}
+
+/** The video element of a video prop: Figma's Autoplay, Loop and Sound (autoplay and loop default on, sound off); muted and playsInline are the HTML translation that lets autoplay work. */
+function videoJsx(prop) {
+    return `<video src={${prop}Video} autoPlay={${prop}Autoplay ?? true} loop={${prop}Loop ?? true} muted={!${prop}Sound} playsInline />`;
+}
+
 function imageFitPropsOf(template) {
     return [...new Set(fieldWritersOf(template).filter(w => w.field === 'imageFill').map(w => w.prop))];
+}
+
+/**
+ * The surface layers that take a whole-fill override: the root and every anatomy frame. Each gets a `<key>Fill` prop holding a complete CSS background
+ * (a gradient, a pattern tile shorthand, an image url or a solid); an instance that says nothing keeps the main component's fill.
+ * @param {any} template
+ * @returns {string[]}
+ */
+/** A per-instance gradient override: stops, positions, alpha and the handle transform, as the canvas holds them. */
+const GRADIENT_STRUCT = `{ type?: 'linear' | 'radial' | 'angular' | 'diamond'; angle?: number; stops?: { pos: number; color: string; alpha?: number }[]; handles?: { a?: { x: number; y: number }; b?: { x: number; y: number }; c?: { x: number; y: number } } }`;
+/** A per-instance pattern override: the runtime tile source with its tile type, scale, spacing, alignment and natural size. */
+const PATTERN_STRUCT = `{ source?: string; tileType?: 'RECTANGULAR' | 'HORIZONTAL_HEXAGONAL' | 'VERTICAL_HEXAGONAL'; scale?: number; spacingX?: number; spacingY?: number; align?: string; iw?: number; ih?: number }`;
+
+/**
+ * The standalone serializers as strict TypeScript: the emitted component compiles under strict, so the params the
+ * JavaScript leaves untyped are annotated here, and the alignment lookup reads through a string record.
+ * @returns {string[]}
+ */
+function fillHelperTs() {
+    const gradient = gradientLayerOf.toString()
+        .replace('function gradientLayerOf(g) {', 'function gradientLayerOf(g: GradientFill | undefined): string | undefined {')
+        .replace('(c, a) =>', '(c: string, a: number | undefined) =>');
+    const pattern = patternLayerOf.toString()
+        .replace('function patternLayerOf(p) {', 'function patternLayerOf(p: PatternFill | undefined): string | undefined {')
+        .replace('(x, y) =>', '(x: number, y: number) =>')
+        .replace("= { 'top-left'", "= ({ 'top-left'")
+        .replace("}[p.align || ''] || '0 0';", "} as Record<string, string>)[p.align || ''] || '0 0';");
+    return [`type GradientFill = ${GRADIENT_STRUCT};`, '', gradient, '', `type PatternFill = ${PATTERN_STRUCT};`, '', pattern, ''];
+}
+function fillSurfaceKeys(template) {
+    return ['root', ...template.anatomy.filter(s => s.kind === 'frame').map(s => s.id)];
+}
+
+/**
+ * A per-instance gradient struct as one CSS background layer: the same shapes the one pure gradient function draws (a plain linear gradient is CSS;
+ * angular is conic from its axis; a handled or many-stop linear, radial or diamond is an SVG gradient in the layer's unit space), so the export draws
+ * what the canvas holds. Emitted into the component source (the export is standalone); unit tests call it directly against the canvas strings.
+ * @param {{ type?: string, angle?: number, stops?: { pos: number, color: string, alpha?: number }[], handles?: { a?: { x: number, y: number }, b?: { x: number, y: number }, c?: { x: number, y: number } } } | undefined} g
+ * @returns {string | undefined}
+ */
+export function gradientLayerOf(g) {
+    if (!g) return undefined;
+    const stops = [...(g.stops || [])].sort((a, b) => a.pos - b.pos);
+    const list = stops.length >= 2 ? stops : [{ pos: 0, color: '#d9d9d9' }, { pos: 1, color: '#ffffff' }];
+    const alpha = (c, a) => (a === undefined || a >= 1 ? c : /^#[0-9a-f]{6}$/i.test(c) ? `${c}${Math.round(a * 255).toString(16).padStart(2, '0')}` : `color-mix(in srgb, ${c} ${Math.round(a * 100)}%, transparent)`);
+    const css = list.map(s => `${alpha(s.color, s.alpha)} ${Math.round(s.pos * 10000) / 100}%`).join(', ');
+    const plain = list.map(s => alpha(s.color, s.alpha)).join(', ');
+    const type = g.type || 'linear';
+    if (type === 'linear' && list.length <= 2 && !g.handles && !list.some(s => (s.alpha ?? 1) < 1)) return `linear-gradient(${(g.angle ?? 90) + 90}deg, ${plain})`;
+    if (type === 'angular') {
+        const a = g.handles?.a ?? { x: 0.5, y: 0.5 }, b = g.handles?.b ?? { x: 1, y: 0.5 };
+        const from = Math.round((Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI + 90) * 100) / 100;
+        return `conic-gradient(from ${from}deg at ${Math.round(a.x * 10000) / 100}% ${Math.round(a.y * 10000) / 100}%, ${css})`;
+    }
+    const svgStops = list.map(s => `<stop offset="${s.pos}" stop-color="${s.color}"${(s.alpha ?? 1) < 1 ? ` stop-opacity="${s.alpha}"` : ''}/>`).join('');
+    const a = type === 'linear' ? g.handles?.a ?? { x: 0, y: 0.5 } : g.handles?.a ?? { x: 0.5, y: 0.5 };
+    const b = type === 'linear' ? g.handles?.b ?? { x: 1, y: 0.5 } : g.handles?.b ?? { x: 1, y: 0.5 };
+    const c = g.handles?.c ?? { x: 0.5, y: 1 };
+    const gradient = type === 'linear'
+        ? `<linearGradient id="g" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}">${svgStops}</linearGradient>`
+        : `<radialGradient id="g" cx="0" cy="0" r="${type === 'diamond' ? 1.2 : 1}" gradientTransform="matrix(${b.x - a.x} ${b.y - a.y} ${c.x - a.x} ${c.y - a.y} ${a.x} ${a.y})">${svgStops}</radialGradient>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1" preserveAspectRatio="none"><defs>${gradient}</defs><rect x="-1000" y="-1000" width="2001" height="2001" fill="url(#g)"/></svg>`;
+    return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 0 0 / 100% 100% no-repeat`;
+}
+
+/**
+ * A per-instance pattern struct as one CSS background layer: one SVG tile repeated at its tile size (the recorded natural size times the scale,
+ * stepped by the spacing percentages, a doubled row or column for the hexagonal types), positioned by the 9-point alignment; without a natural size the raw picture repeats at the
+ * scale. The same numbers the canvas tile loop and the one pure pattern function read. Emitted into the component source; unit tests call it directly.
+ * @param {{ source?: string, tileType?: string, scale?: number, spacingX?: number, spacingY?: number, align?: string, iw?: number, ih?: number } | undefined} p
+ * @returns {string | undefined}
+ */
+export function patternLayerOf(p) {
+    if (!p || !p.source) return undefined;
+    const scale = p.scale || 1;
+    const position = { 'top-left': '0% 0%', top: '50% 0%', 'top-right': '100% 0%', left: '0% 50%', center: '50% 50%', right: '100% 50%', 'bottom-left': '0% 100%', bottom: '50% 100%', 'bottom-right': '100% 100%' }[p.align || ''] || '0 0';
+    const src = String(p.source).replace(/"/g, '%22');
+    if (p.iw && p.ih) {
+        const tileW = Math.round(p.iw * scale * 100) / 100, tileH = Math.round(p.ih * scale * 100) / 100;
+        const stepX = Math.round(tileW * (1 + (p.spacingX || 0) / 100) * 100) / 100, stepY = Math.round(tileH * (1 + (p.spacingY || 0) / 100) * 100) / 100;
+        const hex = p.tileType === 'HORIZONTAL_HEXAGONAL', vex = p.tileType === 'VERTICAL_HEXAGONAL', W = vex ? stepX * 2 : stepX, H = hex ? stepY * 2 : stepY;
+        const img = (x, y) => `<image href="${src}" x="${x}" y="${y}" width="${tileW}" height="${tileH}"/>`;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${hex ? img(0, 0) + img(stepX / 2, stepY) : vex ? img(0, 0) + img(stepX, stepY / 2) : img(0, 0)}</svg>`;
+        return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${position} / ${Math.round(W * 100) / 100}px ${Math.round(H * 100) / 100}px repeat`;
+    }
+    const size = scale !== 1 ? ` / ${Math.round(scale * 10000) / 100}%` : '';
+    return `url("${src}") ${position}${size} repeat`;
 }
 
 /** The TypeScript type of a schema prop: a variable prop is the mode id string, a literal its type, an enum its union, an icon a ReactNode. */
@@ -125,9 +225,17 @@ function propsTypeOf(template, name, elementType, attrType) {
     for (const [prop, def] of Object.entries(template.props)) lines.push(`  ${prop}?: ${typeOfProp(def)};`);
     for (const event of template.events) lines.push(`  ${event.name}?: ${EVENT_TYPE[event.name]}<${elementType}>;`);
     for (const { prop } of slotPropsOf(template)) lines.push(`  ${prop}?: ReactNode;`);
-    for (const prop of imageFitPropsOf(template)) lines.push(`  ${prop}Fit?: 'fill' | 'fit' | 'tile';`);
+    for (const prop of imageFitPropsOf(template)) lines.push(`  ${prop}Fit?: 'fill' | 'fit' | 'crop' | 'tile';`);
+    for (const prop of imageFitPropsOf(template)) lines.push(`  ${prop}Scale?: number;`);
+    for (const prop of imageFitPropsOf(template)) lines.push(`  ${prop}Rotate?: number;`);
+    for (const prop of imageFitPropsOf(template)) lines.push(`  ${prop}Filter?: string;`);
+    for (const prop of imageFitPropsOf(template)) lines.push(`  ${prop}Crop?: { x?: number; y?: number; zoom?: number };`);
+    for (const key of fillSurfaceKeys(template)) lines.push(`  ${key}Fill?: string;`);
+    for (const prop of imageFitPropsOf(template)) lines.push(`  ${prop}Video?: string;`, `  ${prop}Autoplay?: boolean;`, `  ${prop}Loop?: boolean;`, `  ${prop}Sound?: boolean;`);
+    for (const key of fillSurfaceKeys(template)) lines.push(`  ${key}Gradient?: ${GRADIENT_STRUCT};`);
+    for (const key of fillSurfaceKeys(template)) lines.push(`  ${key}Pattern?: ${PATTERN_STRUCT};`);
     lines.push('  className?: string;', '  style?: CSSProperties;');
-    const own = [...Object.keys(template.props), ...imageFitPropsOf(template).map(prop => `${prop}Fit`), ...template.events.map(e => e.name), ...slotPropsOf(template).map(s => s.prop), 'children', 'className', 'style'];
+    const own = [...Object.keys(template.props), ...imageFitPropsOf(template).flatMap(prop => [`${prop}Fit`, `${prop}Scale`, `${prop}Rotate`, `${prop}Filter`, `${prop}Video`, `${prop}Autoplay`, `${prop}Loop`, `${prop}Sound`, `${prop}Crop`]), ...fillSurfaceKeys(template).flatMap(key => [`${key}Fill`, `${key}Gradient`, `${key}Pattern`]), ...template.events.map(e => e.name), ...slotPropsOf(template).map(s => s.prop), 'children', 'className', 'style'];
     const omitted = [...new Set(own)].map(key => `'${key}'`).join(' | ');
     const used = ['CSSProperties', 'ReactNode', attrType, ...new Set(template.events.map(e => EVENT_TYPE[e.name]))];
     return [
@@ -205,9 +313,10 @@ function counterJsx(template, slot) {
 /** The element of a glyph slot: a span of the slot's class holding the definition's outline as an SVG, in currentColor. */
 export const glyphJsx = (template, slot) => `<span className="${template.id}-${slot.id}"${pressHandlerJsx(template, slot)}><svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="${glyphPathD(slot.glyph)}" fill="currentColor"${glyphFillRuleAttr(slot.glyph)} /></svg></span>`;
 
-function componentSource(template, name, problems, partWidthOf = part => part.arc.width, tagMap = null) {
+function componentSource(template, name, problems, partWidthOf = part => part.arc.width, tagMap = null, tileBases = []) {
     const params = Object.entries(template.props).filter(([, def]) => def.derived === undefined).map(([prop, def]) => (def.source === 'variable' ? prop : `${prop} = ${JSON.stringify(def.default)}`));
-    for (const prop of imageFitPropsOf(template)) params.push(`${prop}Fit`);
+    for (const prop of imageFitPropsOf(template)) params.push(`${prop}Fit`, `${prop}Scale`, `${prop}Rotate`, `${prop}Filter`, `${prop}Video`, `${prop}Autoplay`, `${prop}Loop`, `${prop}Sound`, `${prop}Crop`);
+    for (const key of fillSurfaceKeys(template)) params.push(`${key}Fill`, `${key}Gradient`, `${key}Pattern`);
     for (const event of template.events) {
         if (!DOM_EVENT[event.name]) problems.push({ event: event.name, reason: 'no-dom-event' });
         params.push(event.name);
@@ -224,6 +333,8 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     // A toggleState press keeps its interaction state local too: false until the click, flipped by it, with no prop and no callback.
     const toggleStates = toggleStatesOf(template);
     const localLines = toggleStates.map(s => `  const [${s}, set${s[0].toUpperCase()}${s.slice(1)}] = useState(false);`);
+    const bases = tileBases;
+    const tileSizeVar = (prop, scale) => { const b = bases.find(x => x.prop === prop); if (!b || b.iw == null) return `${Math.round((scale || 1) * 10000) / 100}%`; return `${Math.round(b.iw * (scale || 1))}px ${Math.round(b.ih * (scale || 1))}px`; };
     const controlLines = controlOf(template)?.multiline?.when ? [`  const Control = ${shownJsx(controlOf(template).multiline.when)} ? "textarea" : "input";`] : [];
     const slotted = (template.slots ?? []).length > 0;
     // The props that write a gap or a width reach the stylesheet as custom properties on the root (a width of none is not set); a layout is a data attribute.
@@ -233,6 +344,14 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     });
     // A picture reaches the stylesheet as a url() custom property (the export takes the source as a string), and a data attribute says it shows.
     for (const w of fieldWritersOf(template).filter(w => w.field === 'imageFill')) varPairs.push("'--" + template.id + '-' + w.prop + "': " + w.prop + ' ? `url("${' + w.prop + '}")` : undefined');
+    for (const w of fieldWritersOf(template).filter(w => w.field === 'imageFill')) varPairs.push("'--" + template.id + '-' + w.prop + "-size': " + w.prop + "Scale != null ? tileSizeVar('" + w.prop + "', " + w.prop + "Scale) : undefined");
+    for (const w of fieldWritersOf(template).filter(w => w.field === 'imageFill')) varPairs.push("'--" + template.id + '-' + w.prop + "-rotate': " + w.prop + "Rotate != null ? `${" + w.prop + "Rotate}deg` : undefined");
+    for (const w of fieldWritersOf(template).filter(w => w.field === 'imageFill')) varPairs.push("'--" + template.id + '-' + w.prop + "-filter': " + w.prop + "Filter ?? undefined");
+    for (const w of fieldWritersOf(template).filter(w => w.field === 'imageFill')) varPairs.push("'--" + template.id + '-' + w.prop + "-croppos': " + w.prop + "Crop ? `${Math.round(Math.max(0, Math.min(1, " + w.prop + "Crop.x ?? 0.5)) * 10000) / 100}% ${Math.round(Math.max(0, Math.min(1, " + w.prop + "Crop.y ?? 0.5)) * 10000) / 100}%` : undefined");
+    for (const w of fieldWritersOf(template).filter(w => w.field === 'imageFill')) varPairs.push("'--" + template.id + '-' + w.prop + "-cropsize': " + w.prop + "Crop ? (((" + w.prop + "Crop.zoom || 1) === 1) ? 'cover' : `${Math.round((" + w.prop + "Crop.zoom || 1) * 10000) / 100}%`) : undefined");
+    for (const key of fillSurfaceKeys(template)) varPairs.push(`'--${template.id}-${key}Fill': ${key}Fill ?? undefined`);
+    for (const key of fillSurfaceKeys(template)) varPairs.push(`'--${template.id}-${key}-gradient': ${key}Gradient ? gradientLayerOf(${key}Gradient) : undefined`);
+    for (const key of fillSurfaceKeys(template)) varPairs.push(`'--${template.id}-${key}-pattern': ${key}Pattern ? patternLayerOf(${key}Pattern) : undefined`);
     // A multiline control's rows reach the stylesheet as custom properties (the height is rows x line height + padding, see multilineRules).
     const ml = controlOf(template)?.multiline;
     if (ml) {
@@ -333,6 +452,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             inner.push(`{${conds.join(' && ')} && <span className="${template.id}-${def.slot}">{${def.component}}</span>}`);
         }
         // A container that is a content slot holds what its prop is given; with nothing given it draws its starting layers.
+        for (const w of fieldWritersOf(template).filter(w => w.field === 'imageFill' && w.key === slot.id)) inner.unshift(`{${w.prop}Video && ${videoJsx(w.prop)}}`);
         const boxSlot = slotPropsOf(template).find(p => boxesOf(p.slot).includes(slot.id));
         const body = boxSlot ? [`{${boxSlot.prop} ?? (<>`, ...inner, '</>)}'] : inner;
         const indented = body.map(line => line.split('\n').map(l => '  ' + l).join('\n')).join('\n');
@@ -346,6 +466,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     if (!framePlaced) children.push(...rooted.filter(part => !part.side).map(part => framePartJsx(part)));
     // A content slot is an element of the component, after the other layers in schema order: drawn when its prop holds something, always with showEmpty.
     for (const { prop, slot } of slotPropsOf(template).filter(p => p.slot.parent === undefined && !boxesOf(p.slot).length)) children.push(contentSlotJsx(template, prop, slot));
+    for (const w of fieldWritersOf(template).filter(w => w.field === 'imageFill' && w.key === 'root')) children.unshift(`{${w.prop}Video && ${videoJsx(w.prop)}}`);
     const { attrs: tagAttrs, blockClickProps } = template.element;
     // An element whose tag follows a mode (a Title's level) is a local `Tag` read from the mode's id; any other has its fixed tag.
     const tag = tagMap ? 'Tag' : template.element.tag;
@@ -369,7 +490,10 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         ...(template.toggle ? [`aria-checked={${template.toggle.clears ? `${template.toggle.clears} ? "mixed" : ` : ''}${template.toggle.prop} ? "true" : "false"}`] : []),
         ...fieldWritersOf(template).filter(w => w.field === 'layout').map(w => `data-${w.prop}={${w.prop}}`),
         ...fieldWritersOf(template).filter(w => w.field === 'imageFill').map(w => `data-${w.prop}={${w.prop} ? "" : undefined}`),
-        ...imageFitPropsOf(template).map(prop => `data-${prop}-fit={${prop}Fit}`),
+        ...imageFitPropsOf(template).flatMap(prop => [`data-${prop}-fit={${prop}Fit}`, `data-${prop}-scale={${prop}Scale}`, `data-${prop}-rotate={${prop}Rotate}`, `data-${prop}-filter={${prop}Filter}`, `data-${prop}-video={${prop}Video}`, `data-${prop}-crop={${prop}Crop ? "" : undefined}`]),
+        ...fillSurfaceKeys(template).map(key => `data-${key}Fill={${key}Fill}`),
+        ...fillSurfaceKeys(template).map(key => `data-${key}-gradient={${key}Gradient ? "" : undefined}`),
+        ...fillSurfaceKeys(template).map(key => `data-${key}-pattern={${key}Pattern ? "" : undefined}`),
         // The text styles are data attributes the stylesheet draws: italic, each decoration line, and a line clamp while it has a count.
         ...fieldWritersOf(template).filter(w => w.field === 'fontStyle' || w.flag !== undefined).map(w => `data-${kebabCase(w.prop)}={${w.prop} || undefined}`),
         ...fieldWritersOf(template).filter(w => w.field === 'textTruncate').map(w => `data-${kebabCase(w.prop)}={${w.prop} || undefined}`),
@@ -414,6 +538,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             ...(needsFilled ? ['', 'function filled(node: ReactNode): boolean {', `  return Array.isArray(node) ? node.some(filled) : node !== undefined && node !== null && typeof node !== 'boolean' && node !== '';`, '}'] : []),
             ...(counts.length ? ['', 'function copies(count: number | null | undefined, fallback: number): number {', '  const n = count ?? fallback;', '  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;', '}'] : []),
             '',
+            ...fillHelperTs(),
         ].join('\n');
     }
     return [
@@ -439,6 +564,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         ...(template.press ?? []).some(p => p.resize) ? ['', `const resizeLimits = ${resizeLimits.toString()};`, `const resizeHeight = ${resizeHeight.toString()};`, `const startResizeDrag = ${startResizeDrag.toString()};`] : [],
         ...(template.interaction?.wave ? ['', 'function waveDown(el) {', "  if (!el || el.disabled) return;", "  el.removeAttribute('data-wave-on');", '  void el.offsetWidth;', "  el.setAttribute('data-wave-on', '');", '}'] : []),
         '',
+        ...fillHelperTs(),
     ].join('\n');
 }
 
@@ -906,17 +1032,46 @@ function fieldRules(template, master, childrenOf) {
         // fill the main component's layer holds (the same props the canvas reads).
         if (field === 'imageFill') {
             const layer = key === 'root' ? master : childrenOf(master.id).find(c => c.behavior?.group === key || c.behavior?.slot === key);
-            const layout = imageFillLayout(layer?.fills?.find(f => f.type === 'image') ?? { mode: 'fill' }) ?? { position: 'center', size: 'cover', repeat: 'no-repeat' };
-            const lines = [`background-image: var(--${template.id}-${prop});`];
-            if (layout.size) lines.push(`background-size: ${layout.size};`);
-            if (layout.position) lines.push(`background-position: ${layout.position};`);
-            lines.push(`background-repeat: ${layout.repeat};`);
+            const masterFill = layer?.fills?.find(f => f.type === 'image' || f.type === 'video' || isGradientFill(f) || f.type === 'pattern') ?? { mode: 'fill' };
+            const layout = imageFillLayout(masterFill) ?? { position: 'center', size: 'cover', repeat: 'no-repeat' };
+            const filter = imageAdjustFilter(masterFill);
+            const rotation = imageRotationOf(masterFill);
+            // A gradient on a picture layer is baked as its full CSS layer (the same string the canvas and Play read); a pattern
+            // repeats the runtime picture as its tile (the baked tile size when the natural size is measured, the scale otherwise).
+            const gradientBase = isGradientFill(masterFill) ? gradientCss(masterFill) : null;
+            const patternBase = !gradientBase && masterFill.type === 'pattern' ? patternLayout(masterFill) : null;
+            const tileSize = patternBase && masterFill.iw && masterFill.ih ? `${Math.round(masterFill.iw * (masterFill.scale || 1) * 100) / 100}px ${Math.round(masterFill.ih * (masterFill.scale || 1) * 100) / 100}px` : patternBase?.size;
+            const lines = gradientBase ? [`background: ${gradientBase.layer};`] : patternBase
+                ? [`background-image: var(--${template.id}-${prop});`, ...(tileSize ? [`background-size: ${tileSize};`] : []), `background-position: ${patternBase.position};`, `background-repeat: ${patternBase.repeat};`]
+                : [`background-image: var(--${template.id}-${prop});`];
+            if (!gradientBase && !patternBase) {
+                if (layout.size) lines.push(`background-size: ${layout.size};`);
+                if (layout.position) lines.push(`background-position: ${layout.position};`);
+                lines.push(`background-repeat: ${layout.repeat};`);
+            }
+            if (filter) lines.push(`filter: ${filter};`);
+            if (rotation) lines.push(`rotate: ${rotation}deg;`);
             // An instance's own fit overrides the main component's: one rule per fit, selected on the attribute the instance says.
-            const fits = ['fill', 'fit', 'tile'].map(mode => {
-                const l = imageFillLayout({ mode });
+            // Without an override the instance inherits the main component's values above.
+            const fits = ['fill', 'fit', 'crop', 'tile'].map(mode => {
+                const base = mode === 'crop' && masterFill.mode === 'crop' ? masterFill : { mode };
+                const l = imageFillLayout(base) ?? { repeat: 'no-repeat' };
                 return `.${template.id}[data-${prop}-fit="${mode}"]${target} {\n  background-size: ${l.size ?? 'auto'};\n  background-position: ${l.position ?? '0 0'};\n  background-repeat: ${l.repeat};\n}\n`;
             });
-            return [`.${template.id}[data-${prop}]${target} {\n${lines.map(l => `  ${l}\n`).join('')}}\n`, ...fits];
+            const scaleRule = `.${template.id}[data-${prop}-scale]${target} {\n  background-size: var(--${template.id}-${prop}-size);\n}\n`;
+            // An instance's own rotation and adjustment override the main component's: the same props the canvas reads, as custom properties the rules read.
+            const rotateRule = `.${template.id}[data-${prop}-rotate]${target} {\n  rotate: var(--${template.id}-${prop}-rotate);\n}\n`;
+            const filterRule = `.${template.id}[data-${prop}-filter]${target} {\n  filter: var(--${template.id}-${prop}-filter);\n}\n`;
+            // An instance's own crop window overrides the main component's: the anchor as percentages and the zoom as a percentage of the box, the same
+            // strings the export base draws (see cropCssVars), read from custom properties so one instance's crop never leaks into another's.
+            const cropRule = `.${template.id}[data-${prop}-crop]${target} {\n  background-position: var(--${template.id}-${prop}-croppos);\n  background-size: var(--${template.id}-${prop}-cropsize);\n}\n`;
+            // An instance's own video source is a video element on the layer's own box, clipped to it and its corners, below the children, with the
+            // mode's object fit: the main component's mode is the base, and the fit prop overrides it per instance like it does the background.
+            const videoClip = `.${template.id}[data-${prop}-video]${target} {\n  position: relative;\n  overflow: hidden;\n}\n`;
+            const videoBase = `.${template.id}[data-${prop}-video]${target} video {\n  position: absolute;\n  inset: 0;\n  width: 100%;\n  height: 100%;\n  object-fit: ${videoObjectFit(masterFill.mode)};\n  object-position: ${videoObjectPosition(masterFill)};\n  border-radius: inherit;\n}\n`;
+            const videoFits = [['fill', 'cover'], ['fit', 'contain'], ['tile', 'contain']].map(([mode, fit]) => `.${template.id}[data-${prop}-fit="${mode}"][data-${prop}-video]${target} video {\n  object-fit: ${fit};\n}\n`);
+            const videoCrop = `.${template.id}[data-${prop}-fit="crop"][data-${prop}-video]${target} video {\n  object-fit: cover;\n  object-position: ${videoObjectPosition(masterFill.mode === 'crop' ? masterFill : { mode: 'crop' })};\n}\n`;
+            return [`.${template.id}[data-${prop}]${target} {\n${lines.map(l => `  ${l}\n`).join('')}}\n`, ...fits, scaleRule, rotateRule, filterRule, cropRule, videoClip, videoBase, ...videoFits, videoCrop];
         }
         const own = key === 'root' ? `.${template.id}` : `.${template.id}-${key}`;
         return [`${own} {
@@ -1013,6 +1168,43 @@ ${floor}`;
     });
 }
 
+/**
+ * The gradient and pattern fills of the main component per surface layer, plus an instance's own params for them: a master gradient is baked
+ * as its full CSS layer (the same string the canvas and Play read, over the token colour fallback the display rules draw); a master pattern
+ * keeps the token colour (its tile needs a runtime picture). An instance's own stops, positions, alpha, transform or tile, scale, spacing
+ * and alignment ride custom properties read by rules that win over the base; an instance that says nothing keeps the main component's fill.
+ * @param {any} template
+ * @param {any} master
+ * @param {(id: string) => any[]} childrenOf
+ * @returns {string[]}
+ */
+function gradientPatternRules(template, master, childrenOf) {
+    const layerOf = key => key === 'root' ? master : (childrenOf(master.id) ?? []).find(c => c.behavior?.group === key || c.behavior?.slot === key);
+    return fillSurfaceKeys(template).flatMap(key => {
+        const target = key === 'root' ? '' : ` .${template.id}-${key}`;
+        const layer = layerOf(key);
+        const fill = layer ? topFillOf(getFills(layer)) : undefined;
+        const base = fill && isGradientFill(fill) ? gradientCss(fill) : null;
+        return [
+            ...(base ? [`.${template.id}${target} {\n  background: ${base.layer};\n}\n`] : []),
+            `.${template.id}[data-${key}-gradient]${target} {\n  background: var(--${template.id}-${key}-gradient);\n}\n`,
+            `.${template.id}[data-${key}-pattern]${target} {\n  background: var(--${template.id}-${key}-pattern);\n}\n`,
+        ];
+    });
+}
+
+/**
+ * An instance's own whole-fill override per surface layer: the rule reads the instance's complete background first and wins by coming after the
+ * base and picture rules; an instance that says nothing matches no rule and keeps the main component's fill.
+ * @param {any} template
+ * @returns {string[]}
+ */
+function fillOverrideRules(template) {
+    return fillSurfaceKeys(template).map(key => {
+        const target = key === 'root' ? '' : ` .${template.id}-${key}`;
+        return `.${template.id}[data-${key}Fill]${target} {\n  background: var(--${template.id}-${key}Fill);\n}\n`;
+    });
+}
 function stylesheet(template, binding, variables, problems, master, childrenOf) {
     const dims = variableProps(template).map(([prop]) => prop);
     /** @type {Record<string, string[]>} */
@@ -1088,7 +1280,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     blocks.push(...iconHoverRules(template), ...blockedRules(template), ...swapRules(template));
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
-    blocks.push(...expandRules(template), ...pressRules(template), ...glyphHoverRules(template), ...fieldRules(template, master, childrenOf), ...cursorRules(template), ...multilineRules(template), ...revealRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
+    blocks.push(...expandRules(template), ...pressRules(template), ...glyphHoverRules(template), ...fieldRules(template, master, childrenOf), ...gradientPatternRules(template, master, childrenOf), ...fillOverrideRules(template), ...cursorRules(template), ...multilineRules(template), ...revealRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
     if (template.interaction || template.motion) blocks.push(reducedMotion(template));
     return blocks.join('\n');
 }
@@ -1139,7 +1331,7 @@ export function generateComponent(template, binding, variables, name, master, ch
     if (typeof childrenOf !== 'function') throw new Error('generateComponent needs a childrenOf lookup');
     /** @type {any[]} */
     const problems = [];
-    const jsx = componentSource(template, name, problems, partWidthOf(master, childrenOf), tagMapOf(template, binding, variables));
+    const jsx = componentSource(template, name, problems, partWidthOf(master, childrenOf), tagMapOf(template, binding, variables), imageTileBases(template, master, childrenOf));
     const css = stylesheet(template, binding, variables, problems, master, childrenOf);
     if (problems.length) return { files: null, problems };
     return { files: { [`${name}.${template.slots?.length ? 'tsx' : 'jsx'}`]: jsx, [`${name}.css`]: css }, problems: [] };

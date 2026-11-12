@@ -517,11 +517,16 @@ function withoutNaturalSize({ iw, ih, ...rest }) {
  * @param {unknown} asset the asset id, or nothing
  * @param {{ fills?: any[] } | undefined} node
  */
-function imageFillPatch(asset, node) {
-    const colours = (node?.fills ?? []).filter(f => f.type !== 'image');
-    const own = (node?.fills ?? []).find(f => f.type === 'image');
+function imageFillPatch(asset, node, assets) {
+    const video = asset != null && typeof assets?.[asset] === 'string' && assets[asset].startsWith('data:video/');
+    const kind = video ? 'video' : 'image', key = video ? 'video' : 'image';
+    const colours = (node?.fills ?? []).filter(f => f.type !== 'image' && f.type !== 'video');
+    const own = (node?.fills ?? []).find(f => f.type === kind);
     // The mode and the tile scale stay the designer's across a new source; the old picture's natural size goes with it.
-    return { fills: asset == null ? colours : [...colours, own ? { ...(own.image === asset ? own : withoutNaturalSize(own)), image: asset } : { type: 'image', image: asset, mode: 'fill', scale: 1, opacity: 1, visible: true }] };
+    if (asset == null) return { fills: colours };
+    // A template picture prop holds an asset id; a video asset is a video source, so the prop binds video sources and modes like image ones. A kept video keeps its poster.
+    if (own) return { fills: [...colours, { ...((video ? own.video === asset : own.image === asset) ? own : withoutNaturalSize(own)), [key]: asset }] };
+    return { fills: [...colours, video ? { type: 'video', video: asset, mode: 'fill', scale: 1, opacity: 1, visible: true } : { type: 'image', image: asset, mode: 'fill', scale: 1, opacity: 1, visible: true }] };
 }
 
 /**
@@ -532,8 +537,8 @@ function imageFillPatch(asset, node) {
  * @param {string} type the node's type (`text` or a frame)
  * @returns {Record<string, unknown>}
  */
-export function nodeFieldPatch(field, value, type, node) {
-    if (field === 'imageFill') return imageFillPatch(value, node);
+export function nodeFieldPatch(field, value, type, node, assets) {
+    if (field === 'imageFill') return imageFillPatch(value, node, assets);
     if (field === 'width') {
         if (value == null) return type === 'text' ? { layoutSizingH: 'hug', autoW: true } : { layoutSizingH: 'hug' };
         return type === 'text' ? { w: value, layoutSizingH: 'fixed', autoW: false } : { w: value, layoutSizingH: 'fixed' };

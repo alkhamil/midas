@@ -31,7 +31,8 @@ test('a number prop whose default is null is typed number | null, and its fallba
 
 test('copies clamps to a whole number of 0 or more; a value that is not finite is the schema default', () => {
     const tsx = emit().files['List.tsx'];
-    const body = tsx.slice(tsx.indexOf('function copies'));
+    const cut = tsx.includes('type GradientFill') ? tsx.indexOf('type GradientFill') : undefined;
+    const body = tsx.slice(tsx.indexOf('function copies'), cut);
     const copies = new Function(`${body.replace(/count: number \| null \| undefined, fallback: number\): number/, 'count, fallback)')}; return copies;`)();
     assert.equal(copies(3, 3), 3);
     assert.equal(copies(0, 3), 0);
@@ -53,6 +54,8 @@ test('a slot that does not repeat is exactly what it was: no Fragment, no copies
 
 test('the generated markup gives no element an id, so repeated copies share none', () => {
     const { files } = emit();
-    assert.doesNotMatch(files['List.tsx'], /\bid=|data-node-id/);
+    const markup = files['List.tsx'].replace(/\nfunction (gradient|pattern)LayerOf\(.*?^\}/gms, '');
+    // The standalone serializers carry their own svg paint id inside a data url, which is no element: only the markup is checked.
+    assert.doesNotMatch(markup, /\bid=|data-node-id/);
     assert.doesNotMatch(files['List.css'], /#\w/);
 });

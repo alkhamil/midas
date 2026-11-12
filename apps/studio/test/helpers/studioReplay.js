@@ -69,7 +69,26 @@ export class FakeDoc {
         this.refresh();
     }
     touch() { this.revision++; }
-    scene() {}
+    ancestors(n) {
+        if (!n) return [];
+        const out = [];
+        let cur = this.get(n.parentId);
+        while (cur) { out.push(cur); cur = this.get(cur.parentId); }
+        return out;
+    }
+    world(id) {
+        const n = this.get(id);
+        if (!n) return null;
+        return { node: n, matrix: [1, 0, 0, 1, n.x || 0, n.y || 0], opacity: 1, box: { x: n.x || 0, y: n.y || 0, w: n.w || 0, h: n.h || 0 } };
+    }
+    roots(ids) { const set = new Set(ids); return ids.map(id => this.get(id)).filter(n => n && !this.ancestors(n).some(p => set.has(p.id))); }
+    bounds(ids) {
+        const boxes = (ids ?? []).map(id => this.world(id)).filter(Boolean).map(s => s.box);
+        if (!boxes.length) return null;
+        const x = Math.min(...boxes.map(b => b.x)), y = Math.min(...boxes.map(b => b.y));
+        return { x, y, w: Math.max(...boxes.map(b => b.x + b.w)) - x, h: Math.max(...boxes.map(b => b.y + b.h)) - y };
+    }
+    scene() { return this.nodes.map(n => ({ node: n, matrix: [1, 0, 0, 1, n.x || 0, n.y || 0], opacity: 1, boolChild: false, clips: [] })); }
 }
 
 /** The functions of midas.js the replay runs, in no particular order (function declarations hoist). */
@@ -82,7 +101,8 @@ const FUNCTIONS = [
     // What a commit runs after an edit: the component sync (changed({ commit: true }) -> syncComponents).
     'rolledBackForBehavior', 'syncComponents', 'detachOrphans', 'syncInstanceStructure', 'labelIdsOfComponents', 'ownedVarsOf', 'ownedFieldsOf', 'ownedTemplateOf', 'propControlled', 'iconLayerOf',
     'pageTree', 'instanceTree', 'constrainInstanceLayers', 'nodeMode', 'varValue', 'varItem', 'cpropById',
-    'seedSlot', 'writeBound', 'pictureTarget', 'chooseFillImage', 'noteNaturalSize', 'recordNaturalSizes',
+    'seedSlot', 'writeBound', 'pictureTarget', 'fillsOfPicker', 'chooseFillImage', 'noteNaturalSize', 'recordNaturalSizes',
+    'bindType', 'exportSVG', 'needsRasterFill', 'isRichGradient', 'getEffects',
 ];
 
 /**
@@ -93,7 +113,7 @@ export function studioReplay(extra = {}) {
     const doc = new FakeDoc();
     const toasts = [];
     const stubs = {
-        ...core, doc, uid: (() => { let n = 0; return () => `u${++n}`; })(), toast: message => toasts.push(String(message)),
+        ...core, e: core.escapeAttr, f: core.svgNumber, doc, uid: (() => { let n = 0; return () => `u${++n}`; })(), toast: message => toasts.push(String(message)),
         BEHAVIOR_TEMPLATES: core.TEMPLATES, naturalSizeCache: new Map(), invalidate: () => {}, DESIGN_SYSTEM_PAGE: core.DESIGN_SYSTEM_PAGE, lazyPages: new Map(),
         paintOf: color => [{ type: 'solid', color, opacity: 1, visible: true }],
         node: (type, props) => ({ id: `n-${Math.random().toString(36).slice(2)}`, name: type, type, x: 0, y: 0, w: 100, h: 100, rotation: 0, visible: true, locked: false, fills: [], ...props }),
@@ -104,7 +124,7 @@ export function studioReplay(extra = {}) {
         _pageMap: { get: id => doc.data.pages.find(p => p.nodes.some(n => n.id === id)) },
         nodeIndex: () => new Map(doc.data.pages.flatMap(p => p.nodes).map(n => [n.id, n])), allNodes: () => doc.data.pages.flatMap(p => p.nodes),
         _kidsMap: { get: id => doc.data.pages.flatMap(p => p.nodes).filter(n => n.parentId === id) },
-        DESIGN_SYSTEM_LABEL: 'Generate Design System', transaction: (label, fn) => fn(), failedPages: new Set(), refreshUI: () => {}, history: { cancelled: 0, cancel() { this.cancelled++; } }, ...extra,
+        FP: { open: false, target: 'fill' }, DESIGN_SYSTEM_LABEL: 'Generate Design System', transaction: (label, fn) => fn(), failedPages: new Set(), refreshUI: () => {}, history: { cancelled: 0, cancel() { this.cancelled++; } }, ...extra,
     };
     const body = `with (S) {\n${FUNCTIONS.filter(name => !(name in stubs)).map(sliceFunction).join('\n')}\nreturn { ${FUNCTIONS.filter(name => !(name in stubs)).join(', ')} };\n}`;
     const scope = new Proxy(stubs, { has: (target, key) => typeof key === 'string' && key in target, get: (target, key) => (key === Symbol.unscopables ? undefined : target[key]) });

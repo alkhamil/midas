@@ -75,7 +75,8 @@ test('copies share no id: no element has an id attribute, and every copy keeps t
 
 test('Play and the export count alike: repeatCount is the clamp the generated copies() function writes', () => {
     const { files } = generateComponent(list, { variables: {} }, { collections: [], items: [] }, 'List', { id: 'm', type: 'frame', layout: 'vertical' }, () => []);
-    const body = files['List.tsx'].slice(files['List.tsx'].indexOf('function copies'));
+    const tsx = files['List.tsx'];
+    const body = tsx.slice(tsx.indexOf('function copies'), tsx.includes('type GradientFill') ? tsx.indexOf('type GradientFill') : undefined);
     const copies = new Function(`${body.replace(/count: number \| null \| undefined, fallback: number\): number/, 'count, fallback)')}; return copies;`)();
     for (const value of [0, 1, 2.9, -4, 7, NaN, Infinity, -Infinity, null, undefined]) for (const fallback of [0, 3]) assert.equal(repeatCount(value, fallback), copies(value, fallback), `${value} / ${fallback}`);
 });

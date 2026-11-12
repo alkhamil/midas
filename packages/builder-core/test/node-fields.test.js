@@ -53,6 +53,18 @@ test('the writes: layout is its option, gap a number, width a number or null for
     assert.equal(writes({ layout: 'vertical', labelWidth: 90 })['label.width'], null, 'hidden while the layout is vertical: the default (hug), not the stored 90');
 });
 
+test('a picture prop writes an image fill for an image asset and a video fill for a video asset', () => {
+    const imageAssets = { a: 'data:image/png;base64,AAAA' };
+    assert.deepEqual(nodeFieldPatch('imageFill', 'a', 'frame', { fills: [] }, imageAssets), { fills: [{ type: 'image', image: 'a', mode: 'fill', scale: 1, opacity: 1, visible: true }] });
+    const videoAssets = { v: 'data:video/mp4;base64,AAAA' };
+    assert.deepEqual(nodeFieldPatch('imageFill', 'v', 'frame', { fills: [] }, videoAssets), { fills: [{ type: 'video', video: 'v', mode: 'fill', scale: 1, opacity: 1, visible: true }] });
+    const kept = nodeFieldPatch('imageFill', 'v', 'frame', { fills: [{ type: 'video', video: 'old', poster: 'p', mode: 'tile', scale: 2, opacity: 1, visible: true }] }, { ...videoAssets, old: 'data:video/mp4;base64,BBBB' });
+    assert.equal(kept.fills[0].video, 'v', 'a new source replaces the asset');
+    assert.equal(kept.fills[0].poster, 'p', 'a kept video keeps its poster');
+    assert.equal(kept.fills[0].mode, 'tile', 'a kept video keeps the designer mode');
+    assert.deepEqual(nodeFieldPatch('imageFill', null, 'frame', { fills: [{ type: 'video', video: 'v', mode: 'fill', scale: 1, opacity: 1, visible: true }] }, videoAssets), { fills: [] });
+});
+
 test('a width is a fixed width on the node, or hug; a gap is the node\'s gap; a layout its own', () => {
     assert.deepEqual(nodeFieldPatch('width', 90, 'frame'), { w: 90, layoutSizingH: 'fixed' });
     assert.deepEqual(nodeFieldPatch('width', 90, 'text'), { w: 90, layoutSizingH: 'fixed', autoW: false });
@@ -102,7 +114,7 @@ test('the export carries them: typed props, a data attribute for the layout, cus
     assert.match(tsx, /layout = "vertical"/);
     assert.match(tsx, /labelGap = 8/);
     assert.match(tsx, /data-layout=\{layout\}/);
-    assert.match(tsx, /style=\{\{ \.\.\.\{ '--fieldy-labelWidth': labelWidth == null \? undefined : `\$\{labelWidth\}px`, '--fieldy-labelGap': `\$\{labelGap\}px` \}, \.\.\.style \} as CSSProperties\}/);
+    assert.match(tsx, /style=\{\{ \.\.\.\{ '--fieldy-labelWidth': labelWidth == null \? undefined : `\$\{labelWidth\}px`, '--fieldy-labelGap': `\$\{labelGap\}px`, '--fieldy-rootFill': rootFill \?\? undefined, '--fieldy-labelBoxFill': labelBoxFill \?\? undefined, '--fieldy-root-gradient': rootGradient \? gradientLayerOf\(rootGradient\) : undefined, '--fieldy-labelBox-gradient': labelBoxGradient \? gradientLayerOf\(labelBoxGradient\) : undefined, '--fieldy-root-pattern': rootPattern \? patternLayerOf\(rootPattern\) : undefined, '--fieldy-labelBox-pattern': labelBoxPattern \? patternLayerOf\(labelBoxPattern\) : undefined \}, \.\.\.style \} as CSSProperties\}/);
     const css = files['Fieldy.css'];
     assert.match(css, /\.fieldy\[data-layout="horizontal"\] \{\n  flex-direction: row;\n\}/);
     assert.match(css, /\.fieldy\[data-layout="vertical"\] \{\n  flex-direction: column;\n\}/);

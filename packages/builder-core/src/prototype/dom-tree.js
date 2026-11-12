@@ -22,10 +22,11 @@ import { controlOf, iconDefOn, placementsOfDef, primarySlotOf, slotDefsOf, swapD
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { repeatCount } from '../behavior-engine/slot-rules.js';
-import { attrOfProp, elementTagOf, maskedOn, localAttrOf, maskUnlessOf, multilineOf, pressAttrsOf, ariaCheckedOf, canvasPartsOf, conditionHolds, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
+import { attrOfProp, elementTagOf, maskedOn, localAttrOf, maskUnlessOf, multilineOf, pressAttrsOf, ariaCheckedOf, canvasPartsOf, conditionHolds, fieldStyleOf, fieldWritersOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
-import { cssBackgroundOf, displayFills, getFills, imageFillStyleOf, topColorOf, topOpacityOf } from '../geometry/fills.js';
+import { cssBackgroundOf, displayFills, getFills, hasVideoFill, imageFillCss, imageFillStyleOf, imageSvgLayer, isGradientFill, patternLonghands, topColorOf, topOpacityOf, videoObjectFit, videoObjectPosition, videoPosterOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, shadowCss, svgNumber } from '../geometry/format.js';
+import { paintServerOf } from '../geometry/paint-server.js';
 import { layoutOrder, ownSizingOf } from '../geometry/autolayout.js';
 
 /**
@@ -45,12 +46,23 @@ const VECTOR = ['line', 'path'];
  */
 export function toDomTree(doc, frameId, { responsive = false } = {}) {
     const pages = doc.pages || [];
-    const nodes = pages.flatMap(p => p.nodes || []);
+    const rawNodes = pages.flatMap(p => p.nodes || []);
+    // A stroke paint that is not a colour (a gradient, a pattern, a picture) is a paint server of the page's hidden svg; the layer's stroke reads it by id.
+    const rawById = new Map(rawNodes.map(n => [n.id, n]));
+    const paintDefs = [];
+    const nodes = rawNodes.map(n => {
+        const sf = n.strokeFill;
+        if (!sf || sf.type === 'solid' || !strokeIsOn(n)) return n;
+        const server = paintServerOf(sf, `midas-sp-${String(n.id).replace(/[^A-Za-z0-9_-]/g, '_')}`, { w: n.w, h: n.h }, doc.assets || {}, id => rawById.get(id));
+        if (!server) return n;
+        paintDefs.push(server.defs);
+        return { ...n, stroke: server.paint };
+    });
     const byId = new Map(nodes.map(n => [n.id, n]));
     const frame = byId.get(frameId);
     const parent = frame?.parentId ? byId.get(frame.parentId) : null;
     if (!frame || !(frame.type === 'frame' && (!frame.parentId || parent?.isSection))) throw new Error(`"${frameId}" is not a top-level frame`);
-    const pageVarModes = pages.find(p => (p.nodes || []).includes(frame))?.varModes;
+    const pageVarModes = pages.find(p => (p.nodes || []).some(x => x.id === frame.id))?.varModes;
     // The children of each layer, indexed once: searching every layer of the document for each layer made a frame cost the square of its size.
     const kids = new Map();
     for (const n of nodes) {
@@ -62,6 +74,7 @@ export function toDomTree(doc, frameId, { responsive = false } = {}) {
     const scope = { byId, assets: doc.assets || {}, variables: doc.variables || {}, pageVarModes, responsive, unsupported: [], problems: [], styles: new Map(), childrenOf: id => kids.get(id) ?? [] };
     const root = renderNode(frame, null, scope);
     if (!root) return { root: null, styles: null, unsupported: scope.unsupported, problems: scope.problems };
+    if (paintDefs.length) root.children = [...(root.children || []), { tag: 'div', attrs: { 'aria-hidden': 'true' }, style: { position: 'absolute', width: '0', height: '0', overflow: 'hidden', pointerEvents: 'none' }, html: `<svg width="0" height="0"><defs>${paintDefs.join('')}</defs></svg>`, children: [] }];
     const styles = [...scope.styles.values()].join('\n');
     return { root, styles: styles || null, unsupported: scope.unsupported, problems: scope.problems };
 }
@@ -125,6 +138,13 @@ function renderNode(n, parent, scope, icon = false) {
     if (n.type === 'ellipse') style.borderRadius = '50%';
     if (n.type === 'frame' || n.type === 'group') style.position = style.position ?? 'relative';
     const children = renderChildren(n, scope, icon);
+    const video = videoElement(n, scope, {});
+    if (video) {
+        video.style = { position: 'absolute', inset: '0', objectFit: video.style.objectFit, objectPosition: video.style.objectPosition, width: '100%', height: '100%', borderRadius: style.borderRadius || 'inherit' };
+        style.position = style.position ?? 'relative';
+        style.overflow = style.overflow ?? 'hidden';
+        children.unshift(video);
+    }
     if (n.type === 'frame') {
         // The flow is the children that are not absolutely positioned: a space-between with one of them starts it, as the canvas does.
         const flowCount = children.filter(c => c.style.position !== 'absolute').length;
@@ -297,6 +317,22 @@ function renderTemplate(n, template, parent, scope) {
     const props = resolveProps(template, n.behavior?.props ?? {});
     // The layout, gap and width props reach the stylesheet's rules as the export gives them: a data attribute and custom properties on the root.
     const fields = fieldStyleOf(template, props, scope.assets);
+    // The root's own picture is the instance layer's fill, as on the canvas: a crop, rotation or adjustment is the SVG layer every surface reads,
+    // and a plain picture carries its own fit, so a mode the designer set on the layer shows in Play too.
+    const rootBox = n.w > 0 && n.h > 0 ? { w: n.w, h: n.h } : undefined;
+    if (fields.style.backgroundImage || getFills(n).some(f => f.type === 'pattern' && f.visible !== false)) {
+        const rootTop = getFills(n).find(f => (f.type === 'image' || f.type === 'pattern') && f.visible !== false);
+        const rootSvg = rootTop?.type === 'pattern' ? patternLonghands(rootTop, scope.assets, id => scope.byId.get(id), rootBox) : rootTop && imageSvgLayer(rootTop, scope.assets);
+        if (rootSvg) Object.assign(fields.style, { backgroundImage: rootSvg.image, backgroundSize: rootSvg.size, backgroundPosition: rootSvg.position, backgroundRepeat: rootSvg.repeat });
+        else if (rootTop?.type === 'image') { const plain = imageFillCss(rootTop, scope.assets); if (plain) Object.assign(fields.style, plain); }
+    }
+    // A gradient on top paints over whatever the class draws (a picture or the main fill): the inline background is the
+    // instance layer's own list, the same layers the canvas stacks, so an instance that differs from its main still draws itself.
+    if (getFills(n).some(f => isGradientFill(f) && f.visible !== false)) {
+        const { background, blend } = cssBackgroundOf(displayFills(n), scope.assets, id => scope.byId.get(id), rootBox);
+        if (background) fields.style.background = background;
+        if (blend) fields.style.backgroundBlendMode = blend;
+    }
     Object.assign(attrs, fields.attrs);
     // A persistent state the stylesheet selects as an attribute is drawn from its prop, as the export writes it.
     for (const { attr, prop } of stateAttributesOf(template)) if (props[prop] === true) attrs[attr] = true;
@@ -467,7 +503,25 @@ function renderTemplate(n, template, parent, scope) {
             inner.push({ tag: 'div', attrs: { class: `${template.id}-${def.slot}` }, style: { position: 'relative', flexShrink: '0', overflowX: 'clip', overflowY: 'clip' }, html: frameSvg(comp, vectors, scope), children: [] });
         }
         // A container that holds a picture draws it on its own element (its box clips it); the class's flat colour stays under it as the fallback.
-        out.push({ tag: 'div', nodeId: group?.id, attrs: { class: `${template.id}-${slot.id}`, ...pressAttrsOf(template, slot.id) }, style: { ...(imageFillStyleOf(group?.fills, scope.assets) ?? {}) }, children: inner });
+        const pic = { ...(imageFillStyleOf(group?.fills, scope.assets) ?? {}) };
+        const picTop = (group?.fills ?? []).find(f => (f.type === 'image' || f.type === 'pattern') && f.visible !== false);
+        const picBox = group && group.w > 0 && group.h > 0 ? { w: group.w, h: group.h } : undefined;
+        const picSvg = picTop?.type === 'pattern' ? patternLonghands(picTop, scope.assets, id => scope.byId.get(id), picBox) : picTop && imageSvgLayer(picTop, scope.assets);
+        if (picSvg) Object.assign(pic, { backgroundImage: picSvg.image, backgroundSize: picSvg.size, backgroundPosition: picSvg.position, backgroundRepeat: picSvg.repeat });
+        // A gradient on top paints over the class: the inline background is the layer's own list, as the canvas stacks it.
+        if ((group?.fills ?? []).some(f => isGradientFill(f) && f.visible !== false)) {
+            const { background } = cssBackgroundOf(displayFills(group), scope.assets, id => scope.byId.get(id), picBox);
+            if (background) pic.background = background;
+        }
+        const el = { tag: 'div', nodeId: group?.id, attrs: { class: `${template.id}-${slot.id}`, ...pressAttrsOf(template, slot.id) }, style: pic, children: inner };
+        const clip = group && videoElement(group, scope, {});
+        if (clip) {
+            clip.style = { position: 'absolute', inset: '0', objectFit: clip.style.objectFit, objectPosition: clip.style.objectPosition, width: '100%', height: '100%', borderRadius: pic.borderRadius || 'inherit' };
+            el.style.position = el.style.position ?? 'relative';
+            el.style.overflow = el.style.overflow ?? 'hidden';
+            inner.unshift(clip);
+        }
+        out.push(el);
     }
     for (const slot of template.anatomy.filter(s => !s.parent)) {
         if (slot.kind !== 'frame') { emitSlot(slot, children); continue; }
@@ -525,6 +579,13 @@ function renderTemplate(n, template, parent, scope) {
     drawOverrides({ style }, n);
     const visit = els => { for (const el of els) { if (el.nodeId !== undefined) drawOverrides(el, scope.byId.get(el.nodeId)); visit(el.children); } };
     visit(children);
+    const rootClip = fieldWritersOf(template).some(w => w.field === 'imageFill' && w.key === 'root') ? videoElement(n, scope, {}) : null;
+    if (rootClip) {
+        rootClip.style = { position: 'absolute', inset: '0', objectFit: rootClip.style.objectFit, objectPosition: rootClip.style.objectPosition, width: '100%', height: '100%', borderRadius: style.borderRadius || 'inherit' };
+        style.position = style.position ?? 'relative';
+        style.overflow = style.overflow ?? 'hidden';
+        children.unshift(rootClip);
+    }
     return { tag, nodeId: n.id, attrs, style, children };
 }
 
@@ -636,9 +697,24 @@ function outsideOverlayMargin(n) {
  * @returns {Record<string, string>}
  */
 function fillStyle(n, scope) {
-    const { background, unsupported } = cssBackgroundOf(displayFills(n), scope.assets);
+    const lookup = id => scope.byId.get(id);
+    const { background, unsupported, filter, blend } = cssBackgroundOf(displayFills(n), scope.assets, lookup);
     for (const type of unsupported) scope.unsupported.push({ nodeId: n.id, type: `${type} fill` });
-    return background ? { background } : {};
+    const out = background ? { background } : {};
+    if (blend) out.backgroundBlendMode = blend;
+    if (filter) out.filter = filter;
+    return out;
+}
+
+/** Figma's Autoplay, Loop and Sound are the fill's settings (autoplay and loop on, sound off by default); muted and playsinline are the HTML translation that lets autoplay work. */
+function videoElement(n, scope, style) {
+    const fill = displayFills(n).find(f => f.type === 'video' && f.visible !== false);
+    if (!fill) return null;
+    const src = fill.video && scope.assets[fill.video];
+    if (!src) return null;
+    const fit = videoObjectFit(fill.mode), position = videoObjectPosition(fill);
+    const poster = videoPosterOf(fill, scope.assets) ?? undefined;
+    return { tag: 'video', nodeId: n.id, attrs: { src, ...(poster ? { poster } : {}), autoplay: fill.autoplay !== false, muted: fill.sound !== true, loop: fill.loop !== false, playsinline: true }, style: { ...style, objectFit: fit, objectPosition: position, width: '100%', height: '100%' }, children: [] };
 }
 
 /**

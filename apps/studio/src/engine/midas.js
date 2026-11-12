@@ -1,7 +1,7 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
 import { mountFloatingWindow } from './floatingWindow.js';
-import { gradientStops, PLACEHOLDER_IMAGE, PLACEHOLDER_IMAGE_ID, newlyShownImageProps, slotListOf, slotRefusal, slotRestricts, textWriteBacks, decorationLinesOf, pinnedFrame, markManagedContainers, rowsBounds, nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, ICONS_SECTION, defaultIconOf, roleIconsOf, iconRolesOf, iconNodes, planIcons, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, managedSlotLayer, managedPartLayer, planManagedTextBindings, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, previewStateOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, pathSegments, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix, pathCurveBounds, pathContours, normalizeVectorGeometry } from '@midas/builder-core';
+import { moveStopKeys, gradientColorAt, BLEND_MODES, contrastRatio, wcagLevels, patternStepOf, patternCellOf, gradientStops, gradientReverse, gradientAddStop, gradientRemoveStop, gradientSetStop, colorFormats, colorFromFormat, documentColors, imageAdjustFilter, imageRotationOf, isGradientFill, patternTileOf, patternPhaseOf, patternSvgUrl, patternTileId, imageSvgUrl, gradientCss, remapFillKeys, moveFillKeys, shiftStopKeys, stopBindingKey, parseStopKey, fillParamType, parseCssColor, gradientHandlePoints, gradientHandleMove, cropZoomFor, cropRotateFor, patternLayout, videoPosterOf, PLACEHOLDER_IMAGE, PLACEHOLDER_IMAGE_ID, VIDEO_PENDING, IMAGE_PENDING, newlyShownImageProps, slotListOf, slotRefusal, slotRestricts, textWriteBacks, decorationLinesOf, pinnedFrame, markManagedContainers, rowsBounds, nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, ICONS_SECTION, defaultIconOf, roleIconsOf, iconRolesOf, iconNodes, planIcons, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, managedSlotLayer, managedPartLayer, planManagedTextBindings, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, previewStateOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, pathSegments, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix, pathCurveBounds, pathContours, normalizeVectorGeometry } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { imageSlotRowHtml, slotRowHtml } from './slotRow.js';
 import { openPlay } from './play.js';
@@ -747,12 +747,14 @@ function cpropById(pid) {
         }
     return null;
 }
-function bindType(prop) { if (String(prop).startsWith('cprop:')) {
-    const p = cpropById(prop.slice(6));
-    return p?.type === 'boolean' ? 'boolean' : p?.type === 'text' || p?.type === 'instance' ? 'string' : null;
+function bindType(prop) {
+    if (String(prop).startsWith('cprop:')) {
+        const p = cpropById(prop.slice(6));
+        return p?.type === 'boolean' ? 'boolean' : p?.type === 'text' || p?.type === 'instance' ? 'string' : null;
+    }
+    if (String(prop).startsWith('vprop:')) return vpropType(prop.slice(6));
+    return VAR_BIND[prop] || (/^fills\.\d+$/.test(prop) || parseStopKey(prop) ? 'color' : null) || fillParamType(prop);
 }
-if (String(prop).startsWith('vprop:'))
-    return vpropType(prop.slice(6)); return VAR_BIND[prop] || (/^fills\.\d+$/.test(prop) ? 'color' : null); }
 function varStore() { return doc.data.variables ||= { collections: [], items: [] }; }
 function varItem(id) { return varStore().items.find(i => i.id === id); }
 function varColl(id) { return varStore().collections.find(c => c.id === id); }
@@ -787,6 +789,18 @@ function writeTypography(n, style) {
     return changed;
 }
 function writeBound(n, prop, val, type) {
+    const sm = parseStopKey(prop);
+    if (sm) {
+        // A bound stop resolves into its gradient's stop colour (the first and last stop also follow color and color2, as the canvas, Play and the export read them).
+        const fills = Array.isArray(n.fills) ? n.fills : null, fl = fills?.[sm.i] ?? null;
+        if (!fl || !isGradientFill(fl)) return false;
+        const stops = gradientStops(fl);
+        if (sm.k < 0 || sm.k >= stops.length || stops[sm.k].color === String(val)) return false;
+        fl.stops = stops.map((x, idx) => (idx === sm.k ? { ...x, color: String(val) } : x));
+        if (sm.k === 0) fl.color = String(val);
+        if (sm.k === stops.length - 1) fl.color2 = String(val);
+        return true;
+    }
     const fm = /^fills\.(\d+)$/.exec(prop);
     if (fm) {
         // A bound fill index resolves into its fill; index 0 on a layer with no fill takes the bound colour.
@@ -796,6 +810,23 @@ function writeBound(n, prop, val, type) {
         if (fl) fl.color = String(val);
         else if (i === 0) n.fills = withTopColor(fills ?? [], String(val));
         else return false;
+        return true;
+    }
+    // A bound fill param resolves into the fill it names: a source, kind or mode takes the string, a size the number.
+    // The canvas, Play and the export read the same fill, so a pattern resolves its bound source at render time.
+    const pm = /^fills\.(\d+)\.([A-Za-z]+)$/.exec(prop);
+    if (pm) {
+        const kind = fillParamType(prop), fl = Array.isArray(n.fills) ? n.fills[+pm[1]] : null;
+        if (!fl || (kind !== 'string' && kind !== 'number')) return false;
+        if (kind === 'number') {
+            const v = +val;
+            if (!Number.isFinite(v) || fl[pm[2]] === v) return false;
+            fl[pm[2]] = v;
+            return true;
+        }
+        const v = String(val ?? '');
+        if (!v || fl[pm[2]] === v) return false;
+        fl[pm[2]] = v;
         return true;
     }
     const set = (k, v) => { if (n[k] === v)
@@ -1411,8 +1442,11 @@ function strokeSectionHtml(n) {
     const col = n.stroke && n.stroke !== 'none' ? n.stroke : '#000000', bound = boundVar('stroke'), hidden = n.strokeVisible === false, so = n.strokeOpacity ?? 1;
     const sw = bound
         ? `<span class="fr-sw st-sw locked" style="background:${swatchBg({ type: 'solid', color: col, opacity: so }, false)}" title="Bound to a variable"></span>`
-        : `<label class="fr-sw st-sw" style="background:${swatchBg({ type: 'solid', color: col, opacity: so }, false)}" title="Stroke color"><input type="color" data-prop="stroke" value="${safeColor(col)}" aria-label="Stroke color"></label>`;
-    const hex = bound
+        : `<button class="fr-sw st-sw" style="background:${swatchBg(n.strokeFill && n.strokeFill.type !== 'solid' ? n.strokeFill : { type: 'solid', color: col, opacity: so }, false)}" data-stroke-open title="Stroke paint" aria-label="Stroke paint"></button>`;
+    const richPaint = n.strokeFill && n.strokeFill.type !== 'solid';
+    const hex = richPaint
+        ? `<button class="fr-field static" data-stroke-open>${({ linear: 'Linear', radial: 'Radial', angular: 'Angular', diamond: 'Diamond', pattern: 'Pattern', image: 'Image', video: 'Video' })[n.strokeFill.type] || 'Paint'}</button>`
+        : bound
         ? `<div class="fr-field bound"><input class="fr-hex-in" data-fill-hex="stroke" value="${esc(bound.name)}" spellcheck="false" autocomplete="off" aria-label="Stroke color: hex or variable name"><button class="fr-detach" data-var-bind="stroke" title="Change variable" aria-label="Change variable">${VAR_ICON}</button></div>`
         : `<div class="fr-field"><input class="fr-hex-in" data-fill-hex="stroke" value="${esc(col.replace('#', '').toUpperCase())}" spellcheck="false" autocomplete="off" aria-label="Stroke color: hex or variable name"></div>`;
     const op = `<label class="fr-op-in"><input type="number" min="0" max="100" step="1" value="${fmt(so * 100)}" data-prop="strokeOpacity" aria-label="Stroke opacity"><i>%</i></label>`;
@@ -1428,7 +1462,7 @@ function strokeSectionHtml(n) {
     }
     return section('Stroke', h, head);
 }
-const STROKE_PROPS = ['strokeAlign', 'strokeJoin', 'strokeStyle', 'strokeDash', 'strokeGap', 'strokeMiter', 'strokeCap', 'strokeSides', 'strokeT', 'strokeR', 'strokeB', 'strokeL', 'strokeOpacity', 'strokeVisible'];
+const STROKE_PROPS = ['strokeFill', 'strokeAlign', 'strokeJoin', 'strokeStyle', 'strokeDash', 'strokeGap', 'strokeMiter', 'strokeCap', 'strokeSides', 'strokeT', 'strokeR', 'strokeB', 'strokeL', 'strokeOpacity', 'strokeVisible'];
 function toggleStroke() {
     transaction('Toggle stroke', () => { for (const n of selected()) {
         if (n.type === 'group')
@@ -2962,7 +2996,7 @@ function needsRasterFill(n) {
     if (['text', 'group', 'image'].includes(n.type))
         return false;
     const f = getFills(n).filter(x => x.visible !== false);
-    return f.length > 1 || (f.length === 1 && (f[0].type === 'image' || isRichGradient(f[0])));
+    return (n.strokeFill && n.strokeFill.type !== 'solid' && n.strokeFill.visible !== false && strokeIsOn(n)) || f.length > 1 || (f.length === 1 && (f[0].type === 'image' || f[0].type === 'video' || f[0].type === 'pattern' || isRichGradient(f[0])));
 }
 // A layer's paint is its `fills`. setPaint writes one paint prop of the top fill: `fill` is its colour ('none' hides it), `fill2` the second
 // colour of a gradient, `gradientAngle` and `fillOpacity` its angle and opacity, `fillType` its type.
@@ -2978,13 +3012,14 @@ function setPaint(n, prop, v) {
     if (prop === 'fillType') setFillType(top, v);
     else top[{ fill2: 'color2', gradientAngle: 'angle', fillOpacity: 'opacity' }[prop]] = v;
 }
+function coverFit(img, w, h) { const scale = Math.max(w / img.width, h / img.height), dw = img.width * scale, dh = img.height * scale; return [(w - dw) / 2, (h - dh) / 2, dw, dh]; }
 function containFit(img, w, h) { const scale = Math.min(w / img.width, h / img.height), dw = img.width * scale, dh = img.height * scale; return [(w - dw) / 2, (h - dh) / 2, dw, dh]; }
 function imageFillPattern(ctx, f, n) {
     const img = f.image ? activeImages?.get(f.image) : null;
-    if (!img)
-        return null;
+    if (!img) return null;
     const mode = f.mode || 'fill', w = Math.max(1, n.w), h = Math.max(1, n.h), sc = f.scale || 1;
-    const key = `${f.image}:${mode}:${Math.round(w * 10)}:${Math.round(h * 10)}:${sc}`;
+    const crop = f.crop || {}, rot = imageRotationOf(f);
+    const key = [f.image, mode, Math.round(w * 10), Math.round(h * 10), sc, crop.x ?? 0.5, crop.y ?? 0.5, crop.scale || 1, rot].join(':');
     let p = patternCache.get(key);
     if (!p) {
         let repeat = 'no-repeat', m = new DOMMatrix();
@@ -2992,16 +3027,22 @@ function imageFillPattern(ctx, f, n) {
             repeat = 'repeat';
             m = m.scale(sc, sc);
         }
-        else {
-            const [dx, dy, dw, dh] = mode === 'fit' ? containFit(img, w, h) : imageFit(img, w, h);
+        else if (mode === 'crop') {
+            const scale = crop.scale || 1, cx = crop.x ?? 0.5, cy = crop.y ?? 0.5;
+            const [bx, by, bw, bh] = coverFit(img, w, h);
+            const dw = bw * scale, dh = bh * scale;
+            const dx = (w - dw) / 2 - (cx - 0.5) * dw, dy = (h - dh) / 2 - (cy - 0.5) * dh;
             m = m.translate(dx, dy).scale(dw / img.width, dh / img.height);
         }
+        else {
+            const [dx, dy, dw, dh] = mode === 'fit' ? containFit(img, w, h) : coverFit(img, w, h);
+            m = m.translate(dx, dy).scale(dw / img.width, dh / img.height);
+        }
+        if (rot) m = new DOMMatrix().translate(w / 2, h / 2).rotate(rot).translate(-w / 2, -h / 2).multiply(m);
         p = ctx.createPattern(img, repeat);
-        if (!p)
-            return null;
+        if (!p) return null;
         p.setTransform(m);
-        if (patternCache.size > 256)
-            patternCache.delete(patternCache.keys().next().value);
+        if (patternCache.size > 256) patternCache.delete(patternCache.keys().next().value);
         patternCache.set(key, p);
     }
     return p;
@@ -3046,7 +3087,48 @@ function gradientPattern(ctx, f, n) {
     p?.setTransform(new DOMMatrix().scale(w / cw, h / ch));
     return p;
 }
+function patternFillPattern(ctx, f, n) {
+    // The source layer's picture at render time (never a snapshot, so editing the source updates every use).
+    const assetId = patternTileId(f, nid => doc.get(nid));
+    const img = assetId ? activeImages?.get(assetId) : null;
+    if (!img) return null;
+    const sc = f.scale || 1, t = f.tileType || 'RECTANGULAR', sx = f.spacingX || 0, sy = f.spacingY || 0;
+    const w = Math.max(1, n.w), h = Math.max(1, n.h);
+    // The tile the pure path repeats (the live picture's own size is what the studio records, so the numbers are the
+    // same ones Play and the export use), pre-shifted a half tile on the second row for the offset type, phased by the
+    // 9-point alignment exactly as the SVG tile is (see patternTileOf, patternPhaseOf, patternSvgUrl).
+    const tileW = Math.max(1, img.width * sc), tileH = Math.max(1, img.height * sc);
+    const { stepX, stepY } = patternStepOf(tileW, tileH, { spacingX: sx, spacingY: sy }), cell = patternCellOf(t, stepX, stepY);
+    const ph = patternPhaseOf({ ...f, iw: img.width, ih: img.height }, w, h);
+    const key = ['pattern', assetId, sc, t, sx, sy, Math.round(w), Math.round(h), f.align || 'top-left'].join(':');
+    let p = patternCache.get(key);
+    if (!p) {
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(cell.W));
+        c.height = Math.max(1, Math.round(cell.H));
+        const g = c.getContext('2d');
+        for (const [x, y] of cell.at) g.drawImage(img, x, y, tileW, tileH);
+        p = ctx.createPattern(c, 'repeat');
+        if (!p) return null;
+        p.setTransform(new DOMMatrix().translate(ph.x, ph.y));
+        if (patternCache.size > 256) patternCache.delete(patternCache.keys().next().value);
+        patternCache.set(key, p);
+    }
+    return p;
+}
 function fillPaint(ctx, f, n) {
+    {
+        if (f.type === 'pattern') return patternFillPattern(ctx, f, n) || 'rgba(140,140,150,.18)';
+        if (f.type === 'video') {
+            const poster = videoPosterOf(f, doc.data.assets);
+            const img = poster ? activeImages?.get(f.poster || f.image) : null;
+            if (img) return imageFillPattern(ctx, { ...f, type: 'image', image: f.poster || f.image, mode: f.mode === 'tile' ? 'tile' : 'fill' }, n) || 'rgba(140,140,150,.18)';
+            return 'rgba(140,140,150,.18)';
+        }
+        return fillPaintWithFilter(ctx, f, n);
+    }
+}
+function fillPaintWithFilter(ctx, f, n) {
     if (f.type === 'solid')
         return f.color && f.color !== 'none' ? f.color : null;
     if (isRichGradient(f))
@@ -3081,7 +3163,13 @@ function paintFills(ctx, n, path, alpha = 1, afterFirst = null) {
             continue;
         ctx.fillStyle = paint;
         ctx.globalAlpha = alpha * (f.opacity ?? 1);
+        ctx.globalCompositeOperation = f.blend && BLEND_MODES.includes(f.blend) && f.blend !== 'normal' ? f.blend : 'source-over';
+        const outerFilter = ctx.filter;
+        if (f.type === 'image')
+            ctx.filter = imageAdjustFilter(f) || 'none';
         ctx.fill(path, n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero');
+        ctx.filter = outerFilter;
+        ctx.globalCompositeOperation = 'source-over';
         if (first) {
             first = false;
             afterFirst?.();
@@ -3092,34 +3180,27 @@ function paintFills(ctx, n, path, alpha = 1, afterFirst = null) {
 function remapFillVars(n, from, delta, removed = -1) {
     if (!n.vars)
         return;
-    const out = {};
-    for (const [k, v] of Object.entries(n.vars)) {
-        const m = /^fills\.(\d+)$/.exec(k);
-        if (!m) {
-            out[k] = v;
-            continue;
-        }
-        let i = +m[1];
-        if (i === removed)
-            continue;
-        if (i >= from)
-            i += delta;
-        out['fills.' + i] = v;
-    }
-    n.vars = out;
-    if (!Object.keys(out).length)
+    n.vars = remapFillKeys(n.vars, from, delta, removed);
+    if (!Object.keys(n.vars).length)
         delete n.vars;
 }
 function setFillType(f, t) {
     f.type = t;
     f.color ||= '#d9d9d9';
-    if (t === 'linear') {
+    if (t === 'linear' || t === 'radial' || t === 'angular' || t === 'diamond') {
         f.color2 ||= '#ffffff';
         f.angle ??= 90;
     }
-    if (t === 'image') {
+    if (t === 'image' || t === 'video') {
         f.mode ||= 'fill';
         f.scale ||= 1;
+    }
+    if (t === 'pattern') {
+        f.tileType ||= 'RECTANGULAR';
+        f.scale ||= 1;
+        f.spacingX ||= 0;
+        f.spacingY ||= 0;
+        f.align ||= 'top-left';
     }
 }
 const hex6 = c => /^#[\da-f]{6}$/i.test(c) ? c : /^#[\da-f]{3}$/i.test(c) ? '#' + c.slice(1).split('').map(x => x + x).join('') : '#d9d9d9';
@@ -3164,12 +3245,15 @@ function addFill() {
  * updated when it is; returns whether the size is on the fill now.
  */
 function noteNaturalSize(f, onSize) {
-    const known = naturalSizeCache.get(f.image) ?? (() => { const image = f.image && activeImages?.get(f.image); return image ? { w: image.width, h: image.height } : null; })();
+    // A pattern names its tile by asset or by live-linked source layer (never a snapshot); anything else names its asset directly.
+    const id = f.type === 'pattern' ? patternTileId(f, nid => doc.get(nid)) : f.image;
+    if (!id) return false;
+    const known = naturalSizeCache.get(id) ?? (() => { const image = activeImages?.get(id); return image ? { w: image.width, h: image.height } : null; })();
     if (known) { f.iw = known.w; f.ih = known.h; return true; }
-    const src = doc.data.assets[f.image];
+    const src = doc.data.assets[id];
     if (!src || typeof Image === 'undefined') return false;
     const image = new Image();
-    image.onload = () => { naturalSizeCache.set(f.image, { w: image.naturalWidth, h: image.naturalHeight }); onSize?.(); };
+    image.onload = () => { naturalSizeCache.set(id, { w: image.naturalWidth, h: image.naturalHeight }); onSize?.(); };
     image.src = src;
     return false;
 }
@@ -3178,18 +3262,35 @@ const naturalSizeCache = new Map();
 /** Gives every image fill that lacks it the natural size of its picture (now when known, else when the picture has loaded). */
 function recordNaturalSizes(nodes) {
     for (const n of nodes)
-        for (const f of n.fills ?? [])
-            if (f.type === 'image' && f.image && !(f.iw && f.ih))
+        for (const f of [...(n.fills ?? []), ...(n.strokeFill ? [n.strokeFill] : [])])
+            if ((f.type === 'image' || f.type === 'video' || f.type === 'pattern') && !(f.iw && f.ih))
                 noteNaturalSize(f, () => { if (noteNaturalSize(f)) { doc.touch(n); invalidate(); } });
 }
-function editFill(i, key, v, live) {
+/** Drop the whole-fill variable binding an explicit recolour replaces, and the stop binding it recolours: stop 0 for the
+ * first colour, the last stop for the second. A whole-fill binding only drives the first stop, so recolouring the last
+ * stop keeps it. */
+function detachStopVar(n, i, k) {
+    if (!n.vars || (FP.open && FP.target === 'stroke')) return;
+    delete n.vars[stopBindingKey(i, k)];
+    if (!Object.keys(n.vars).length) delete n.vars;
+}
+function detachFillVar(n, i, k) {
+    if (!n.vars) return;
+    if (FP.open && FP.target === 'stroke')
+        delete n.vars.stroke;
+    else
+        delete n.vars['fills.' + i];
+    if (k !== undefined) delete n.vars[stopBindingKey(i, k)];
+    if (!Object.keys(n.vars).length) delete n.vars;
+}
+function editFill(i, key, v, live, target = FP.open ? FP.target : 'fill') {
     if (!history.pending)
         history.begin('Edit fill');
     let pick = false;
     for (const n of selected()) {
         if (n.type === 'group')
             continue;
-        const fills = n.fills, f = fills[i];
+        const fills = target === 'stroke' ? (n.strokeFill ? [n.strokeFill] : []) : n.fills, f = fills[target === 'stroke' ? 0 : i];
         if (!f)
             continue;
         const normHex = s => { let h = String(s).trim(); if (!h.startsWith('#'))
@@ -3201,21 +3302,17 @@ function editFill(i, key, v, live) {
                 const c = key === 'color' ? v : normHex(v);
                 if (c) {
                     f.color = c;
-                    if (n.vars?.['fills.' + i]) {
-                        delete n.vars['fills.' + i];
-                        if (!Object.keys(n.vars).length)
-                            delete n.vars;
-                    }
+                    detachFillVar(n, i, 0);
                 }
                 break;
             }
             case 'color2':
                 f.color2 = v;
+                detachStopVar(n, i, gradientStops(f).length - 1);
                 break;
             case 'hex2': {
                 const c = normHex(v);
-                if (c)
-                    f.color2 = c;
+                if (c) { f.color2 = c; detachStopVar(n, i, gradientStops(f).length - 1); }
                 break;
             }
             case 'angle':
@@ -3232,12 +3329,73 @@ function editFill(i, key, v, live) {
                 f.mode = v;
                 if (v === 'tile') noteNaturalSize(f);
                 break;
+            case 'rotation':
+                f.rotation = clamp(Math.round((+v || 0) / 90) * 90, -180, 180);
+                break;
+            case 'cropX':
+                f.crop = { ...(f.crop || {}), x: clamp(+v || 0, 0, 1) };
+                f.mode = 'crop';
+                break;
+            case 'cropY':
+                f.crop = { ...(f.crop || {}), y: clamp(+v || 0, 0, 1) };
+                f.mode = 'crop';
+                break;
+            case 'cropScale':
+                f.crop = { ...(f.crop || {}), scale: clamp((+v || 100) / 100, 0.2, 8) };
+                f.mode = 'crop';
+                break;
+            case 'exposure':
+            case 'contrast':
+            case 'saturation':
+            case 'temperature':
+            case 'tint':
+            case 'highlights':
+            case 'shadows': {
+                const k = arguments[1];
+                f.adjust = { ...(f.adjust || {}) };
+                if (+v === 0) delete f.adjust[k];
+                else f.adjust[k] = +v || 0;
+                if (!Object.keys(f.adjust).length) delete f.adjust;
+                break;
+            }
+            case 'blend':
+                if (BLEND_MODES.includes(v)) f.blend = v;
+                break;
+            case 'autoplay':
+            case 'loop':
+            case 'sound':
+                f[key] = !!v;
+                break;
+            case 'tileType':
+                f.tileType = v;
+                break;
+            case 'spacingX':
+                f.spacingX = Math.max(0, +v || 0);
+                break;
+            case 'spacingY':
+                f.spacingY = Math.max(0, +v || 0);
+                break;
+            case 'align':
+                f.align = v;
+                break;
+            case 'patternSource':
+                f.source = v;
+                delete f.iw;
+                delete f.ih;
+                noteNaturalSize(f, () => { if (noteNaturalSize(f)) { doc.touch(n); invalidate(); } });
+                break;
+            case 'videoSrc':
+                f.video = v;
+                noteNaturalSize(f);
+                break;
             case 'type':
                 setFillType(f, v);
-                if (v === 'image' && !f.image)
+                if ((v === 'image' || v === 'video') && !f.image)
                     pick = true;
                 break;
         }
+        if (target === 'stroke')
+            syncStrokePaint(n);
         doc.touch(n);
     }
     changed({ ui: !live, commit: !live });
@@ -3245,6 +3403,23 @@ function editFill(i, key, v, live) {
         state.fillPickIndex = i;
         document.getElementById('fill-image-input').click();
     }
+}
+const VIDEO_MAX_BYTES = 100 * 1024 * 1024;
+/** Figma's asset limit: the longest side of an image fill is at most 4096 px. */
+const IMAGE_MAX_SIDE = 4096;
+/**
+ * The image as it is stored: unchanged when its longest side fits, else scaled proportionally so the longest side is IMAGE_MAX_SIDE (Figma's rule).
+ * GIFs stay as they are (a canvas redraw would keep one frame).
+ */
+function scaleToAssetLimit(img, url, type) {
+    const longest = Math.max(img.naturalWidth, img.naturalHeight);
+    if (longest <= IMAGE_MAX_SIDE || type === 'image/gif')
+        return url;
+    const k = IMAGE_MAX_SIDE / longest, c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(img.naturalWidth * k));
+    c.height = Math.max(1, Math.round(img.naturalHeight * k));
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return type === 'image/jpeg' ? c.toDataURL('image/jpeg', 0.92) : c.toDataURL('image/png');
 }
 /**
  * An image file as a data URL, checked for type, size and pixels. Null (with a toast) when it is refused.
@@ -3265,12 +3440,90 @@ async function readImageFile(file) {
         const img = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = () => reject(new Error('Could not decode this image.')); i.src = url; });
         if (img.naturalWidth * img.naturalHeight > 64e6)
             throw new Error('Image exceeds the 64 megapixel limit.');
-        return url;
+        return scaleToAssetLimit(img, url, file.type);
     }
     catch (e) {
         toast(e.message || 'Could not read the image.');
         return null;
     }
+}
+/**
+ * A video file as a data URL with its first-frame poster, checked for type and size. Null (with a toast) when it is refused: too large or an unsupported format never fails silently.
+ */
+async function readVideoFile(file) {
+    if (!file) return null;
+    if (!file.type.startsWith('video/')) {
+        toast('Choose a video file (MP4, MOV or WebM).');
+        return null;
+    }
+    // Figma documents two limits: Developer Docs say 100 MB, the prototype docs say 300 MB for MP4/MOV (H.264) and WebM (VP8).
+    // The stricter 100 MB is enforced because the file is stored inside the document.
+    if (file.size > VIDEO_MAX_BYTES) {
+        toast(`This video is ${(file.size / 1048576).toFixed(1)} MB. The limit is ${VIDEO_MAX_BYTES / 1048576} MB (MP4, MOV or WebM).`);
+        return null;
+    }
+    try {
+        const url = await new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = reject; r.readAsDataURL(file); });
+        let poster = null;
+        try {
+            poster = await new Promise((resolve) => {
+                const v = document.createElement('video');
+                v.muted = true;
+                v.playsInline = true;
+                v.preload = 'auto';
+                v.onloadeddata = () => { try { v.currentTime = 0.01; } catch { resolve(null); } };
+                v.onseeked = () => {
+                    try {
+                        const c = document.createElement('canvas');
+                        c.width = v.videoWidth || 320;
+                        c.height = v.videoHeight || 240;
+                        c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+                        resolve(c.toDataURL('image/png'));
+                    } catch { resolve(null); }
+                    URL.revokeObjectURL(v.src);
+                };
+                v.onerror = () => resolve(null);
+                v.src = url;
+                setTimeout(() => resolve(null), 4000);
+            });
+        } catch { poster = null; }
+        return { url, poster };
+    }
+    catch (e) {
+        toast(e.message || 'Could not read the video.');
+        return null;
+    }
+}
+async function applyFillVideo(file) {
+    const idx = state.fillPickIndex ?? 0;
+    if (file && file.type && file.type.startsWith('video/')) {
+        const read = await readVideoFile(file);
+        if (!read) return;
+        transaction('Replace video', () => {
+            const id = uid(), pid = read.poster ? uid() : null;
+            doc.data.assets[id] = read.url;
+            if (pid) doc.data.assets[pid] = read.poster;
+            for (const n of selected()) {
+                if (n.type === 'group' || n.type === 'text') continue;
+                const fills = fillsOfPicker(n);
+                if (!fills[idx]) fills.unshift({ type: 'video', video: id, poster: pid, mode: 'fill', scale: 1, opacity: 1, visible: true });
+                else {
+                    fills[idx].type = 'video';
+                    fills[idx].video = id;
+                    fills[idx].poster = pid;
+                    delete fills[idx].image;
+                    delete fills[idx].iw;
+                    delete fills[idx].ih;
+                    recordNaturalSizes([n]);
+                }
+                doc.touch(n);
+            }
+        });
+        invalidate();
+        renderFillPicker();
+        return;
+    }
+    await applyFillImage(file);
 }
 /** The Behavior panel's picture: the chosen file becomes an asset of the document and the prop holds its id. */
 async function pickBehaviorImage(owner, prop, file) {
@@ -3306,8 +3559,8 @@ function chooseFillImage(nodes, idx, id) {
     for (const n of nodes) {
         if (n.type === 'group' || n.type === 'text')
             continue;
-        const fills = n.fills;
-        const target = fills[idx]?.type === 'image' ? pictureTarget(n) : null;
+        const fills = fillsOfPicker(n);
+        const target = (fills[idx]?.type === 'image' || fills[idx]?.type === 'video') ? pictureTarget(n) : null;
         if (target) {
             target.owner.behavior = setInstanceValue(target.owner, componentById(target.owner.sourceId), target.prop, id);
             doc.touch(target.owner);
@@ -3382,21 +3635,21 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('input', e => {
     const el = e.target;
-    if (el.dataset?.fillIdx === undefined || el.tagName === 'SELECT' || el.type === 'text')
+    if (el.dataset?.fillIdx === undefined || el.tagName === 'SELECT' || el.type === 'text' || el.type === 'checkbox')
         return;
     const v = el.type === 'number' ? el.valueAsNumber : el.value;
     if (el.type === 'number' && !Number.isFinite(v))
         return;
-    editFill(+el.dataset.fillIdx, el.dataset.fillKey, v, true);
+    editFill(+el.dataset.fillIdx, el.dataset.fillKey, v, true, el.dataset.fillTarget || 'fill');
 });
 document.addEventListener('change', e => {
     const el = e.target;
     if (el.dataset?.fillIdx === undefined)
         return;
-    const v = el.type === 'number' ? el.valueAsNumber : el.value;
+    const v = el.type === 'checkbox' ? el.checked : el.type === 'number' ? el.valueAsNumber : el.value;
     if (el.type === 'number' && !Number.isFinite(v))
         return;
-    editFill(+el.dataset.fillIdx, el.dataset.fillKey, v, false);
+    editFill(+el.dataset.fillIdx, el.dataset.fillKey, v, false, el.dataset.fillTarget || 'fill');
 });
 
 // ===== constraints + float =====
@@ -5143,7 +5396,7 @@ function guideAt(p) {
     }
     return null;
 }
-function toolCursor() { return state.tool === 'hand' ? 'grab' : state.tool === 'text' ? 'text' : ['rect', 'frame', 'section', 'ellipse', 'line', 'pen'].includes(state.tool) ? 'crosshair' : 'default'; }
+function toolCursor() { return state.pickSource ? 'crosshair' : state.tool === 'hand' ? 'grab' : state.tool === 'text' ? 'text' : ['rect', 'frame', 'section', 'ellipse', 'line', 'pen'].includes(state.tool) ? 'crosshair' : 'default'; }
 function rulerCursor(p) {
     if (!options.rulers)
         return '';
@@ -5323,23 +5576,7 @@ function dropHighlight(g) {
 function reorderFillVars(n, from, to) {
     if (!n.vars)
         return;
-    const out = {};
-    for (const [k, v] of Object.entries(n.vars)) {
-        const m = /^fills\.(\d+)$/.exec(k);
-        if (!m) {
-            out[k] = v;
-            continue;
-        }
-        let i = +m[1];
-        if (i === from)
-            i = to;
-        else if (from < to && i > from && i <= to)
-            i--;
-        else if (from > to && i >= to && i < from)
-            i++;
-        out['fills.' + i] = v;
-    }
-    n.vars = out;
+    n.vars = moveFillKeys(n.vars, from, to);
 }
 function moveFill(from, to) {
     closeFillPicker();
@@ -5434,18 +5671,18 @@ function swatchBg(f, hidden) {
 }
 function fillRow(n, f, i, simple) {
     const hidden = f.visible === false, col = f.color || '#d9d9d9';
+    const bound = bindVarFor(`fills.${i}`);
     const sw = f.type === 'image'
         ? `<button class="fr-sw img" data-fill-open="${i}" data-img-asset="${esc(f.image || '')}" title="Edit fill" aria-label="Edit fill">${f.image ? '' : '＋'}</button>`
-        : f.type === 'solid' && bindVarFor(`fills.${i}`)
+        : bound
             ? `<span class="fr-sw locked" style="background:${swatchBg(f, false)}" title="Bound to a variable"></span>`
             : `<button class="fr-sw" style="background:${swatchBg(f, false)}" data-fill-open="${i}" title="Edit fill" aria-label="Edit fill"></button>`;
     let field;
     if (f.type === 'solid') {
-        const bound = bindVarFor(`fills.${i}`);
         field = `<div class="fr-field ${bound ? 'bound' : ''}"><input class="fr-hex-in" data-fill-hex="${i}" value="${esc(bound ? bound.name : col.replace('#', '').toUpperCase())}" spellcheck="false" autocomplete="off" aria-label="Fill color: hex or variable name">${bound ? `<button class="fr-detach" data-var-bind="fills.${i}" title="Change variable" aria-label="Change variable">${VAR_ICON}</button>` : ''}</div>`;
     }
     else
-        field = `<button class="fr-field static" data-fill-open="${i}">${({ linear: 'Linear gradient', radial: 'Radial gradient', angular: 'Angular gradient', diamond: 'Diamond gradient' })[f.type] || 'Image'}</button>`;
+        field = `<button class="fr-field static" data-fill-open="${i}">${({ linear: 'Linear', radial: 'Radial', angular: 'Angular', diamond: 'Diamond', pattern: 'Pattern', image: 'Image', video: 'Video' })[f.type] || 'Image'}</button>${bound ? `<button class="fr-detach" data-var-bind="fills.${i}" title="Change variable" aria-label="Change variable">${VAR_ICON}</button>` : ''}`;
     // A fill bound to a variable takes its opacity from the variable, so there is no opacity field.
     const opacity = f.type === 'solid' && bindVarFor(`fills.${i}`) ? '' : `<label class="fr-op-in"><input type="number" min="0" max="100" step="1" value="${fmt((f.opacity ?? 1) * 100)}" data-fill-idx="${i}" data-fill-key="opacity" aria-label="Fill opacity"><i>%</i></label>`;
     const ops = simple ? '' : `<button class="ui-icon-button small" data-fill-toggle="${i}" title="${hidden ? 'Show fill' : 'Hide fill'}" aria-label="Toggle fill visibility">${icon(hidden ? 'eyeOff' : 'eye', 14)}</button><button class="ui-icon-button small" data-fill-remove="${i}" title="Remove fill" aria-label="Remove fill">${icon('minus', 14)}</button>`;
@@ -5596,29 +5833,71 @@ document.addEventListener('keydown', e => {
     }
 }, true);
 // ----- color picker window -----
-const FP = { open: false, i: 0, tab: 'custom', stop: 1, hsv: null, hsvFor: '', search: '' };
+const FP = { open: false, i: 0, target: 'fill', tab: 'custom', sel: 0, blendMenu: false, hsv: null, hsvFor: '', search: '', format: 'hex' };
 function closeFillPicker() {
     document.getElementById('fill-picker')?.remove();
+    // A solid stroke paint with nothing of its own is just the stroke colour: the stroke paint object lives only while it says more.
+    if (FP.open && FP.target === 'stroke')
+        for (const n of selected())
+            if (n.strokeFill && n.strokeFill.type === 'solid' && (!n.strokeFill.blend || n.strokeFill.blend === 'normal'))
+                delete n.strokeFill;
     FP.open = false;
+    FP.target = 'fill';
+    state.pickSource = null;
 }
-function fpKey(f) { return f.type === 'linear' && FP.stop === 2 ? 'color2' : 'color'; }
-function openFillPicker(i, anchor) {
-    const was = FP.open && FP.i === i;
+/** The paint object the open picker edits on a layer: its fill at the picker's index, or (Stroke) its stroke paint, a fill-shaped object. */
+function pickerFillOf(n) { return n ? (FP.target === 'stroke' ? n.strokeFill : pickerFillOf(n)) : undefined; }
+/** The list the picker's edits run over: the fills, or (Stroke) a list of the one stroke paint. */
+function fillsOfPicker(n) { return FP.open && FP.target === 'stroke' ? (n.strokeFill ? [n.strokeFill] : []) : n.fills; }
+/** The key the open fill's colour variable binds to. */
+function pickerVarKey() { return FP.target === 'stroke' ? 'stroke' : `fills.${FP.i}`; }
+/** A stroke paint object for a stroked layer: the stroke colour as a solid paint, until the picker gives it another type. */
+function ensureStrokeFill(n) {
+    if (!n.strokeFill)
+        n.strokeFill = { type: 'solid', color: n.stroke && n.stroke !== 'none' ? n.stroke : '#000000', opacity: n.strokeOpacity ?? 1, visible: true };
+    return n.strokeFill;
+}
+/** After a stroke paint edit: a solid paint is the layer's stroke colour and opacity, any other keeps its colour as the stroke's fallback and its opacity as the stroke's. */
+function syncStrokePaint(n) {
+    const sf = n.strokeFill;
+    if (!sf)
+        return;
+    if (sf.type === 'solid' && sf.color)
+        n.stroke = sf.color;
+    n.strokeOpacity = sf.opacity ?? 1;
+    if (sf.visible === false)
+        n.strokeVisible = false;
+    else
+        delete n.strokeVisible;
+}
+/** The paint a layer's stroke is drawn with on the canvas: its stroke paint when that is not a plain colour (a gradient, a pattern, a picture), else the stroke colour. */
+function strokePaintOf(ctx, n) {
+    const sf = n.strokeFill;
+    return sf && sf.type !== 'solid' && sf.visible !== false ? (fillPaint(ctx, sf, n) || n.stroke) : n.stroke;
+}
+function openFillPicker(i, anchor, target = 'fill') {
+    const was = FP.open && FP.i === i && FP.target === target;
     closeFillPicker();
     if (was)
         return;
+    FP.target = target;
+    if (target === 'stroke')
+        for (const n of selected())
+            if (strokeIsOn(n))
+                ensureStrokeFill(n);
     const el = document.createElement('div');
     el.id = 'fill-picker';
     el.className = 'fill-picker';
     document.body.appendChild(el);
     FP.open = true;
-    FP.i = i;
+    FP.i = target === 'stroke' ? 0 : i;
     FP.tab = 'custom';
-    FP.stop = 1;
+    FP.sel = 0;
+    FP.blendMenu = false;
     FP.hsv = null;
     FP.search = '';
-    mountFloatingWindow(el, { anchor: anchor, closeHtml: icon('close', 14) });
-    el.style.width = '250px';
+    mountFloatingWindow(el, { anchor: anchor?.closest('.inspector-section') ?? anchor, closeHtml: icon('close', 14), dragAnywhere: true, noDrag: PK_NO_DRAG });
+    el.style.width = '280px';
     renderFillPicker();
     wireFillPicker(el);
     setTimeout(() => document.addEventListener('pointerdown', function away(ev) {
@@ -5627,46 +5906,190 @@ function openFillPicker(i, anchor) {
             document.removeEventListener('pointerdown', away, true);
             return;
         }
-        if (!picker.contains(ev.target) && !ev.target.closest('[data-fill-open], .fill-dd, #var-picker')) {
+        // A press on a fill handle of the canvas (or while a pattern source is being picked) belongs to the canvas: the picker stays open.
+        if (ev.target === overlay && (state.pickSource || fillHandleHit(eventPoint(ev), screenToWorld(eventPoint(ev).x, eventPoint(ev).y))))
+            return;
+        if (!picker.contains(ev.target) && !ev.target.closest('[data-fill-open], [data-stroke-open], .fill-dd, #var-picker')) {
             closeFillPicker();
             document.removeEventListener('pointerdown', away, true);
         }
     }, true), 0);
 }
-const PK_TYPES = [['solid', 'Solid', '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2" fill="currentColor"/></svg>'], ['linear', 'Linear gradient', '<svg width="16" height="16" viewBox="0 0 16 16"><defs><linearGradient id="pkg" x1="0" x2="1"><stop stop-color="currentColor"/><stop offset="1" stop-color="currentColor" stop-opacity=".15"/></linearGradient></defs><rect x="2" y="2" width="12" height="12" rx="2" fill="url(#pkg)"/></svg>'], ['image', 'Image', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2.5" width="12" height="11" rx="2"/><circle cx="6" cy="6.5" r="1.2"/><path d="M3 12l3.5-3.5 2.5 2.5 2-2 2.5 3"/></svg>']];
+/** What in the picker does not start a drag of the window: the colour area, the sliders, the gradient bar, the swatches and the type, tile and alignment buttons. */
+const PK_NO_DRAG = '[data-pk-sv], [data-pk-hue], [data-pk-alpha], [data-pk-gbar], .pk-swatch, .pk-types, .pk-tabs, .pk-seg, .pk-align3, .pk-blend-menu, .pk-stop-row, .pk-slide';
+const pkIcon = d => `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const PK_TYPES = [
+    ['solid', 'Solid', pkIcon('<rect x="2.5" y="2.5" width="11" height="11" rx="2" fill="currentColor" stroke="none"/>')],
+    ['linear', 'Gradient', pkIcon('<defs><linearGradient id="pkg" x1="0" x2="1"><stop stop-color="currentColor"/><stop offset="1" stop-color="currentColor" stop-opacity=".15"/></linearGradient></defs><rect x="2.5" y="2.5" width="11" height="11" rx="2" fill="url(#pkg)" stroke="none"/>')],
+    ['pattern', 'Pattern', pkIcon('<rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M2.5 8h11M8 2.5v11"/>')],
+    ['image', 'Image', pkIcon('<rect x="2.5" y="2.5" width="11" height="11" rx="2"/><circle cx="6" cy="6" r="1.1"/><path d="M3 12l3.5-3.5 2.5 2.5 1.5-1.5L13 12"/>')],
+    ['video', 'Video', pkIcon('<rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M6.7 5.8v4.4L10.4 8z" fill="currentColor"/>')],
+];
+const PK_BLEND_ICON = pkIcon('<path d="M8 2.5c2.2 2.7 4 4.7 4 7a4 4 0 0 1-8 0c0-2.3 1.8-4.3 4-7z"/>');
+const PK_BLEND_GROUPS = [['normal', 'darken', 'multiply', 'plus-darker', 'color-burn'], ['lighten', 'screen', 'plus-lighter', 'color-dodge'], ['overlay', 'soft-light', 'hard-light'], ['difference', 'exclusion'], ['hue', 'saturation', 'color', 'luminosity']];
+/** Blend modes with no equivalent on the canvas and in CSS backgrounds: listed (as Figma lists them) but not selectable. */
+const PK_BLEND_UNSUPPORTED = new Set(['plus-darker', 'plus-lighter']);
+const PK_FORMATS = [['hex', 'Hex'], ['rgb', 'RGB'], ['css', 'CSS'], ['hsl', 'HSL'], ['hsb', 'HSB']];
+const PK_ROTATE_ICON = pkIcon('<path d="M12.5 8a4.5 4.5 0 1 1-1.3-3.2"/><path d="M12.5 2.8v2.4h-2.4"/>');
+const PK_REVERSE_ICON = pkIcon('<path d="M3 5.5h9M9.5 3l2.5 2.5L9.5 8M13 10.5H4M6.5 8L4 10.5 6.5 13"/>');
+const PK_TILE_TYPES = [
+    ['RECTANGULAR', 'Rectangular', pkIcon('<path d="M4 4h.01M8 4h.01M12 4h.01M4 8h.01M8 8h.01M12 8h.01M4 12h.01M8 12h.01M12 12h.01" stroke-width="2"/>')],
+    ['HORIZONTAL_HEXAGONAL', 'Horizontal hexagonal', pkIcon('<path d="M4 4h.01M8 4h.01M12 4h.01M6 8h.01M10 8h.01M4 12h.01M8 12h.01M12 12h.01" stroke-width="2"/>')],
+    ['VERTICAL_HEXAGONAL', 'Vertical hexagonal', pkIcon('<path d="M4 4h.01M4 8h.01M4 12h.01M8 6h.01M8 10h.01M12 4h.01M12 8h.01M12 12h.01" stroke-width="2"/>')],
+];
+const GRADIENT_KINDS = [['linear', 'Linear'], ['radial', 'Radial'], ['angular', 'Angular'], ['diamond', 'Diamond']];
+/** The picker's header: tabs, the new-variable plus and the close. */
+function pickerHeadHtml() {
+    return `<div class="pk-head"><div class="pk-tabs"><button class="${FP.tab === 'custom' ? 'on' : ''}" data-pk-tab="custom">Custom</button><button class="${FP.tab === 'libs' ? 'on' : ''}" data-pk-tab="libs">Libraries</button></div><div class="pk-hbtns"><button class="vw-mini" data-pk-add title="Create a color variable from this color" aria-label="Create color variable">${icon('plus', 12)}</button><button class="vw-mini" data-pk-close title="Close" aria-label="Close">${icon('close', 12)}</button></div></div>`;
+}
+/** The fill type row (Solid, Gradient, Pattern, Image, Video, Noise) with the blend mode button at its far right, and the blend mode list while it is open. */
+function pickerTypesHtml(f) {
+    const grad = isGradientFill(f), blend = f.blend && f.blend !== 'normal';
+    const types = PK_TYPES.map(([t, l, svg]) => `<button class="${(t === 'linear' ? grad : f.type === t) ? 'on' : ''}" data-pk-type="${t}" title="${l}" aria-label="${l}">${svg}</button>`).join('');
+    const menu = FP.blendMenu ? `<div class="pk-blend-menu" role="menu">${PK_BLEND_GROUPS.map(g => `<div class="pk-blend-group">${g.map(m => { const off = PK_BLEND_UNSUPPORTED.has(m), on = (f.blend || 'normal') === m; return `<button role="menuitemradio" aria-checked="${on}" class="${on ? 'on' : ''}" data-pk-blend="${m}" ${off ? 'disabled title="Not supported by the canvas or browsers"' : ''}><i>${on ? icon('check', 12) : ''}</i>${m.replace(/-/g, ' ').replace(/^./, c => c.toUpperCase())}</button>`; }).join('')}</div>`).join('')}</div>` : '';
+    return `<div class="pk-types">${types}<span class="pk-sp"></span><button class="${blend || FP.blendMenu ? 'on' : ''}" data-pk-blend-open title="Blend mode" aria-label="Blend mode" aria-haspopup="menu">${PK_BLEND_ICON}</button></div>${menu}`;
+}
+/** The solid fill a text layer sits on: the nearest ancestor with a visible solid fill. Null for any other layer, or a text with nothing under it. */
+function contrastBackgroundOf(n) {
+    if (!n || n.type !== 'text')
+        return null;
+    for (let p = doc.get(n.parentId), i = 0; p && i < 200; p = doc.get(p.parentId), i++) {
+        const fl = getFills(p).find(x => x.type === 'solid' && x.visible !== false && x.color && x.color !== 'none');
+        if (fl)
+            return { color: hex6(fl.color), name: p.name || 'frame' };
+    }
+    return null;
+}
+/** WCAG contrast of the colour: against the frame fill under a text layer; otherwise on white and on black. Each row shows the ratio and AA / AAA for body text. */
+function pickerContrastHtml(hex, n) {
+    const row = (name, against) => {
+        const r = contrastRatio(hex, against), l = wcagLevels(r), badge = (label, ok) => `<i class="pk-badge ${ok ? 'ok' : 'bad'}">${label} ${ok ? 'Pass' : 'Fail'}</i>`;
+        return `<div class="pk-crow"><span class="pk-cname" title="${esc(name)}">${esc(name)}</span><span class="pk-cratio">${r.toFixed(2)}</span><span class="pk-badges">${badge('AA', l.aa)}${badge('AAA', l.aaa)}</span></div>`;
+    };
+    const bg = contrastBackgroundOf(n);
+    return `<div class="pk-contrast" data-pk-contrast><div class="pk-ctitle">Contrast</div>${bg ? row('On ' + bg.name, bg.color) : row('On white', '#ffffff') + row('On black', '#000000')}</div>`;
+}
+/** Image and Video: the mode and rotate row, the checkerboard drop area (Upload from computer), then the adjustments for an image. */
+function pickerPictureBody(f, n, pbind) {
+    const isVideo = f.type === 'video', has = isVideo ? !!f.video : !!f.image, adj = f.adjust || {}, mode = f.mode || 'fill';
+    const ratio = n && n.h ? Math.max(0.2, Math.min(3, n.w / Math.max(1, n.h))) : 1;
+    const slider = (key, label) => `<label class="pk-slide"><span>${label}</span><input type="range" min="-1" max="1" step="0.01" value="${adj[key] || 0}" data-fill-idx="${FP.i}" ${FP.target === 'stroke' ? 'data-fill-target="stroke"' : ''} data-fill-key="${key}" aria-label="${label}"></label>`;
+    const num = (label, key, value, min, max, step, unit) => `<label class="pk-prow"><span>${label}</span><span class="pk-fld"><input type="number" min="${min}" max="${max}" step="${step}" value="${fmt(value)}" data-fill-idx="${FP.i}" ${FP.target === 'stroke' ? 'data-fill-target="stroke"' : ''} data-fill-key="${key}" aria-label="${label}"><i class="unit">${unit}</i></span></label>`;
+    const row = `<div class="pk-row"><select class="pk-modesel" data-fill-idx="${FP.i}" ${FP.target === 'stroke' ? 'data-fill-target="stroke"' : ''} data-fill-key="mode" aria-label="Fill mode">${[['fill', 'Fill'], ['fit', 'Fit'], ['crop', 'Crop'], ['tile', 'Tile']].map(([v, l]) => `<option value="${v}" ${mode === v ? 'selected' : ''}>${l}</option>`).join('')}</select>${pbind('mode')}<span class="pk-sp"></span>${pbind(isVideo ? 'video' : 'image')}<button class="pk-ibtn" data-pk-rotate90 title="Rotate 90°" aria-label="Rotate 90 degrees">${PK_ROTATE_ICON}</button></div>`;
+    const drop = `<div class="pk-preview pk-drop" style="aspect-ratio:${Math.min(ratio, 1.6)};${has ? pickerPreviewStyle(f, n) : ''}background-color:var(--checker-sm);border-radius:6px">${has ? '' : `<button class="pk-upload" data-fill-image-pick="${FP.i}">Upload from computer</button>`}</div>${has ? `<button class="pk-replace" data-fill-image-pick="${FP.i}">Replace ${isVideo ? 'video' : 'image'}</button>` : ''}`;
+    const extra = (mode === 'tile' ? num('Scale', 'scale', (f.scale || 1) * 100, 5, 1000, 1, '%') : '') + (mode === 'crop' ? num('X', 'cropX', f.crop?.x ?? 0.5, 0, 1, 0.01, '') + num('Y', 'cropY', f.crop?.y ?? 0.5, 0, 1, 0.01, '') + num('Zoom', 'cropScale', (f.crop?.scale || 1) * 100, 20, 800, 1, '%') : '');
+    const play = isVideo ? [['autoplay', 'Autoplay', f.autoplay !== false], ['loop', 'Loop', f.loop !== false], ['sound', 'Sound', f.sound === true]].map(([k, l, on]) => `<label class="pk-prow"><span>${l}</span><input type="checkbox" ${on ? 'checked' : ''} data-fill-idx="${FP.i}" ${FP.target === 'stroke' ? 'data-fill-target="stroke"' : ''} data-fill-key="${k}" aria-label="${l}"></label>`).join('') : '';
+    const sliders = isVideo ? '' : `<div class="pk-sliders2">${['exposure', 'contrast', 'saturation', 'temperature', 'tint', 'highlights', 'shadows'].map(k => slider(k, k[0].toUpperCase() + k.slice(1))).join('')}</div>`;
+    return `<div class="pk-pad">${row}${drop}${extra}${play}${sliders}</div>`;
+}
+/** Pattern: the source preview (or the empty Select source button), the source name with Go to source, tile type, scale, spacing and alignment. */
+function pickerPatternBody(f) {
+    const src = f.source ? doc.get(f.source) : null, hexType = f.tileType && f.tileType !== 'RECTANGULAR';
+    const aligns = ['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'];
+    const field = (label, key, value, min, max, off = false) => `<span class="pk-fld ${off ? 'off' : ''}">${label ? `<b>${label}</b>` : ''}<input type="number" min="${min}" max="${max}" value="${fmt(value)}" data-fill-idx="${FP.i}" ${FP.target === 'stroke' ? 'data-fill-target="stroke"' : ''} data-fill-key="${key}" aria-label="${label || key}" ${off ? 'disabled' : ''}><i class="unit">%</i></span>`;
+    const head = src
+        ? `<div class="pk-preview pk-srcprev" data-pk-src-preview="${esc(src.id)}"></div><div class="pk-srcrow"><span class="pk-srcname" title="${esc(src.name)}">${esc(src.name)}</span><button class="pk-ibtn" data-pk-goto="${esc(src.id)}" title="Go to source" aria-label="Go to source">${pkIcon('<circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.6"/>')}</button></div><button class="pk-replace" data-pk-pattern-source>Select source...</button>`
+        : `<div class="pk-preview pk-srcprev empty"><button class="pk-upload" data-pk-pattern-source>Select source...</button></div>`;
+    return `<div class="pk-pad">${head}<div class="pk-prow"><span>Tile type</span><span class="pk-seg">${PK_TILE_TYPES.map(([t, l, svg]) => `<button class="${(f.tileType || 'RECTANGULAR') === t ? 'on' : ''}" data-pk-tile="${t}" title="${l}" aria-label="${l}">${svg}</button>`).join('')}</span></div>`
+        + `<label class="pk-prow"><span>Scale</span>${field('', 'scale', (f.scale || 1) * 100, 5, 1000)}</label>`
+        + `<div class="pk-prow"><span>Spacing</span><span class="pk-stack"><label>${field('X', 'spacingX', f.spacingX || 0, 0, 500)}</label><label>${field('Y', 'spacingY', f.spacingY || 0, 0, 500, !hexType)}</label></span></div>`
+        + `<div class="pk-prow"><span>Alignment</span><span class="pk-align3">${aligns.map(a => `<button class="${(f.align || 'top-left') === a ? 'on' : ''}" data-pk-align="${a}" title="${a}" aria-label="${a}"><i></i></button>`).join('')}</span></div></div>`;
+}
+/** The gradient bar's CSS background: the stops left to right (with their opacity) over the checkerboard. */
+function gradientBarCss(f) {
+    const list = gradientStops(f).map(st => `${st.color.slice(0, 7)}${Math.round((st.alpha ?? 1) * 255).toString(16).padStart(2, '0')} ${Math.round(st.pos * 10000) / 100}%`);
+    return `background:linear-gradient(to right, ${list.join(', ')}), var(--checker-sm)`;
+}
+/** The stop handles on the gradient bar. */
+function gradientHandlesHtml(f) {
+    const stops = gradientStops(f), sel = Math.min(FP.sel, stops.length - 1);
+    return stops.map((st, idx) => `<i class="pk-gh ${idx === sel ? 'sel' : ''}" data-pk-gh="${idx}" style="left:${st.pos * 100}%;--c:${esc(st.color.slice(0, 7))}"></i>`).join('');
+}
+/** The stop rows: position, swatch, hex, opacity, variable and remove. The selected one is highlighted. */
+function gradientRowsHtml(f) {
+    const stops = gradientStops(f), sel = Math.min(FP.sel, stops.length - 1);
+    return stops.map((st, idx) => {
+        const skey = stopBindingKey(FP.i, idx), sbv = FP.target === 'stroke' ? null : boundVar(skey);
+        return `<div class="pk-stop-row ${idx === sel ? 'sel' : ''}" data-pk-sel="${idx}"><span class="pk-fld"><input type="number" min="0" max="100" step="1" value="${Math.round(st.pos * 100)}" data-pk-stop-pos="${idx}" aria-label="Stop position"><i class="unit">%</i></span><label class="pk-swatch" style="--c:${esc(st.color.slice(0, 7))}"><input type="color" value="${st.color.slice(0, 7)}" data-pk-stop-color="${idx}" aria-label="Stop color"></label><input class="pk-hex" data-pk-stop-hex="${idx}" value="${esc(st.color.slice(1, 7).toUpperCase())}" spellcheck="false" aria-label="Stop hex"><span class="pk-fld"><input type="number" min="0" max="100" step="1" value="${Math.round((st.alpha ?? 1) * 100)}" data-pk-stop-alpha="${idx}" aria-label="Stop opacity"><i class="unit">%</i></span>${FP.target === 'stroke' ? '' : sbv ? varChip(skey, sbv) : varBindButton(skey)}<button class="pk-ibtn" data-pk-remove-stop="${idx}" title="Remove stop" aria-label="Remove stop" ${stops.length > 2 ? '' : 'disabled'}>${icon('minus', 12)}</button></div>`;
+    }).join('');
+}
+/** Gradient: the type dropdown with Reverse and Rotate, the bar with its stop handles, and the stop rows. */
+function pickerGradientBody(f) {
+    return `<div class="pk-pad"><div class="pk-row"><select class="pk-modesel" data-fill-idx="${FP.i}" ${FP.target === 'stroke' ? 'data-fill-target="stroke"' : ''} data-fill-key="type" aria-label="Gradient type">${GRADIENT_KINDS.map(([v, l]) => `<option value="${v}" ${f.type === v ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="pk-sp"></span><button class="pk-ibtn" data-pk-reverse title="Reverse stops" aria-label="Reverse stops">${PK_REVERSE_ICON}</button><button class="pk-ibtn" data-pk-rotate title="Rotate gradient 90°" aria-label="Rotate gradient">${PK_ROTATE_ICON}</button></div><div class="pk-gbar" data-pk-gbar style="${gradientBarCss(f)}">${gradientHandlesHtml(f)}</div><div class="pk-shead"><span>Stops</span><button class="pk-ibtn" data-pk-add-stop title="Add stop" aria-label="Add stop">${icon('plus', 12)}</button></div><div class="pk-stop-list">${gradientRowsHtml(f)}</div></div>`;
+}
+/** The picker preview style for a picture fill: the same background the canvas paints, in a box of the layer's own aspect ratio, so mode, scale, rotation, adjustments and source all show live as their controls move. */
+function pickerPreviewStyle(f, n) {
+    try {
+        const box = n ? { w: n.w, h: n.h } : undefined;
+        const shown = f.type === 'video' ? { ...f, type: 'image', image: f.poster || null, mode: f.mode === 'crop' ? 'crop' : f.mode } : f;
+        const { background, filter } = cssBackgroundOf([shown], doc.data.assets, id => doc.get(id), box);
+        return `background:${background};${filter ? `filter:${filter};` : ''}`.replace('background:;', '');
+    } catch { return ''; }
+}
+/** Repaint the picker preview after a slider moves it, without rebuilding the picker (the dragged control keeps focus). */
+function refreshPickerPreview() {
+    const el = document.getElementById('fill-picker'), n = activeNode(), f = n && pickerFillOf(n);
+    const pv = el?.querySelector('.pk-preview');
+    if (!el || !f || !pv) return;
+    const ratio = n && n.h ? Math.max(0.2, Math.min(3, n.w / Math.max(1, n.h))) : 1.6;
+    pv.setAttribute('style', `aspect-ratio:${ratio};${pickerPreviewStyle(f, n)}background-color:var(--checker-sm);border-radius:6px;margin-bottom:8px`);
+}
 function renderFillPicker() {
-    const el = document.getElementById('fill-picker'), n = activeNode(), f = n && getFills(n)[FP.i];
+    const el = document.getElementById('fill-picker'), n = activeNode(), f = n && pickerFillOf(n);
     if (!el || !f) {
         closeFillPicker();
         return;
     }
-    const key = fpKey(f), hex = hex6(f[key] || '#d9d9d9');
+    if (FP.target === 'stroke' && f.type === 'solid') {
+        f.color = n.stroke;
+        f.opacity = n.strokeOpacity ?? 1;
+    }
+    const hex = hex6(f.color || '#d9d9d9');
     if (!FP.hsv || FP.hsvFor !== hex) {
         FP.hsv = rgbToHsv(...hexToRgb(hex));
         FP.hsvFor = hex;
     }
     const { h, s, v } = FP.hsv, a = f.opacity ?? 1;
     let body = '';
+    const pbind = key => {
+        if (FP.target === 'stroke')
+            return '';
+        const prop = `fills.${FP.i}.${key}`, vb = boundVar(prop);
+        return vb ? varChip(prop, vb) : (bindType(prop) ? `<button class="var-btn" data-var-bind="${prop}" title="Apply variable" aria-label="Apply variable to ${key}">${VAR_ICON}</button>` : '');
+    };
     if (FP.tab === 'libs') {
-        const cur = varIdOf(activeNode(), `fills.${FP.i}`) || null;
-        body = `<div class="pk-libwrap">${varListHead(FP.search, 'data-pk-search', ['color'])}<div class="pk-libs">${varListHtml({ types: ['color'], filter: v => varInScope(v, 'fill'), q: FP.search, current: cur, attr: 'data-pk-var', limit: FP.libLimit || 400 })}</div></div>`;
+        const cur = varIdOf(activeNode(), pickerVarKey()) || null;
+        body = `<div class="pk-libwrap">${varListHead(FP.search, 'data-pk-search', ['color'])}<div class="pk-libs">${varListHtml({ types: ['color'], filter: v => varInScope(v, FP.target === 'stroke' ? 'stroke' : 'fill'), q: FP.search, current: cur, attr: 'data-pk-var', limit: FP.libLimit || 400 })}</div></div>`;
     }
-    else if (f.type === 'image')
-        body = `<div class="pk-pad"><button class="wide-button full-width" data-fill-image-pick="${FP.i}">Replace image</button><select class="full-width" data-fill-idx="${FP.i}" data-fill-key="mode" aria-label="Image mode" style="margin-top:8px"><option value="fill" ${(f.mode || 'fill') === 'fill' ? 'selected' : ''}>Fill</option><option value="fit" ${f.mode === 'fit' ? 'selected' : ''}>Fit</option><option value="tile" ${f.mode === 'tile' ? 'selected' : ''}>Tile</option></select>${f.mode === 'tile' ? `<label class="field" style="margin-top:8px"><span>⤢</span><input type="number" min="5" max="1000" value="${fmt((f.scale || 1) * 100)}" data-fill-idx="${FP.i}" data-fill-key="scale" aria-label="Tile scale"><i class="unit">%</i></label>` : ''}</div>`;
+    else if (f.type === 'image' || f.type === 'video')
+        body = pickerPictureBody(f, n, pbind);
+    else if (f.type === 'pattern')
+        body = pickerPatternBody(f);
+    else if (isGradientFill(f))
+        body = pickerGradientBody(f);
     else {
-        const stops = f.type === 'linear' ? `<div class="pk-stops"><button data-pk-stop="1" class="${FP.stop === 1 ? 'on' : ''}"><i style="background:${esc(f.color || '#d9d9d9')}"></i>Start</button><button data-pk-stop="2" class="${FP.stop === 2 ? 'on' : ''}"><i style="background:${esc(f.color2 || '#ffffff')}"></i>End</button><label class="field pk-angle"><span>∠</span><input type="number" value="${fmt(f.angle ?? 90)}" data-fill-idx="${FP.i}" data-fill-key="angle" aria-label="Gradient angle"><i class="unit">°</i></label></div>` : '';
-        const eye = 'EyeDropper' in window ? `<button class="pk-eye" data-pk-eye title="Pick a color from the screen" aria-label="Eyedropper"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6M4 20l1-4 9-9 3 3-9 9z"/></svg></button>` : '<span class="pk-eye"></span>';
-        body = `${stops}<div class="pk-sv" data-pk-sv style="--h:${Math.round(h)}"><i class="pk-sv-h" style="left:${s * 100}%;top:${(1 - v) * 100}%"></i></div><div class="pk-sliders">${eye}<div class="pk-bars"><div class="pk-hue" data-pk-hue><i style="left:${h / 360 * 100}%"></i></div><div class="pk-alpha" data-pk-alpha style="--c:${esc(hex)}"><i style="left:${a * 100}%"></i></div></div></div><div class="pk-hexrow"><span class="pk-fmt">Hex</span><input class="pk-hex" data-pk-hex value="${esc(hex.slice(1).toUpperCase())}" spellcheck="false" aria-label="Hex color"><span class="pk-sp"></span><input class="pk-opin" type="number" min="0" max="100" data-pk-op value="${fmt(a * 100)}" aria-label="Opacity"><i class="pk-pct">%</i></div>`;
+        const eye = 'EyeDropper' in window ? `<button class="pk-eye" data-pk-eye title="Pick a color from the screen" aria-label="Eyedropper"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6M4 20l1-4 9-9 3 3-9 9z"/></svg></button>` : '<span class="pk-eye" title="Eyedropper needs a Chromium browser" aria-label="Eyedropper unavailable">N/A</span>';
+        body = `<div class="pk-sv" data-pk-sv style="--h:${Math.round(h)}"><i class="pk-sv-h" style="left:${s * 100}%;top:${(1 - v) * 100}%"></i></div><div class="pk-sliders">${eye}<div class="pk-bars"><div class="pk-hue" data-pk-hue><i style="left:${h / 360 * 100}%"></i></div><div class="pk-alpha" data-pk-alpha style="--c:${esc(hex)}"><i style="left:${a * 100}%"></i></div></div></div><div class="pk-hexrow"><label class="pk-fmtsel"><select data-pk-format aria-label="Color format">${PK_FORMATS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label>${(() => {
+            const cf = colorFormats(hex);
+            if (FP.format === 'rgb') return `${['r', 'g', 'b'].map(ch => `<input class="pk-num" type="number" min="0" max="255" step="1" value="${cf.rgb[ch]}" data-pk-rgb="${ch}" aria-label="Colour ${ch}">`).join('')}`;
+            if (FP.format === 'css') return `<input class="pk-css" data-pk-css value="${esc(`rgb(${cf.rgb.r}, ${cf.rgb.g}, ${cf.rgb.b})`)}" spellcheck="false" aria-label="CSS colour">`;
+            if (FP.format === 'hsl') return `${[['h', Math.round(cf.hsl.h), 0, 360], ['s', Math.round(cf.hsl.s * 100), 0, 100], ['l', Math.round(cf.hsl.l * 100), 0, 100]].map(([ch, val, min, max]) => `<input class="pk-num" type="number" min="${min}" max="${max}" step="1" value="${val}" data-pk-hsl="${ch}" aria-label="Colour ${ch}">`).join('')}`;
+            if (FP.format === 'hsb') return `${[['h', Math.round(cf.hsb.h), 0, 360], ['s', Math.round(cf.hsb.s * 100), 0, 100], ['v', Math.round(cf.hsb.v * 100), 0, 100]].map(([ch, val, min, max]) => `<input class="pk-num" type="number" min="${min}" max="${max}" step="1" value="${val}" data-pk-hsb="${ch}" aria-label="Colour ${ch}">`).join('')}`;
+            return `<input class="pk-hex" data-pk-hex value="${esc(hex.slice(1).toUpperCase())}" spellcheck="false" aria-label="Hex color">`;
+        })()}<input class="pk-opin" type="number" min="0" max="100" data-pk-op value="${fmt(a * 100)}" aria-label="Opacity"><i class="pk-pct">%</i></div>`;
     }
-    el.innerHTML = `<div class="pk-head"><div class="pk-tabs"><button class="${FP.tab === 'custom' ? 'on' : ''}" data-pk-tab="custom">Custom</button><button class="${FP.tab === 'libs' ? 'on' : ''}" data-pk-tab="libs">Libraries</button></div><button class="vw-mini" data-pk-close title="Close" aria-label="Close">${icon('close', 12)}</button></div>${FP.tab === 'custom' ? `<div class="pk-types">${PK_TYPES.map(([t, l, svg]) => `<button class="${f.type === t ? 'on' : ''}" data-pk-type="${t}" title="${l}" aria-label="${l}">${svg}</button>`).join('')}</div>` : ''}${body}`;
-    el.querySelectorAll('[data-img-asset]').forEach(x => { const src = doc.data.assets[x.dataset.imgAsset]; if (src)
-        x.style.backgroundImage = `url("${src}")`; });
+    el.innerHTML = pickerHeadHtml() + (FP.tab === 'custom' ? pickerTypesHtml(f) : '') + body + (FP.tab === 'custom' && f.type === 'solid' ? pickerContrastHtml(hex, n) : '');
+    el.querySelectorAll('[data-img-asset]').forEach(x => { const src = doc.data.assets[x.dataset.imgAsset]; if (src) x.style.backgroundImage = `url("${src}")`; });
+    const fmtSel = el.querySelector('[data-pk-format]');
+    if (fmtSel) fmtSel.value = FP.format || 'hex';
+    const prev = el.querySelector('[data-pk-src-preview]');
+    if (prev) renderNodeAnyPage(prev.dataset.pkSrcPreview, 0.5).then(c => { if (prev.isConnected) prev.style.backgroundImage = `url("${c.toDataURL()}")`; }).catch(() => {});
 }
 function updatePickerDom(f) {
     const el = document.getElementById('fill-picker');
     if (!el)
         return;
-    const { h, s, v } = FP.hsv, key = fpKey(f), hex = hex6(f[key] || '#d9d9d9'), a = f.opacity ?? 1;
+    const { h, s, v } = FP.hsv, hex = hex6(f.color || '#d9d9d9'), a = f.opacity ?? 1;
     const sv = el.querySelector('[data-pk-sv]');
     if (sv) {
         sv.style.setProperty('--h', Math.round(h));
@@ -5685,15 +6108,29 @@ function updatePickerDom(f) {
     const op = el.querySelector('[data-pk-op]');
     if (op && document.activeElement !== op)
         op.value = fmt(a * 100);
-    el.querySelectorAll('[data-pk-stop] i').forEach((i, idx) => { i.style.background = idx === 0 ? f.color : f.color2; });
+    const cf = colorFormats(hex);
+    const setVal = (sel, val) => { const x = el.querySelector(sel); if (x && document.activeElement !== x) x.value = val; };
+    setVal('[data-pk-rgb="r"]', cf.rgb.r);
+    setVal('[data-pk-rgb="g"]', cf.rgb.g);
+    setVal('[data-pk-rgb="b"]', cf.rgb.b);
+    setVal('[data-pk-css]', `rgb(${cf.rgb.r}, ${cf.rgb.g}, ${cf.rgb.b})`);
+    setVal('[data-pk-hsl="h"]', Math.round(cf.hsl.h));
+    setVal('[data-pk-hsl="s"]', Math.round(cf.hsl.s * 100));
+    setVal('[data-pk-hsl="l"]', Math.round(cf.hsl.l * 100));
+    setVal('[data-pk-hsb="h"]', Math.round(cf.hsb.h));
+    setVal('[data-pk-hsb="s"]', Math.round(cf.hsb.s * 100));
+    setVal('[data-pk-hsb="v"]', Math.round(cf.hsb.v * 100));
+    const ct = el.querySelector('[data-pk-contrast]');
+    if (ct)
+        ct.outerHTML = pickerContrastHtml(hex, activeNode());
 }
 function pkDrag(kind, target, e) {
-    const n = activeNode(), f0 = n && getFills(n)[FP.i];
+    const n = activeNode(), f0 = n && pickerFillOf(n);
     if (!f0)
         return;
-    const rect = target.getBoundingClientRect(), key = fpKey(f0);
+    const rect = target.getBoundingClientRect(), key = 'color';
     const apply = (ev, live) => {
-        const nn = activeNode(), f = nn && getFills(nn)[FP.i];
+        const nn = activeNode(), f = nn && pickerFillOf(nn);
         if (!f)
             return;
         const x = clamp((ev.clientX - rect.left) / rect.width, 0, 1), y = clamp((ev.clientY - rect.top) / rect.height, 0, 1);
@@ -5710,7 +6147,7 @@ function pkDrag(kind, target, e) {
             FP.hsvFor = hex;
             editFill(FP.i, key, hex, live);
         }
-        updatePickerDom(getFills(nn)[FP.i]);
+        updatePickerDom(pickerFillOf(nn));
     };
     e.preventDefault();
     apply(e, true);
@@ -5723,6 +6160,166 @@ function pkDrag(kind, target, e) {
     addEventListener('pointermove', move);
     addEventListener('pointerup', up);
 }
+/** Adds a stop at pos (its colour read from the gradient there) on every selected gradient; returns its sorted index. */
+function pkAddStop(pos) {
+    let at = 0;
+    transaction('Add gradient stop', () => {
+        for (const n of selected()) {
+            const f = pickerFillOf(n);
+            if (f && isGradientFill(f)) {
+                const color = gradientColorAt(f, pos);
+                at = gradientStops(f).filter(x => x.pos < pos).length;
+                if (n.vars && FP.target !== 'stroke') { n.vars = shiftStopKeys(n.vars, FP.i, at, 1); if (!Object.keys(n.vars).length) delete n.vars; }
+                f.stops = gradientSetStop(gradientAddStop(f, pos), at, { color }).stops;
+                doc.touch(n);
+            }
+        }
+    });
+    FP.sel = at;
+    return at;
+}
+/** Removes the stop at the sorted index on every selected gradient (two stops is the floor). */
+function pkRemoveStop(gone) {
+    transaction('Remove gradient stop', () => {
+        for (const n of selected()) {
+            const f = pickerFillOf(n);
+            if (f && isGradientFill(f) && gradientStops(f).length > 2) {
+                if (n.vars && FP.target !== 'stroke') { n.vars = shiftStopKeys(n.vars, FP.i, gone, -1, gone); if (!Object.keys(n.vars).length) delete n.vars; }
+                f.stops = gradientRemoveStop(f, gone).stops;
+                doc.touch(n);
+            }
+        }
+    });
+    FP.sel = Math.max(0, Math.min(FP.sel, (pickerFillOf(activeNode()) ? gradientStops(pickerFillOf(activeNode())).length : 2) - 1));
+}
+/** Turns a gradient a quarter turn: a plain linear one by its angle, any other by its handles about the centre. */
+function pkRotateGradient() {
+    transaction('Rotate gradient', () => {
+        for (const n of selected()) {
+            const f = pickerFillOf(n);
+            if (!f || !isGradientFill(f))
+                continue;
+            if (f.type === 'linear' && !f.handles)
+                f.angle = ((f.angle ?? 90) + 90) % 360;
+            else {
+                const turn = p => ({ x: 1 - p.y, y: p.x });
+                const H = gradientHandlePoints(f);
+                f.handles = { a: turn(H.a), b: turn(H.b), ...(H.c ? { c: turn(H.c) } : {}) };
+            }
+            doc.touch(n);
+        }
+    });
+    renderFillPicker();
+}
+/** The plus of the picker: a color variable of the fill's current color, bound to a solid fill. */
+function pkCreateColorVariable() {
+    const f = pickerFillOf(activeNode());
+    if (!f)
+        return;
+    const coll = varStore().collections[0];
+    if (!coll) {
+        toast('Create a variable collection first (Variables window).');
+        return;
+    }
+    let id = null;
+    transaction('Create color variable', () => {
+        const store = varStore();
+        const color = hex6(isGradientFill(f) ? gradientStops(f)[Math.min(FP.sel, gradientStops(f).length - 1)].color : f.color || '#d9d9d9');
+        const item = { id: uid(), collectionId: coll.id, name: uniqueVarName(coll, 'Color'), type: 'color', values: {} };
+        for (const m of coll.modes)
+            item.values[m.id] = color;
+        store.items.push(item);
+        id = item.id;
+    });
+    if (f.type === 'solid' && id) {
+        bindVariable(pickerVarKey(), id);
+        FP.tab = 'libs';
+    }
+    toast('Color variable created.');
+    renderFillPicker();
+}
+/**
+ * Moves the gradient stop at the sorted index to pos (it may cross its neighbours: its variable binding follows it) on one gradient, and returns its new index.
+ * `paintIdx` is the fill's index (0 for a stroke paint), where the stop variables are keyed.
+ */
+function moveGradientStop(n, f, idx, pos, paintIdx) {
+    const sorted = gradientStops(f), others = sorted.filter((_, k) => k !== idx), to = others.filter(st => st.pos <= pos).length;
+    const next = [...others, { ...sorted[idx], pos }].sort((a, b) => a.pos - b.pos);
+    f.stops = next;
+    f.color = next[0].color;
+    f.color2 = next[next.length - 1].color;
+    if (n.vars && to !== idx && FP.target !== 'stroke')
+        n.vars = moveStopKeys(n.vars, paintIdx, idx, to);
+    return to;
+}
+/** Drags a stop handle along the gradient bar (between its neighbours), or adds a stop where the bar is pressed and drags that. */
+function pkGradientDrag(bar, handle, e) {
+    e.preventDefault();
+    const rect = bar.getBoundingClientRect(), at = ev => Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+    let idx = handle ? +handle.dataset.pkGh : pkAddStop(at(e));
+    FP.sel = idx;
+    const move = (ev, live) => {
+        const pos = at(ev);
+        if (!history.pending)
+            history.begin('Move gradient stop');
+        let to = idx;
+        for (const n of selected()) {
+            const f = pickerFillOf(n);
+            if (f && isGradientFill(f)) {
+                to = moveGradientStop(n, f, idx, pos, FP.i);
+                if (FP.target === 'stroke')
+                    syncStrokePaint(n);
+                doc.touch(n);
+            }
+        }
+        idx = to;
+        FP.sel = to;
+        changed({ ui: !live, commit: !live });
+        if (live)
+            refreshGradientUi();
+    };
+    renderFillPicker();
+    const mv = ev => move(ev, true), up = ev => {
+        removeEventListener('pointermove', mv);
+        removeEventListener('pointerup', up);
+        move(ev, false);
+        renderFillPicker();
+    };
+    addEventListener('pointermove', mv);
+    addEventListener('pointerup', up);
+}
+/** Repaints the gradient bar, its handles and the position fields from the fill, without rebuilding the picker (a drag is in progress). */
+function refreshGradientUi() {
+    const el = document.getElementById('fill-picker'), f = pickerFillOf(activeNode());
+    if (!el || !f)
+        return;
+    el.querySelector('[data-pk-gbar]')?.setAttribute('style', gradientBarCss(f));
+    el.querySelector('[data-pk-gbar]').innerHTML = gradientHandlesHtml(f);
+    el.querySelector('.pk-stop-list').innerHTML = gradientRowsHtml(f);
+}
+/** Arms the canvas to take the next click on a layer as the pattern source of the open fill (Esc cancels). The picker stays open and shows the pick. */
+function pkArmSourcePick() {
+    const n = activeNode();
+    if (!n)
+        return;
+    state.pickSource = { nodeId: n.id, fillIdx: FP.i };
+    overlay.style.cursor = 'crosshair';
+    toast('Click a layer on the canvas to use it as the pattern source. Esc cancels.');
+}
+/** The click that picks the source: the layer under it becomes the fill's source (the selection stays on the layer being filled). */
+function finishSourcePick(w) {
+    const pick = state.pickSource, target = selectTargetAt(w, { deep: true });
+    state.pickSource = null;
+    overlay.style.cursor = toolCursor();
+    if (!target || target.id === pick.nodeId) {
+        toast('Pick another layer to use as the source.');
+        return;
+    }
+    if (state.selection.has(pick.nodeId))
+        editFill(pick.fillIdx, 'patternSource', target.id, false);
+    if (FP.open)
+        renderFillPicker();
+}
 function wireFillPicker(el) {
     el.addEventListener('pointerdown', e => {
         const sv = e.target.closest('[data-pk-sv]'), hue = e.target.closest('[data-pk-hue]'), al = e.target.closest('[data-pk-alpha]');
@@ -5732,6 +6329,8 @@ function wireFillPicker(el) {
             pkDrag('hue', hue, e);
         else if (al)
             pkDrag('alpha', al, e);
+        else if (e.target.closest('[data-pk-gbar]'))
+            pkGradientDrag(e.target.closest('[data-pk-gbar]'), e.target.closest('[data-pk-gh]'), e);
     });
     el.addEventListener('click', e => {
         const t = e.target;
@@ -5743,24 +6342,83 @@ function wireFillPicker(el) {
             renderFillPicker();
         }
         else if ((b = t.closest('[data-pk-type]'))) {
-            editFill(FP.i, 'type', b.dataset.pkType, false);
-            FP.hsv = null;
+            const cur = n0 => n0 && pickerFillOf(n0);
+            if (!(b.dataset.pkType === 'linear' && isGradientFill(cur(activeNode())))) {
+                editFill(FP.i, 'type', b.dataset.pkType, false);
+                FP.hsv = null;
+                FP.sel = 0;
+            }
             renderFillPicker();
         }
-        else if ((b = t.closest('[data-pk-stop]'))) {
-            FP.stop = +b.dataset.pkStop;
-            FP.hsv = null;
+        else if (t.closest('[data-pk-blend-open]')) {
+            FP.blendMenu = !FP.blendMenu;
             renderFillPicker();
         }
+        else if ((b = t.closest('[data-pk-blend]'))) {
+            FP.blendMenu = false;
+            editFill(FP.i, 'blend', b.dataset.pkBlend, false);
+            renderFillPicker();
+        }
+        else if (t.closest('[data-pk-add]'))
+            pkCreateColorVariable();
+        else if (t.closest('[data-pk-rotate90]')) {
+            const cur = imageRotationOf(pickerFillOf(activeNode()));
+            editFill(FP.i, 'rotation', cur === 0 ? 90 : cur === 90 ? 180 : cur === 180 ? -90 : 0, false);
+            renderFillPicker();
+        }
+        else if (t.closest('[data-pk-rotate]'))
+            pkRotateGradient();
+        else if ((b = t.closest('[data-pk-tile]'))) {
+            editFill(FP.i, 'tileType', b.dataset.pkTile, false);
+            renderFillPicker();
+        }
+        else if ((b = t.closest('[data-pk-goto]'))) {
+            const id = b.dataset.pkGoto;
+            closeFillPicker();
+            select([id]);
+        }
+        else if (t.closest('[data-pk-reverse]')) {
+            transaction('Reverse gradient', () => {
+                for (const n of selected()) {
+                    const f = pickerFillOf(n);
+                    if (f && (f.type === 'linear' || f.type === 'radial' || f.type === 'angular' || f.type === 'diamond')) {
+                        const next = gradientReverse(f);
+                        f.stops = next.stops;
+                        f.color = next.color;
+                        f.color2 = next.color2;
+                        doc.touch(n);
+                    }
+                }
+            });
+            renderFillPicker();
+        }
+        else if ((b = t.closest('[data-pk-align]'))) {
+            editFill(FP.i, 'align', b.dataset.pkAlign, false);
+            renderFillPicker();
+        }
+        else if (t.closest('[data-pk-pattern-source]'))
+            pkArmSourcePick();
         else if ((b = t.closest('[data-pk-var]'))) {
-            bindVariable('fills.' + FP.i, b.dataset.pkVar);
+            bindVariable(pickerVarKey(), b.dataset.pkVar);
             FP.tab = 'custom';
             renderFillPicker();
         }
+        else if (t.closest('[data-pk-add-stop]')) {
+            pkAddStop(0.5);
+            renderFillPicker();
+        }
+        else if ((b = t.closest('[data-pk-remove-stop]'))) {
+            pkRemoveStop(+b.dataset.pkRemoveStop || 0);
+            renderFillPicker();
+        }
+        else if ((b = t.closest('[data-pk-sel]'))) {
+            FP.sel = +b.dataset.pkSel || 0;
+            el.querySelectorAll('[data-pk-sel], [data-pk-gh]').forEach(x => x.classList.toggle('sel', +(x.dataset.pkSel ?? x.dataset.pkGh) === FP.sel));
+        }
         else if (t.closest('[data-pk-eye]'))
-            new EyeDropper().open().then(r => { const n = activeNode(), f = n && getFills(n)[FP.i]; if (f) {
+            new EyeDropper().open().then(r => { const n = activeNode(), f = n && pickerFillOf(n); if (f) {
                 FP.hsv = null;
-                editFill(FP.i, fpKey(f), r.sRGBHex.toLowerCase(), false);
+                editFill(FP.i, 'color', r.sRGBHex.toLowerCase(), false);
                 renderFillPicker();
             } }).catch(() => { });
     });
@@ -5781,6 +6439,7 @@ function wireFillPicker(el) {
         }
     });
     el.addEventListener('input', e => {
+        if (e.target.matches('[data-fill-idx]')) setTimeout(refreshPickerPreview, 0);
         if (e.target.matches('[data-pk-search]')) {
             FP.search = e.target.value;
             FP.libLimit = 400;
@@ -5794,26 +6453,112 @@ function wireFillPicker(el) {
     el.addEventListener('change', e => {
         const t = e.target;
         if (t.matches('[data-pk-hex]')) {
-            const n = activeNode(), f = n && getFills(n)[FP.i];
+            const n = activeNode(), f = n && pickerFillOf(n);
             if (f) {
                 FP.hsv = null;
-                editFill(FP.i, FP.stop === 2 && f.type === 'linear' ? 'hex2' : 'hex', t.value, false);
+                editFill(FP.i, 'hex', t.value, false);
                 renderFillPicker();
             }
+        }
+        else if (t.matches('[data-pk-rgb]')) {
+            const f = activeNode() && pickerFillOf(activeNode());
+            if (f) {
+                const g = k => el.querySelector('[data-pk-rgb="' + k + '"]')?.valueAsNumber ?? 0;
+                const hex = colorFromFormat('rgb', { r: g('r'), g: g('g'), b: g('b') });
+                if (hex) { FP.hsv = null; editFill(FP.i, 'hex', hex, false); renderFillPicker(); }
+            }
+        }
+        else if (t.matches('[data-pk-hsl], [data-pk-hsb]')) {
+            const f = activeNode() && pickerFillOf(activeNode());
+            if (f) {
+                const fmt = t.matches('[data-pk-hsl]') ? 'hsl' : 'hsb', third = fmt === 'hsl' ? 'l' : 'v';
+                const q = k => el.querySelector('[data-pk-' + fmt + '="' + k + '"]')?.valueAsNumber ?? 0;
+                const hex = fmt === 'hsl' ? colorFromFormat('hsl', { h: q('h'), s: q('s') / 100, l: q('l') / 100 }) : colorFromFormat('hsb', { h: q('h'), s: q('s') / 100, v: q('v') / 100 });
+                if (hex) { FP.hsv = null; editFill(FP.i, 'hex', hex, false); renderFillPicker(); }
+            }
+        }
+        else if (t.matches('[data-pk-css]')) {
+            const f = activeNode() && pickerFillOf(activeNode());
+            if (f) {
+                const hex = colorFromFormat('css', { text: t.value });
+                if (!hex) { toast('Could not parse that colour.'); return; }
+                FP.hsv = null; editFill(FP.i, 'hex', hex, false); renderFillPicker();
+            }
+        }
+        else if (t.matches('[data-pk-stop-alpha]')) {
+            const idx = +t.dataset.pkStopAlpha || 0, v = t.valueAsNumber;
+            if (Number.isFinite(v)) transaction('Stop opacity', () => {
+                for (const n of selected()) {
+                    const f = pickerFillOf(n);
+                    if (f) {
+                        const next = gradientSetStop(f, idx, { alpha: Math.max(0, Math.min(1, v / 100)) });
+                        f.stops = next.stops;
+                        doc.touch(n);
+                    }
+                }
+            });
+        }
+        else if (t.matches('[data-pk-format]')) {
+            FP.format = t.value;
+            renderFillPicker();
+        }
+        else if (t.matches('[data-pk-stop-pos]')) {
+            const idx = +t.dataset.pkStopPos || 0, v = t.valueAsNumber;
+            if (Number.isFinite(v)) transaction('Move gradient stop', () => {
+                for (const n of selected()) {
+                    const f = pickerFillOf(n);
+                    if (f) {
+                        const next = gradientSetStop(f, idx, { pos: Math.max(0, Math.min(1, v / 100)) });
+                        f.stops = next.stops;
+                        if (next.color) f.color = next.color;
+                        if (next.color2) f.color2 = next.color2;
+                        doc.touch(n);
+                    }
+                }
+            });
+        }
+        else if (t.matches('[data-pk-stop-color], [data-pk-stop-hex]')) {
+            const idx = +(t.dataset.pkStopColor ?? t.dataset.pkStopHex) || 0, m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(t.value.trim());
+            if (!m) { renderFillPicker(); return; }
+            const color = '#' + (m[1].length === 3 ? [...m[1]].map(c => c + c).join('') : m[1]).toLowerCase();
+            transaction('Recolor gradient stop', () => {
+                for (const n of selected()) {
+                    const f = pickerFillOf(n);
+                    if (f) {
+                        if (idx === 0) detachFillVar(n, FP.i, 0); else detachStopVar(n, FP.i, idx);
+                        const next = gradientSetStop(f, idx, { color });
+                        f.stops = next.stops;
+                        if (next.color) f.color = next.color;
+                        if (next.color2) f.color2 = next.color2;
+                        doc.touch(n);
+                    }
+                }
+            });
+            renderFillPicker();
         }
         else if (t.matches('[data-pk-op]')) {
             const v = t.valueAsNumber;
             if (Number.isFinite(v))
                 editFill(FP.i, 'opacity', v, false);
         }
-        else if (t.matches('[data-fill-key="mode"]'))
+        else if (t.matches('[data-fill-key="mode"], [data-fill-key="type"]'))
             setTimeout(renderFillPicker, 0);
     });
     el.addEventListener('keydown', e => {
         if (e.key === 'Enter' && e.target.tagName === 'INPUT')
             e.target.blur();
+        if ((e.key === 'Delete' || e.key === 'Backspace') && e.target.tagName !== 'INPUT' && isGradientFill(pickerFillOf(activeNode()) || {})) {
+            e.preventDefault();
+            pkRemoveStop(FP.sel);
+            renderFillPicker();
+        }
         if (e.key === 'Escape') {
             e.stopPropagation();
+            if (state.pickSource) {
+                state.pickSource = null;
+                overlay.style.cursor = toolCursor();
+                return;
+            }
             closeFillPicker();
         }
     });
@@ -5822,6 +6567,9 @@ document.addEventListener('click', e => {
     const b = e.target.closest('[data-fill-open]');
     if (b)
         openFillPicker(+b.dataset.fillOpen, b);
+    const st = e.target.closest('[data-stroke-open]');
+    if (st)
+        openFillPicker(0, st, 'stroke');
 });
 
 // ===== effects: pick a type first, then edit it in a floating window =====
@@ -7151,7 +7899,7 @@ function paintText(ctx, n) {
                 }
                 if (stroked) {
                     ctx.globalAlpha = baseAlpha * (n.strokeOpacity ?? 1);
-                    ctx.strokeStyle = n.stroke;
+                    ctx.strokeStyle = strokePaintOf(ctx, n);
                     ctx.lineWidth = n.strokeWidth;
                     ctx.lineJoin = n.strokeJoin || 'round';
                     ctx.lineCap = n.strokeCap || 'round';
@@ -7185,7 +7933,7 @@ function paintText(ctx, n) {
         }
         if (stroked) {
             ctx.globalAlpha = baseAlpha * (n.strokeOpacity ?? 1);
-            ctx.strokeStyle = n.stroke;
+            ctx.strokeStyle = strokePaintOf(ctx, n);
             ctx.lineWidth = n.strokeWidth;
             ctx.lineJoin = n.strokeJoin || 'round';
             ctx.lineCap = n.strokeCap || 'round';
@@ -7230,8 +7978,13 @@ function paintStroke(ctx, n, path) {
     const sides = rl ? strokeSideWidths(n) : null, uniform = strokeSidesUniform(n), w = sides ? sides.t : n.strokeWidth;
     ctx.save();
     ctx.globalAlpha *= n.strokeOpacity ?? 1;
-    ctx.strokeStyle = n.stroke;
-    ctx.fillStyle = n.stroke;
+    const paint = strokePaintOf(ctx, n);
+    ctx.strokeStyle = paint;
+    ctx.fillStyle = paint;
+    if (n.strokeFill?.blend && BLEND_MODES.includes(n.strokeFill.blend) && n.strokeFill.blend !== 'normal')
+        ctx.globalCompositeOperation = n.strokeFill.blend;
+    if (n.strokeFill?.type === 'image')
+        ctx.filter = imageAdjustFilter(n.strokeFill) || 'none';
     const outsideClip = () => { const c = new Path2D(); c.rect(-1e5, -1e5, 2e5, 2e5); c.addPath(path); ctx.clip(c, 'evenodd'); };
     if (uniform) {
         if (w > 0) {
@@ -8281,7 +9034,8 @@ function exportSVG(doc, ids) {
         let fill = topColorOf(n);
         if (top?.type === 'linear' && fill !== 'none') {
             const r = (top.angle ?? 90) * Math.PI / 180, c = Math.cos(r), ss = Math.sin(r), len = Math.abs(n.w * c) + Math.abs(n.h * ss);
-            defs += `<linearGradient id="${prefix}g" gradientUnits="userSpaceOnUse" x1="${f(n.w / 2 - c * len / 2)}" y1="${f(n.h / 2 - ss * len / 2)}" x2="${f(n.w / 2 + c * len / 2)}" y2="${f(n.h / 2 + ss * len / 2)}"><stop stop-color="${e(fill)}"/><stop offset="1" stop-color="${e(top.color2 ?? '#ffffff')}"/></linearGradient>`;
+            const stops = gradientStops(top).map(x => `<stop offset="${x.pos}" stop-color="${e(x.color)}"${(x.alpha ?? 1) < 1 ? ` stop-opacity="${x.alpha}"` : ''}/>`).join('');
+            defs += `<linearGradient id="${prefix}g" gradientUnits="userSpaceOnUse" x1="${f(n.w / 2 - c * len / 2)}" y1="${f(n.h / 2 - ss * len / 2)}" x2="${f(n.w / 2 + c * len / 2)}" y2="${f(n.h / 2 + ss * len / 2)}">${stops}</linearGradient>`;
             fill = `url(#${prefix}g)`;
         }
         let attrs = `fill="${e(fill)}" fill-opacity="${f(topOpacityOf(n))}" ${svgStrokeAttrs(n, f, e)}`;
@@ -8332,10 +9086,43 @@ function exportSVG(doc, ids) {
                 const op = f(fp.opacity ?? 1), id = `${prefix}f${i}`;
                 if (fp.type === 'solid')
                     parts += geo(`fill="${e(fp.color)}" fill-opacity="${op}"`);
-                else if (fp.type === 'linear') {
-                    const r = (fp.angle ?? 90) * Math.PI / 180, c = Math.cos(r), ss = Math.sin(r), len = Math.abs(n.w * c) + Math.abs(n.h * ss);
-                    defs += `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${f(n.w / 2 - c * len / 2)}" y1="${f(n.h / 2 - ss * len / 2)}" x2="${f(n.w / 2 + c * len / 2)}" y2="${f(n.h / 2 + ss * len / 2)}"><stop stop-color="${e(fp.color)}"/><stop offset="1" stop-color="${e(fp.color2 || '#ffffff')}"/></linearGradient>`;
-                    parts += geo(`fill="url(#${id})" fill-opacity="${op}"`);
+                else if (isGradientFill(fp)) {
+                    const stops = gradientStops(fp).map(x => `<stop offset="${x.pos}" stop-color="${e(x.color)}"${(x.alpha ?? 1) < 1 ? ` stop-opacity="${x.alpha}"` : ''}/>`).join('');
+                    if (fp.type === 'linear' && !fp.handles) {
+                        const r = (fp.angle ?? 90) * Math.PI / 180, c = Math.cos(r), ss = Math.sin(r), len = Math.abs(n.w * c) + Math.abs(n.h * ss);
+                        defs += `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${f(n.w / 2 - c * len / 2)}" y1="${f(n.h / 2 - ss * len / 2)}" x2="${f(n.w / 2 + c * len / 2)}" y2="${f(n.h / 2 + ss * len / 2)}">${stops}</linearGradient>`;
+                        parts += geo(`fill="url(#${id})" fill-opacity="${op}"`);
+                    }
+                    else if (fp.type === 'angular') {
+                        const layer = gradientCss(fp).layer;
+                        defs += `<clipPath id="${id}c">${geo('')}</clipPath>`;
+                        parts += `<foreignObject width="${f(n.w)}" height="${f(n.h)}" clip-path="url(#${id}c)" opacity="${op}"><div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;background:${e(layer)}"/></foreignObject>`;
+                    }
+                    else {
+                        const H = fp.handles || {}, ha = H.a ?? { x: fp.type === 'linear' ? 0 : 0.5, y: 0.5 }, hb = H.b ?? { x: 1, y: 0.5 }, hc = H.c ?? { x: 0.5, y: 1 };
+                        if (fp.type === 'linear')
+                            defs += `<linearGradient id="${id}" gradientUnits="objectBoundingBox" x1="${ha.x}" y1="${ha.y}" x2="${hb.x}" y2="${hb.y}">${stops}</linearGradient>`;
+                        else
+                            defs += `<radialGradient id="${id}" gradientUnits="objectBoundingBox" cx="0" cy="0" r="${fp.type === 'diamond' ? 1.2 : 1}" gradientTransform="matrix(${hb.x - ha.x} ${hb.y - ha.y} ${hc.x - ha.x} ${hc.y - ha.y} ${ha.x} ${ha.y})">${stops}</radialGradient>`;
+                        parts += geo(`fill="url(#${id})" fill-opacity="${op}"`);
+                    }
+                }
+                else if (fp.type === 'pattern') {
+                    const tile = patternTileOf(fp);
+                    const url = tile ? patternSvgUrl(fp, doc.data.assets, look => doc.get(look)) : null;
+                    defs += `<clipPath id="${id}c">${geo('')}</clipPath>`;
+                    if (url && tile) {
+                        const { W, H } = patternCellOf(fp.tileType, tile.stepX, tile.stepY);
+                        defs += `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${f(W)}" height="${f(H)}"><image href="${e(url)}" width="${f(W)}" height="${f(H)}"/></pattern>`;
+                        parts += `<rect width="${f(n.w)}" height="${f(n.h)}" fill="url(#${id})" clip-path="url(#${id}c)" opacity="${op}"/>`;
+                    }
+                    else parts += geo(`fill="${e(IMAGE_PENDING)}" fill-opacity="${op}"`);
+                }
+                else if (fp.type === 'video') {
+                    const poster = videoPosterOf(fp, doc.data.assets) || '';
+                    defs += `<clipPath id="${id}c">${geo('')}</clipPath>`;
+                    if (poster) parts += `<image href="${e(poster)}" width="${f(n.w)}" height="${f(n.h)}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${id}c)" opacity="${op}"/>`;
+                    else parts += geo(`fill="${e(VIDEO_PENDING)}" fill-opacity="${op}"`);
                 }
                 else if (fp.type === 'image') {
                     const src = doc.data.assets[fp.image] || '', mode = fp.mode || 'fill';
@@ -10304,7 +11091,7 @@ function applyLiteralFields(inst) {
         if (!n) continue;
         // A field a prop writes is a node field or several (a width is a width and its sizing): each is written when it differs.
         let changed = false;
-        for (const [name, v] of Object.entries(nodeFieldPatch(field, value, n.type, n))) {
+        for (const [name, v] of Object.entries(nodeFieldPatch(field, value, n.type, n, doc.data.assets))) {
             // A list (the fills a picture writes) is the same when it holds the same data, so a sync that changes nothing touches nothing.
             if (n[name] === v || (v && typeof v === 'object' && JSON.stringify(n[name]) === JSON.stringify(v))) continue;
             n[name] = v;
@@ -11659,6 +12446,98 @@ function rotateCursorFor(corner) {
 function snapRotateDelta(delta, shift) {
     return shift ? Math.round(delta / 15) * 15 : delta;
 }
+/**
+ * The fill a canvas handle edits: the single selected node's fill the picker is open on (a gradient of any type, or a
+ * crop image or video). Handles stay out of the way otherwise, so resize keeps its edges. A drag writes the same fill
+ * object the picker edits and Play and the export read, in its own undo step.
+ */
+function fillHandleState() {
+    if (state.tool !== 'select' || !FP.open || state.selection.size !== 1) return null;
+    const n = activeNode();
+    if (!n || !state.selection.has(n.id) || doc.world(n.id)?.locked) return null;
+    const f = pickerFillOf(n), stroke = FP.target === 'stroke';
+    if (!f || f.visible === false) return null;
+    if (isGradientFill(f)) return { node: n, idx: FP.i, fill: f, kind: 'gradient', stroke };
+    if ((f.type === 'image' || f.type === 'video') && f.mode === 'crop') return { node: n, idx: FP.i, fill: f, kind: 'crop', stroke };
+    return null;
+}
+/** The fill handles in screen pixels, with the same hit radius as the resize handles. Gradient points ride the fill's unit space; the crop centre moves the window, corners zoom about it, and the top handle rotates. */
+function fillHandles(st) {
+    const n = st.node, f = st.fill, m = doc.world(n.id)?.matrix;
+    if (!m || n.w <= 0 || n.h <= 0) return [];
+    const put = (ux, uy) => { const q = point(m, ux * n.w, uy * n.h), v = worldToScreen(q.x, q.y); return { x: v.x, y: v.y }; };
+    if (st.kind === 'gradient') {
+        const pts = gradientHandlePoints(f, { w: n.w, h: n.h });
+        const out = [{ name: 'grad-a', ...put(pts.a.x, pts.a.y) }, { name: 'grad-b', ...put(pts.b.x, pts.b.y) }];
+        if (pts.c) out.push({ name: 'grad-c', ...put(pts.c.x, pts.c.y) });
+        const stops = gradientStops(f);
+        for (let k = 1; k < stops.length - 1; k++)
+            out.unshift({ name: 'grad-stop-' + k, ...put(pts.a.x + (pts.b.x - pts.a.x) * stops[k].pos, pts.a.y + (pts.b.y - pts.a.y) * stops[k].pos), color: stops[k].color });
+        return out;
+    }
+    const fx = f.crop?.x ?? 0.5, fy = f.crop?.y ?? 0.5;
+    const out = [{ name: 'crop-move', ...put(fx, fy) }];
+    for (const [cx, cy] of [[0, 0], [1, 0], [1, 1], [0, 1]]) out.push({ name: 'crop-' + cx + cy, ...put(cx, cy) });
+    const top = put(0.5, 0);
+    out.push({ name: 'crop-rotate', x: top.x, y: top.y - 22 });
+    return out;
+}
+/** The fill handle under the pointer (screen p, world w), with everything its drag needs already resolved. */
+function fillHandleHit(p, w) {
+    const st = fillHandleState();
+    if (!st) return null;
+    const hit = fillHandles(st).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 7);
+    if (!hit) return null;
+    const n = st.node, f = st.fill, m = doc.world(n.id)?.matrix;
+    if (!m) return null;
+    if (hit.name.startsWith('grad-stop-'))
+        FP.sel = +hit.name.slice(10);
+    if (hit.name === 'grad-a' || hit.name === 'grad-b' || hit.name === 'grad-c' || hit.name.startsWith('grad-stop-'))
+        return { label: 'Edit gradient', gesture: { kind: 'fill-handle', id: n.id, fillIdx: st.idx, stroke: st.stroke, which: hit.name, moved: false } };
+    if (hit.name === 'crop-move')
+        return { label: 'Edit crop', gesture: { kind: 'fill-handle', id: n.id, fillIdx: st.idx, stroke: st.stroke, which: hit.name, moved: false } };
+    if (hit.name === 'crop-rotate') {
+        const c = point(m, n.w / 2, n.h / 2);
+        return { label: 'Edit crop', gesture: { kind: 'fill-handle', id: n.id, fillIdx: st.idx, stroke: st.stroke, which: hit.name, startAngle: Math.atan2(w.y - c.y, w.x - c.x) * 180 / Math.PI, startRot: f.rotation || 0, moved: false } };
+    }
+    const inv = doc.world(n.id)?.inverse;
+    if (!inv) return null;
+    const local = point(inv, w.x, w.y), fx = (f.crop?.x ?? 0.5) * n.w, fy = (f.crop?.y ?? 0.5) * n.h;
+    return { label: 'Edit crop', gesture: { kind: 'fill-handle', id: n.id, fillIdx: st.idx, stroke: st.stroke, which: hit.name, focalX: fx, focalY: fy, startDist: Math.max(1, Math.hypot(local.x - fx, local.y - fy)), startScale: f.crop?.scale || 1, moved: false } };
+}
+/** Apply a fill-handle drag: gradient points in unit space, the crop window and zoom about its focal point, rotation about the centre. The studio redraws and the picker refreshes on release. */
+function applyFillHandle(g, w, e) {
+    const n = doc.get(g.id);
+    if (!n || n.w <= 0 || n.h <= 0) return;
+    const f = g.stroke ? n.strokeFill : n.fills?.[g.fillIdx];
+    if (!f) return;
+    const world = doc.world(g.id), m = world?.matrix;
+    if (!m || !world?.inverse) return;
+    const local = point(world.inverse, w.x, w.y);
+    if (g.which === 'crop-move') {
+        f.crop = { ...(f.crop || {}), x: clamp(local.x / n.w, 0, 1), y: clamp(local.y / n.h, 0, 1) };
+    } else if (g.which === 'crop-rotate') {
+        const c = point(m, n.w / 2, n.h / 2);
+        f.rotation = cropRotateFor(g.startRot, g.startAngle, Math.atan2(w.y - c.y, w.x - c.x) * 180 / Math.PI, !!e.shiftKey);
+    } else if (g.which && g.which.startsWith('crop-')) {
+        f.crop = { ...(f.crop || {}), scale: cropZoomFor(g.startScale, g.startDist, Math.hypot(local.x - g.focalX, local.y - g.focalY)) };
+    } else if (g.which.startsWith('grad-stop-')) {
+        const H = gradientHandlePoints(f, { w: n.w, h: n.h }), ax = H.a.x, ay = H.a.y, dx = H.b.x - ax, dy = H.b.y - ay, len2 = dx * dx + dy * dy || 1;
+        const t = ((local.x / n.w - ax) * dx + (local.y / n.h - ay) * dy) / len2;
+        const to = moveGradientStop(n, f, +g.which.slice(10), clamp(t, 0, 1), g.stroke ? 0 : g.fillIdx);
+        g.which = 'grad-stop-' + to;
+        FP.sel = to;
+    } else {
+        const seeded = f.handles ? f : { ...f, handles: gradientHandlePoints(f, { w: n.w, h: n.h }) };
+        const next = gradientHandleMove(seeded, g.which.slice(5), { x: local.x / n.w, y: local.y / n.h });
+        if (next !== f) f.handles = next.handles;
+    }
+    g.moved = true;
+    if (g.stroke)
+        syncStrokePaint(n);
+    doc.touch(n);
+    changed({ ui: false });
+}
 function handlesFor(g) { if (g.node?.type === 'line') { /* a line is edited by its two end points, like Figma */ return [['p1', 0], ['p2', g.w]].map(([name, x]) => { const p = point(g.matrix, x, g.h / 2); return { name, ...worldToScreen(p.x, p.y) }; }); } const positions = [['nw', 0, 0], ['ne', 1, 0], ['se', 1, 1], ['sw', 0, 1]]; const list = positions.map(([name, x, y]) => { const p = point(g.matrix, g.w * x, g.h * y); return { name, ...worldToScreen(p.x, p.y) }; }); return list; }
 // Within 4 px of a side of the selection box: that side's resize handle. Corners are handlesFor's; lines have none.
 function edgeHandleAt(g, p) {
@@ -11993,6 +12872,43 @@ function drawOverlay() {
                 c.fillRect(h.x - 3, h.y - 3, 6, 6);
                 c.strokeRect(h.x - 3, h.y - 3, 6, 6);
             }
+        const fh = state.tool === 'select' && (!state.gesture || state.gesture.kind === 'fill-handle') ? fillHandleState() : null;
+        if (fh) {
+            const hs = fillHandles(fh);
+            if (hs.length) {
+                c.save();
+                c.lineWidth = 1.5;
+                c.strokeStyle = accent;
+                c.fillStyle = '#ffffff';
+                const byName = Object.fromEntries(hs.map(h => [h.name, h]));
+                const link = (a, b) => { if (byName[a] && byName[b]) { c.beginPath(); c.moveTo(byName[a].x, byName[a].y); c.lineTo(byName[b].x, byName[b].y); c.stroke(); } };
+                link('grad-a', 'grad-b');
+                link('grad-a', 'grad-c');
+                const stopsNow = fh.kind === 'gradient' ? gradientStops(fh.fill) : [];
+                for (const h of hs) {
+                    const stopColor = h.color || (h.name === 'grad-a' ? stopsNow[0]?.color : h.name === 'grad-b' ? stopsNow[stopsNow.length - 1]?.color : null);
+                    if (h.name.startsWith('grad-stop-')) {
+                        c.fillStyle = stopColor;
+                        c.strokeStyle = +h.name.slice(10) === FP.sel ? '#ffffff' : accent;
+                        c.lineWidth = 2;
+                        c.beginPath();
+                        c.roundRect(h.x - 6, h.y - 6, 12, 12, 3);
+                        c.fill();
+                        c.stroke();
+                        c.strokeStyle = accent;
+                        c.lineWidth = 1.5;
+                        continue;
+                    }
+                    c.fillStyle = stopColor || '#ffffff';
+                    c.beginPath();
+                    c.arc(h.x, h.y, stopColor ? 6 : 4.5, 0, Math.PI * 2);
+                    c.fill();
+                    c.stroke();
+                    c.fillStyle = '#ffffff';
+                }
+                c.restore();
+            }
+        }
         }
         if (arcNode && state.tool === 'select' && arcBigEnough(arcNode) && (state.arcShow || state.gesture?.kind === 'arc')) {
             // Start / end handles sit on the outline, the ratio handle on the inner edge of the start line. Drawn last: on a small circle they must stay above the resize handles.
@@ -12291,6 +13207,10 @@ function pointerDown(e) {
         return;
     overlay.focus({ preventScroll: true });
     const p = eventPoint(e), w = screenToWorld(p.x, p.y);
+    if (state.pickSource) {
+        finishSourcePick(w);
+        return;
+    }
     state.pointers.set(e.pointerId, p);
     overlay.setPointerCapture(e.pointerId);
     if (e.pointerType === 'touch' && state.pointers.size === 2) {
@@ -12416,6 +13336,12 @@ function pointerDown(e) {
             state.gesture = { kind: 'arc', id: arcN.id, which: ah.name, endAngle: pr.a0 + pr.sweep, lastSweep: pr.sweep, moved: false };
             return;
         }
+    }
+    const fh = state.tool === 'select' ? fillHandleHit(p, w) : null;
+    if (fh) {
+        history.begin(fh.label);
+        state.gesture = fh.gesture;
+        return;
     }
     const geo = selectionGeometry();
     if (geo) {
@@ -12623,10 +13549,11 @@ function pointerMove(e) {
             }
             const hit = (state.tool === 'select' ? frameLabelHit(p) : null) || selectTargetAt(w, { deep: e.ctrlKey || e.metaKey });
             const hover = hit?.id || null;
+            const fh = state.tool === 'select' && !state.gesture ? fillHandleHit(p, w) : null;
             const geo = selectionGeometry(), h = geo && (handlesFor(geo).find(h => Math.hypot(h.x - p.x, h.y - p.y) < 7) || edgeHandleAt(geo, p));
             const scm = !h && geo && geo.node?.type !== 'line' ? screenCornersOf(geo) : null;
             const rz = scm ? cornerRotateAt(scm.corners, scm.center, p) : null;
-            overlay.style.cursor = h ? ({ nw: 'nwse-resize', ne: 'nesw-resize', se: 'nwse-resize', sw: 'nesw-resize', n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize' }[h.name] || 'move') : rz ? rotateCursorFor(rz.corner) : state.pathEdit ? 'crosshair' : state.space ? 'grab' : 'default';
+            overlay.style.cursor = state.pickSource ? 'crosshair' : fh ? 'move' : h ? ({ nw: 'nwse-resize', ne: 'nesw-resize', se: 'nwse-resize', sw: 'nesw-resize', n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize' }[h.name] || 'move') : rz ? rotateCursorFor(rz.corner) : state.pathEdit ? 'crosshair' : state.space ? 'grab' : 'default';
             if (onBadge)
                 overlay.style.cursor = 'pointer';
             if (hover !== state.hover) {
@@ -12704,6 +13631,10 @@ function pointerMove(e) {
         renderLayers();
         renderInspector();
         invalidate();
+        return;
+    }
+    if (g.kind === 'fill-handle') {
+        applyFillHandle(g, w, e);
         return;
     }
     if (g.kind === 'arc') {
@@ -13067,7 +13998,8 @@ function pointerUp(e) {
     }
     if (g.kind === 'arc')
         renderInspector();
-    if (['move', 'resize', 'rotate', 'create', 'path-edit', 'line-end', 'arc'].includes(g.kind)) {
+    if (g.kind === 'fill-handle' && FP.open) renderFillPicker();
+    if (['move', 'resize', 'rotate', 'create', 'path-edit', 'line-end', 'arc', 'fill-handle'].includes(g.kind)) {
         if (g.originals)
             for (const [id, orig] of g.originals) {
                 const n = doc.get(id);
@@ -23142,7 +24074,13 @@ $('#open-variables')?.addEventListener('click', () => toggleVarsWindow());
 $('#go-home').addEventListener('click', () => showHome());
 $('#inspector').addEventListener('change', onBehaviorChange);
 $('#inspector').addEventListener('click', onBehaviorClick);
-$('#fill-image-input').onchange = e => { applyFillImage(e.target.files[0]); e.target.value = ''; };
+$('#fill-image-input').onchange = e => {
+        const n = activeNode(), f = n && getFills(n)[state.fillPickIndex ?? 0];
+        const file = e.target.files[0];
+        e.target.value = '';
+        if (f && f.type === 'video') applyFillVideo(file);
+        else applyFillImage(file);
+    };
 if (deepLink?.used) {
     lib.open = false;
     const ids = deepLink.nodes.filter(id => doc.get(id));

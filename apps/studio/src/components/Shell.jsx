@@ -169,6 +169,7 @@ export function RightPanel() {
 }
 
 const IMAGE_TYPES = 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml';
+const FILL_TYPES = 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml,image/heic,image/tiff,video/mp4,video/quicktime,video/webm';
 
 export function Overlays() {
     return (
@@ -177,7 +178,7 @@ export function Overlays() {
             <div id="toast" className="toast hidden" role="status" aria-live="polite"></div>
             <div id="modal-backdrop" className="modal-backdrop hidden"><section id="modal" className="modal" role="dialog" aria-modal="true" aria-label="Editor dialog"></section></div>
             <input type="file" id="file-input" accept=".midas,.vellum,.fig,.json,application/json" hidden />
-            <input type="file" id="fill-image-input" accept={IMAGE_TYPES} hidden />
+            <input type="file" id="fill-image-input" accept={FILL_TYPES} hidden />
             <input type="file" id="image-input" accept={IMAGE_TYPES} multiple hidden />
         </>
     );

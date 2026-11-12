@@ -38,10 +38,11 @@ const CONTROLS = 'button, select, input, textarea, a, label, [contenteditable="t
  * handle, adds a close button when the bar has none, and keeps it inside the viewport when the window or its content changes size.
  * @param {HTMLElement} el
  * @param {{ anchor?: Element | null, panel?: Element | null, onClose?: () => void, closeHtml?: string }} [options] `anchor`: the control that opened it (its top is the window's);
+ *   `dragAnywhere`: the whole surface drags, not only the title bar, except the controls and the `noDrag` selector;
  *   `panel`: the right panel to dock beside; `onClose`: what the close button does (the opener's own close); `closeHtml`: the close button's icon
  * @returns {{ close: () => void, place: () => void, dispose: () => void }}
  */
-export function mountFloatingWindow(el, { anchor = null, panel = document.querySelector('#right-panel'), onClose, closeHtml = '&times;' } = {}) {
+export function mountFloatingWindow(el, { anchor = null, panel = document.querySelector('#right-panel'), onClose, closeHtml = '&times;', dragAnywhere = false, noDrag = '' } = {}) {
     el.classList.add('fw');
     el.style.position = 'fixed';
     const headOf = () => el.querySelector('.pp-head') ?? el.firstElementChild;
@@ -72,7 +73,8 @@ export function mountFloatingWindow(el, { anchor = null, panel = document.queryS
         if (ev.button !== 0) return;
         if (ev.target.closest?.('[data-fw-close]')) { ev.preventDefault(); return close(); }
         const head = headOf();
-        if (!head || !head.contains(ev.target) || ev.target.closest?.(CONTROLS)) return;
+        if (ev.target.closest?.(noDrag ? `${CONTROLS}, ${noDrag}` : CONTROLS)) return;
+        if (!dragAnywhere && (!head || !head.contains(ev.target))) return;
         ev.preventDefault();
         const start = { x: ev.clientX, y: ev.clientY, left: el.offsetLeft, top: el.offsetTop };
         const previousSelect = document.body.style.userSelect;

@@ -126,6 +126,37 @@ test('Play draws the image through the root: a data attribute and the asset as i
     assert.equal(plain.style.backgroundImage, undefined);
 });
 
+test('Play draws a crop on the root picture from the same SVG layer the canvas reads', () => {
+    const nodes = instanceFor(model, { content: 'image', src: 'asset-1' });
+    Object.assign(nodes[0].fills.find(f => f.type === 'image'), { mode: 'crop', crop: { x: 0.25, y: 0.75, scale: 2 }, rotation: 10 });
+    const root = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [model.frame, ...model.created, ...nodes] }], variables: model.variables, assets: { 'asset-1': 'data:image/png;base64,AAAA' } }, nodes[0].id).root;
+    assert.match(root.style.backgroundImage, /^url\("data:image\/svg\+xml,/);
+    assert.equal(root.style.backgroundSize, '100% 100%');
+});
+
+test('Play draws a pattern on a picture root from the same tile the canvas repeats', () => {
+    const nodes = instanceFor(model, { content: 'image', src: 'asset-1' });
+    Object.assign(nodes[0].fills.find(f => f.type === 'image'), { mode: 'tile', scale: 1 });
+    nodes[0].fills.unshift({ type: 'pattern', image: 'asset-1', scale: 2, spacingX: 3, spacingY: 4, align: 'top-left', opacity: 1, visible: true, iw: 40, ih: 20 });
+    const root = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [model.frame, ...model.created, ...nodes] }], variables: model.variables, assets: { 'asset-1': 'data:image/png;base64,AAAA' } }, nodes[0].id).root;
+    assert.match(root.style.backgroundImage, /^url\("data:image\/svg\+xml,/);
+    assert.equal(root.style.backgroundSize, '82.4px 41.6px');
+});
+
+test('Play draws a video fill on a picture root as a video element, below the content and clipped to the box', () => {
+    const nodes = instanceFor(model, { content: 'image', src: 'asset-1' });
+    nodes[0].fills = [{ type: 'video', video: 'v', mode: 'fit', opacity: 1, visible: true }];
+    const withVideo = { 'asset-1': 'data:image/png;base64,AAAA', v: 'data:video/mp4;base64,AAAA' };
+    const root = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [model.frame, ...model.created, ...nodes] }], variables: model.variables, assets: withVideo }, nodes[0].id).root;
+    const video = root.children[0];
+    assert.equal(video.tag, 'video');
+    assert.equal(video.attrs.src, withVideo.v);
+    assert.equal(video.attrs.playsinline, true);
+    assert.ok(Object.keys(video.attrs).includes('playsinline'), 'the attribute name is the lowercase html form Play writes verbatim');
+    assert.equal(video.style.objectFit, 'contain');
+    assert.equal(root.style.overflow, 'hidden');
+});
+
 test('the export takes src as a URL string, writes it as the root custom property and the stylesheet draws it over the colour of the box', () => {
     const out = generateComponent(avatar, model.binding, model.variables, 'Avatar', model.frame, id => model.created.filter(n => n.parentId === id));
     assert.deepEqual(out.problems, []);
@@ -133,6 +164,8 @@ test('the export takes src as a URL string, writes it as the root custom propert
     assert.match(out.files['Avatar.jsx'], /data-src=\{src \? "" : undefined\}/);
     assert.match(out.files['Avatar.css'], /\.antd-avatar\[data-src\] \{[^}]*background-image: var\(--antd-avatar-src\);[^}]*background-size: cover;[^}]*background-position: center;/);
     assert.doesNotMatch(out.files['Avatar.css'], /\.antd-avatar\[data-src\] \{[^}]*background-color: transparent/, 'the colour of the box stays under the picture');
+    assert.match(out.files['Avatar.jsx'], /\{srcVideo && <video src=\{srcVideo\} autoPlay=\{srcAutoplay \?\? true\} loop=\{srcLoop \?\? true\} muted=\{!srcSound\} playsInline \/>\}/, 'a video element on the root, only while the instance sets a video source');
+    assert.match(out.files['Avatar.css'], /\.antd-avatar\[data-src-video\] video \{[^}]*object-fit: cover;/, 'the video covers the box by default');
 });
 
 test('the Behavior panel offers an image row for src while the content is image, with the chosen asset', () => {

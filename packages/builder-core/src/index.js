@@ -58,6 +58,7 @@ export * from './prototype/viewport.js';
 export * from './geometry/shapes.js';
 export * from './geometry/vector-bounds.js';
 export * from './geometry/fills.js';
+export * from './geometry/paint-server.js';
 export * from './geometry/format.js';
 export * from './geometry/autolayout.js';
 export * from './geometry/boolean.js';
