@@ -63,7 +63,7 @@ test('a token group must draw from a variable prop of the same name', () => {
 test('a preview-only state may change colours only: a size, padding or radius change is refused', () => {
     const bad = clone(BUTTON);
     bad.previewStates = { hover: { bg: 'bg-hover', radius: 'radius' } };
-    assert.match(validateTemplateSchema(bad).join('\n'), /preview state "hover" changes "radius", but preview states change colours only/);
+    assert.match(validateTemplateSchema(bad).join('\n'), /preview state "hover" changes "radius", but preview states change colours and shadows only/);
 });
 
 test('a preview-only state must map to a token of the template', () => {

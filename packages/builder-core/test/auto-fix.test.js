@@ -108,7 +108,7 @@ test('planning is pure; applying twice is a no-op', () => {
     assert.equal(second.fixable, false);
 });
 
-const SNAPSHOT_DERIVED = ["Primitives/transparent","Semantic/controlHeightXL","Semantic/fontSizeXS","Semantic/lineHeightXS","Semantic/lineHeightHeading1","Semantic/lineHeightHeading2","Semantic/borderRadiusXL","Semantic/paddingXxs","Primitives/size/15","Semantic/buttonPaddingXxl","Semantic/inputPaddingXxl","Semantic/paddingYxs","Semantic/buttonPaddingYxl","Primitives/size/9","Semantic/inputPaddingYxl","Semantic/clearIconSizeXS","Semantic/clearIconSizeSM","Semantic/clearIconSizeMD","Semantic/clearIconSizeLG","Semantic/clearIconSizeXL","Primitives/size/22"];
+const SNAPSHOT_DERIVED = ["Primitives/transparent","Semantic/controlHeightXL","Semantic/fontSizeXS","Semantic/lineHeightXS","Semantic/lineHeightHeading1","Semantic/lineHeightHeading2","Semantic/borderRadiusXL","Semantic/paddingXxs","Primitives/size/15","Semantic/buttonPaddingXxl","Semantic/inputPaddingXxl","Semantic/paddingYxs","Semantic/buttonPaddingYxl","Primitives/size/9","Semantic/inputPaddingYxl","Semantic/clearIconSizeXS","Semantic/clearIconSizeSM","Semantic/clearIconSizeMD","Semantic/clearIconSizeLG","Semantic/clearIconSizeXL","Primitives/size/22","Primitives/size/64","Primitives/size/72"];
 // The snapshot derived names, then the two heading line heights the text styles derive (see text-styles.json).
 const TEXT_DERIVED = ['Primitives/heading/1', 'Primitives/heading/2'];
 const EXPECTED_DERIVED = {

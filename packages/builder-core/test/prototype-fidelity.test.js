@@ -32,8 +32,8 @@ test('a linear gradient runs in the canvas direction: its CSS angle is the canva
 test('a radial and an angular fill draw as radial and conic gradients', () => {
     const radial = drawn({ fills: [{ type: 'radial', color: '#000000', color2: '#ffffff', opacity: 1, visible: true }] }).style.background;
     const angular = drawn({ fills: [{ type: 'angular', color: '#000000', color2: '#ffffff', opacity: 1, visible: true }] }).style.background;
-    assert.match(radial, /^radial-gradient\(circle, #000000, #ffffff\)$/);
-    assert.match(angular, /^conic-gradient\(from 0deg, #000000, #ffffff\)$/);
+    assert.ok(radial.includes('radialGradient'), 'an SVG ellipse gradient in the layer\'s unit space, as the canvas paints it');
+    assert.equal(angular, 'conic-gradient(from 90deg at 50% 50%, #000000 0%, #ffffff 100%)');
 });
 
 test('multiple fills stack in the order stored: the first is the top layer, and a hidden fill draws nothing', () => {

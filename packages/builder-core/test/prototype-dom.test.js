@@ -242,7 +242,7 @@ test('a text layer with several styles draws one span per style, each with its o
 
 test('Play ignores a scroll behaviour on a template instance: it clips on both axes', () => {
     const master = { id: 'M', name: 'Card', type: 'frame', parentId: null };
-    const instance = { id: 'I', name: 'Card copy', type: 'frame', parentId: null, isInstance: true, sourceId: 'M', w: 200, h: 100, prototype: { version: 1, interactions: [], overflow: 'both' } };
+    const instance = { id: 'I', name: 'Card copy', type: 'frame', parentId: null, isInstance: true, sourceId: 'M', clip: true, w: 200, h: 100, prototype: { version: 1, interactions: [], overflow: 'both' } };
     const { root } = toDomTree(doc([frame('A'), master, instance]), 'I');
     assert.deepEqual([root.style.overflowX, root.style.overflowY], ['clip', 'clip']);
 });

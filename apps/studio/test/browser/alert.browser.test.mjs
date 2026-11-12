@@ -11,12 +11,12 @@ import { createFromPanel, isolatedStage, measurePair, setProp } from './parity-h
 
 /** Every state sets all of its props, so the order of the states does not matter. */
 const STATES = [
-    { name: 'message', props: { showIcon: true, description: false, closable: false, banner: false, action: false } },
-    { name: 'description', props: { showIcon: true, description: true, closable: false, banner: false, action: false } },
-    { name: 'closable', props: { showIcon: true, description: false, closable: true, banner: false } },
-    { name: 'banner', props: { showIcon: true, description: false, closable: false, banner: true } },
-    { name: 'no-icon', props: { showIcon: false, description: false, closable: false, banner: false, action: false } },
-    { name: 'action', props: { showIcon: true, description: false, closable: false, banner: false, action: true } },
+    { name: 'message', props: { banner: false, showIcon: true, description: false, closable: false, action:  false } },
+    { name: 'description', props: { banner: false, showIcon: true, description: true, closable: false, action:  false } },
+    { name: 'closable', props: { banner: false, showIcon: true, description: false, closable: true } },
+    { name: 'banner', props: { banner: true, description: false, closable: false } },
+    { name: 'no-icon', props: { banner: false, showIcon: false, description: false, closable: false, action:  false } },
+    { name: 'action', props: { banner: false, showIcon: true, description: false, closable: false, action:  true } },
 ];
 
 test('a created Alert measures the same on the canvas and in Play at every Size and state, within 0.5px', async t => {

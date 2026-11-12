@@ -119,8 +119,13 @@ function instanceHtml(panel, esc, findings, preview, expanded = false) {
         return row(r.label, control, esc, r.prop) + (r.hint ? note(r.hint, esc) : '');
     }).join('');
     const literal = panel.rows.filter(r => r.kind === 'literal' || r.kind === 'icon' || r.kind === 'image');
-    const props = literal.filter(r => !r.slot).map(r => literalRow(r, esc)).join('');
-    const slots = literal.filter(r => r.slot).map(r => literalRow(r, esc)).join('');
+    // A toggle that adds a part is a Prop; the part is a slot. The Slots block is the template's slot list, in its order, the one the component's slot properties show.
+    const rowFor = e => literal.find(r => r.prop === e.prop && (e.kind === 'text' || e.kind === 'image' || r.kind === 'icon' && r.label === e.name));
+    const slotRow = e => e.kind === 'icon' || e.kind === 'text' || e.kind === 'image' ? (rowFor(e) ? literalRow(rowFor(e), esc) : '')
+        : e.kind === 'instance' ? row(e.name, `<button class="cmp-input" data-bp-action="slot-fill" data-bp-slot="${esc(e.id)}" aria-label="${esc(e.name)}">Insert instance</button>`, esc, e.id)
+        : row(e.name, '<span class="small-label">Edit in the Design tab</span>', esc, e.id);
+    const props = literal.filter(r => !r.slot && r.kind !== 'icon').map(r => literalRow(r, esc)).join('');
+    const slots = (panel.slots ?? []).map(slotRow).join('');
     const state = preview ? `<select data-bp="preview" aria-label="Preview state">${PREVIEW_STATES.filter(([id]) => id === 'default' || (preview.available ?? PREVIEW_STATES.map(([s]) => s)).includes(id)).map(([id, label]) => `<option value="${id}" ${id === preview.state ? 'selected' : ''}>${label}</option>`).join('')}</select>` : '';
     return block('Collections', variable, esc)
         + block('Props', props, esc)
@@ -176,7 +181,7 @@ function literalRow(r, esc) {
         return row(label, `<button class="cmp-input" data-bp-action="icon" data-bp-prop="${name}" data-bp-value="${esc(r.value ?? '')}" aria-label="${name}">${r.name ? esc(r.name) : 'Choose icon'}</button>`, esc, r.prop);
     // A picture: choose an image file (it becomes an asset of the file) or remove the chosen one.
     if (r.kind === 'image')
-        return row(label, `<button class="cmp-input" data-bp-action="image-pick" data-bp-prop="${name}" aria-label="${name}">${r.value ? 'Replace' : 'Choose'}</button>${r.value ? `<button class="cmp-input" data-bp-action="image-clear" data-bp-prop="${name}" aria-label="Remove ${name}">Remove</button>` : ''}`, esc, r.prop);
+        return row(label, `${r.value ? `<img class="cmp-thumb" data-img-asset="${esc(r.value)}" alt="">` : ''}<button class="cmp-input" data-bp-action="image-pick" data-bp-prop="${name}" aria-label="${name}">${r.value ? 'Replace' : 'Choose'}</button>${r.value ? `<button class="cmp-input" data-bp-action="image-clear" data-bp-prop="${name}" aria-label="Remove ${name}">Remove</button>` : ''}`, esc, r.prop);
     if (r.type === 'boolean')
         return row(label, `<label class="vsw"><input type="checkbox" role="switch" data-bp="value" data-bp-kind="literal" data-bp-type="boolean" data-bp-prop="${name}" aria-label="${name}" ${r.value ? 'checked' : ''}${r.disabled ? ' disabled' : ''}></label><span class="vsw-spacer"></span>`, esc, r.prop) + hint;
     // An enum that asks for a segmented control (the Input's Text|Icon): the Design panel's own segmented primitive, one button per option.

@@ -19,7 +19,7 @@ const ROLES = { alertSuccess: 'icon-success', alertInfo: 'icon-info', alertWarni
 test('Alert is registered with the props it declares, the Type modes and a Button action slot', () => {
     assert.ok(alert, 'Alert is in the registry');
     assert.equal(alert.primarySlot, 'label');
-    assert.deepEqual(Object.keys(alert.props).sort(), ['action', 'banner', 'closable', 'closeIcon', 'description', 'descriptionText', 'icon', 'label', 'showIcon', 'size', 'type']);
+    assert.deepEqual(Object.keys(alert.props).sort(), ['action', 'banner', 'closable', 'closeIcon', 'description', 'descriptionText', 'fillWidth', 'fills', 'icon', 'iconShown', 'label', 'showIcon', 'size', 'type', 'variant']);
     assert.deepEqual(alert.props.type.modes, ['success', 'info', 'warning', 'error']);
     assert.equal(alert.props.type.defaultMode, 'info');
     assert.equal(alert.props.showIcon.default, true);
@@ -74,9 +74,9 @@ test('action is a Button layer while the prop is on: the plan adds it when on an
     const { planAnatomy } = await import('../src/behavior-engine/anatomy.js');
     const { resolveProps } = await import('../src/behavior-engine/instance-props.js');
     const on = planAnatomy(alert, resolveProps(alert, { action: true }), []);
-    assert.ok(on.some(op => op.op === 'insert' && op.slot === 'actionButton'), 'on: the Action layer is inserted');
-    const off = planAnatomy(alert, resolveProps(alert, { action: false }), [{ id: 'action-layer', slot: 'actionButton', name: 'Action', component: null }]);
-    assert.deepEqual(off.filter(op => op.op === 'remove').map(op => op.id), ['action-layer'], 'off: the Action layer is removed');
+    assert.ok(on.some(op => op.op === 'insert' && op.slot === 'actionBox'), 'on: the Action box is inserted');
+    const off = planAnatomy(alert, resolveProps(alert, { action: false }), [{ id: 'action-layer', slot: 'actionBox', name: 'Action', component: null }]);
+    assert.deepEqual(off.filter(op => op.op === 'remove').map(op => op.id), ['action-layer'], 'off: the Action box is removed');
 });
 
 test('the master holds no Action layer at the sample props (action off)', () => {
@@ -88,13 +88,31 @@ test('banner fills the width of the root and draws no radius and no border; show
     const { resolveProps } = await import('../src/behavior-engine/instance-props.js');
     const sizing = props => literalFields(alert, resolveProps(alert, props)).find(w => w.key === 'root' && w.field === 'widthSizing')?.value;
     assert.equal(sizing({ banner: true }), 'fill');
-    assert.equal(sizing({ banner: false }), 'hug');
+    assert.equal(sizing({ banner: false }), 'fill', 'an Alert fills its container by default');
+    assert.equal(sizing({ banner: false, fillWidth: false }), 'hug');
+    assert.equal(sizing({ banner: true, fillWidth: false }), 'fill', 'a banner always fills');
     assert.equal(resolveProps(alert, { banner: true }).showIcon, true);
     assert.equal(alert.persistentStates.banner.marker, true);
     assert.deepEqual(alert.persistentStates.banner.tokens, { radius: 'radiusNone', borderWidth: 'borderWidthNone' });
 });
 
 test('the icon swaps to its large size with a description (a persistent state on the size token)', () => {
-    assert.deepEqual(alert.persistentStates.withDescription.tokens, { labelTypography: 'titleTypography', iconSize: 'iconSizeLarge' });
+    assert.deepEqual(alert.persistentStates.withDescription.tokens, { labelTypography: 'titleTypography', iconSize: 'iconSizeLarge', paddingX: 'paddingXLarge', paddingY: 'paddingYLarge', gap: 'gapLarge' });
     assert.ok(alert.tokenRoles.iconSizeLarge && alert.tokenKinds.iconSizeLarge === 'length');
+});
+
+test('a description aligns the icon and the close to the top; without one the row is centred', async () => {
+    const { literalFields, fieldStyleOf } = await import('../src/behavior-engine/display.js');
+    const { resolveProps } = await import('../src/behavior-engine/instance-props.js');
+    const cross = props => literalFields(alert, resolveProps(alert, props)).find(w => w.key === 'root' && w.field === 'counterAlign')?.value;
+    assert.equal(cross({ description: true }), 'start');
+    assert.equal(cross({ description: false }), 'center');
+    assert.equal(fieldStyleOf(alert, resolveProps(alert, { description: true })).attrs['data-description-cross'], 'start');
+});
+
+test('a banner shows its icon whatever showIcon says', async () => {
+    const { resolveProps } = await import('../src/behavior-engine/instance-props.js');
+    assert.equal(resolveProps(alert, { banner: true, showIcon: false }).iconShown, true);
+    assert.equal(resolveProps(alert, { banner: false, showIcon: false }).iconShown, false);
+    assert.ok(layers({ banner: true, showIcon: false }).includes('icon'));
 });

@@ -259,6 +259,70 @@
           "blur": 28,
           "spread": 8
         }
+      ],
+      "shadow/card-hover": [
+        {
+          "type": "drop",
+          "visible": true,
+          "color": "#000000",
+          "opacity": 0.16,
+          "x": 0,
+          "y": 1,
+          "blur": 2,
+          "spread": -2
+        },
+        {
+          "type": "drop",
+          "visible": true,
+          "color": "#000000",
+          "opacity": 0.12,
+          "x": 0,
+          "y": 3,
+          "blur": 6,
+          "spread": 0
+        },
+        {
+          "type": "drop",
+          "visible": true,
+          "color": "#000000",
+          "opacity": 0.09,
+          "x": 0,
+          "y": 5,
+          "blur": 12,
+          "spread": 4
+        }
+      ],
+      "shadow/card-borderless": [
+        {
+          "type": "drop",
+          "visible": true,
+          "color": "#000000",
+          "opacity": 0.05,
+          "x": 0,
+          "y": 1,
+          "blur": 2,
+          "spread": 0
+        },
+        {
+          "type": "drop",
+          "visible": true,
+          "color": "#000000",
+          "opacity": 0.03,
+          "x": 0,
+          "y": 1,
+          "blur": 6,
+          "spread": -1
+        },
+        {
+          "type": "drop",
+          "visible": true,
+          "color": "#000000",
+          "opacity": 0.03,
+          "x": 0,
+          "y": 2,
+          "blur": 4,
+          "spread": 0
+        }
       ]
     },
     "items": {
@@ -275,6 +339,16 @@
       "boxShadowHandle": {
         "primitive": "shadow/handle",
         "role": "antd switch handleShadow: the handle's drop shadow",
+        "derived": false
+      },
+      "boxShadowCardHover": {
+        "primitive": "shadow/card-hover",
+        "role": "antd card hoverable: the lifted shadow (three drop shadows)",
+        "derived": false
+      },
+      "boxShadowCardBorderless": {
+        "primitive": "shadow/card-borderless",
+        "role": "the Card borderless variant: a subtle resting shadow (three drop shadows)",
         "derived": false
       }
     }

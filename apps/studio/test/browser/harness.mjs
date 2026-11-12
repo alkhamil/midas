@@ -116,6 +116,13 @@ export async function nodeIdNamed(page, name, parentName) {
 }
 
 /** A node's rectangle on the page in CSS pixels, from the document's world box and the camera. */
+/**
+ * The screenshot clip of a node's box with a pad, on whole pixels: the origin is floored (the pad covers the fraction) and the size is the box's size
+ * plus both pads, rounded, the same rule for the canvas and for Play. A fractional origin on one side would otherwise cost a pixel there.
+ */
+export function integerClip(r, pad) {
+    return { x: Math.max(0, r.x - pad), y: Math.max(0, r.y - pad), width: Math.round(r.w + pad * 2), height: Math.round(r.h + pad * 2) };
+}
 export function screenRect(page, id) {
     return page.evaluate(id => {
         const canvas = document.getElementById('scene').getBoundingClientRect();
@@ -149,12 +156,20 @@ export async function shotNode(page, id, name, pad = 16, zoom = SHOT_ZOOM) {
     mkdirSync(ARTIFACTS, { recursive: true });
     await frameNode(page, id, zoom);
     await page.waitForTimeout(250);
+    // A hug text re-measures after a selection change: the shot waits until the root's width holds still, so it is the settled box.
+    let last = null;
+    for (let i = 0; i < 20; i++) {
+        const w = await page.evaluate(id => window.midas.doc.world(id).box.w, id);
+        if (w === last) break;
+        last = w;
+        await page.waitForTimeout(100);
+    }
     const r = await screenRect(page, id);
     // The size is rounded to whole pixels the way Play's shot is (parity-helpers.mjs): a root 0.01px off an integer must not crop a pixel apart.
-    const clip = { x: Math.max(0, r.x - pad), y: Math.max(0, r.y - pad), width: Math.round(r.w + pad * 2), height: Math.round(r.h + pad * 2) };
+    const clip = integerClip(r, pad);
     const file = resolve(ARTIFACTS, `${name}.png`);
     await page.screenshot({ path: file, clip });
-    return { file, rect: r };
+    return { file, rect: r, clip };
 }
 
 /**
@@ -176,10 +191,10 @@ export async function selectByClick(page, id) {
  */
 const dataUrlOf = file => 'data:image/png;base64,' + readFileSync(file).toString('base64');
 
-export async function pixelDiff(browser, fileA, fileB, fileOut, { tolerance = 16, inset = 0 } = {}) {
+export async function pixelDiff(browser, fileA, fileB, fileOut, { tolerance = 16, inset = 0, ignore = [] } = {}) {
     const page = await browser.newPage();
     try {
-        const result = await page.evaluate(async ([a, b, tol, inset]) => {
+        const result = await page.evaluate(async ([a, b, tol, inset, ignore]) => {
             const load = src => new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = src; });
             const [ia, ib] = await Promise.all([load(a), load(b)]);
             const w = Math.max(ia.width, ib.width), h = Math.max(ia.height, ib.height);
@@ -208,7 +223,7 @@ export async function pixelDiff(browser, fileA, fileB, fileOut, { tolerance = 16
             for (let p = 0; p < w * h; p++) {
                 const x = p % w, y = Math.floor(p / w);
                 const i = p * 4;
-                const inside = x >= inset && y >= inset && x < w - inset && y < h - inset;
+                const inside = x >= inset && y >= inset && x < w - inset && y < h - inset && !ignore.some(r => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h);
                 if (!inside) { out.data.set([da.data[i], da.data[i + 1], da.data[i + 2], 80], i); continue; }
                 pixels++;
                 const d = Math.abs(la[p] - lb[p]);
@@ -218,7 +233,7 @@ export async function pixelDiff(browser, fileA, fileB, fileOut, { tolerance = 16
             }
             const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').putImageData(out, 0, 0);
             return { w, h, sizeA: [ia.width, ia.height], sizeB: [ib.width, ib.height], changed, max, pixels, png: c.toDataURL('image/png') };
-        }, [dataUrlOf(fileA), dataUrlOf(fileB), tolerance, inset]);
+        }, [dataUrlOf(fileA), dataUrlOf(fileB), tolerance, inset, ignore]);
         writeFileSync(fileOut, Buffer.from(result.png.split(',')[1], 'base64'));
         const { png, ...rest } = result;
         return rest;

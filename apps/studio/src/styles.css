@@ -2188,6 +2188,10 @@ body.left-hidden .left-panel {
 .pp-check small { color: var(--muted); font-size: 11px }
 .cmp-prop2 > span svg { vertical-align: -2px; margin-right: 2px; color: var(--muted) }
 .cmp-input { flex: 1; min-width: 0; height: 28px; border: 1px solid transparent; border-radius: 6px; background: var(--field); color: var(--text); padding: 0 8px; font-size: 12px }
+.cmp-thumb { flex: none; width: 28px; height: 28px; border-radius: 6px; object-fit: cover; background: var(--field) }
+.fw { z-index: 60 }
+.fw-handle { cursor: grab; user-select: none }
+.fw-dragging .fw-handle { cursor: grabbing }
 .cmp-input:focus { outline: 0; border-color: var(--accent) }
 .cmp-slot { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11.5px }
 .cmp-nested { display: grid; gap: 6px; margin-top: 4px; padding: 8px; border-radius: 8px; background: var(--panel-2) }

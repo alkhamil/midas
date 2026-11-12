@@ -46,13 +46,14 @@ test('the Text kind shows the text field, and the Icon kind shows the icon swap'
     assert.match(segmentOf(icon, 'prefixKind'), /class="on" data-bp-action="segment" data-bp-prop="prefixKind" data-bp-value="icon"/);
 });
 
-test('the sides are independent, and every side row is under Slots', () => {
+test('the sides are independent: the switches and the kinds are Props, the text or icon of a side is its slot', () => {
     const markup = html({ hasPrefix: true, hasSuffix: true, suffixKind: 'icon' });
     assert.ok(segmentOf(markup, 'prefixKind') && segmentOf(markup, 'suffixKind'));
     const slots = markup.slice(markup.indexOf('<span>Slots</span>'));
-    for (const prop of ['hasPrefix', 'prefixKind', 'prefixText', 'hasSuffix', 'suffixKind', 'suffixIcon']) assert.ok(slots.includes(`data-bp-prop="${prop}"`), `${prop} is under Slots`);
+    for (const prop of ['prefixText', 'suffixIcon']) assert.ok(slots.includes(`data-bp-prop="${prop}"`), `${prop} is under Slots`);
     const props = markup.slice(markup.indexOf('<span>Props</span>'), markup.indexOf('<span>Slots</span>'));
-    for (const prop of ['hasPrefix', 'prefixKind', 'prefixText']) assert.ok(!props.includes(`data-bp-prop="${prop}"`), `${prop} is not under Props`);
+    for (const prop of ['hasPrefix', 'prefixKind', 'hasSuffix', 'suffixKind']) assert.ok(props.includes(`data-bp-prop="${prop}"`), `${prop} is under Props`);
+    for (const prop of ['prefixText', 'suffixIcon']) assert.ok(!props.includes(`data-bp-prop="${prop}"`), `${prop} is not under Props`);
 });
 
 test('a prop that is not a segmented enum stays a dropdown', () => {

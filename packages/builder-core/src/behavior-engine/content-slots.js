@@ -73,6 +73,16 @@ export function selectableThroughSlot(chain, instanceAt) {
  * @param {number} childCount
  * @returns {number | null}
  */
+/**
+ * The layout of the frame a content slot sits in: its container's, or the root's.
+ * @param {any} template
+ * @param {any} slot
+ * @returns {string | undefined}
+ */
+export function slotHolderLayout(template, slot) {
+    return slot.parent === undefined ? template.rootLayout : template.anatomy.find(a => a.id === slot.parent)?.layout;
+}
+
 export function emptySlotFloor(n, dim, sizing, childCount) {
     return isContentSlot(n) && sizing === 'hug' && childCount === 0 ? EMPTY_SLOT_FLOOR[dim] : null;
 }

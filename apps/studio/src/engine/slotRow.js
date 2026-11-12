@@ -15,3 +15,14 @@ export function slotRowHtml({ slotId, count, owned, esc, icons }) {
     const reset = owned ? `<button class="ui-icon-button small" data-slot-reset="${id}" title="Reset slot" aria-label="Reset slot">${icons.reset}</button>` : '';
     return add + clear + reset;
 }
+
+/**
+ * The row of an image slot (a Card's cover) in the component's slot properties: its name and kind, with no control. Its picture is edited where the layer is: clicking the row
+ * selects the cover layer, whose Fill section (and the Behavior tab's Cover row) edit the same picture.
+ * @param {{ name: string, layerId: string | null, esc: (text: string) => string, icon: string }} input `icon`: the kind's icon markup
+ * @returns {string}
+ */
+export function imageSlotRowHtml({ name, layerId, esc, icon }) {
+    const select = layerId ? ` data-select-layer="${esc(layerId)}" role="button" tabindex="0" title="Select the layer to edit its Fill"` : '';
+    return `<div class="cmp-prop2"${select}><span title="${esc(name)}">${icon} ${esc(name)}</span><div class="cmp-ctl"><span class="small-label">Image</span></div></div>`;
+}

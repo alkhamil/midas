@@ -17,6 +17,7 @@ import { TITLE } from '../templates/title.js';
 import { PARAGRAPH } from '../templates/paragraph.js';
 import { LINK } from '../templates/link.js';
 import { ALERT } from '../templates/alert.js';
+import { CARD } from '../templates/card.js';
 
 /**
  * Validate every template and index it by id. An invalid schema throws: the registry never holds a broken template. A slot's `accepts` may
@@ -37,7 +38,7 @@ export function createTemplateRegistry(schemas) {
 }
 
 /** The templates the engine ships. */
-export const BUILT_IN_TEMPLATES = createTemplateRegistry([BUTTON, INPUT, FORM_ITEM, LIST, ICON_BUTTON, CHECKBOX, SWITCH, RADIO, INPUTNUMBER, BADGE, TAG, DIVIDER, AVATAR, TEXT, TITLE, PARAGRAPH, LINK, ALERT]);
+export const BUILT_IN_TEMPLATES = createTemplateRegistry([BUTTON, INPUT, FORM_ITEM, LIST, ICON_BUTTON, CHECKBOX, SWITCH, RADIO, INPUTNUMBER, BADGE, TAG, DIVIDER, AVATAR, TEXT, TITLE, PARAGRAPH, LINK, ALERT, CARD]);
 
 /**
  * The registry every engine call reads: the built-in templates and the Custom templates of the open document (see custom-templates.js, which fills it).

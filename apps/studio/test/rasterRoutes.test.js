@@ -71,3 +71,17 @@ test('a page with a mask, an effect, an oversized node and many plain layers rou
     assert.deepEqual([...roots.get('G')], ['mask']);
     assert.deepEqual([...roots.get('E')], ['effect']);
 });
+
+test('effectBleed covers a multi-layer shadow with a negative spread and an offset on every side (the Card hover lift, at any Size)', () => {
+    const lift = [
+        { type: 'drop', visible: true, x: 0, y: 1, blur: 2, spread: -2 },
+        { type: 'drop', visible: true, x: 0, y: 3, blur: 6, spread: 0 },
+        { type: 'drop', visible: true, x: 0, y: 5, blur: 12, spread: 4 },
+    ];
+    // The widest reach of a shadow layer on one side: its blur reaches about three standard deviations (1.5 x the blur), then the spread, then the offset towards that side.
+    const reach = (e, side) => Math.max(0, 1.5 * e.blur + e.spread + ({ top: -e.y, bottom: e.y, left: -e.x, right: e.x })[side]);
+    for (const side of ['top', 'right', 'bottom', 'left']) assert.ok(effectBleed(lift) >= Math.max(...lift.map(e => reach(e, side))), `the bleed covers the ${side}`);
+    assert.equal(effectBleed(lift), 27);
+    // The bleed is in the node's own units: a bigger node (or a zoom) does not change how far the shadow reaches.
+    assert.equal(effectBleed(lift), effectBleed(structuredClone(lift)));
+});

@@ -1,8 +1,9 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
-import { textWriteBacks, decorationLinesOf, pinnedFrame, markManagedContainers, rowsBounds, nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, ICONS_SECTION, defaultIconOf, roleIconsOf, iconRolesOf, iconNodes, planIcons, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, managedSlotLayer, managedPartLayer, planManagedTextBindings, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, previewStateOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, pathSegments, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix, pathCurveBounds, pathContours, normalizeVectorGeometry } from '@midas/builder-core';
+import { mountFloatingWindow } from './floatingWindow.js';
+import { gradientStops, PLACEHOLDER_IMAGE, PLACEHOLDER_IMAGE_ID, newlyShownImageProps, slotListOf, slotRefusal, slotRestricts, textWriteBacks, decorationLinesOf, pinnedFrame, markManagedContainers, rowsBounds, nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, ICONS_SECTION, defaultIconOf, roleIconsOf, iconRolesOf, iconNodes, planIcons, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, managedSlotLayer, managedPartLayer, planManagedTextBindings, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, previewStateOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, pathSegments, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix, pathCurveBounds, pathContours, normalizeVectorGeometry } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
-import { slotRowHtml } from './slotRow.js';
+import { imageSlotRowHtml, slotRowHtml } from './slotRow.js';
 import { openPlay } from './play.js';
 import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
@@ -94,7 +95,8 @@ function runLayout(d) {
     const inFlow = c => c.visible !== false && c.layoutPositioning !== 'absolute';
     const eff = (n, axis) => {
         let v = sizingOf(n, axis);
-        const p = parentOf(n), inFrame = !!p && p.type === 'frame' && n.layoutPositioning !== 'absolute';
+        const p = parentOf(n), inFrame = !!p && p.type === 'frame' && isAutoLayout(p) && n.layoutPositioning !== 'absolute';
+        // Fill needs an auto layout parent to fill; in a plain frame the layer keeps its own size (as in Figma).
         if (v === 'fill' && !inFrame)
             v = 'fixed';
         if (v === 'fill')
@@ -517,10 +519,8 @@ function openLayoutSettings(anchor) {
             closeLayoutSettings(); } };
     document.addEventListener('pointerdown', lyPop.away, true);
     renderLayoutSettings();
-    const r = anchor.getBoundingClientRect();
-    el.style.left = Math.max(8, r.left - el.offsetWidth - 12) + 'px';
-    el.style.top = Math.max(8, Math.min(r.top - 10, innerHeight - el.offsetHeight - 8)) + 'px';
-    el.addEventListener('change', e => {
+    mountFloatingWindow(el, { anchor: anchor, closeHtml: icon('close', 14) });
+    el.addEventListener('click', e => {
         const t = e.target.closest('[data-ly-set]');
         if (t)
             setLayoutSetting(t.dataset.lySet, t.value === 'true' ? true : t.value === 'false' ? false : t.value);
@@ -728,7 +728,7 @@ document.addEventListener('change', e => {
 });
 
 // ===== variables =====
-const VAR_BIND = { fill: 'color', fill2: 'color', stroke: 'color', w: 'number', h: 'number', radius: 'number', minW: 'number', maxW: 'number', minH: 'number', maxH: 'number', strokeT: 'number', strokeR: 'number', strokeB: 'number', strokeL: 'number', rTL: 'number', rTR: 'number', rBR: 'number', rBL: 'number', strokeWidth: 'number', gap: 'number', gapCross: 'number', padH: 'number', padV: 'number', padT: 'number', padR: 'number', padB: 'number', padL: 'number', opacity: 'number', fontSize: 'number', lineHeight: 'number', letterSpacing: 'number', fontFamily: 'string', fontWeight: 'string', typography: 'typography', effects: 'effect', text: 'string', visible: 'boolean' };
+const VAR_BIND = { fill: 'color', fallbackFill: 'color', fill2: 'color', stroke: 'color', w: 'number', h: 'number', radius: 'number', minW: 'number', maxW: 'number', minH: 'number', maxH: 'number', strokeT: 'number', strokeR: 'number', strokeB: 'number', strokeL: 'number', rTL: 'number', rTR: 'number', rBR: 'number', rBL: 'number', strokeWidth: 'number', gap: 'number', gapCross: 'number', padH: 'number', padV: 'number', padT: 'number', padR: 'number', padB: 'number', padL: 'number', opacity: 'number', fontSize: 'number', lineHeight: 'number', letterSpacing: 'number', fontFamily: 'string', fontWeight: 'string', typography: 'typography', effects: 'effect', text: 'string', visible: 'boolean' };
 const VAR_BIND_ALT = { fontWeight: ['number'] };
 function bindTypes(prop) { if (String(prop).startsWith('vprop:') || String(prop).startsWith('cprop:')) { const bt = bindType(prop); return bt ? [bt] : []; } const t = VAR_BIND[prop] || bindType(prop); return t ? [t, ...(VAR_BIND_ALT[prop] || [])] : []; }
 function vpropType(name) {
@@ -1145,9 +1145,8 @@ function openVarPicker(anchor, { type, types = null, exclude = null, current = n
     };
     build();
     document.body.appendChild(pop);
-    const r = anchor.getBoundingClientRect(), w = 280;
-    pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left - w + 24)) + 'px';
-    pop.style.top = Math.max(8, Math.min(innerHeight - pop.offsetHeight - 8, r.top - 4)) + 'px';
+    pop.insertAdjacentHTML('afterbegin', '<div class="pp-head"><span>Variables</span></div>');
+    mountFloatingWindow(pop, { anchor: anchor, closeHtml: icon('close', 14) });
     pop.querySelector('[data-vpk-search]').focus({ preventScroll: true });
     // Open on the variable that is bound: load more rows until it is in the list, then scroll it into view.
     if (current)
@@ -1488,8 +1487,7 @@ function openStrokePop(kind, anchor) {
         el.style.top = Math.min(a.bottom + 6, window.innerHeight - el.offsetHeight - 8) + 'px';
     }
     else {
-        el.style.left = Math.max(8, insp.left - el.offsetWidth - 8) + 'px';
-        el.style.top = Math.max(8, Math.min(a.top - 40, window.innerHeight - el.offsetHeight - 8)) + 'px';
+        mountFloatingWindow(el, { anchor: anchor, closeHtml: icon('close', 14) });
     }
     strokePop = { kind, el };
 }
@@ -1605,9 +1603,7 @@ function openTextPop(anchor) {
     el.className = 'stp tp-pop';
     el.innerHTML = textSettingsHtml(n);
     document.body.appendChild(el);
-    const a = anchor.getBoundingClientRect(), insp = $('#inspector').getBoundingClientRect();
-    el.style.left = Math.max(8, insp.left - el.offsetWidth - 8) + 'px';
-    el.style.top = Math.max(8, Math.min(a.top - 40, window.innerHeight - el.offsetHeight - 8)) + 'px';
+    mountFloatingWindow(el, { anchor: anchor, closeHtml: icon('close', 14) });
     textPop = { el };
 }
 document.addEventListener('click', e => {
@@ -2836,9 +2832,7 @@ function openVarDetails(id, anchor) {
     document.body.appendChild(el);
     vd = { id, tab: 'details', el };
     refreshVarDetails();
-    const r = anchor.getBoundingClientRect();
-    el.style.left = Math.max(8, Math.min(innerWidth - el.offsetWidth - 8, r.right - el.offsetWidth)) + 'px';
-    el.style.top = Math.max(8, Math.min(innerHeight - el.offsetHeight - 8, r.bottom + 6)) + 'px';
+    mountFloatingWindow(el, { anchor: anchor, closeHtml: icon('close', 14) });
     el.addEventListener('click', e => {
         const t = e.target;
         let b;
@@ -3013,15 +3007,6 @@ function imageFillPattern(ctx, f, n) {
     return p;
 }
 // Stops for a gradient fill. The first / last stop follow color / color2, so editing those in the fill picker still works.
-function gradientStops(f) {
-    const s = Array.isArray(f.stops) && f.stops.length >= 2 ? f.stops.map(x => ({ ...x })) : [{ pos: 0, color: f.color || '#d9d9d9' }, { pos: 1, color: f.color2 || '#ffffff' }];
-    s.sort((a, b) => a.pos - b.pos);
-    if (f.color)
-        s[0].color = f.color;
-    if (f.color2)
-        s[s.length - 1].color = f.color2;
-    return s;
-}
 const gradientCache = new Map();
 // Radial / angular / diamond (and linear with explicit handles or many stops) are painted once into a small
 // offscreen canvas in layer space and used as a pattern; gradients are smooth, so 512 px is plenty.
@@ -3080,6 +3065,12 @@ function fillPaint(ctx, f, n) {
 // Paints every visible fill, bottom of the stack first (the list is stored top-first, like Figma).
 function paintFills(ctx, n, path, alpha = 1, afterFirst = null) {
     const fills = getFills(n);
+    // The fallback colour is the base under every fill, as the box's own colour is in Play and the export.
+    if (n.fallbackFill) {
+        ctx.fillStyle = n.fallbackFill;
+        ctx.globalAlpha = alpha;
+        ctx.fill(path, n.fillRule === 'evenodd' ? 'evenodd' : 'nonzero');
+    }
     let first = true;
     for (let i = fills.length - 1; i >= 0; i--) {
         const f = fills[i];
@@ -3167,6 +3158,30 @@ function addFill() {
         }
     });
 }
+/**
+ * The fill keeps the natural size of the picture it holds (`iw`, `ih`): a tiled picture is drawn at that size times the scale in Play and the export too. It is read from the asset
+ * itself, whichever path set the source (the picker, the Behavior tab, an upload, the placeholder a slot starts with). A picture not decoded yet is measured and the fill is
+ * updated when it is; returns whether the size is on the fill now.
+ */
+function noteNaturalSize(f, onSize) {
+    const known = naturalSizeCache.get(f.image) ?? (() => { const image = f.image && activeImages?.get(f.image); return image ? { w: image.width, h: image.height } : null; })();
+    if (known) { f.iw = known.w; f.ih = known.h; return true; }
+    const src = doc.data.assets[f.image];
+    if (!src || typeof Image === 'undefined') return false;
+    const image = new Image();
+    image.onload = () => { naturalSizeCache.set(f.image, { w: image.naturalWidth, h: image.naturalHeight }); onSize?.(); };
+    image.src = src;
+    return false;
+}
+/** The measured natural sizes of the file's pictures, by asset id. */
+const naturalSizeCache = new Map();
+/** Gives every image fill that lacks it the natural size of its picture (now when known, else when the picture has loaded). */
+function recordNaturalSizes(nodes) {
+    for (const n of nodes)
+        for (const f of n.fills ?? [])
+            if (f.type === 'image' && f.image && !(f.iw && f.ih))
+                noteNaturalSize(f, () => { if (noteNaturalSize(f)) { doc.touch(n); invalidate(); } });
+}
 function editFill(i, key, v, live) {
     if (!history.pending)
         history.begin('Edit fill');
@@ -3211,9 +3226,11 @@ function editFill(i, key, v, live) {
                 break;
             case 'scale':
                 f.scale = clamp(v / 100, .05, 10);
+                noteNaturalSize(f);
                 break;
             case 'mode':
                 f.mode = v;
+                if (v === 'tile') noteNaturalSize(f);
                 break;
             case 'type':
                 setFillType(f, v);
@@ -3267,11 +3284,47 @@ async function pickBehaviorImage(owner, prop, file) {
  * The image prop an instance draws as its root's picture (a prop of type image writing the root's image fill), or null. That fill belongs to the prop: a
  * replacement from the Fill panel changes the prop, or the next sync would put the old asset back.
  */
-function pictureProp(inst) {
-    const binding = inst.isInstance ? componentById(inst.sourceId)?.behavior : null;
+/**
+ * The instance and the image prop behind a layer's picture: the instance root, or a layer of an instance that a prop draws a picture on (the Card's cover). Null when the layer's
+ * picture is its own.
+ */
+function pictureTarget(n) {
+    let owner = n;
+    while (owner && !owner.isInstance) owner = owner.parentId ? doc.get(owner.parentId) : null;
+    const binding = owner ? componentById(owner.sourceId)?.behavior : null;
     const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
-    const entry = template && Object.entries(template.props).find(([, def]) => def.type === 'image' && def.node?.key === 'root' && def.node.field === 'imageFill');
-    return entry ? entry[0] : null;
+    if (!template) return null;
+    const key = owner === n ? 'root' : n.behavior?.slot ?? n.behavior?.group;
+    const entry = Object.entries(template.props).find(([, def]) => def.type === 'image' && [def.node, ...(def.nodes ?? [])].some(w => w?.key === key && w.field === 'imageFill'));
+    return entry ? { owner, prop: entry[0] } : null;
+}
+/**
+ * Puts an asset in the image fill at `idx` of each layer (a new image fill when there is none). The picture of a template instance's layer is its prop's: the prop takes the
+ * asset (so the Behavior tab shows it) and the sync redraws the fill, keeping the mode and the tile scale the fill holds. Must run inside a transaction.
+ */
+function chooseFillImage(nodes, idx, id) {
+    for (const n of nodes) {
+        if (n.type === 'group' || n.type === 'text')
+            continue;
+        const fills = n.fills;
+        const target = fills[idx]?.type === 'image' ? pictureTarget(n) : null;
+        if (target) {
+            target.owner.behavior = setInstanceValue(target.owner, componentById(target.owner.sourceId), target.prop, id);
+            doc.touch(target.owner);
+            syncInstance(target.owner);
+            continue;
+        }
+        if (!fills[idx])
+            fills.unshift({ type: 'image', image: id, mode: 'fill', scale: 1, opacity: 1, visible: true });
+        else {
+            setFillType(fills[idx], 'image');
+            fills[idx].image = id;
+            delete fills[idx].iw;
+            delete fills[idx].ih;
+            recordNaturalSizes([n]);
+        }
+        doc.touch(n);
+    }
 }
 async function applyFillImage(file) {
     const url = await readImageFile(file);
@@ -3282,26 +3335,7 @@ async function applyFillImage(file) {
         transaction('Replace image', () => {
             const id = uid();
             doc.data.assets[id] = url;
-            for (const n of selected()) {
-                if (n.type === 'group' || n.type === 'text')
-                    continue;
-                const fills = n.fills;
-                // The picture of a template instance is its prop's: the prop takes the new asset and the sync redraws the fill.
-                const prop = fills[idx]?.type === 'image' ? pictureProp(n) : null;
-                if (prop) {
-                    n.behavior = setInstanceValue(n, componentById(n.sourceId), prop, id);
-                    doc.touch(n);
-                    syncInstance(n);
-                    continue;
-                }
-                if (!fills[idx])
-                    fills.unshift({ type: 'image', image: id, mode: 'fill', scale: 1, opacity: 1, visible: true });
-                else {
-                    setFillType(fills[idx], 'image');
-                    fills[idx].image = id;
-                }
-                doc.touch(n);
-            }
+            chooseFillImage(selected(), idx, id);
         });
         invalidate();
     }
@@ -3331,11 +3365,11 @@ document.addEventListener('click', e => {
         transaction('Remove fill', () => { for (const n of selected()) {
             const fills = n.fills;
             // The picture of a template instance is its prop's: removing it clears the prop, and the sync shows the colour again.
-            const prop = fills[i]?.type === 'image' ? pictureProp(n) : null;
-            if (prop) {
-                n.behavior = setInstanceValue(n, componentById(n.sourceId), prop, null);
-                doc.touch(n);
-                syncInstance(n);
+            const target = fills[i]?.type === 'image' ? pictureTarget(n) : null;
+            if (target) {
+                target.owner.behavior = setInstanceValue(target.owner, componentById(target.owner.sourceId), target.prop, null);
+                doc.touch(target.owner);
+                syncInstance(target.owner);
                 continue;
             }
             if (fills[i]) {
@@ -5583,10 +5617,8 @@ function openFillPicker(i, anchor) {
     FP.stop = 1;
     FP.hsv = null;
     FP.search = '';
-    const ins = document.getElementById('right-panel').getBoundingClientRect(), r = anchor.getBoundingClientRect(), w = 250;
-    el.style.left = Math.max(8, ins.left - w - 12) + 'px';
-    el.style.top = Math.max(8, Math.min(innerHeight - 440, r.top - 10)) + 'px';
-    el.style.width = w + 'px';
+    mountFloatingWindow(el, { anchor: anchor, closeHtml: icon('close', 14) });
+    el.style.width = '250px';
     renderFillPicker();
     wireFillPicker(el);
     setTimeout(() => document.addEventListener('pointerdown', function away(ev) {
@@ -5865,10 +5897,8 @@ function openFxWindow(i, anchor, force = false) {
     document.body.appendChild(el);
     FXW.open = true;
     FXW.i = i;
-    const ins = document.getElementById('right-panel').getBoundingClientRect(), r = anchor.getBoundingClientRect(), w = 262;
-    el.style.width = w + 'px';
-    el.style.left = Math.max(8, ins.left - w - 12) + 'px';
-    el.style.top = Math.max(8, Math.min(innerHeight - 330, r.top - 8)) + 'px';
+    el.style.width = '262px';
+    mountFloatingWindow(el, { anchor: anchor, closeHtml: icon('close', 14) });
     renderFxWindow();
     el.addEventListener('click', e => { if (e.target.closest('[data-fxw-close]')) {
         closeFxWindow();
@@ -6229,10 +6259,8 @@ function lgClose(kind) {
     lgPanels[kind] = null;
 }
 const lgCloseAll = () => ['pop', 'styles', 'edit'].forEach(lgClose);
-function lgPlace(el, anchor, left) {
-    const r = anchor.getBoundingClientRect();
-    el.style.left = Math.max(8, Math.min(left ?? r.left - el.offsetWidth - 12, innerWidth - el.offsetWidth - 8)) + 'px';
-    el.style.top = Math.max(8, Math.min(r.top - 8, innerHeight - el.offsetHeight - 8)) + 'px';
+function lgPlace(el, anchor) {
+    mountFloatingWindow(el, { anchor: anchor, closeHtml: icon('close', 14) });
 }
 function lgPanel(kind, anchor, cls) {
     lgClose(kind);
@@ -7736,7 +7764,7 @@ class Renderer {
         const top = getFills(n).find(f => f.visible !== false), linear = top?.type === 'linear' && topColorOf(n) !== 'none';
         const desc = {
             version: n.version,
-            fill: color(topColorOf(n), topOpacityOf(n)),
+            fill: getFills(n).some(f => f.visible !== false) || !n.fallbackFill ? color(topColorOf(n), topOpacityOf(n)) : color(n.fallbackFill, 1),
             stroke: color(n.stroke, n.strokeOpacity ?? 1),
             color2: color(top?.color2 ?? '#ffffff', topOpacityOf(n)),
             angle: linear ? (top.angle ?? 90) * Math.PI / 180 : -1000,
@@ -9705,6 +9733,13 @@ function onBehaviorClick(e) {
         }
         return;
     }
+    // An instance slot (Extra, an action cell): the same picker the Design tab's slot row opens, with the same acceptance rule.
+    const slotFill = e.target.closest?.('[data-bp-action="slot-fill"]');
+    if (slotFill) {
+        const owner = activeNode();
+        const layer = owner && doc.descendants(owner.id).find(y => y.propBind?.slot === slotFill.dataset.bpSlot);
+        return layer ? whenAllPagesLoaded(() => openAddInstances(layer.id, { anchor: slotFill })) : undefined;
+    }
     const iconButton = e.target.closest?.('[data-bp-action="icon"]');
     if (iconButton) {
         const owner = activeNode();
@@ -10007,6 +10042,43 @@ function syncParts(inst) {
 }
 
 /**
+ * Fills a content slot layer that was just made with its starting content (a slot's `seed`): an instance of the master of each seed's template, when the file has one,
+ * in the mode the seed names (a variant) or follows from the owner (the owner's Size mode name), with its props and the glyph of its icon role. A template the file has no
+ * master of leaves the slot empty. Must run inside a transaction.
+ */
+function seedSlot(owner, layer, def) {
+    const ownerBinding = componentById(owner.sourceId)?.behavior;
+    const ownerModes = ownerBinding ? instanceModeNamesOf(owner, ownerBinding) : {};
+    for (const seed of def.seed ?? []) {
+        const master = doc.data.pages.flatMap(p => p.nodes).find(m => m.component && m.behavior && 'templateId' in m.behavior && m.behavior.templateId === seed.template);
+        const template = BEHAVIOR_TEMPLATES.get(seed.template);
+        if (!master || !template) continue;
+        // The mode of each variable prop: the seed's own, the owner's it follows, else the template's default.
+        const named = { ...(seed.modes ?? {}), ...Object.fromEntries(Object.entries(seed.follow ?? {}).map(([prop, ownerProp]) => [prop, ownerModes[ownerProp]])) };
+        const varModes = {};
+        for (const [prop, collectionId] of Object.entries(master.behavior.variables)) {
+            const modes = varColl(collectionId)?.modes ?? [];
+            const wanted = named[prop] ?? template.props[prop]?.defaultMode;
+            const mode = modes.find(m => m.name === wanted || m.id === wanted) ?? modes[0];
+            if (mode) varModes[collectionId] = mode.id;
+        }
+        const icon = seed.icon === undefined ? undefined : roleIconIds()[seed.icon] ?? defaultIconId();
+        const props = { ...template.sampleProps, ...(seed.props ?? {}), ...(icon === undefined ? {} : { icon }) };
+        const copies = instanceOf(template, master, doc.descendants(master.id), props, { id: () => uid(), varModes });
+        copies[0].parentId = layer.id;
+        copies[0].x = 0;
+        copies[0].y = 0;
+        for (const n of copies) doc.add(n);
+        doc.refresh();
+        markManagedContainers(template, doc.descendants(copies[0].id));
+        doc.touch(copies[0]);
+        syncInstance(copies[0]);
+        // The instance now decides what this slot holds: a sync from the main component keeps what was put there.
+        const slot = doc.get(layer.id);
+        if (claimSlot(slot)) doc.touch(slot);
+    }
+}
+/**
  * Brings an instance's managed layers in line with its values: removes, moves, inserts (one plan). Must run inside a transaction.
  * Returns the reason when sync did nothing (the master has no auto layout or no text layer), else null.
  */
@@ -10033,6 +10105,7 @@ function syncInstance(inst) {
                 const holder = containerOf(inst, op.parent);
                 const n = doc.add(node('frame', { parentId: holder.id, name: def.name, w: 0, h: 0, layout: def.layout, gap: 0, padding: 0, fills: [], clip: false, layoutSizingH: def.fill === true ? 'fill' : 'hug', layoutSizingV: 'hug', propBind: { slot: op.slot } }));
                 placeAmongChildren(holder, n, op.index);
+                seedSlot(inst, n, def);
             }
             else {
                 const holder = containerOf(inst, op.parent);
@@ -10055,6 +10128,7 @@ function syncInstance(inst) {
         if (missingIconVars.length) toast(`The icon needs ${missingIconVars.join(' and ')}.`);
         // The state plan runs after the icon pass: a managed icon rests on its base size, and a state swaps it from there.
         applyStateBindings(inst, stateBindingsOf(inst));
+        recordNaturalSizes([inst, ...doc.descendants(inst.id)]);
     });
     return reason ?? null;
 }
@@ -10376,6 +10450,14 @@ function setInstanceValueTo(inst, prop, value) {
         const binding = componentById(inst.sourceId)?.behavior;
         const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
         if (template) next = { ...next, props: { ...next.props, ...newlyShownIconDefaults(template, inst.behavior?.props ?? {}, next.props ?? {}, defaultIconId(), roleIconIds(), instanceModeNamesOf(inst, binding)) } };
+        // A slot drawn as a picture (the Card's cover) starts with the bundled placeholder, an image asset of the file, when it turns on with no picture.
+        if (template) {
+            const shown = newlyShownImageProps(template, resolveProps(template, inst.behavior?.props ?? {}), resolveProps(template, next.props ?? {}));
+            if (shown.length) {
+                doc.data.assets[PLACEHOLDER_IMAGE_ID] ??= PLACEHOLDER_IMAGE;
+                next = { ...next, props: { ...next.props, ...Object.fromEntries(shown.map(prop => [prop, PLACEHOLDER_IMAGE_ID])) } };
+            }
+        }
     }
     catch (err) { toast(err.message); return false; }
     let reason = null;
@@ -11777,11 +11859,45 @@ function drawLabelIcon(c, kind, x, y) {
         c.stroke();
     }
 }
+/**
+ * The Behavior preview's drop shadows around the selected instance (a state that swaps the root's shadow token, Card's Hover): drawn on the overlay outside the node's box,
+ * so the box and its content stay as the canvas paints them. The document keeps its own effects; the shadows are read per draw.
+ */
+function drawPreviewShadow(c) {
+    const preview = canvasPreviewOf();
+    const shadows = preview?.colors.shadow;
+    const s = shadows?.length ? doc.world(preview.id) : null;
+    if (!s) return;
+    const z = state.camera.zoom, p0 = point(s.matrix, 0, 0), p1 = point(s.matrix, s.node.w, s.node.h), a = worldToScreen(p0.x, p0.y), b = worldToScreen(p1.x, p1.y);
+    const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y), w = Math.abs(b.x - a.x), h = Math.abs(b.y - a.y), r = Math.min((s.node.radius || 0) * z, w / 2, h / 2);
+    const far = 100000, dpr = renderer.dpr || 1;
+    for (const e of shadows) {
+        const alpha = e.color.length === 9 ? parseInt(e.color.slice(7, 9), 16) / 255 : 1;
+        c.save();
+        // Everything outside the box: the shadow never paints over it.
+        const outside = new Path2D();
+        outside.rect(-far, -far, 2 * far, 2 * far);
+        outside.roundRect(x, y, w, h, r);
+        c.clip(outside, 'evenodd');
+        // The shape is drawn far off screen and only its shadow is brought back, so the shape itself never shows.
+        c.shadowColor = `rgba(${parseInt(e.color.slice(1, 3), 16)}, ${parseInt(e.color.slice(3, 5), 16)}, ${parseInt(e.color.slice(5, 7), 16)}, ${alpha})`;
+        c.shadowBlur = e.blur * z * dpr;
+        c.shadowOffsetX = (e.x * z + far) * dpr;
+        c.shadowOffsetY = e.y * z * dpr;
+        c.fillStyle = '#000';
+        const grow = e.spread * z;
+        c.beginPath();
+        c.roundRect(x - far - grow, y - grow, w + 2 * grow, h + 2 * grow, Math.max(0, r + grow));
+        c.fill();
+        c.restore();
+    }
+}
 function drawOverlay() {
     const c = octx, dpr = renderer.dpr || 1;
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.clearRect(0, 0, overlay.width, overlay.height);
     c.scale(dpr, dpr);
+    drawPreviewShadow(c);
     const z = state.camera.zoom, blue = options.theme === 'dark' ? '#7aa6dc' : '#0058CA';
     const selNodes = [...state.selection].map(id => doc.get(id)).filter(Boolean);
     // The bounding box is the same blue in light and dark mode.
@@ -14357,6 +14473,8 @@ function syncInstanceStructure(activeOnly = true) {
                 pn = new Map(page.nodes.map(x => [x.id, x]));
                 pnLen = page.nodes.length;
             }
+            // A slot the sync made on the instance (it shows only while a prop holds, so the main component has no layer for it) has no source id; what sits in it is the instance's all the same.
+            for (let p = pn.get(n.parentId), i = 0; p && p.id !== rootId && i < 200; p = pn.get(p.parentId), i++) if (p.propBind?.slot) return p;
             return slotOwnerOf(n, rootId, id => pn.get(id));
         };
         for (const root of [...page.nodes]) {
@@ -15962,9 +16080,13 @@ function renderAddInstances() {
     else if (w.kind === 'set')
         entries = entries.filter(e => e.variants);
     const groups = [...new Set(entries.map(e => e.group))];
+    // A slot that takes only some templates, with none of them in this source: say so (and which), never an empty list.
+    const nothingAccepted = w.accepts && !entries.length && w.requires;
     const item = e => `<button class="ai-row item" data-ai-comp="${e.id}" ${e.lib ? `data-ai-lib="${e.lib}"` : ''}><span class="ai-ico">${icon('component', 14)}</span><span class="ai-name">${esc(e.name)}</span>${e.variants ? `<small>${e.variants} variants</small>` : ''}</button>`;
     let body;
-    if (q)
+    if (nothingAccepted)
+        body = `<div class="ai-empty">${esc(`No component ${w.src === 'file' ? 'in this file' : 'in this library'} is ${w.requires}. Generate the Design System, or switch the source above.`)}</div>`;
+    else if (q)
         body = entries.filter(e => e.name.toLowerCase().includes(q)).map(item).join('') || '<div class="ai-empty">No components match.</div>';
     else if (w.folder && groups.includes(w.folder))
         body = `<button class="ai-row back" data-ai-back>${icon('chevronLeft', 12)}<span class="ai-name">${esc(w.folder)}</span></button>` + entries.filter(e => e.group === w.folder).map(item).join('');
@@ -15991,30 +16113,14 @@ function openAddInstances(slotId, opts = {}) {
     const el = document.createElement('div');
     el.className = 'prop-pop add-inst';
     document.body.appendChild(el);
-    addInst = { el, slotId, q: '', src: 'file', folder: null, kind: '', pick: opts.pick || null, accepts: !opts.pick && p ? e => slotAccepts(p, { ids: [e.id], templates: e.templates }) : null };
+    addInst = { el, slotId, q: '', src: 'file', folder: null, kind: '', pick: opts.pick || null, accepts: !opts.pick && p ? e => slotAccepts(p, { ids: [e.id], templates: e.templates }) : null, requires: !opts.pick && p && slotRestricts(p) ? slotRefusal(p) : null };
     addInst.away = ev => { if (!el.contains(ev.target) && !ev.target.closest('.stp-menu, [data-cmp="edit-cprop"]'))
         closeAddInstances(); };
     setTimeout(() => addInst && document.addEventListener('pointerdown', addInst.away, true), 0);
     // Libraries in use may not be loaded yet.
     libsLoad().then(() => Promise.all((LIBS.use || []).map(u => libSnap(u.id)))).then(() => addInst && renderAddInstances()).catch(() => { });
     renderAddInstances();
-    // Next to the slot on the canvas (or next to the property window).
-    let x = innerWidth / 2, y = 120;
-    if (slot) {
-        const s = doc.world(slot.id), r = area.getBoundingClientRect();
-        if (s) {
-            const q = worldToScreen(s.box.x + s.box.w, s.box.y);
-            x = r.left + q.x + 12;
-            y = r.top + q.y;
-        }
-    }
-    else if (opts.anchor) {
-        const r = opts.anchor.getBoundingClientRect();
-        x = r.left - el.offsetWidth - 12;
-        y = r.top;
-    }
-    el.style.left = Math.max(8, Math.min(x, innerWidth - el.offsetWidth - 8)) + 'px';
-    el.style.top = Math.max(8, Math.min(y, innerHeight - el.offsetHeight - 8)) + 'px';
+    mountFloatingWindow(el, { anchor: opts.anchor ?? null, closeHtml: icon('close', 14) });
     el.addEventListener('keydown', ev => { if (ev.key === 'Escape') {
         ev.stopPropagation();
         closeAddInstances();
@@ -16307,9 +16413,7 @@ function openPropPop(anchor, set, prop) {
         closePropPop(); };
     document.addEventListener('pointerdown', propPop.away, true);
     renderPropPop();
-    const r = anchor.getBoundingClientRect();
-    el.style.left = Math.max(8, r.left - el.offsetWidth - 12) + 'px';
-    el.style.top = Math.max(8, Math.min(r.top - 10, innerHeight - el.offsetHeight - 8)) + 'px';
+    mountFloatingWindow(el, { anchor: anchor, closeHtml: icon('close', 14) });
     el.addEventListener('click', ev => {
         const set2 = doc.get(propPop?.setId);
         if (!set2)
@@ -16913,9 +17017,7 @@ function openSwapPicker(anchor, { current = null, onPick, icons = false, scopePa
     list();
     document.body.appendChild(pop);
     watchSwapThumbs(pop.querySelector('.vp-list'));
-    const r = anchor.getBoundingClientRect(), w = 280;
-    pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left - w + 24)) + 'px';
-    pop.style.top = Math.max(8, Math.min(innerHeight - pop.offsetHeight - 8, r.top - 4)) + 'px';
+    mountFloatingWindow(pop, { anchor: anchor, closeHtml: icon('close', 14) });
     pop.querySelector('[data-vpk-search]').focus({ preventScroll: true });
     // Open on the component that is currently chosen.
     const centerCurrent = () => {
@@ -17107,8 +17209,27 @@ function instancePropValue(owner, p) {
     return p.def;
 }
 // Properties list shown on a main component / component set.
+/**
+ * The template's slot list (the same one the Behavior tab shows) for a main component or an instance, or null when it has no template: the master reads it at the
+ * sample props, an instance at its own props.
+ */
+function templateSlotsOf(node) {
+    const master = node.isInstance ? componentById(node.sourceId) : node;
+    const binding = master?.behavior;
+    const template = binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) : null;
+    if (!template) return null;
+    return slotListOf(template, resolveProps(template, node.isInstance ? node.behavior?.props ?? {} : template.sampleProps ?? {}));
+}
+/** The pill of a managed icon or text slot in the master's list: not a stored property, named and kinded as the Behavior tab lists it. */
+function templateSlotPill(entry) {
+    return `<div class="vp-row2"><span class="vp-pill">${CPROP_ICON[entry.kind === 'text' ? 'text' : 'instance']}<span>${esc(entry.name)} · ${entry.kind === 'text' ? 'Text' : entry.kind === 'image' ? 'Image' : 'Icon'}</span></span></div>`;
+}
 function cpropRowsHtml(holder) {
-    const rows = cpropsOf(holder).map(p => {
+    // A component bound to a template lists exactly the template's slots (the Behavior tab's list), in its order; its other properties follow.
+    const entries = templateSlotsOf(holder);
+    const slotOnly = p => entries && (p.type === 'slot' || entries.some(e => e.id === p.id));
+    const rows = (entries ? [...entries.map(e => e.kind === 'image' ? e : cpropsOf(holder).find(p => p.id === e.id && p.type === 'slot') ?? e), ...cpropsOf(holder).filter(p => !slotOnly(p))] : cpropsOf(holder)).map(p => {
+        if (p.kind) return templateSlotPill(p);
         const open = cpropPop && cpropPop.pid === p.id;
         const bound = boundLayers(holder, p)[0], idx = nodeIndex();
         const summary = p.type === 'text' ? `“${p.def ?? ''}”` : p.type === 'boolean' ? (p.def === false ? 'False' : 'True') : p.type === 'instance' ? (idx.get(p.def)?.name || '—') : (bound?.name || 'No layer');
@@ -17158,9 +17279,7 @@ function openFloatingPop(anchor, state) {
         closeCpropPop(); };
     document.addEventListener('pointerdown', cpropPop.away, true);
     renderCpropPop();
-    const r = (anchor || $('#inspector')).getBoundingClientRect();
-    el.style.left = Math.max(8, r.left - el.offsetWidth - 12) + 'px';
-    el.style.top = Math.max(8, Math.min(r.top - 10, innerHeight - el.offsetHeight - 8)) + 'px';
+    mountFloatingWindow(el, { anchor: anchor || $('#inspector'), closeHtml: icon('close', 14) });
     el.addEventListener('keydown', ev => { if (ev.key === 'Enter' && ev.target.tagName === 'INPUT')
         ev.target.blur();
     else if (ev.key === 'Escape') {
@@ -17299,7 +17418,13 @@ function instancePropsHtml(owner, holder) {
     for (const y of [owner, ...(page ? pageTree(page, owner.id) : [])])
         for (const pid of Object.values(y.propBind || {}))
             driven.add(pid);
-    let html = cpropsOf(holder).filter(p => !driven.size || driven.has(p.id)).map(p => row(owner, p)).join('');
+    // The slot properties of an instance bound to a template are the template's slots (the Behavior tab's list); an icon or text slot is set in the Behavior tab.
+    const entries = templateSlotsOf(owner);
+    const props = cpropsOf(holder).filter(p => !driven.size || driven.has(p.id));
+    const shown = entries ? [...entries.map(e => e.kind === 'image' ? e : props.find(p => p.id === e.id && p.type === 'slot') ?? e), ...props.filter(p => p.type !== 'slot' && !entries.some(e => e.id === p.id))] : props;
+    // An image slot has no control here: the row names it and selects its layer, whose Fill section edits the picture (the Behavior tab's Cover row writes the same prop).
+    const imageLayer = () => { const boxes = (managedTemplateOf(owner)?.slots ?? []).filter(s => s.holds === 'image').flatMap(s => [s.box ?? []].flat()); return doc.descendants(owner.id).find(y => boxes.includes(y.behavior?.slot ?? y.behavior?.group))?.id ?? null; };
+    let html = shown.map(p => p.kind === 'image' ? imageSlotRowHtml({ name: p.name, layerId: imageLayer(), esc, icon: CPROP_ICON.instance }) : p.kind ? `<div class="cmp-prop2"><span title="${esc(p.name)}">${CPROP_ICON[p.kind === 'text' ? 'text' : 'instance']} ${esc(p.name)}</span><div class="cmp-ctl"><span class="small-label">${p.kind === 'text' ? 'Text' : 'Icon'} · set in Behavior</span></div></div>` : row(owner, p)).join('');
     for (const nid of holder.exposedNested || []) {
         const x = tree.find(y => (y.swapOf || y.sourceId) === nid);
         if (!x)
@@ -17339,7 +17464,7 @@ document.addEventListener('click', e => {
     const sa = e.target.closest('#inspector [data-slot-add]');
     if (sa && doc.get(sa.dataset.slotAdd)) {
         select([sa.dataset.slotAdd]);
-        openAddInstances(sa.dataset.slotAdd);
+        openAddInstances(sa.dataset.slotAdd, { anchor: sa });
         return;
     }
     const slotClear = e.target.closest('#inspector [data-slot-clear]'), slotReset = e.target.closest('#inspector [data-slot-reset]');
@@ -19680,9 +19805,7 @@ function openFontPicker(anchor, { current = null, onPick = null } = {}) {
     const cats = [['all', 'All'], ['file', 'In file'], ...GF_CAT_LABEL.map((l, i) => [String(i), l])];
     el.innerHTML = `<div class="fp-head"><input class="fp-search" placeholder="Search ${GF.list.length.toLocaleString()} fonts" aria-label="Search fonts" spellcheck="false" autocomplete="off"></div><div class="fp-cats">${cats.map(([k, l]) => `<button data-fp-cat="${k}" class="${k === 'all' ? 'on' : ''}">${l}</button>`).join('')}</div><div class="fp-list" role="listbox"></div><div class="fp-foot"></div>`;
     document.body.appendChild(el);
-    const insp = $('#inspector').getBoundingClientRect(), a = anchor.getBoundingClientRect();
-    el.style.left = Math.max(8, insp.left - el.offsetWidth - 8) + 'px';
-    el.style.top = Math.max(8, Math.min(a.top - 30, innerHeight - el.offsetHeight - 8)) + 'px';
+    mountFloatingWindow(el, { anchor: anchor, closeHtml: icon('close', 14) });
     const pop = GF.pop = { el, q: '', cat: 'all', rows: [], shown: 0, active: -1, current: current ?? n?.fontFamily, onPick: onPick ?? pickFont };
     const list = el.querySelector('.fp-list'), search = el.querySelector('.fp-search');
     const itemHtml = r => r.header ? `<div class="fp-sec">${esc(r.header)}</div>` : `<button class="fp-item ${r.name === pop.current ? 'cur' : ''}" role="option" data-font="${esc(r.name)}"><span class="fp-name" style="font-family:${fontCssFamily(r.name)}">${esc(r.name)}</span><span class="fp-cat">${esc(r.hint || '')}</span>${r.name === pop.current ? '<span class="fp-check">✓</span>' : ''}</button>`;
@@ -19906,9 +20029,7 @@ function openEffectVarEditor(key, anchor) {
     el.className = 've-pop';
     el.innerHTML = veHtml(list);
     document.body.appendChild(el);
-    const r = anchor.getBoundingClientRect();
-    el.style.left = Math.max(8, Math.min(innerWidth - el.offsetWidth - 8, r.left)) + 'px';
-    el.style.top = Math.max(8, Math.min(innerHeight - el.offsetHeight - 8, r.bottom + 6)) + 'px';
+    mountFloatingWindow(el, { anchor: anchor, closeHtml: icon('close', 14) });
     el.addEventListener('input', e => {
         const t = e.target;
         if (t.dataset?.ve?.endsWith('|color')) {
@@ -20193,9 +20314,7 @@ function openTypographyEditor(key, anchor) {
     });
     document.body.appendChild(el);
     teRender();
-    const r = anchor.getBoundingClientRect();
-    el.style.left = Math.max(8, Math.min(innerWidth - el.offsetWidth - 8, r.left)) + 'px';
-    el.style.top = Math.max(8, Math.min(innerHeight - el.offsetHeight - 8, r.bottom + 6)) + 'px';
+    mountFloatingWindow(el, { anchor: anchor, closeHtml: icon('close', 14) });
     setTimeout(() => document.addEventListener('pointerdown', function away(ev) {
         if (!TE.el || !document.body.contains(TE.el)) {
             document.removeEventListener('pointerdown', away, true);

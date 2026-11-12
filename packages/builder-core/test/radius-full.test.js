@@ -25,5 +25,5 @@ test('the radius-full role points at it, and the size table names its primitive'
 test('the plan holds the full radius and the effects as Semantic items', () => {
     const per = {};
     for (const i of planFromSnapshot(BASE_SNAPSHOT).items) per[i.collection] = (per[i.collection] || 0) + 1;
-    assert.equal(per.Semantic, 120);
+    assert.equal(per.Semantic, 122);
 });

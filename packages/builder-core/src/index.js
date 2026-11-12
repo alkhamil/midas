@@ -14,6 +14,8 @@ export * from './behavior-engine/icon-set.js';
 export * from './behavior-engine/managed-layers.js';
 export * from './behavior-engine/content-slots.js';
 export * from './behavior-engine/slot-rules.js';
+export * from './behavior-engine/slot-list.js';
+export * from './behavior-engine/placeholder-image.js';
 export * from './behavior-engine/component-templates.js';
 export * from './behavior-engine/slot-diagnostics.js';
 export * from './behavior-engine/slot-property.js';

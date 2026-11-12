@@ -98,7 +98,7 @@ test('the base data holds the two effects as Primitives and Semantic aliases of 
     }
     assert.deepEqual(ROLES['shadow-none'], { base: 'Semantic/boxShadowNone' });
     assert.deepEqual(ROLES['shadow-float'], { base: 'Semantic/boxShadowSecondary' });
-    assert.equal(planFromSnapshot(BASE_SNAPSHOT).items.filter(i => i.type === 'effect').length, 6);
+    assert.equal(planFromSnapshot(BASE_SNAPSHOT).items.filter(i => i.type === 'effect').length, 10);
 });
 
 test('Auto Fix creates the effect variable of each mode as an alias of the Semantic effect, never a literal', () => {

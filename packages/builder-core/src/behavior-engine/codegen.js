@@ -2,11 +2,13 @@
 // component (JSX) and its stylesheet out. Both come from the schema and the same resolver the preview uses, so the same inputs
 // give the same text. If any token is unresolved for any mode, nothing is written: the result has no files and lists the reasons.
 import { previewOf } from './preview.js';
+import { imageFillLayout } from '../geometry/fills.js';
 import { variableProps } from './registry.js';
+import { emptySlotFloor, slotHolderLayout } from './content-slots.js';
 import { resolveProps } from './instance-props.js';
-import { NODE_PROPERTIES, LOADING_OPACITY, elementTagOf, textDecorationOf, alignValuesOf, enumAttrOf, canvasPartsOf, fieldWritersOf, localAttrOf, maskUnlessOf, placeholderPartOf, stateAttributesOf, targetKindOf, toggleStatesOf } from './display.js';
+import { NODE_FIELDS, NODE_PROPERTIES, LOADING_OPACITY, elementTagOf, textDecorationOf, alignValuesOf, enumAttrOf, canvasPartsOf, fieldWritersOf, localAttrOf, maskUnlessOf, placeholderPartOf, stateAttributesOf, targetKindOf, toggleStatesOf } from './display.js';
 import { pathCommands, svgPathD } from '../geometry/shapes.js';
-import { controlOf, iconDefsOf, placementsOfDef, slotDefsOf, swapDefsOf } from './anatomy.js';
+import { boxesOf, controlOf, iconDefsOf, placementsOfDef, slotDefsOf, swapDefsOf } from './anatomy.js';
 import { cssVarOf, splitColor, tokenValueOf } from './tokens.js';
 import { glyphFillRuleAttr, glyphPathD } from './glyphs.js';
 import { commitNumber, resizeHeight, resizeLimits, startResizeDrag } from '../prototype/press.js';
@@ -18,7 +20,10 @@ const justifyOf = side => (side === 'center' ? 'center' : `flex-${side}`);
 
 /** The JSX value of a primaryAlign writer's data attribute: a boolean prop picks end or start; an enum prop looks its option up in its value map. */
 function alignExprOf(writer) {
-    if (!writer.values) return `${writer.prop} ? "end" : "start"`;
+    if (!writer.values) {
+        const { true: on, false: off } = NODE_FIELDS.frame[writer.field].values;
+        return `${writer.prop} ? "${on}" : "${off}"`;
+    }
     const entries = Object.entries(writer.values).map(([option, value]) => `"${option}": "${value}"`).join(', ');
     return `{${entries}}[${writer.prop}]`;
 }
@@ -85,6 +90,31 @@ const ELEMENT_TYPES = { button: ['ButtonHTMLAttributes', 'HTMLButtonElement'], i
  */
 const slotPropsOf = template => (template.slots ?? []).map(slot => ({ prop: template.slots.length === 1 ? 'children' : slot.id, slot }));
 
+/**
+ * The JSX of one content slot: its element (class <template>-<slot>) around the prop's content. A repeating slot draws its children `<id>Copies` times
+ * (0 while they are empty); a slot the props show while they hold is drawn exactly while its condition holds; the rest draw while filled, or always with showEmpty.
+ * @param {any} template
+ * @param {string} prop
+ * @param {any} slot
+ * @returns {string}
+ */
+function contentSlotJsx(template, prop, slot) {
+    const element = slot.repeat ? `<div className="${template.id}-${slot.id}">{Array.from({ length: ${slot.id}Copies }, (_, i) => <Fragment key={i}>{${prop}}</Fragment>)}</div>` : `<div className="${template.id}-${slot.id}">{${prop}}</div>`;
+    const guard = slot.repeat ? `${slot.id}Copies > 0` : `filled(${prop})`;
+    if (slot.shownWhen !== undefined) return `{(${shownJsx(slot.shownWhen)}) && ${element}}`;
+    return slot.showEmpty === true ? element : `{${guard} && ${element}}`;
+}
+
+/**
+ * The image props of a template, each of which gets a `<prop>Fit` prop in the export: an instance says how its own picture sits (fill, fit or tile); one that says nothing keeps what
+ * the main component's fill holds. The export is code, so an instance's own fit is a prop, as its source is.
+ * @param {any} template
+ * @returns {string[]}
+ */
+function imageFitPropsOf(template) {
+    return [...new Set(fieldWritersOf(template).filter(w => w.field === 'imageFill').map(w => w.prop))];
+}
+
 /** The TypeScript type of a schema prop: a variable prop is the mode id string, a literal its type, an enum its union, an icon a ReactNode. */
 const typeOfProp = def => def.source === 'variable' ? 'string' : def.type === 'enum' ? def.options.map(o => JSON.stringify(o).replace(/"/g, "'")).join(' | ')
     : def.type === 'number' ? (def.default === null ? 'number | null' : 'number') : def.type === 'iconComponent' ? 'ReactNode' : def.type === 'image' ? 'string' : def.type;
@@ -95,8 +125,9 @@ function propsTypeOf(template, name, elementType, attrType) {
     for (const [prop, def] of Object.entries(template.props)) lines.push(`  ${prop}?: ${typeOfProp(def)};`);
     for (const event of template.events) lines.push(`  ${event.name}?: ${EVENT_TYPE[event.name]}<${elementType}>;`);
     for (const { prop } of slotPropsOf(template)) lines.push(`  ${prop}?: ReactNode;`);
+    for (const prop of imageFitPropsOf(template)) lines.push(`  ${prop}Fit?: 'fill' | 'fit' | 'tile';`);
     lines.push('  className?: string;', '  style?: CSSProperties;');
-    const own = [...Object.keys(template.props), ...template.events.map(e => e.name), ...slotPropsOf(template).map(s => s.prop), 'children', 'className', 'style'];
+    const own = [...Object.keys(template.props), ...imageFitPropsOf(template).map(prop => `${prop}Fit`), ...template.events.map(e => e.name), ...slotPropsOf(template).map(s => s.prop), 'children', 'className', 'style'];
     const omitted = [...new Set(own)].map(key => `'${key}'`).join(' | ');
     const used = ['CSSProperties', 'ReactNode', attrType, ...new Set(template.events.map(e => EVENT_TYPE[e.name]))];
     return [
@@ -176,6 +207,7 @@ export const glyphJsx = (template, slot) => `<span className="${template.id}-${s
 
 function componentSource(template, name, problems, partWidthOf = part => part.arc.width, tagMap = null) {
     const params = Object.entries(template.props).filter(([, def]) => def.derived === undefined).map(([prop, def]) => (def.source === 'variable' ? prop : `${prop} = ${JSON.stringify(def.default)}`));
+    for (const prop of imageFitPropsOf(template)) params.push(`${prop}Fit`);
     for (const event of template.events) {
         if (!DOM_EVENT[event.name]) problems.push({ event: event.name, reason: 'no-dom-event' });
         params.push(event.name);
@@ -251,11 +283,11 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             const isControl = controlOf(template)?.slot === slot.id;
             const control = controlOf(template);
             // An overflow text derives its text from its count and limit, so it needs no prop of its own.
-            if (!template.props[slot.id] && !isControl && !slot.text?.overflow) problems.push({ slot: slot.id, reason: 'no-prop' });
+            if (!template.props[slot.id] && !isControl && !slot.text?.overflow && typeof slot.defaultText !== 'string') problems.push({ slot: slot.id, reason: 'no-prop' });
             // A control slot is an input holding the value prop (and the placeholder beside it), not a span.
             const label = control && control.slot === slot.id
                 ? `<${control.multiline ? (control.multiline.when ? 'Control' : 'textarea') : 'input'} className="${template.id}-${slot.id}" ${control.number ? `defaultValue={${control.value}} key={${control.value}} data-committed={${control.value}}` : `value={${control.value}}`}${control.placeholder ? ` placeholder={${placeholderCondition(template, control)}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''}${control.maskUnless ? ` type={${control.maskWhen ? `(${shownJsx(control.maskWhen)}) && !${control.maskUnless}` : `!${control.maskUnless}`} ? "password" : undefined}` : ''}${control.multiline ? ` rows={${control.multiline.when ? `(${shownJsx(control.multiline.when)}) ? ${control.multiline.rows} : undefined` : control.multiline.rows}}` : ''}${control.number ? ` min={${control.number.min} ?? undefined} max={${control.number.max} ?? undefined} step={${control.number.step}} onBlur={(e) => { const next = commitNumber(e.target.value, e.target.dataset.committed ?? "", { min: ${control.number.min} ?? null, max: ${control.number.max} ?? null, precision: ${control.number.precision} ?? null }); e.target.value = next; e.target.dataset.committed = next; onCommit?.(next); }}` : ''} disabled={${disabledProp}} />`
-                : `<span className="${template.id}-${slot.id}">${slot.text?.overflow ? overflowJsx(slot.text.overflow) : `{${slot.id}}`}</span>`;
+                : `<span className="${template.id}-${slot.id}">${slot.text?.overflow ? overflowJsx(slot.text.overflow) : typeof slot.defaultText === 'string' ? `{${JSON.stringify(slot.defaultText)}}` : `{${slot.id}}`}</span>`;
             // The control is always written: the input holds the value and the placeholder whether or not the canvas has a layer for them.
             out.push(isControl ? label : slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
             if (!sidedAfterPlaced && !slot.parent) { out.push(...sidedAfter); sidedAfterPlaced = true; }
@@ -292,13 +324,18 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         const inner = [];
         for (const child of template.anatomy.filter(c => c.parent === slot.id)) emitSlot(child, inner);
         for (const part of parented(slot.id)) inner.push(framePartJsx(part));
+        // A content slot named by this container is drawn in it, after its anatomy layers (as Play draws it).
+        for (const { prop, slot: content } of slotPropsOf(template).filter(p => p.slot.parent === slot.id)) inner.push(contentSlotJsx(template, prop, content));
         // A swap icon with no canvas layer is drawn from its component prop, like a managed slot's icon, gated by its show and its swap state.
         for (const def of swapDefsOf(template, slot.id)) {
             if (def.slot === undefined || template.anatomy.some(s => s.id === def.slot && s.managed)) continue;
             const conds = [...(typeof def.show === 'string' ? [def.show] : def.show === undefined ? [] : [shownJsx(def.show)]), swapCondJsx(def.swap)];
             inner.push(`{${conds.join(' && ')} && <span className="${template.id}-${def.slot}">{${def.component}}</span>}`);
         }
-        const indented = inner.map(line => line.split('\n').map(l => '  ' + l).join('\n')).join('\n');
+        // A container that is a content slot holds what its prop is given; with nothing given it draws its starting layers.
+        const boxSlot = slotPropsOf(template).find(p => boxesOf(p.slot).includes(slot.id));
+        const body = boxSlot ? [`{${boxSlot.prop} ?? (<>`, ...inner, '</>)}'] : inner;
+        const indented = body.map(line => line.split('\n').map(l => '  ' + l).join('\n')).join('\n');
         const div = `<div className="${template.id}-${slot.id}"${pressHandlerJsx(template, slot)}>\n${indented}\n</div>`;
         out.push(slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${div}}` : div);
     }
@@ -308,14 +345,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     }
     if (!framePlaced) children.push(...rooted.filter(part => !part.side).map(part => framePartJsx(part)));
     // A content slot is an element of the component, after the other layers in schema order: drawn when its prop holds something, always with showEmpty.
-    for (const { prop, slot } of slotPropsOf(template)) {
-        // A repeating slot draws its children `<id>Copies` times (0 while they are empty), in one slot element; without copies it is empty like any other.
-        const element = slot.repeat ? `<div className="${template.id}-${slot.id}">{Array.from({ length: ${slot.id}Copies }, (_, i) => <Fragment key={i}>{${prop}}</Fragment>)}</div>` : `<div className="${template.id}-${slot.id}">{${prop}}</div>`;
-        const guard = slot.repeat ? `${slot.id}Copies > 0` : `filled(${prop})`;
-        // A slot the props show while they hold is drawn exactly while its condition holds, empty or not (the layer the canvas holds).
-        if (slot.shownWhen !== undefined) children.push(`{(${shownJsx(slot.shownWhen)}) && ${element}}`);
-        else children.push(slot.showEmpty === true ? element : `{${guard} && ${element}}`);
-    }
+    for (const { prop, slot } of slotPropsOf(template).filter(p => p.slot.parent === undefined && !boxesOf(p.slot).length)) children.push(contentSlotJsx(template, prop, slot));
     const { attrs: tagAttrs, blockClickProps } = template.element;
     // An element whose tag follows a mode (a Title's level) is a local `Tag` read from the mode's id; any other has its fixed tag.
     const tag = tagMap ? 'Tag' : template.element.tag;
@@ -339,12 +369,15 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         ...(template.toggle ? [`aria-checked={${template.toggle.clears ? `${template.toggle.clears} ? "mixed" : ` : ''}${template.toggle.prop} ? "true" : "false"}`] : []),
         ...fieldWritersOf(template).filter(w => w.field === 'layout').map(w => `data-${w.prop}={${w.prop}}`),
         ...fieldWritersOf(template).filter(w => w.field === 'imageFill').map(w => `data-${w.prop}={${w.prop} ? "" : undefined}`),
+        ...imageFitPropsOf(template).map(prop => `data-${prop}-fit={${prop}Fit}`),
         // The text styles are data attributes the stylesheet draws: italic, each decoration line, and a line clamp while it has a count.
         ...fieldWritersOf(template).filter(w => w.field === 'fontStyle' || w.flag !== undefined).map(w => `data-${kebabCase(w.prop)}={${w.prop} || undefined}`),
         ...fieldWritersOf(template).filter(w => w.field === 'textTruncate').map(w => `data-${kebabCase(w.prop)}={${w.prop} || undefined}`),
         ...(ml ? [`data-${kebabCase(ml.resize)}={${ml.resize}}`, `data-${kebabCase(ml.autoSize)}={${ml.autoSize} || undefined}`] : []),
         // A prop that aligns the row's content to the end says which end as a data attribute (a Switch's handle).
         ...fieldWritersOf(template).filter(w => w.field === 'primaryAlign').map(w => `data-${w.prop}-align={${alignExprOf(w)}}`),
+        // A prop that aligns the row's content on the cross axis (top or centre) says which as a data attribute (an Alert with a description).
+        ...fieldWritersOf(template).filter(w => w.field === 'counterAlign').map(w => `data-${w.prop}-cross={${alignExprOf(w)}}`),
         // Only some elements have a `disabled` attribute; any other root says it with aria-disabled (and the schema's state pseudo selects on it).
         ...(ctl || !disabledProp ? [] : [DISABLEABLE.has(tag) ? `disabled={${disabledProp}}` : `aria-disabled={${disabledProp} || undefined}`]),
         // A root whose click a prop blocks says so, so the loading rule (see blockedRules) matches in Play and in the export alike.
@@ -446,6 +479,16 @@ function shownJsx(cond) {
 function rootBorderWidthOf(master) {
     return typeof master.strokeWidth === 'number' && master.strokeWidth > 0 ? master.strokeWidth : 0;
 }
+/**
+ * Whether a root with no padding of its own draws its solid, uniform stroke as an inset outline: a border would add its width to the box, which the
+ * canvas does not (its stroke takes no room), and the padding cannot compensate for a root that has none. Roots with padding keep the border.
+ * @param {any} template
+ * @param {any} master
+ */
+export function insetOutlineOf(template, master) {
+    const root = template.display.root ?? {};
+    return 'stroke' in root && !('shadow' in root) && !('paddingX' in root) && !('paddingY' in root) && lineStyleOf(master) === 'solid' && master.strokeSides === undefined && (rootBorderWidthOf(master) > 0 || stateSwaps(template, 'root', 'strokeWidth'));
+}
 function displayRules(template, master, childrenOf, geometry) {
     const tokens = Object.values(template.tokens).flat();
     const entry = labelEntryOf(master.id, childrenOf, master);
@@ -457,7 +500,9 @@ function displayRules(template, master, childrenOf, geometry) {
     // A managed text slot has no layer on the master: it lays out as the layer an instance gets (it fills when its slot says so, else it hugs).
     const managedEntry = key => {
         const slot = template.anatomy.find(s => s.id === key && s.managed && s.kind !== 'icon' && s.kind !== 'glyph');
-        return slot ? { node: managedTextLayer(template, key, resolveProps(template, {}), { id: key, parentId: master.id }), parent: master } : undefined;
+        // A text in a container is laid out in that container (a Card's title in its row), not in the root.
+        const holder = slot?.parent === undefined ? master : under.find(({ node: c }) => c.behavior?.group === slot.parent)?.node ?? managedBox(slot.parent) ?? master;
+        return slot ? { node: managedTextLayer(template, key, resolveProps(template, {}), { id: key, parentId: master.id }), parent: holder } : undefined;
     };
     // A managed container has no layer on the master unless its condition holds at the sample props: it is laid out as the layer an instance gets.
     const managedBox = key => (template.anatomy.some(s => s.id === key && s.managed && s.kind === 'frame') ? managedContainerLayer(template, key, resolveProps(template, {}), { id: key, parentId: master.id }) : undefined);
@@ -476,6 +521,8 @@ function displayRules(template, master, childrenOf, geometry) {
         // A container pinned to the right edge is out of the flow: it starts on the box's top border line (the padding box starts inside the border, so top is minus the border)
         // and its height is the box's height token, so it is as tall as the box at every Size mode.
         if (template.anatomy.find(s => s.id === key)?.edge === 'right') decls.push('  position: absolute;\n', `  top: calc(-1 * var(${cssVarOf(template.id, template.display.root.strokeWidth)}));\n`, '  right: 0;\n');
+        // A template that clips its content (a Card's cover follows the rounded top) clips the root's children to its corners, as the canvas does.
+        if (key === 'root' && template.clipsContent) decls.push('  overflow: hidden;\n');
         if (key === 'root' && template.outline) {
             // The outline width includes the border: the ring starts back at the border's inner edge (an inside stroke),
             // so the visible ring is the width minus the border with no gap. A border as wide as the outline leaves no ring.
@@ -494,7 +541,12 @@ function displayRules(template, master, childrenOf, geometry) {
         // The root draws its own border, so the children sit inside the compensated padding.
         if (key === 'root' && 'stroke' in (template.display.root ?? {})) { const w = rootBorderWidthOf(master); const swapped = stateSwaps(template, 'root', 'strokeWidth');
         // A state that swaps the border width (the code span's border) makes it the token's value, read from its custom property, not the master's number.
-        decls.push(`  border-width: ${swapped ? `var(${cssVarOf(template.id, template.display.root.strokeWidth)})` : `${w}px`};\n`, `  border-style: ${w === 0 && !swapped ? 'none' : lineStyleOf(master)};\n`);
+        if (insetOutlineOf(template, master)) {
+            // The stroke is an outline drawn inside the box: no layout room, and the width and colour tokens still reach it through the custom properties.
+            const width = `var(${cssVarOf(template.id, template.display.root.strokeWidth)})`;
+            decls.push(`  border-width: 0px;\n`, `  border-style: none;\n`, `  outline: ${width} solid var(${cssVarOf(template.id, template.display.root.stroke)});\n`, `  outline-offset: calc(-1 * ${width});\n`);
+        }
+        else decls.push(`  border-width: ${swapped ? `var(${cssVarOf(template.id, template.display.root.strokeWidth)})` : `${w}px`};\n`, `  border-style: ${w === 0 && !swapped ? 'none' : lineStyleOf(master)};\n`);
         decls.push(`  background-clip: border-box;\n`); }
         if (key === 'root' && (template.interaction?.wave || template.anatomy.some(s => s.corner) || 'stroke' in (template.display.root ?? {}))) decls.push('  position: relative;\n');
         // A box of the anatomy (a group frame) draws its own border the same way, from its own layer: its size includes the border.
@@ -532,6 +584,13 @@ function displayRules(template, master, childrenOf, geometry) {
             if (!css || !tokens.includes(source)) continue;
             if (perMember) { for (const name of css) decls.push(`  ${name}: var(${cssVarOf(template.id, source)}-${name});\n`); continue; }
             for (const name of [css].flat()) { if (key === 'root' && (prop === 'paddingX' || prop === 'paddingY' || prop === 'paddingStart' || prop === 'paddingEnd')) { const bw = rootBorderWidthOf(master); if (stateSwaps(template, 'root', 'strokeWidth')) { decls.push(`  ${name}: max(0px, calc(var(${cssVarOf(template.id, source)}) - var(${cssVarOf(template.id, template.display.root.strokeWidth)})));\n`); continue; } if (bw > 0) { decls.push(`  ${name}: max(0px, calc(var(${cssVarOf(template.id, source)}) - ${bw}px));\n`); continue; } } decls.push(`  ${name}: var(${cssVarOf(template.id, source)});\n`); }
+        }
+        // A container with a border on one side: the canvas stroke takes no room, so its padding on that side already includes the border; Play's border adds to the box, so it comes off the padding.
+        const sided = key === 'root' ? undefined : template.anatomy.find(s => s.id === key)?.strokeSides;
+        if (sided && props.strokeWidth && tokens.includes(props.strokeWidth)) {
+            const [prop, side] = { top: ['paddingY', 'block-start'], bottom: ['paddingY', 'block-end'], left: ['paddingX', 'inline-start'], right: ['paddingX', 'inline-end'] }[sided];
+            if (props[prop] && tokens.includes(props[prop])) decls.push(`  padding-${side}: max(0px, calc(var(${cssVarOf(template.id, props[prop])}) - var(${cssVarOf(template.id, props.strokeWidth)})));
+`);
         }
         if (kind === 'line') decls.push(...lineDecls(template, key, props, tokens));
         if (!decls.length) return '';
@@ -654,6 +713,20 @@ function waveRules(template) {
  * @param {import('../templates/schema.js').TemplateSchema} template
  * @returns {string[]}
  */
+/**
+ * The cursor a root takes while a boolean prop holds (`cursor: [{ when, value }]`, Card's Hoverable: a pointer). The prop is an attribute state of the root.
+ * @param {any} template
+ */
+function cursorRules(template) {
+    return (template.cursor ?? []).flatMap(({ when, value }) => {
+        const attr = stateAttributesOf(template).find(a => a.prop === when)?.attr;
+        return attr ? [`.${template.id}[${attr}] {
+  cursor: ${value};
+}
+`] : [];
+    });
+}
+
 function motionRules(template) {
     const motion = template.motion;
     if (!motion) return [];
@@ -798,7 +871,7 @@ function multilineRules(template) {
  * @param {any} template
  * @returns {string[]}
  */
-function fieldRules(template) {
+function fieldRules(template, master, childrenOf) {
     // The decoration lines of one layer compose: one rule per line on its own, then one for every pair (more specific, so it wins) with the value the node holds.
     const flagWriters = fieldWritersOf(template).filter(w => w.flag !== undefined);
     return fieldWritersOf(template).flatMap(({ prop, key, field, values, flag }) => {
@@ -827,16 +900,24 @@ function fieldRules(template) {
             return template.props[prop].options.flatMap(option => [direction(option), ...fills.map(id => fill(option, id))]);
         }
         // A prop that aligns the content to the end: one rule per side, selected on the data attribute the root carries.
-        if (field === 'primaryAlign') return alignValuesOf({ values }).map(side => `.${template.id}[data-${prop}-align="${side}"]${target} {\n  justify-content: ${justifyOf(side)};\n}\n`);
-        // A picture covers the box over a clear background (the colour under it does not show through a transparent picture).
-        if (field === 'imageFill') return [`.${template.id}[data-${prop}] {
-  background-image: var(--${template.id}-${prop});
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-color: transparent;
-}
-`];
+        if (field === 'counterAlign') return alignValuesOf({ values, field }).map(side => `.${template.id}[data-${prop}-cross="${side}"]${target} {\n  align-items: ${side === 'center' ? 'center' : `flex-${side}`};\n}\n`);
+        if (field === 'primaryAlign') return alignValuesOf({ values, field }).map(side => `.${template.id}[data-${prop}-align="${side}"]${target} {\n  justify-content: ${justifyOf(side)};\n}\n`);
+        // A picture is drawn on the layer's own box, which clips it, over the box's own flat colour (the fallback until the picture loads, or if it fails). Its fit comes from the
+        // fill the main component's layer holds (the same props the canvas reads).
+        if (field === 'imageFill') {
+            const layer = key === 'root' ? master : childrenOf(master.id).find(c => c.behavior?.group === key || c.behavior?.slot === key);
+            const layout = imageFillLayout(layer?.fills?.find(f => f.type === 'image') ?? { mode: 'fill' }) ?? { position: 'center', size: 'cover', repeat: 'no-repeat' };
+            const lines = [`background-image: var(--${template.id}-${prop});`];
+            if (layout.size) lines.push(`background-size: ${layout.size};`);
+            if (layout.position) lines.push(`background-position: ${layout.position};`);
+            lines.push(`background-repeat: ${layout.repeat};`);
+            // An instance's own fit overrides the main component's: one rule per fit, selected on the attribute the instance says.
+            const fits = ['fill', 'fit', 'tile'].map(mode => {
+                const l = imageFillLayout({ mode });
+                return `.${template.id}[data-${prop}-fit="${mode}"]${target} {\n  background-size: ${l.size ?? 'auto'};\n  background-position: ${l.position ?? '0 0'};\n  background-repeat: ${l.repeat};\n}\n`;
+            });
+            return [`.${template.id}[data-${prop}]${target} {\n${lines.map(l => `  ${l}\n`).join('')}}\n`, ...fits];
+        }
         const own = key === 'root' ? `.${template.id}` : `.${template.id}-${key}`;
         return [`${own} {
   ${field === 'gap' ? `gap: var(--${template.id}-${prop})` : `width: var(--${template.id}-${prop}, auto)`};
@@ -866,8 +947,13 @@ function groupRules(template, master, childrenOf) {
         const sizing = flowSizing(node, holder);
         if (node.vars?.w !== undefined) delete sizing.width;
         if (node.vars?.h !== undefined) delete sizing.height;
+        // Padding and gap a display token maps are the token's: the layer's own fallback numbers would be written after it and win.
+        const layout = flexOf(node, 0);
+        const mapped = template.display[slot.id] ?? {};
+        if (mapped.paddingX !== undefined || mapped.paddingY !== undefined) delete layout.padding;
+        if (mapped.gap !== undefined) { delete layout.columnGap; delete layout.rowGap; }
         return `.${template.id}-${slot.id} {
-${cssDecls({ ...flexOf(node, 0), ...sizing }).join('')}}
+${cssDecls({ ...layout, ...sizing }).join('')}}
 `;
     });
 }
@@ -910,12 +996,20 @@ ${on}:has(:disabled) ${glyph} {
  * @returns {string[]}
  */
 function slotRules(template, master, childrenOf) {
-    return (template.slots ?? []).map(slot => {
+    return (template.slots ?? []).filter(slot => !boxesOf(slot).length).map(slot => {
         // A slot the master holds no layer for (a conditional one, off at the sample props) is styled as the layer an instance makes of it (no gap, no padding, hugging).
         const node = childrenOf(master.id).find(c => c.propBind?.slot === slot.id) ?? { type: 'frame', layout: slot.layout, w: 0, h: 0, gap: 0, padding: 0, layoutSizingH: slot.fill === true ? 'fill' : 'hug', layoutSizingV: 'hug' };
+        // An empty hug slot keeps the canvas's floor (emptySlotFloor): `:empty` is the canvas's childCount 0.
+        const floorOf = dim => emptySlotFloor({ propBind: { slot: slot.id }, sourceId: slot.id }, dim, (dim === 'w' ? node.layoutSizingH : node.layoutSizingV) ?? 'hug', 0);
+        // The canvas gives an empty slot its floor height only under a vertical holder (its main axis): a slot in a row takes none.
+        const floorH = (slotHolderLayout(template, slot) === 'vertical') ? floorOf('h') : null;
+        const floor = floorH === null ? '' : `.${template.id}-${slot.id}:empty {
+  min-height: ${floorH}px;
+}
+`;
         return `.${template.id}-${slot.id} {
 ${cssDecls({ ...flexOf(node, 0), ...flowSizing(node, master) }).join('')}}
-`;
+${floor}`;
     });
 }
 
@@ -957,7 +1051,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
             const persistent = template.persistentStates[state];
             const changed = persistent
                 ? previewOf(template, binding, combo, variables, { ...defaults, [persistent.prop]: true }, 'default').vars
-                : previewOf(template, binding, combo, variables, defaults, state).vars;
+                : previewOf(template, binding, combo, variables, template.previewRequires?.[state] ? { ...defaults, [template.previewRequires[state]]: true } : defaults, state).vars;
             const delta = Object.fromEntries(Object.entries(changed).filter(([name, value]) => base.vars[name] !== value));
             // The interaction switch reads the active variable, so status and mode colours fall out of the mode
             // blocks; only the rest colour is resolved. Schema-driven: any template declaring the token pair.
@@ -979,7 +1073,10 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
             if (!Object.keys(delta).length) continue;
             // A preview state does not apply while a state the root says as an attribute replaces the tokens it changes (the checked look wins over hover).
             const replaced = persistent ? '' : stateAttributesOf(template).filter(a => Object.keys(template.persistentStates[a.state].tokens).some(base => Object.hasOwn(template.previewStates[state] ?? {}, base))).map(a => `:not(${template.statePseudo[a.state]})`).join('');
-            const sels = !wrapperTarget ? [`${selector}${pseudo}${replaced}${guard}`]
+            // A preview state gated by a boolean prop (Card's hover needs Hoverable) matches only while the root says the prop's attribute.
+            const gateAttr = persistent ? undefined : stateAttributesOf(template).find(a => a.prop === template.previewRequires?.[state])?.attr;
+            const gate = gateAttr ? `[${gateAttr}]` : '';
+            const sels = !wrapperTarget ? [`${selector}${gate}${pseudo}${replaced}${guard}`]
                 : state === disabledState ? [`${selector}:has(:disabled)`]
                 : pseudo === ':focus' || pseudo === ':focus-visible' ? [`${selector}:has(:focus-visible)${guard}`, `${selector}:focus-within${guard}`]
                 : [`${selector}${pseudo}${guard}`];
@@ -991,7 +1088,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     blocks.push(...iconHoverRules(template), ...blockedRules(template), ...swapRules(template));
     if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
-    blocks.push(...expandRules(template), ...pressRules(template), ...glyphHoverRules(template), ...fieldRules(template), ...multilineRules(template), ...revealRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
+    blocks.push(...expandRules(template), ...pressRules(template), ...glyphHoverRules(template), ...fieldRules(template, master, childrenOf), ...cursorRules(template), ...multilineRules(template), ...revealRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
     if (template.interaction || template.motion) blocks.push(reducedMotion(template));
     return blocks.join('\n');
 }

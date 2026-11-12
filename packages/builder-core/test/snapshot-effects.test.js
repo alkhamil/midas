@@ -42,9 +42,9 @@ test('the real mapping emits the effect items the committed snapshot holds, in t
     const plan = buildBasePlan(parseTokenJson(MINI), { ...MINI_MAP, Effects: ANT_MAP.Effects }, {});
     const built = plan.items.filter(i => i.type === 'effect');
     const committed = BASE_SNAPSHOT.items.filter(i => i.type === 'effect');
-    assert.equal(committed.length, 6);
+    assert.equal(committed.length, 10);
     assert.deepEqual(built, committed);
-    assert.deepEqual(BASE_SNAPSHOT.items.slice(-6), committed, 'the effects close the snapshot, as the builder emits them');
+    assert.deepEqual(BASE_SNAPSHOT.items.slice(-10), committed, 'the effects close the snapshot, as the builder emits them');
 });
 
 test('the snapshot report names exactly the variables the snapshot holds, in order (a rebuild writes it the same way)', () => {

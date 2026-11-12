@@ -13,10 +13,10 @@ const rowsOf = props => instancePanel(instance(props), master, model.collections
 const names = rows => rows.filter(r => r.kind !== 'variable').map(r => r.prop);
 const row = (rows, prop) => rows.find(r => r.prop === prop);
 
-test('both sides off: the Slots list only the two switches, the clear and the count belong to the value', () => {
+test('both sides off: no slot row (the switches are Props; the clear and the count belong to the value)', () => {
     const rows = rowsOf({});
     const slotRows = rows.filter(r => r.slot).map(r => r.prop);
-    assert.deepEqual(slotRows, ['allowClear', 'hasPrefix', 'hasSuffix']);
+    assert.deepEqual(slotRows, []);
     for (const gone of ['prefixKind', 'prefixText', 'prefixIcon', 'suffixKind', 'suffixText', 'suffixIcon', 'hasIcon', 'iconPlacement', 'icon', 'iconEnd']) assert.equal(row(rows, gone), undefined, `${gone} is not listed`);
 });
 
@@ -26,7 +26,8 @@ test('a prefix with the Text kind lists its kind (segmented, Text and Icon) and 
     const kind = row(rows, 'prefixKind');
     assert.deepEqual([kind.type, kind.control, kind.value, kind.options.map(o => o.id)], ['enum', 'segmented', 'text', ['text', 'icon']]);
     assert.equal(row(rows, 'prefixText').value, 'Rp');
-    for (const prop of ['hasPrefix', 'prefixKind', 'prefixText']) assert.equal(row(rows, prop).slot, true, `${prop} is a slot row`);
+    assert.equal(row(rows, 'prefixText').slot, true, 'the prefix text is a slot row');
+    for (const prop of ['hasPrefix', 'prefixKind']) assert.equal(row(rows, prop).slot, false, `${prop} is a Prop, not a slot row`);
 });
 
 test('a prefix with the Icon kind lists an icon swap row labelled Prefix icon, and no text field', () => {

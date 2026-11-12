@@ -56,11 +56,11 @@ test('a single solid fill is its colour, with its opacity as an alpha byte', () 
     assert.equal(cssBackgroundOf([fill('#0058CA', { opacity: 0.5 })]).background, '#0058CA80');
 });
 
-test('radial and angular fills map to their CSS gradients', () => {
+test('radial and angular fills map to the gradients the canvas paints: an SVG ellipse in the unit space of the layer, a conic from the 3 o clock axis', () => {
     const radial = { type: 'radial', color: '#000000', color2: '#ffffff', opacity: 1, visible: true };
     const angular = { type: 'angular', color: '#000000', color2: '#ffffff', opacity: 1, visible: true };
-    assert.equal(cssBackgroundOf([radial]).background, 'radial-gradient(circle, #000000, #ffffff)');
-    assert.equal(cssBackgroundOf([angular]).background, 'conic-gradient(from 0deg, #000000, #ffffff)');
+    assert.ok(decodeURIComponent(cssBackgroundOf([radial]).background.slice(cssBackgroundOf([radial]).background.indexOf(',') + 1, cssBackgroundOf([radial]).background.indexOf('")'))).includes('<radialGradient id="g" cx="0" cy="0" r="1" gradientTransform="matrix(0.5 0 0 0.5 0.5 0.5)"'));
+    assert.equal(cssBackgroundOf([angular]).background, 'conic-gradient(from 90deg at 50% 50%, #000000 0%, #ffffff 100%)');
 });
 
 test('no fills paint nothing', () => {

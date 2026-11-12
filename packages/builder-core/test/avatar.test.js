@@ -89,14 +89,14 @@ coloured.frame.fills = [{ type: 'solid', color: '#808080', opacity: 1, visible: 
 const imageFillsOf = (props) => instanceFor(coloured, props)[0].fills.filter(f => f.type === 'image');
 const solidOf = (props) => instanceFor(coloured, props)[0].fills.find(f => f.type === 'solid');
 
-test('content image: no text or icon layer, the root holds the asset as an image fill and hides its colour fill', () => {
+test('content image: no text or icon layer, the root holds the asset as an image fill after its colour fill, which no fill hides', () => {
     assert.deepEqual(avatar.props.content.options, ['text', 'icon', 'image']);
     assert.equal(avatar.props.src.type, 'image');
     assert.deepEqual(layers({ content: 'image', src: 'asset-1', label: 'AB' }), []);
     const fills = imageFillsOf({ content: 'image', src: 'asset-1' });
     assert.equal(fills.length, 1);
     assert.deepEqual([fills[0].image, fills[0].mode, fills[0].visible], ['asset-1', 'fill', true]);
-    assert.equal(solidOf({ content: 'image', src: 'asset-1' }).visible, false, 'the colour fill does not show under the image');
+    assert.notEqual(solidOf({ content: 'image', src: 'asset-1' }).visible, false, 'no fill is hidden: the colour fill is the fallback under the picture');
 });
 
 test('no image fill without a src or when the content is not image; the colour fill shows again', () => {
@@ -126,12 +126,13 @@ test('Play draws the image through the root: a data attribute and the asset as i
     assert.equal(plain.style.backgroundImage, undefined);
 });
 
-test('the export takes src as a URL string, writes it as the root custom property and the stylesheet draws it over a clear background', () => {
+test('the export takes src as a URL string, writes it as the root custom property and the stylesheet draws it over the colour of the box', () => {
     const out = generateComponent(avatar, model.binding, model.variables, 'Avatar', model.frame, id => model.created.filter(n => n.parentId === id));
     assert.deepEqual(out.problems, []);
     assert.match(out.files['Avatar.jsx'], /'--antd-avatar-src': src \? `url\("\$\{src\}"\)` : undefined/);
     assert.match(out.files['Avatar.jsx'], /data-src=\{src \? "" : undefined\}/);
-    assert.match(out.files['Avatar.css'], /\.antd-avatar\[data-src\] \{[^}]*background-image: var\(--antd-avatar-src\);[^}]*background-size: cover;[^}]*background-position: center;[^}]*background-color: transparent;/);
+    assert.match(out.files['Avatar.css'], /\.antd-avatar\[data-src\] \{[^}]*background-image: var\(--antd-avatar-src\);[^}]*background-size: cover;[^}]*background-position: center;/);
+    assert.doesNotMatch(out.files['Avatar.css'], /\.antd-avatar\[data-src\] \{[^}]*background-color: transparent/, 'the colour of the box stays under the picture');
 });
 
 test('the Behavior panel offers an image row for src while the content is image, with the chosen asset', () => {

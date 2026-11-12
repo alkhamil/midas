@@ -2,7 +2,7 @@
 // tab's props, the canvas and Play measurements, and the comparison of the two. Used by strict-parity and export-parity.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { ARTIFACTS, ROOT, edgeCheck, pixelDiff, shotNode } from './harness.mjs';
+import { ARTIFACTS, ROOT, edgeCheck, integerClip, pixelDiff, shotNode } from './harness.mjs';
 
 export const FIXTURE = resolve(ROOT, 'testing.midas');
 // The pair crops: the root's box plus this padding, the same in both shots. Both are taken at zoom 1 (one document unit per CSS pixel).
@@ -100,7 +100,7 @@ export const canvasTree = (page, rootId) => page.evaluate(rootId => {
  * Opens Play on the instance (selected), measures its elements relative to its root, saves a screenshot of the root's Play element to
  * `name`, and closes Play. Animations are read at rest.
  */
-export async function playTree(page, rootId, name) {
+export async function playTree(page, rootId, name, clipSize = null) {
     await page.evaluate(id => window.midas.select([id]), rootId);
     await page.locator('#play').click();
     await page.waitForSelector('.play-overlay');
@@ -140,7 +140,7 @@ export async function playTree(page, rootId, name) {
         // A component far down the Design System page (the Divider is made last) is scrolled to before its shot.
         await page.locator(`.play-overlay [data-node-id="${rootId}"]`).scrollIntoViewIfNeeded();
         const r = await page.locator(`.play-overlay [data-node-id="${rootId}"]`).boundingBox();
-        await page.screenshot({ path: resolve(ARTIFACTS, `${name}-play.png`), clip: { x: r.x - PAD, y: r.y - PAD, width: Math.round(r.width + PAD * 2), height: Math.round(r.height + PAD * 2) } });
+        await page.screenshot({ path: resolve(ARTIFACTS, `${name}-play.png`), clip: { ...integerClip({ x: r.x, y: r.y, w: r.width, h: r.height }, PAD), ...(clipSize ? { width: clipSize.width, height: clipSize.height } : {}) } });
     }
     await page.locator('[aria-label="Close (Esc)"]').click();
     await page.waitForSelector('.play-overlay', { state: 'detached' });
@@ -171,16 +171,41 @@ export function compare(canvas, play) {
  * layer, the outline on each side, the root width and the pixel share. Returns the measurements and the gate failures (empty when the
  * pair passes); the pair images are written under the pair name.
  */
+/**
+ * The canvas-shot rects (device px) of the empty content slots: the canvas draws each as an editor placeholder, which Play does not draw. The rects
+ * are for the pixel diff only; the geometry rows still compare each slot's box. Two device px of margin cover a fractional clip origin.
+ */
+async function placeholderRects(page, rootId, pad) {
+    return page.evaluate(([rootId, pad]) => {
+        const dpr = window.devicePixelRatio || 1;
+        const root = window.midas.doc.world(rootId).box;
+        const out = [];
+        const walk = id => {
+            for (const c of window.midas.doc.children(id)) {
+                if (c.propBind?.slot && window.midas.doc.children(c.id).length === 0) {
+                    const b = window.midas.doc.world(c.id).box;
+                    out.push({ x: Math.floor((pad + b.x - root.x) * dpr) - 2, y: Math.floor((pad + b.y - root.y) * dpr) - 2, w: Math.ceil(b.w * dpr) + 4, h: Math.ceil(b.h * dpr) + 4 });
+                }
+                walk(c.id);
+            }
+        };
+        walk(rootId);
+        return out;
+    }, [rootId, pad]);
+}
+
 export async function measurePair(page, browser, id, label, pair, { outline = true } = {}) {
     await page.evaluate(() => window.midas.select([]));
     await page.mouse.move(2, 2);
     await page.waitForTimeout(150);
-    await shotNode(page, id, pair + '-canvas', PAD, 1);
+    const canvasShot = await shotNode(page, id, pair + '-canvas', PAD, 1);
     const canvas = await canvasTree(page, id);
-    const play = await playTree(page, id, pair);
+    // The canvas sets the crop size: both shots are the same size, so a width that rounds across a whole pixel cannot differ between them.
+    const play = await playTree(page, id, pair, { width: canvasShot.clip.width, height: canvasShot.clip.height });
     if (!play) return { failures: [label + ': Play draws no component'] };
     const { rows, unmapped } = compare(canvas, play);
-    const diff = await pixelDiff(browser, resolve(ARTIFACTS, pair + '-canvas.png'), resolve(ARTIFACTS, pair + '-play.png'), resolve(ARTIFACTS, pair + '-diff.png'), { inset: PAD * 2, tolerance: 24 });
+    const ignore = await placeholderRects(page, id, PAD);
+    const diff = await pixelDiff(browser, resolve(ARTIFACTS, pair + '-canvas.png'), resolve(ARTIFACTS, pair + '-play.png'), resolve(ARTIFACTS, pair + '-diff.png'), { inset: PAD * 2, tolerance: 24, ignore });
     const edges = outline ? await edgeCheck(browser, resolve(ARTIFACTS, pair + '-canvas.png'), resolve(ARTIFACTS, pair + '-play.png'), { inset: PAD * 2 }) : { found: true, delta: 0 };
     const failures = [];
     if (outline && !edges.found) failures.push(label + ': the outline is not found on both shots');

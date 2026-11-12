@@ -4,6 +4,7 @@ import { TEMPLATES, variableProps } from './registry.js';
 import { autoMatchCollection, createBinding, setVariableBinding } from './binding.js';
 import { iconNeedsOf } from './icon-slot.js';
 import { carryPlacementIcons, iconDefOn, iconDefsOf, slotsOfValue } from './anatomy.js';
+import { iconNameOf, slotListOf } from './slot-list.js';
 import { isPropVisible, resolveProps, setInstanceProp } from './instance-props.js';
 import { bindSizePatch } from './template-master.js';
 import { BEHAVIOR_DATA_VERSION } from './data.js';
@@ -121,7 +122,7 @@ function iconRowsOf(template, values, name) {
             continue;
         }
         if (def.placement !== undefined && !slotsOfValue(template, def.placement, values[def.placement]).includes(def.slot)) continue;
-        rows.push({ prop: name, kind: 'icon', slot: true, value: values[name] ?? null, label: def.label ?? 'Icon ' + def.slot.replace(/^icon/i, '').toLowerCase() });
+        rows.push({ prop: name, kind: 'icon', slot: true, value: values[name] ?? null, label: iconNameOf(def) });
     }
     return rows;
 }
@@ -131,12 +132,9 @@ export function instancePanel(instance, master, collections, modes) {
     if (!bound) return { templateId: null, rows: [] };
     const { binding, template } = bound;
     const values = resolveProps(template, instance?.behavior?.props ?? {});
-    // The props that drive the managed icon slots and the affix text slots (a text layer shown by its own condition): they are listed under Slots.
-    const affixes = new Set(template.anatomy.filter(s => s.kind === 'text' && s.optional).map(s => s.id));
-    const slotProps = [
-        ...iconDefsOf(template).flatMap(def => [typeof def.show === 'string' ? def.show : def.show?.prop, def.placement, def.component].filter(Boolean)),
-        ...Object.entries(template.props).filter(([, def]) => def.source === 'literal' && def.node && affixes.has(def.node.key)).map(([name]) => name),
-    ];
+    // The slots of the template, one list for this panel and the component's slot properties: a toggle that adds a part stays a Prop, the part is the slot.
+    const slots = slotListOf(template, values);
+    const slotEntryOf = name => slots.find(e => (e.kind === 'text' || e.kind === 'icon' || e.kind === 'image') && e.prop === name);
     const rows = [];
     for (const [name, def] of Object.entries(template.props)) {
         // A derived prop is read from the others, so there is nothing to set.
@@ -161,7 +159,8 @@ export function instancePanel(instance, master, collections, modes) {
         }
         // A picture is chosen from the file's uploads (an asset id), or removed.
         if (def.type === 'image') {
-            rows.push({ prop: name, kind: 'image', value: values[name] ?? null, label: def.label ?? 'Image' });
+            const imageSlot = slots.find(e => e.kind === 'image' && e.prop === name);
+            rows.push({ prop: name, kind: 'image', slot: imageSlot !== undefined, value: values[name] ?? null, label: imageSlot?.name ?? def.label ?? 'Image' });
             continue;
         }
         // A prop that needs collections is disabled while one of them is unbound on the master, naming the
@@ -170,16 +169,17 @@ export function instancePanel(instance, master, collections, modes) {
         rows.push({
             prop: name,
             kind: 'literal',
-            slot: slotProps.includes(name),
+            slot: slotEntryOf(name)?.kind === 'text',
+            ...(slotEntryOf(name)?.kind === 'text' ? { label: slotEntryOf(name).name } : {}),
             type: def.type,
             value: values[name],
-            options: def.type === 'enum' ? def.options.map(o => ({ id: o, name: o })) : [],
+            options: def.type === 'enum' ? def.options.map(o => ({ id: o, name: def.labels?.[o] ?? o })) : [],
             ...(def.type === 'enum' && def.control ? { control: def.control } : {}),
             disabled: hint !== '',
             hint,
         });
     }
-    return { templateId: template.id, rows };
+    return { templateId: template.id, rows, slots };
 }
 
 /**

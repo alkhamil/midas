@@ -32,7 +32,9 @@ export function activeStateOf(template, props, preview) {
         Object.assign(overrides, def.tokens);
     }
     if (names.length) return { state: names.join('+'), overrides: { ...markerOverrides, ...overrides } };
-    if (preview === 'default') return { state: 'default', overrides: markerOverrides };
+    // A preview state a boolean prop gates (Card's hover needs Hoverable) is Default while the prop is off.
+    const gate = template.previewRequires?.[preview];
+    if (preview === 'default' || (gate !== undefined && props[gate] !== true)) return { state: 'default', overrides: markerOverrides };
     const def = template.previewStates[preview];
     if (!def) throw new Error(`${template.id}: unknown preview state "${preview}"`);
     return { state: preview, overrides: { ...markerOverrides, ...def } };
@@ -77,14 +79,17 @@ export function previewOf(template, binding, modes, variables, props, preview = 
  * @param {{ collections?: any[], items?: any[] }} variables the document's variables
  * @param {Record<string, unknown>} props the instance's resolved literal props
  * @param {string} [preview] the preview-only state asked for, or 'default'
- * @returns {{ fill?: string, stroke?: string } | null}
+ * @returns {{ fill?: string, stroke?: string, shadow?: { x: number, y: number, blur: number, spread: number, color: string }[] } | null}
  */
 export function canvasColorsOf(template, binding, modes, variables, props, preview = 'default') {
     const { state, overrides } = activeStateOf(template, props, preview);
     if (!Object.hasOwn(template.previewStates, state)) return null;
     const { vars } = previewOf(template, binding, modes, variables, props, preview);
-    /** @type {{ fill?: string, stroke?: string }} */
+    /** @type {{ fill?: string, stroke?: string, shadow?: { x: number, y: number, blur: number, spread: number, color: string }[] }} */
     const out = {};
+    // A state that swaps the root's shadow token: the canvas draws those drop shadows around the node (an overlay; the document keeps its own effects).
+    const shadowToken = template.display?.root?.shadow;
+    if (shadowToken !== undefined && Object.hasOwn(overrides, shadowToken)) out.shadow = shadowLayersOf(vars[cssVarOf(template.id, shadowToken)]);
     for (const field of ['fill', 'stroke']) {
         const token = template.display?.root?.[field];
         if (token === undefined || !Object.hasOwn(overrides, token)) continue;
@@ -92,6 +97,19 @@ export function canvasColorsOf(template, binding, modes, variables, props, previ
         if (value !== undefined) out[field] = value;
     }
     return Object.keys(out).length ? out : null;
+}
+
+/**
+ * The drop shadows of a CSS box-shadow value as the export writes it (`x y blur spread #rrggbbaa`, comma separated); none gives an empty list.
+ * @param {string | undefined} css
+ * @returns {{ x: number, y: number, blur: number, spread: number, color: string }[]}
+ */
+export function shadowLayersOf(css) {
+    if (css === undefined || css === 'none') return [];
+    return css.split(/,\s*/).flatMap(part => {
+        const m = /^(-?[\d.]+)px\s+(-?[\d.]+)px\s+(-?[\d.]+)px\s+(-?[\d.]+)px\s+(#[0-9a-fA-F]{6,8})$/.exec(part.trim());
+        return m ? [{ x: Number(m[1]), y: Number(m[2]), blur: Number(m[3]), spread: Number(m[4]), color: m[5] }] : [];
+    });
 }
 
 /**

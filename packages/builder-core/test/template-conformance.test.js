@@ -23,6 +23,7 @@ const MODELS = {
     'antd-badge': generated('antd-badge'),
     'antd-tag': generated('antd-tag'),
     'antd-alert': generated('antd-alert'),
+    'antd-card': generated('antd-card'),
     'antd-divider': generated('antd-divider'),
     'antd-avatar': generated('antd-avatar'),
     'antd-text': generated('antd-text'),
@@ -59,15 +60,17 @@ const conditionalParts = template => {
     const resolved = resolveProps(template, template.sampleProps ?? {});
     return new Set(canvasPartsOf(template).filter(part => part.shownWhen !== undefined && !conditionHolds(part.shownWhen, resolved)).map(part => part.id));
 };
+/** Whether a container of the anatomy is conditional and off at the sample props: the master holds none of what it holds. */
+const hiddenHolder = (template, id) => id !== undefined && template.anatomy.some(a => a.id === id && a.shownWhen !== undefined && !conditionHolds(a.shownWhen, resolveProps(template, template.sampleProps ?? {})));
 /** The layers a master must have: every anatomy slot that is not a managed icon slot (an affix text included), and every unconditional canvas part. Managed slots and conditional parts are instance layers. */
 const requiredKeys = template => [
     ...template.anatomy.filter(slot => !slot.managed && slot.kind !== 'icon').map(slot => slot.id),
     ...canvasPartsOf(template).filter(part => !conditionalParts(template).has(part.id)).map(part => part.id),
     // A content slot the props show while they hold is an instance layer, like a conditional part: the master holds it only at the sample props.
-    ...(template.slots ?? []).filter(slot => slot.shownWhen === undefined).map(slot => slot.id),
+    ...(template.slots ?? []).filter(slot => slot.box === undefined && slot.shownWhen === undefined && !hiddenHolder(template, slot.parent)).map(slot => slot.id),
 ];
 /** Whether a layer is the one a key stands for: by name, as a canvas part, or as the content slot the key names. */
-const isLayerOf = (n, key) => n.name === key || n.behavior?.part === key || n.propBind?.slot === key;
+const isLayerOf = (n, key) => n.name === key || n.behavior?.part === key || n.behavior?.group === key || n.propBind?.slot === key;
 
 for (const template of TEMPLATES.values()) {
     test(`${template.id}: the generator gives every contract part a layer`, () => {

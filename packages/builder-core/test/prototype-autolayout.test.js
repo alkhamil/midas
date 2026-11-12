@@ -104,7 +104,7 @@ test('an outside stroke of a child takes room in a frame that includes strokes, 
 });
 
 test('a centred frame stroke is drawn whole: the frame clips with a margin of half the stroke, and has no CSS outline', () => {
-    const style = rootOf([frame('A', { stroke: '#c0392b', strokeWidth: 6, strokeAlign: 'center' })]).style;
+    const style = rootOf([frame('A', { stroke: '#c0392b', strokeWidth: 6, strokeAlign: 'center', clip: true })]).style;
     assert.equal(style.overflowX, 'clip');
     assert.equal(style.overflowClipMargin, '3px');
     assert.equal(style.outline, undefined);

@@ -82,6 +82,7 @@ const FUNCTIONS = [
     // What a commit runs after an edit: the component sync (changed({ commit: true }) -> syncComponents).
     'rolledBackForBehavior', 'syncComponents', 'detachOrphans', 'syncInstanceStructure', 'labelIdsOfComponents', 'ownedVarsOf', 'ownedFieldsOf', 'ownedTemplateOf', 'propControlled', 'iconLayerOf',
     'pageTree', 'instanceTree', 'constrainInstanceLayers', 'nodeMode', 'varValue', 'varItem', 'cpropById',
+    'seedSlot', 'writeBound', 'pictureTarget', 'chooseFillImage', 'noteNaturalSize', 'recordNaturalSizes',
 ];
 
 /**
@@ -93,7 +94,7 @@ export function studioReplay(extra = {}) {
     const toasts = [];
     const stubs = {
         ...core, doc, uid: (() => { let n = 0; return () => `u${++n}`; })(), toast: message => toasts.push(String(message)),
-        BEHAVIOR_TEMPLATES: core.TEMPLATES, DESIGN_SYSTEM_PAGE: core.DESIGN_SYSTEM_PAGE, lazyPages: new Map(),
+        BEHAVIOR_TEMPLATES: core.TEMPLATES, naturalSizeCache: new Map(), invalidate: () => {}, DESIGN_SYSTEM_PAGE: core.DESIGN_SYSTEM_PAGE, lazyPages: new Map(),
         paintOf: color => [{ type: 'solid', color, opacity: 1, visible: true }],
         node: (type, props) => ({ id: `n-${Math.random().toString(36).slice(2)}`, name: type, type, x: 0, y: 0, w: 100, h: 100, rotation: 0, visible: true, locked: false, fills: [], ...props }),
         hugText: () => {}, layoutText: () => ({ height: 0 }), ensureGlobalIndexes: () => {},

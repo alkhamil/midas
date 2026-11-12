@@ -17,6 +17,10 @@ const rect = (x0, y0, x1, y1) => ({ points: [{ x: x0, y: y0 }, { x: x1, y: y0 },
 /** The close cross of ICON_SET, scaled about the centre: the mark cut out of a type's disc. */
 const CROSS_POINTS = [[5.293, 6.707], [6.707, 5.293], [12, 10.586], [17.293, 5.293], [18.707, 6.707], [13.414, 12], [18.707, 17.293], [17.293, 18.707], [12, 13.414], [6.707, 18.707], [5.293, 17.293], [10.586, 12]];
 const scaledCross = k => ({ points: CROSS_POINTS.map(([x, y]) => ({ x: 12 + (x - 12) * k, y: 12 + (y - 12) * k })), closed: true });
+/** A small bezier disc (the dots of the ellipsis). */
+const dot = (cx, cy, r) => { const k = r * 0.5523; return { points: [at(cx, cy - r, cx - k, cy - r, cx + k, cy - r), at(cx + r, cy, cx + r, cy - k, cx + r, cy + k), at(cx, cy + r, cx + k, cy + r, cx - k, cy + r), at(cx - r, cy, cx - r, cy + k, cx - r, cy - k)], closed: true }; };
+/** A gear: eight teeth around a ring, the hole cut out (even-odd). */
+const GEAR_POINTS = Array.from({ length: 8 }, (_, i) => [[-9, 8.2], [-6, 11], [6, 11], [9, 8.2]].map(([deg, r]) => { const a = ((i * 45 + deg / 1.2) * Math.PI) / 180; return { x: Math.round((12 + Math.sin(a) * r) * 1000) / 1000, y: Math.round((12 - Math.cos(a) * r) * 1000) / 1000 }; })).flat();
 /** The Alert type glyphs: a disc with its mark cut out (even-odd), one per type (the marks: a check, an i, a bar with a dot, a cross). */
 const ALERT_ICONS = [
     { name: 'alert-success', role: 'alertSuccess', closed: true, fillRule: 'evenodd', points: discPoints(), contours: [{ points: [{ x: 6.5, y: 12.2 }, { x: 7.9, y: 10.8 }, { x: 10.4, y: 13.3 }, { x: 16.1, y: 7.6 }, { x: 17.5, y: 9 }, { x: 10.4, y: 16.1 }], closed: true }] },
@@ -39,6 +43,10 @@ export const ICON_SET = [
     { name: 'close', role: 'close', closed: true, points: [[5.293, 6.707], [6.707, 5.293], [12, 10.586], [17.293, 5.293], [18.707, 6.707], [13.414, 12], [18.707, 17.293], [17.293, 18.707], [12, 13.414], [6.707, 18.707], [5.293, 17.293], [10.586, 12]].map(([x, y]) => ({ x, y })) },
     // A copy glyph: a solid square in front of the corner of another (an outline in an L), the copy of a text (Paragraph's copyable).
     { name: 'copy', role: 'copy', closed: true, points: [{ x: 4, y: 4 }, { x: 15, y: 4 }, { x: 15, y: 6.5 }, { x: 6.5, y: 6.5 }, { x: 6.5, y: 15 }, { x: 4, y: 15 }], contours: [{ points: [{ x: 9, y: 9 }, { x: 20, y: 9 }, { x: 20, y: 20 }, { x: 9, y: 20 }], closed: true }] },
+    // The settings, edit and ellipsis glyphs: simple solid shapes in the 24 x 24 space, the icons of Card's action buttons.
+    { name: 'setting', role: 'setting', closed: true, fillRule: 'evenodd', points: GEAR_POINTS, contours: [dot(12, 12, 3.5)] },
+    { name: 'edit', role: 'edit', closed: true, points: [{ x: 3, y: 21 }, { x: 3, y: 16.2 }, { x: 15.6, y: 3.6 }, { x: 20.4, y: 8.4 }, { x: 7.8, y: 21 }] },
+    { name: 'ellipsis', role: 'ellipsis', closed: true, points: dot(5, 12, 2).points, contours: [dot(12, 12, 2), dot(19, 12, 2)] },
     // The solar eye glyph (CC BY 4.0), converted losslessly: every sub-path with its handles, the even-odd fill rule.
     {
         name: 'eye', role: 'eyeOn', closed: true, fillRule: 'evenodd',
@@ -199,6 +207,8 @@ export function iconRolesOf(templates) {
             const names = typeof def.role === 'object' ? Object.values(def.role.map) : [def.role ?? 'default'];
             for (const role of names) if (!roles.includes(role)) roles.push(role);
         }
+        // The icons a slot's seeded instances ask for (Card's action buttons).
+        for (const slot of template.slots ?? []) for (const seed of slot.seed ?? []) if (seed.icon !== undefined && !roles.includes(seed.icon)) roles.push(seed.icon);
     }
     return roles;
 }

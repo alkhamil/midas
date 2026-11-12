@@ -53,8 +53,8 @@ test('the slot property is the one Convert to slot writes, with the schema name,
     const f = frame();
     build(f);
     assert.deepEqual(f.cprops.map(p => p.id), ['header', 'body']);
-    assert.deepEqual(f.cprops[0], { ...newSlotProp('header', 'Header'), desc: 'The top row', min: 1, max: 2, showEmpty: true, fillCounter: true, accepts: ['button', 'input'], onlyAccepts: true });
-    assert.deepEqual(f.cprops[1], newSlotProp('body', 'Body'), 'a slot that declares only its layout has the bare property');
+    assert.deepEqual(f.cprops[0], { ...newSlotProp('header', 'Header'), desc: 'The top row', min: 1, max: 2, showEmpty: true, fillCounter: true, accepts: ['button', 'input'], onlyAccepts: true, holds: 'instance' });
+    assert.deepEqual(f.cprops[1], { ...newSlotProp('body', 'Body'), holds: 'content' }, 'a slot that declares only its layout has the bare property and what it holds');
 });
 
 test('applying again creates nothing and leaves the property as it is, however a designer edited it', () => {

@@ -53,14 +53,14 @@ test('the Text kind shows the text field, and the Icon kind shows the icon swap'
     assert.doesNotMatch(iconOff, /data-bp-prop="uncheckedChildren"/);
 });
 
-test('the state rows live under Slots, loading and disabled under Props', () => {
+test('the state switches and kinds are Props, their icons are Slots', () => {
     const on = html({ checked: true, checkedKind: 'icon' }).slice(html({ checked: true, checkedKind: 'icon' }).indexOf('<span>Slots</span>'));
-    for (const prop of ['checked', 'checkedKind', 'checkedIcon']) assert.ok(on.includes(`data-bp-prop="${prop}"`), `${prop} is under Slots`);
+    assert.ok(on.includes('data-bp-prop="checkedIcon"'), 'checkedIcon is under Slots');
     const off = html({ uncheckedKind: 'icon' }).slice(html({ uncheckedKind: 'icon' }).indexOf('<span>Slots</span>'));
-    for (const prop of ['uncheckedKind', 'uncheckedIcon']) assert.ok(off.includes(`data-bp-prop="${prop}"`), `${prop} is under Slots`);
+    assert.ok(off.includes('data-bp-prop="uncheckedIcon"'), 'uncheckedIcon is under Slots');
     const markup = html({ checkedKind: 'icon', uncheckedKind: 'icon' });
     const props = markup.slice(markup.indexOf('<span>Props</span>'), markup.indexOf('<span>Slots</span>'));
-    for (const prop of ['loading', 'disabled']) assert.ok(props.includes(`data-bp-prop="${prop}"`), `${prop} is under Props`);
+    for (const prop of ['checked', 'checkedKind', 'uncheckedKind', 'loading', 'disabled']) assert.ok(props.includes(`data-bp-prop="${prop}"`), `${prop} is under Props`);
 });
 
 test('loading clears the interaction preview, and the preview resolves with loading on', () => {

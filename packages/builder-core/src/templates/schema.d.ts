@@ -12,6 +12,8 @@ export interface AnatomySlot {
     shownWhen?: Condition;
     /** Managed slots are inserted and removed by Behavior from the instance's props. A managed text or control slot is optional, needs a `shownWhen`, and is a layer of an instance only. */
     managed?: boolean;
+    /** The text a static text slot starts with and draws (no prop backs it): the body lines of a Card. */
+    defaultText?: string;
     /** A managed icon slot that is on every instance: its icon def has no `show` switch and the slot is not optional. */
     alwaysVisible?: boolean;
 }
@@ -247,6 +249,10 @@ export interface TemplateSchema {
     persistentStates: Record<string, PersistentState>;
     /** Preview-only states: the base colour tokens each one replaces. */
     previewStates: Record<string, Record<string, string>>;
+    /** A preview state a boolean prop gates: it applies (canvas, Play, export) only while that prop holds. The prop must be an attribute state of the root. */
+    previewRequires?: Record<string, string>;
+    /** The cursor the root takes while a boolean prop holds (the prop must be an attribute state of the root). */
+    cursor?: { when: string, value: string }[];
     /** The cross-axis alignment a new master is created with (start, center or end). The node's own alignment decides after that. */
     rootAlign?: 'start' | 'center' | 'end';
     /** The auto layout direction a new master is created with (horizontal when absent). Like `rootAlign` it only seeds a new master: the node's own layout decides after that. */

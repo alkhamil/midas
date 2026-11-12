@@ -162,7 +162,8 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
             if (slot.strokeSides !== undefined && !['left', 'top', 'right', 'bottom'].includes(slot.strokeSides)) out.push(`frame slot "${slot.id}" strokeSides must be left, top, right or bottom`);
             if (slot.managed && slot.shownWhen === undefined) out.push(`frame slot "${slot.id}" is managed but unconditional: a managed container names when it shows`);
             // A container that holds nothing is a drawn box when the display maps it (a Switch's handle).
-            if (!anatomy.some(c => isPlainObject(c) && c.parent === slot.id) && !drawnBox(schema, slot.id)) out.push(`frame slot "${slot.id}" holds no slot`);
+            const holdsContent = (Array.isArray(schema.slots) ? schema.slots : []).some(c => isPlainObject(c) && c.parent === slot.id);
+            if (!anatomy.some(c => isPlainObject(c) && c.parent === slot.id) && !holdsContent && !drawnBox(schema, slot.id)) out.push(`frame slot "${slot.id}" holds no slot`);
         }
         if (slot.parent !== undefined) {
             const holder = anatomy.find(c => isPlainObject(c) && c.id === slot.parent);
@@ -291,6 +292,16 @@ function stateProblems(schema, allTokens, props) {
     const preview = isPlainObject(schema.previewStates) ? schema.previewStates : null;
     if (!persistent) out.push('persistentStates must be an object');
     if (!preview) out.push('previewStates must be an object');
+    // A cursor rule names a boolean prop that is an attribute state of the root.
+    for (const entry of Array.isArray(schema.cursor) ? schema.cursor : []) {
+        const owner = Object.entries(persistent || {}).find(([, def]) => isPlainObject(def) && def.prop === entry?.when);
+        if (!owner || !STATE_ATTRIBUTE.test(String(schema.statePseudo?.[owner[0]] ?? '')) || !isName(entry.value)) out.push(`cursor rule "${entry?.when}" needs an attribute state of that prop and a cursor value`);
+    }
+    // A gated preview state names a state of the template and a boolean prop that is an attribute state of the root.
+    for (const [state, gate] of Object.entries(isPlainObject(schema.previewRequires) ? schema.previewRequires : {})) {
+        if (!preview || !Object.hasOwn(preview, state)) out.push(`previewRequires names "${state}", which is not a preview state`);
+        else if (!Object.values(persistent || {}).some(def => isPlainObject(def) && def.prop === gate && STATE_ATTRIBUTE.test(String(schema.statePseudo?.[Object.keys(persistent).find(k => persistent[k] === def)] ?? '')))) out.push(`preview state "${state}" needs prop "${gate}", which must be an attribute state of the root`);
+    }
     for (const [state, def] of Object.entries(persistent || {})) {
         if (!isPlainObject(def)) { out.push(`persistent state "${state}" must be an object`); continue; }
         const prop = props[def.prop];
@@ -313,7 +324,7 @@ function stateProblems(schema, allTokens, props) {
         if (state in (persistent || {})) out.push(`state "${state}" is declared as both persistent and preview-only`);
         if (!isPlainObject(overrides)) { out.push(`preview state "${state}" must be an object`); continue; }
         for (const [base, stateToken] of Object.entries(overrides)) {
-            if (schema.tokenKinds?.[base] !== 'color') out.push(`preview state "${state}" changes "${base}", but preview states change colours only (a token of kind color)`);
+            if (!['color', 'effect'].includes(schema.tokenKinds?.[base])) out.push(`preview state "${state}" changes "${base}", but preview states change colours and shadows only (a token of kind color or effect)`);
             if (!allTokens.includes(/** @type {string} */ (stateToken))) out.push(`preview state "${state}" maps "${base}" to "${stateToken}", which is not a token`);
         }
     }
@@ -435,7 +446,7 @@ const RESERVED_WORDS = new Set(['await', 'break', 'case', 'catch', 'class', 'con
 /** The props every generated component has besides its own: `children` is the single slot's, the rest pass through to the root. */
 const GENERATED_PROPS = ['children', 'className', 'style', 'ref', 'key'];
 /** The fields of a content slot definition. They are the names and settings of Figma's slot property, so the generator can write them into it. */
-const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'onlyAccepts', 'showEmpty', 'fillCounter', 'layout', 'repeat', 'fill', 'shownWhen'];
+const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'onlyAccepts', 'showEmpty', 'fillCounter', 'layout', 'repeat', 'fill', 'shownWhen', 'parent', 'seed', 'holds', 'box'];
 
 /**
  * Problems in the content slots a template declares (`slots`): a frame of the component that instances fill with their own layers. A slot's id
@@ -468,6 +479,10 @@ function slotProblems(schema, templateIds) {
             else if (parts.has(slot.id)) out.push(`${tag} is named like a part of the template`);
         }
         if (!isName(slot.name)) out.push(`${tag} has no name`);
+        if (slot.parent !== undefined) {
+            const holder = (Array.isArray(schema.anatomy) ? schema.anatomy : []).find(s => isPlainObject(s) && s.id === slot.parent);
+            if (!holder || holder.kind !== 'frame') out.push(`${tag} parent "${slot.parent}" is not an anatomy frame slot`);
+        }
         else if (names.has(slot.name)) out.push(`${tag} has the name "${slot.name}", which slot "${names.get(slot.name)}" already has`);
         else names.set(slot.name, has ? slot.id : `${i}`);
         if (slot.description !== undefined && typeof slot.description !== 'string') out.push(`${tag} description must be text`);
@@ -495,6 +510,30 @@ function slotProblems(schema, templateIds) {
             if (!isName(slot.repeat)) out.push(`${tag} repeat must be the name of a number prop`);
             else if (!target) out.push(`${tag} repeat names "${slot.repeat}", which is not a prop of the template`);
             else if (target.source !== 'literal' || target.type !== 'number') out.push(`${tag} repeat names "${slot.repeat}", which is not a number prop`);
+        }
+        // What the slot holds: only instances, or anything. A slot that is a container of the anatomy (`box`) is that frame itself, with no layer between.
+        if (slot.holds !== undefined && !['instance', 'content', 'image'].includes(slot.holds)) out.push(`${tag} holds must be instance, content or image`);
+        // An image slot is a container of the anatomy drawn as a picture: the image prop writes its fill.
+        if (slot.holds === 'image' && slot.box === undefined) out.push(`${tag} holds an image, so it is a box of the anatomy`);
+        if (slot.holds === 'instance' && slot.accepts === undefined && slot.seed === undefined) { /* any instance */ }
+        if (slot.box !== undefined) {
+            for (const id of [slot.box].flat()) {
+                const box = (Array.isArray(schema.anatomy) ? schema.anatomy : []).find(s => isPlainObject(s) && s.id === id);
+                if (!box || box.kind !== 'frame') out.push(`${tag} box "${id}" is not an anatomy frame slot`);
+            }
+            if (slot.parent !== undefined) out.push(`${tag} is a box of the anatomy and has no parent`);
+            if (slot.holds === 'instance') out.push(`${tag} is a box and holds content, not only instances`);
+            if (slot.holds === 'image' && !Object.values(schema.props ?? {}).some(p => p?.type === 'image' && [p.node, ...(p.nodes ?? [])].some(w => [slot.box].flat().includes(w?.key) && w.field === 'imageFill'))) out.push(`${tag} holds an image, but no image prop draws a picture on "${[slot.box].flat().join('", "')}"`);
+        }
+        // The default content a slot starts with when its layer is made: component instances of other templates (filled in where they exist).
+        if (slot.seed !== undefined) {
+            if (!Array.isArray(slot.seed)) out.push(`${tag} seed must be a list`);
+            else slot.seed.forEach((entry, i) => {
+                if (!isPlainObject(entry) || !isName(entry.template)) { out.push(`${tag} seed ${i + 1} must name a template`); return; }
+                for (const field of ['props', 'modes', 'follow']) if (entry[field] !== undefined && !isPlainObject(entry[field])) out.push(`${tag} seed ${i + 1} ${field} must be an object`);
+                if (entry.icon !== undefined && !isName(entry.icon)) out.push(`${tag} seed ${i + 1} icon must be an icon role`);
+                for (const field of Object.keys(entry)) if (!['template', 'props', 'modes', 'follow', 'icon'].includes(field)) out.push(`${tag} seed ${i + 1} has no field "${field}"`);
+            });
         }
         for (const field of Object.keys(slot)) if (!SLOT_FIELDS.includes(field)) out.push(`${tag} has no field "${field}"`);
     });

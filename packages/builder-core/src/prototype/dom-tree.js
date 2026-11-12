@@ -11,6 +11,7 @@
 // auto layout, image fills on vector layers and effects with no DOM form (glass).
 import { TEMPLATES, variableProps } from '../behavior-engine/registry.js';
 import { cssVarOf } from '../behavior-engine/tokens.js';
+import { emptySlotFloor, slotHolderLayout } from '../behavior-engine/content-slots.js';
 import { glyphFillRuleAttr, glyphPathD } from '../behavior-engine/glyphs.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
@@ -23,7 +24,7 @@ import { labelEntryOf } from '../behavior-engine/layers.js';
 import { repeatCount } from '../behavior-engine/slot-rules.js';
 import { attrOfProp, elementTagOf, maskedOn, localAttrOf, maskUnlessOf, multilineOf, pressAttrsOf, ariaCheckedOf, canvasPartsOf, conditionHolds, fieldStyleOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
-import { cssBackgroundOf, displayFills, getFills, topColorOf, topOpacityOf } from '../geometry/fills.js';
+import { cssBackgroundOf, displayFills, getFills, imageFillStyleOf, topColorOf, topOpacityOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, shadowCss, svgNumber } from '../geometry/format.js';
 import { layoutOrder, ownSizingOf } from '../geometry/autolayout.js';
 
@@ -312,6 +313,22 @@ function renderTemplate(n, template, parent, scope) {
     const labelEntry = labelEntryOf(n.id, scope.childrenOf, n, primarySlotOf(template));
     // Every layer below the instance, for the slots a container holds (an affix text can sit inside one).
     const below = id => scope.childrenOf(id).flatMap(c => [c, ...below(c.id)]);
+    // A content slot's element (class <template>-<slot>) around the layers the instance holds: `repeat` copies for a repeating slot; none unless the slot
+    // has copies or showEmpty. Its layer may sit in a container (the slot's parent), so it is found below the instance.
+    function contentNodeOf(slot) {
+        const layer = below(n.id).find(c => c.propBind?.slot === slot.id);
+        if (!layer || layer.visible === false) return null;
+        const held = scope.childrenOf(layer.id).some(c => c.visible !== false);
+        const fallback = slot.repeat && typeof template.props[slot.repeat].default === 'number' ? template.props[slot.repeat].default : 0;
+        const copies = !held ? 0 : slot.repeat ? repeatCount(props[slot.repeat], fallback) : 1;
+        if (copies === 0 && slot.showEmpty !== true) return null;
+        const kids = [];
+        for (let i = 0; i < copies; i++) kids.push(...renderChildren(layer, scope));
+        // An empty hug slot keeps the canvas's floor (emptySlotFloor), as the export's :empty rule does.
+        const floorH = kids.length || slotHolderLayout(template, slot) !== 'vertical' ? null : emptySlotFloor(layer, 'h', layer.layoutSizingV ?? 'hug', 0);
+        const style = floorH === null ? {} : { minHeight: `${floorH}px` };
+        return { tag: 'div', nodeId: layer.id, attrs: { class: `${template.id}-${slot.id}` }, style, children: kids };
+    }
     // The frame parts (the Button's spinner) sit before the text, as the master draws them; a template with no text slot draws them after its slots (as the export does).
     let framePartsDrawn = false;
     const drawFrameParts = out => {
@@ -372,8 +389,8 @@ function renderTemplate(n, template, parent, scope) {
             }
             else {
                 drawFrameParts(out);
-                if (slot.optional) {
-                    // An optional text slot (an affix) is drawn from its own layer, as the canvas draws it: shown while the layer is, with the text it holds.
+                if (slot.optional || typeof slot.defaultText === 'string') {
+                    // An optional text slot (an affix), or a static one (a Card's body line, no prop behind it) is drawn from its own layer, as the canvas draws it: shown while the layer is, with the text it holds.
                     // The layer is the slot's by its marker, or by its master layer's name (a layer renamed on the canvas keeps its slot).
                     const layer = below(n.id).find(c => c.type === 'text' && (c.behavior?.slot === slot.id || (c.name === slot.id && !c.behavior?.slot) || scope.byId.get(c.sourceId)?.name === slot.id));
                     const el = layer && layer.visible !== false ? renderNode(layer, scope.byId.get(layer.parentId) ?? n, scope, false) : null;
@@ -421,7 +438,8 @@ function renderTemplate(n, template, parent, scope) {
     // A container is one element of the template's class around the slots that name it, in anatomy order (the codegen writes the same).
     function emitContainer(slot, out) {
         if (slot.shownWhen !== undefined && !conditionHolds(slot.shownWhen, props)) return;
-        const group = below(n.id).find(c => c.behavior?.group === slot.id) ?? below(n.id).find(c => c.behavior?.slot === slot.id);
+        // The container's layer is the visible one: a hidden copy left by an earlier edit is not the container Play draws.
+        const group = below(n.id).find(c => c.visible !== false && c.behavior?.group === slot.id) ?? below(n.id).find(c => c.visible !== false && c.behavior?.slot === slot.id);
         const inner = [];
         for (const child of template.anatomy.filter(c => c.parent === slot.id)) emitSlot(child, inner);
         for (const part of canvasPartsOf(template).filter(p => p.kind === 'frame' && p.parent === slot.id)) {
@@ -430,6 +448,13 @@ function renderTemplate(n, template, parent, scope) {
             if (part.spin) el.style.animation = SPIN_ANIMATION;
             inner.push(el);
         }
+        // A content slot the container holds is drawn in it, after its anatomy layers.
+        for (const content of (template.slots ?? []).filter(s => s.parent === slot.id)) {
+            const node = contentNodeOf(content);
+            if (node) inner.push(node);
+        }
+        // A container that is a content slot draws the layers the instance holds in it, whatever they are (its starting layers are among them).
+        if (group && (template.slots ?? []).some(s => [s.box ?? []].flat().includes(slot.id))) inner.splice(0, inner.length, ...renderChildren(group, scope));
         // A swap icon has no canvas layer: draw the component's own vectors in the slot colour (currentColor, like a bound nested icon).
         for (const def of swapDefsOf(template, slot.id)) {
             if (!iconDefOn(def, props)) continue;
@@ -441,7 +466,8 @@ function renderTemplate(n, template, parent, scope) {
             const vectors = scope.childrenOf(comp.id).filter(c => VECTOR.includes(c.type)).map(vec => ({ ...vec, vars: { ...vec.vars, 'fills.0': vec.vars?.['fills.0'] ?? def.tokens.colour } }));
             inner.push({ tag: 'div', attrs: { class: `${template.id}-${def.slot}` }, style: { position: 'relative', flexShrink: '0', overflowX: 'clip', overflowY: 'clip' }, html: frameSvg(comp, vectors, scope), children: [] });
         }
-        out.push({ tag: 'div', nodeId: group?.id, attrs: { class: `${template.id}-${slot.id}`, ...pressAttrsOf(template, slot.id) }, style: {}, children: inner });
+        // A container that holds a picture draws it on its own element (its box clips it); the class's flat colour stays under it as the fallback.
+        out.push({ tag: 'div', nodeId: group?.id, attrs: { class: `${template.id}-${slot.id}`, ...pressAttrsOf(template, slot.id) }, style: { ...(imageFillStyleOf(group?.fills, scope.assets) ?? {}) }, children: inner });
     }
     for (const slot of template.anatomy.filter(s => !s.parent)) {
         if (slot.kind !== 'frame') { emitSlot(slot, children); continue; }
@@ -450,16 +476,9 @@ function renderTemplate(n, template, parent, scope) {
     if (!framePartsDrawn && !template.anatomy.some(s => s.kind === 'text' || s.kind === 'control')) drawFrameParts(children);
     // The content slots, after the other layers as the export writes them: the slot element (class <template>-<slot>) around the layers the instance holds,
     // `repeat` copies of them for a repeating slot (the canvas keeps them once). With no copies the element is there, empty, only for a slot with showEmpty.
-    for (const slot of template.slots ?? []) {
-        const layer = scope.childrenOf(n.id).find(c => c.propBind?.slot === slot.id);
-        if (!layer || layer.visible === false) continue;
-        const held = scope.childrenOf(layer.id).some(c => c.visible !== false);
-        const fallback = slot.repeat && typeof template.props[slot.repeat].default === 'number' ? template.props[slot.repeat].default : 0;
-        const copies = !held ? 0 : slot.repeat ? repeatCount(props[slot.repeat], fallback) : 1;
-        if (copies === 0 && slot.showEmpty !== true) continue;
-        const kids = [];
-        for (let i = 0; i < copies; i++) kids.push(...renderChildren(layer, scope));
-        children.push({ tag: 'div', nodeId: layer.id, attrs: { class: `${template.id}-${slot.id}` }, style: {}, children: kids });
+    for (const slot of (template.slots ?? []).filter(s => s.parent === undefined && s.box === undefined)) {
+        const node = contentNodeOf(slot);
+        if (node) children.push(node);
     }
     // The stroke is the host's own border, so the children sit where the compensated padding
     // puts them, as on the canvas (the border is inside the box). A CSS outline is not used for it: it would override the focus ring.
@@ -482,7 +501,7 @@ function renderTemplate(n, template, parent, scope) {
     const style = { display: ownSizingOf(n, 'h') === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...fields.vars, ...fields.style, ...placement(n, parent, scope.responsive), ...rootLayoutOf(instanceLayoutOf(master, n), flowCount) };
     // The host draws its own border, and the box is positioned for it.
     if (hasStroke) {
-        Object.assign(style, useSvg ? { borderWidth: '0px', borderStyle: 'none', ...(template.display.root.paddingX ? { paddingInline: `var(${cssVarOf(template.id, template.display.root.paddingX)})` } : {}), ...(template.display.root.paddingY ? { paddingBlock: `var(${cssVarOf(template.id, template.display.root.paddingY)})` } : {}) } : (() => { const uniform = strokeSidesUniform(shape); if (!uniform) { const s = strokeSideWidths(shape); const per = {}; for (const [k, v] of [['Top', s.t], ['Right', s.r], ['Bottom', s.b], ['Left', s.l]]) { per[`border${k}Width`] = `${v}px`; per[`border${k}Style`] = v > 0 ? lineStyle : 'none'; if (!bound && v > 0) per[`border${k}Color`] = colorWithAlpha(shape.stroke, shape.strokeOpacity); } per.backgroundClip = 'border-box'; return per; } return bw > 0 ? { borderWidth: `${bw}px`, borderStyle: lineStyle, ...(bound ? {} : { borderColor: colorWithAlpha(shape.stroke, shape.strokeOpacity) }), backgroundClip: 'border-box' } : { borderWidth: '0px', borderStyle: 'none' }; })()); if (hasStroke && !style.position) style.position = 'relative';
+        Object.assign(style, useSvg ? { borderWidth: '0px', borderStyle: 'none', ...(template.display.root.paddingX ? { paddingInline: `var(${cssVarOf(template.id, template.display.root.paddingX)})` } : {}), ...(template.display.root.paddingY ? { paddingBlock: `var(${cssVarOf(template.id, template.display.root.paddingY)})` } : {}) } : (() => { if (!useSvg && lineStyle === 'solid' && strokeSidesUniform(shape) && shape.strokeSides === undefined && 'stroke' in (template.display.root ?? {}) && !('shadow' in template.display.root) && !('paddingX' in template.display.root) && !('paddingY' in template.display.root) && bw > 0) { const width = `var(${cssVarOf(template.id, template.display.root.strokeWidth)})`; return { borderWidth: '0px', borderStyle: 'none', outline: `${width} solid ${bound ? `var(${cssVarOf(template.id, template.display.root.stroke)})` : colorWithAlpha(shape.stroke, shape.strokeOpacity)}`, outlineOffset: `calc(-1 * ${width})`, backgroundClip: 'border-box' }; } const uniform = strokeSidesUniform(shape); if (!uniform) { const s = strokeSideWidths(shape); const per = {}; for (const [k, v] of [['Top', s.t], ['Right', s.r], ['Bottom', s.b], ['Left', s.l]]) { per[`border${k}Width`] = `${v}px`; per[`border${k}Style`] = v > 0 ? lineStyle : 'none'; if (!bound && v > 0) per[`border${k}Color`] = colorWithAlpha(shape.stroke, shape.strokeOpacity); } per.backgroundClip = 'border-box'; return per; } return bw > 0 ? { borderWidth: `${bw}px`, borderStyle: lineStyle, ...(bound ? {} : { borderColor: colorWithAlpha(shape.stroke, shape.strokeOpacity) }), backgroundClip: 'border-box' } : { borderWidth: '0px', borderStyle: 'none' }; })()); if (hasStroke && !style.position) style.position = 'relative';
     }
     // A link's href is its text prop; Play draws it (and keeps a click from leaving the stage, see play.js), the canvas has none.
     if (template.element.hrefProp && String(props[template.element.hrefProp] ?? '') !== '' && !(template.element.disabledState !== undefined && stateOn(template, template.element.disabledState, props))) attrs.href = String(props[template.element.hrefProp]);
@@ -570,16 +589,18 @@ function transformOf(n) {
 }
 
 /**
- * The overflow of a frame: the axes its scroll behaviour opens. Every other axis clips. A template instance has no scroll behaviour:
+ * The overflow of a frame: the axes its scroll behaviour opens. Every other axis clips only when the frame's Clip content is on, as on the canvas: a frame that does not clip
+ * lets its children's shadows and overhangs show, and a frame's own clip never cuts its own box-shadow. A template instance has no scroll behaviour:
  * the validator refuses one, and Play ignores any it finds.
  * @param {any} n
  * @returns {Record<string, string>}
  */
-function overflowOf(n) {
+export function overflowOf(n) {
     const mode = n.isInstance ? 'none' : (n.prototype?.overflow ?? 'none');
     const scrollX = mode === 'horizontal' || mode === 'both', scrollY = mode === 'vertical' || mode === 'both';
     // `clip` (not `hidden`) so a centred stroke's outer half, which lies outside the box, is not cut; the margin is that half.
-    const style = { overflowX: scrollX ? 'auto' : 'clip', overflowY: scrollY ? 'auto' : 'clip' };
+    const rest = n.clip === true ? 'clip' : 'visible';
+    const style = { overflowX: scrollX ? 'auto' : rest, overflowY: scrollY ? 'auto' : rest };
     // The margin lets an overlay-drawn stroke's outer part show: a centred stroke's half, or a per-side outside stroke's widest side.
     const margin = centredStrokeHalf(n) || outsideOverlayMargin(n);
     if (margin) style.overflowClipMargin = `${margin}px`;

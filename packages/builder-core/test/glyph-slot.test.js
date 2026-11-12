@@ -40,8 +40,8 @@ test('Checkbox and Radio have glyph slots in the box, no icons and no icon props
             assert.deepEqual(t.anatomy.find(s => s.id === slot), { id: slot, kind: 'glyph', glyph, parent: 'box', optional: true, managed: true, shownWhen: { prop, is: true } }, `${id}.${slot}`);
         }
     }
-    assert.deepEqual(ICON_SET.map(e => e.name), ['circle', 'alert-success', 'alert-info', 'alert-warning', 'alert-error', 'close', 'copy', 'eye', 'eyeOff'], 'the icon set holds the circle, the Alert type glyphs, the close and the eye glyphs; no other glyph');
-    assert.deepEqual(iconRolesOf([...TEMPLATES.values()]), ['default', 'eyeOn', 'eyeOff', 'close', 'copy', 'alertSuccess', 'alertInfo', 'alertWarning', 'alertError']);
+    assert.deepEqual(ICON_SET.map(e => e.name), ['circle', 'alert-success', 'alert-info', 'alert-warning', 'alert-error', 'close', 'copy', 'setting', 'edit', 'ellipsis', 'eye', 'eyeOff'], 'the icon set holds the circle, the Alert type glyphs, the close and the eye glyphs; no other glyph');
+    assert.deepEqual(iconRolesOf([...TEMPLATES.values()]), ['default', 'eyeOn', 'eyeOff', 'close', 'copy', 'alertSuccess', 'alertInfo', 'alertWarning', 'alertError', 'setting', 'edit', 'ellipsis']);
 });
 
 test('the schema refuses a glyph slot that names no glyph, has no condition, or follows a prop that is not a state with an attribute', () => {

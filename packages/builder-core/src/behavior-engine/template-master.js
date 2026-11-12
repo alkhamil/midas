@@ -6,6 +6,8 @@
 // visibility and text its props say (partWrites, literalFields), which is what the canvas and Play draw.
 import { glyphFields } from './glyphs.js';
 import { cssVarOf } from './tokens.js';
+import { slotHolds } from './slot-list.js';
+import { boxesOf } from './anatomy.js';
 import { canvasPartsOf, conditionHolds, literalFields, nodeFieldPatch, partWrites } from './display.js';
 import { planBindTokens, applyBindTokens } from './bind-tokens.js';
 import { resolveProps } from './instance-props.js';
@@ -71,7 +73,7 @@ export function layerSpecsOf(template) {
     if (!textedPlaced) specs.push(...texted);
     specs.push(...parented);
     // A content slot is a frame of the master that instances fill; it is the slot property's layer (propBind.slot), not a managed icon slot.
-    for (const slot of template.slots ?? []) specs.push({ key: slot.id, role: 'content', type: 'frame', content: slot });
+    for (const slot of (template.slots ?? []).filter(s => !boxesOf(s).length)) specs.push({ key: slot.id, role: 'content', type: 'frame', content: slot, ...(slot.parent ? { parentKey: slot.parent } : {}) });
     return specs;
 }
 
@@ -79,20 +81,23 @@ export function layerSpecsOf(template) {
 function nodeOf(spec, template, binding, idOf, parentId) {
     const id = idOf(spec.key);
     if (spec.role === 'group') {
-        return { ...LAYER, id, name: spec.key, type: 'frame', parentId, w: 0, h: 0, layout: spec.slot.layout, gap: 0, padding: 0, fills: [], layoutSizingH: spec.slot.fill === true ? 'fill' : 'hug', layoutSizingV: spec.slot.fillV === true ? 'fill' : 'hug', ...(spec.slot.edge === 'right' ? EDGE_NODE : {}), ...(spec.slot.strokeSides ? { strokeSides: spec.slot.strokeSides, strokeAlign: 'inside' } : {}), ...(spec.slot.primaryAlign ? { primaryAlign: spec.slot.primaryAlign } : {}), ...(spec.slot.counterAlign ? { counterAlign: spec.slot.counterAlign } : {}), behavior: { version: BEHAVIOR_DATA_VERSION, group: spec.key } };
+        // A container that is itself a content slot (`box`) carries the slot property, so it is the slot's layer.
+        const box = template.slots?.find(s => boxesOf(s).includes(spec.key));
+        return { ...(box ? { propBind: { slot: box.id } } : {}), ...LAYER, id, name: spec.key, type: 'frame', parentId, w: 0, h: 0, layout: spec.slot.layout, gap: 0, padding: 0, fills: [], layoutSizingH: spec.slot.fill === true ? 'fill' : 'hug', layoutSizingV: spec.slot.fillV === true ? 'fill' : 'hug', ...(spec.slot.edge === 'right' ? EDGE_NODE : {}), ...(spec.slot.strokeSides ? { strokeSides: spec.slot.strokeSides, strokeAlign: 'inside' } : {}), ...(spec.slot.primaryAlign ? { primaryAlign: spec.slot.primaryAlign } : {}), ...(spec.slot.counterAlign ? { counterAlign: spec.slot.counterAlign } : {}), behavior: { version: BEHAVIOR_DATA_VERSION, group: spec.key } };
     }
     if (spec.role === 'content') {
         return { ...LAYER, id, name: spec.content.name, type: 'frame', parentId, w: 0, h: 0, layout: spec.content.layout, gap: 0, padding: 0, fills: [], layoutSizingH: spec.content.fill === true ? 'fill' : 'hug', layoutSizingV: 'hug', propBind: { slot: spec.key } };
     }
     if (spec.role === 'root') {
         return { ...LAYER, id, name: template.name, type: 'frame', parentId: null, component: true, x: 0, y: 0, w: 0, h: 0, layout: template.rootLayout ?? 'horizontal', gap: 0, padding: 0,
-            layoutSizingH: 'hug', layoutSizingV: rootSizingV(template), counterAlign: template.rootAlign ?? 'start', fills: solid('#ffffff'), clip: false,
+            layoutSizingH: 'hug', layoutSizingV: rootSizingV(template), counterAlign: template.rootAlign ?? 'start', fills: solid('#ffffff'), clip: template.clipsContent === true,
             behavior: { version: BEHAVIOR_DATA_VERSION, templateId: template.id, variables: { ...binding.variables } } };
     }
     if (spec.type === 'text') {
         // A text layer starts with the default of the prop it shows (a control shows the value prop); a text part starts with its text.
         const prop = spec.role === 'control' || controlOf(template)?.slot === spec.key ? controlOf(template).value : spec.key;
-        const fallback = spec.role === 'part' ? (typeof spec.part?.text === 'string' ? spec.part.text : '') : String(template.props[prop]?.default ?? '');
+        const own = template.anatomy.find(slot => slot.id === spec.key)?.defaultText;
+        const fallback = typeof own === 'string' ? own : spec.role === 'part' ? (typeof spec.part?.text === 'string' ? spec.part.text : '') : String(template.props[prop]?.default ?? '');
         // A layer that fills (the Input's value and placeholder) takes the width the row leaves; the rest hug their text.
         const fills = (template.anatomy.find(slot => slot.id === spec.key) ?? spec.part ?? {}).fill === true;
         return { ...LAYER, id, name: spec.key, type: 'text', parentId, text: fallback,
@@ -206,7 +211,8 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
     for (const slot of template.slots ?? []) {
         if (frame.cprops?.some(p => p.id === slot.id)) continue;
         const { id, name, layout, ...options } = slot;
-        frame.cprops = [...(frame.cprops ?? []), { ...newSlotProp(id, name), ...(options.description === undefined ? {} : { desc: options.description }), ...Object.fromEntries(Object.entries(options).filter(([k]) => k !== 'description')) }];
+        options.holds = slotHolds(slot);
+        frame.cprops = [...(frame.cprops ?? []), { ...newSlotProp(id, name), ...(options.description === undefined ? {} : { desc: options.description }), ...Object.fromEntries(Object.entries(options).filter(([k]) => !['description', 'seed'].includes(k))) }];
     }
     const layers = [...layer].map(([key, node]) => ({ key, node }));
     const { ops, problems } = planBindTokens({ template, binding: { variables: binding.variables }, layers, variables });
@@ -224,6 +230,8 @@ export function applyTemplateToFrame(template, { frame, children, binding, varia
 export function masterLayersByKey(template, frame, nodes) {
     const out = [{ key: 'root', node: frame }];
     const holders = new Map([['root', frame]]);
+    // Each plain text slot takes the next plain text layer of its holder: several (a Card's body lines) are matched in order, none twice.
+    const taken = new Set();
     for (const spec of layerSpecsOf(template).slice(1)) {
         const holder = holders.get(spec.parentKey ?? 'root');
         if (!holder) continue;
@@ -234,8 +242,9 @@ export function masterLayersByKey(template, frame, nodes) {
             : spec.role === 'slot' ? children.find(c => c.behavior?.slot === spec.key)
             : spec.role === 'content' ? children.find(c => c.propBind?.slot === spec.key)
             : spec.optional ? children.find(c => c.behavior?.text === spec.key)
-            : children.find(c => c.type === 'text' && !c.behavior?.part && !c.behavior?.slot && !c.behavior?.text);
+            : children.find(c => !taken.has(c.id) && c.type === 'text' && !c.behavior?.part && !c.behavior?.slot && !c.behavior?.text);
         if (hit) {
+            taken.add(hit.id);
             out.push({ key: spec.key, node: hit });
             if (spec.role === 'group') holders.set(spec.key, hit);
         }
@@ -453,8 +462,14 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
         layers.splice(indexAmongLaterSlots(template, stub.node.behavior.slot, layers), 0, stub.node);
     }
     // A content slot the props show while they hold is made on the instance when the subtree does not hold it: an empty frame, last (as its codegen draws it).
-    const contentLayers = (template.slots ?? []).filter(slot => slot.shownWhen !== undefined && conditionHolds(slot.shownWhen, resolved) && !subtree.some(n => n.propBind?.slot === slot.id))
-        .map(slot => ({ ...nodeOf({ key: slot.id, role: 'content', type: 'frame', content: slot }, template, null, () => id(`slot-${slot.id}`), root.id), sourceId: undefined, isInstance: false, component: false, overrides: {} }));
+    // A content slot with a parent sits in that container's copy; none while the container is off.
+    // So does one that sits in a conditional container the instance made (the cover's slot in the cover box): it is there exactly while its container is.
+    const contentLayers = (template.slots ?? []).filter(slot => !boxesOf(slot).length && !subtree.some(n => n.propBind?.slot === slot.id) && (slot.shownWhen === undefined ? slot.parent !== undefined && stubBySlot.has(slot.parent) : conditionHolds(slot.shownWhen, resolved)))
+        .flatMap(slot => {
+            // Its container is the master's copy or, for a conditional container the master does not hold, the one made above.
+            const holder = slot.parent === undefined ? root : out.find(n => n.behavior?.group === slot.parent || n.behavior?.slot === slot.parent) ?? stubBySlot.get(slot.parent);
+            return holder ? [{ ...nodeOf({ key: slot.id, role: 'content', type: 'frame', content: slot }, template, null, () => id(`slot-${slot.id}`), holder.id), sourceId: undefined, isInstance: false, component: false, overrides: {} }] : [];
+        });
     return [root, ...layers, ...inContainer.map(s => s.node), ...contentLayers];
 }
 

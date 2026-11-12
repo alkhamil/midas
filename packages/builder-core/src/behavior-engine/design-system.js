@@ -17,14 +17,15 @@ const LAYOUT = { sectionGap: 64, titleGap: 16, rowGap: 24, rowRoom: 8, titleSize
 /**
  * The registered templates a template needs before it: those its slots accept (`accepts` names template ids). A template is never its own dependency, and an
  * id the list does not hold is not one either.
- * @param {{ id: string, slots?: { accepts?: string[] }[] }} template
+ * @param {{ id: string, slots?: { accepts?: string[], seed?: { template: string }[] }[] }} template
  * @param {{ id: string }[]} all the templates in play
  * @returns {string[]}
  */
 export function templateDependencies(template, all) {
     const known = new Set(all.map(t => t.id));
     const out = [];
-    for (const slot of template.slots ?? []) for (const id of slot.accepts ?? []) if (id !== template.id && known.has(id) && !out.includes(id)) out.push(id);
+    // A slot's seeds are instances of other templates too: those masters come first.
+    for (const slot of template.slots ?? []) for (const id of [...(slot.accepts ?? []), ...(slot.seed ?? []).map(s => s.template)]) if (id !== template.id && known.has(id) && !out.includes(id)) out.push(id);
     return out;
 }
 

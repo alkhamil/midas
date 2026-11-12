@@ -9,6 +9,8 @@
 export const NODE_PROPERTIES = {
     frame: {
         fill: { kind: 'color', css: 'background-color' },
+        // The colour a layer shows under its picture until it loads, or when it fails: bound to a variable, and no entry of the Fill list (no hidden fill).
+        fillFallback: { kind: 'color', css: 'background-color' },
         stroke: { kind: 'color', css: 'border-color' },
         // No css: the root draws no border itself (its stroke is the ::before overlay, read from the node).
         strokeWidth: { kind: 'length' },
@@ -77,7 +79,7 @@ export const NODE_PROPERTIES = {
 export const LOADING_OPACITY = 0.65;
 
 export const NODE_FIELDS = {
-    frame: { visible: { kind: 'boolean' }, primaryAlign: { kind: 'boolean', values: { true: 'end', false: 'start' } }, layout: { kind: 'enum', options: ['horizontal', 'vertical'] }, gap: { kind: 'number' }, width: { kind: 'number' }, widthSizing: { kind: 'enum', options: ['hug', 'fill'] }, opacity: { kind: 'boolean', values: { true: LOADING_OPACITY } }, imageFill: { kind: 'image' } },
+    frame: { visible: { kind: 'boolean' }, primaryAlign: { kind: 'boolean', values: { true: 'end', false: 'start' } }, counterAlign: { kind: 'boolean', values: { true: 'start', false: 'center' } }, layout: { kind: 'enum', options: ['horizontal', 'vertical'] }, gap: { kind: 'number' }, width: { kind: 'number' }, widthSizing: { kind: 'enum', options: ['hug', 'fill'] }, opacity: { kind: 'boolean', values: { true: LOADING_OPACITY } }, imageFill: { kind: 'image' } },
     // fontStyle: a boolean writes italic or normal. textDecoration: flags, each boolean prop that names one adds it to the one value (underline and line-through compose
     // as `underline line-through`, none is `none`).
     text: {
@@ -357,6 +359,7 @@ export function displayProblems(template) {
  */
 export const VARIABLE_KEYS = {
     fill: ['fills.0'],
+    fillFallback: ['fallbackFill'],
     stroke: ['stroke'],
     // A length with no CSS mapping on purpose: the border width binds like any mapped property (so bind, Auto Fix
     // and the variables window pick it up), but the export draws it on the ::before overlay from the node, not as
@@ -502,17 +505,23 @@ export function literalFieldNames(template) {
 /** The node fields a prop's field writes: `width` is a fixed width (or hug), so it owns the width, its sizing and, for a text, whether it measures itself. */
 const OWNED_NODE_FIELDS = { width: ['w', 'layoutSizingH', 'autoW'], heightSizing: ['layoutSizingV'], widthSizing: ['layoutSizingH'], imageFill: ['fills'] };
 
+/** An image fill without the natural size of its old picture. */
+function withoutNaturalSize({ iw, ih, ...rest }) {
+    return rest;
+}
+
 /**
- * The fills of a node that holds a picture: its colour fills stay (the first is hidden while the picture shows, so a transparent picture shows no colour under it) and the
- * picture is one image fill after them, covering the box. A picture the node already has keeps everything but its asset (hidden, mode, scale, opacity are the designer's, set in
- * the Fill panel); only the asset is the prop's. No asset removes the picture and shows the colour again. The result is the whole `fills` list.
+ * The fills of a node that holds a picture: its other fills stay as they are (none is hidden or added) and the picture is one image fill after them, covering the box. A picture
+ * the node already has keeps everything but its asset (hidden, mode, scale, opacity are the designer's, set in the Fill panel); only the asset is the prop's. No asset removes the
+ * picture. The result is the whole `fills` list.
  * @param {unknown} asset the asset id, or nothing
  * @param {{ fills?: any[] } | undefined} node
  */
 function imageFillPatch(asset, node) {
-    const colours = (node?.fills ?? []).filter(f => f.type !== 'image').map((f, i) => (i === 0 ? { ...f, visible: asset == null } : f));
+    const colours = (node?.fills ?? []).filter(f => f.type !== 'image');
     const own = (node?.fills ?? []).find(f => f.type === 'image');
-    return { fills: asset == null ? colours : [...colours, own ? { ...own, image: asset } : { type: 'image', image: asset, mode: 'fill', scale: 1, opacity: 1, visible: true }] };
+    // The mode and the tile scale stay the designer's across a new source; the old picture's natural size goes with it.
+    return { fills: asset == null ? colours : [...colours, own ? { ...(own.image === asset ? own : withoutNaturalSize(own)), image: asset } : { type: 'image', image: asset, mode: 'fill', scale: 1, opacity: 1, visible: true }] };
 }
 
 /**
@@ -552,6 +561,7 @@ export function fieldStyleOf(template, props, assets = {}) {
         const { prop, field } = writer;
         if (field === 'layout') attrs[`data-${prop}`] = String(props[prop]);
         else if (field === 'primaryAlign') attrs[`data-${prop}-align`] = alignValueOf(writer, props[prop]);
+        else if (field === 'counterAlign') attrs[`data-${prop}-cross`] = alignValueOf(writer, props[prop]);
         // A text style the stylesheet draws from a data attribute on the root (italic, an underline or a strike line), and a line clamp from its count.
         else if (field === 'fontStyle' || writer.flag !== undefined) { if (props[prop] === true) attrs[`data-${kebabOf(prop)}`] = ''; }
         else if (field === 'textTruncate') { if (props[prop] === true) attrs[`data-${kebabOf(prop)}`] = ''; }
@@ -559,7 +569,8 @@ export function fieldStyleOf(template, props, assets = {}) {
         else if ((field === 'gap' || field === 'width') && props[prop] != null) vars[`--${template.id}-${prop}`] = `${props[prop]}px`;
         // A picture is a data attribute that clears the colour under it, and the asset's source as the root's own background image: not a custom property, which Chrome drops
         // above about 2 MB (a picture is a data URL of any size here). The export carries a short URL as a custom property the stylesheet reads.
-        else if (field === 'imageFill' && props[prop] != null && assets[String(props[prop])]) { attrs[`data-${prop}`] = ''; style.backgroundImage = `url("${assets[String(props[prop])]}")`; }
+        // The picture of the root is the root's background; a picture on another layer is that layer's own (Play draws it from the layer's fill, the export from its rule).
+        else if (field === 'imageFill' && writer.key === 'root' && props[prop] != null && assets[String(props[prop])]) { attrs[`data-${prop}`] = ''; style.backgroundImage = `url("${assets[String(props[prop])]}")`; }
     }
     const multiline = multilineStyleOf(template, props);
     return { attrs: { ...attrs, ...multiline.attrs }, vars: { ...vars, ...multiline.vars }, style };
@@ -570,7 +581,7 @@ export function fieldStyleOf(template, props, assets = {}) {
  * @param {import('../templates/schema.js').TemplateSchema} template
  */
 export function fieldWritersOf(template) {
-    return nodeWritersOf(template).filter(({ field }) => ['layout', 'gap', 'width', 'primaryAlign', 'imageFill', 'fontStyle', 'textDecoration', 'textTruncate', 'maxLines'].includes(field));
+    return nodeWritersOf(template).filter(({ field }) => ['layout', 'gap', 'width', 'primaryAlign', 'counterAlign', 'imageFill', 'fontStyle', 'textDecoration', 'textTruncate', 'maxLines'].includes(field));
 }
 
 /**
@@ -581,7 +592,7 @@ export function fieldWritersOf(template) {
  * @returns {string}
  */
 export function alignValueOf(writer, raw) {
-    return writer.values ? writer.values[String(raw)] : NODE_FIELDS.frame.primaryAlign.values[String(raw === true)];
+    return writer.values ? writer.values[String(raw)] : NODE_FIELDS.frame[writer.field ?? 'primaryAlign'].values[String(raw === true)];
 }
 
 /**
@@ -590,5 +601,5 @@ export function alignValueOf(writer, raw) {
  * @returns {string[]}
  */
 export function alignValuesOf(writer) {
-    return writer.values ? [...new Set(Object.values(writer.values))] : ['start', 'end'];
+    return [...new Set(Object.values(writer.values ?? NODE_FIELDS.frame[writer.field ?? 'primaryAlign'].values))];
 }

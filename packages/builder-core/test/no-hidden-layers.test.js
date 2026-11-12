@@ -26,12 +26,9 @@ const deadOf = (template, props, nodes) => nodes.filter(n => isDead(n) && !liveT
 
 /** The instance children as the anatomy planner sees them, with each layer's container. */
 function asChildren(root, nodes) {
-    const kids = nodes.filter(n => n.parentId === root.id);
-    const groups = new Map(kids.filter(c => c.behavior?.group !== undefined).map(c => [c.id, c.behavior.group]));
-    return nodes.filter(n => n !== root).map(n => {
-        const holder = n.parentId === root.id ? null : groups.get(n.parentId);
-        return { id: n.id, slot: n.behavior?.slot ?? n.propBind?.slot ?? null, name: n.name, component: null, ...(holder == null ? {} : { parent: holder }) };
-    });
+    // A layer's container is the group or slot its parent carries, at any depth (the studio's holderOf).
+    const holderOf = n => (n.parentId === root.id ? undefined : nodes.find(p => p.id === n.parentId)?.behavior?.group ?? nodes.find(p => p.id === n.parentId)?.behavior?.slot);
+    return nodes.filter(n => n !== root).map(n => ({ id: n.id, slot: n.behavior?.slot ?? n.propBind?.slot ?? null, name: n.name, component: null, ...(holderOf(n) === undefined ? {} : { parent: holderOf(n) }) }));
 }
 
 function planOf(model, props, nodes) {
@@ -75,7 +72,8 @@ for (const template of TEMPLATES.values()) {
                 const slot = template.anatomy.find(s => s.id === key);
                 const part = (template.parts ?? []).find(p => p.id === key);
                 const content = (template.slots ?? []).find(s => s.id === key);
-                assert.ok(slot?.managed || content?.shownWhen !== undefined || (part && part.shownWhen !== undefined), `${template.id} ${key} is a managed slot or a conditional part`);
+                const inManaged = content?.parent !== undefined && template.anatomy.some(a => a.id === content.parent && a.managed);
+                assert.ok(slot?.managed || content?.shownWhen !== undefined || inManaged || (part && part.shownWhen !== undefined), `${template.id} ${key} is a managed slot or a conditional part`);
             }
             // Toggling back off removes exactly the managed layers the toggle added (parts never reach the plan: instanceOf shows they are gone).
             const off = instanceFor(model, {});

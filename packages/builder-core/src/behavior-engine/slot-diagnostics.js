@@ -46,6 +46,10 @@ export function diagnoseSlots(nodes) {
         const { belowMin, aboveMax } = slotCounts(prop, held.length);
         if (belowMin) out.push({ severity: 'warning', code: 'slot-below-min', ...where, message: `${owner.name}: slot "${prop.name}" holds ${layers(held.length)}, at least ${prop.min} needed.` });
         if (aboveMax) out.push({ severity: 'warning', code: 'slot-above-max', ...where, message: `${owner.name}: slot "${prop.name}" holds ${layers(held.length)}, at most ${prop.max} allowed.` });
+        // An image slot is the picture itself: it holds no layers.
+        if (prop.holds === 'image' && held.length) out.push({ severity: 'warning', code: 'slot-not-image', ...where, layer: held[0].id, message: `${owner.name}: slot "${prop.name}" is an image and holds no layers, "${held[0].name}" is in it.` });
+        // A slot that holds instances takes nothing else (text, a frame, a vector): the same rule whichever tab put it there.
+        if (prop.holds === 'instance') for (const layer of held.filter(l => !l.isInstance)) out.push({ severity: 'warning', code: 'slot-not-instance', ...where, layer: layer.id, message: `${owner.name}: slot "${prop.name}" holds instances only, "${layer.name}" is not one.` });
         if (!slotRestricts(prop)) continue;
         for (const layer of held) {
             const taken = layer.isInstance && layer.sourceId && slotAccepts(prop, { ids: family(layer.sourceId), templates: templateIdsOf(nodes, layer.sourceId) });

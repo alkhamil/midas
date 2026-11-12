@@ -3957,6 +3957,26 @@
       }
     },
     {
+      "collection": "Primitives",
+      "name": "size/64",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 64
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "size/72",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 72
+        }
+      }
+    },
+    {
       "collection": "Semantic",
       "name": "switchTrackHeight",
       "type": "number",
@@ -4238,6 +4258,88 @@
       }
     },
     {
+      "collection": "Primitives",
+      "name": "shadow/card-hover",
+      "type": "effect",
+      "values": {
+        "Base": {
+          "literal": [
+            {
+              "type": "drop",
+              "visible": true,
+              "color": "#000000",
+              "opacity": 0.16,
+              "x": 0,
+              "y": 1,
+              "blur": 2,
+              "spread": -2
+            },
+            {
+              "type": "drop",
+              "visible": true,
+              "color": "#000000",
+              "opacity": 0.12,
+              "x": 0,
+              "y": 3,
+              "blur": 6,
+              "spread": 0
+            },
+            {
+              "type": "drop",
+              "visible": true,
+              "color": "#000000",
+              "opacity": 0.09,
+              "x": 0,
+              "y": 5,
+              "blur": 12,
+              "spread": 4
+            }
+          ]
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "shadow/card-borderless",
+      "type": "effect",
+      "values": {
+        "Base": {
+          "literal": [
+            {
+              "type": "drop",
+              "visible": true,
+              "color": "#000000",
+              "opacity": 0.05,
+              "x": 0,
+              "y": 1,
+              "blur": 2,
+              "spread": 0
+            },
+            {
+              "type": "drop",
+              "visible": true,
+              "color": "#000000",
+              "opacity": 0.03,
+              "x": 0,
+              "y": 1,
+              "blur": 6,
+              "spread": -1
+            },
+            {
+              "type": "drop",
+              "visible": true,
+              "color": "#000000",
+              "opacity": 0.03,
+              "x": 0,
+              "y": 2,
+              "blur": 4,
+              "spread": 0
+            }
+          ]
+        }
+      }
+    },
+    {
       "collection": "Semantic",
       "name": "boxShadowNone",
       "type": "effect",
@@ -4290,6 +4392,44 @@
           "alias": {
             "collection": "Primitives",
             "name": "shadow/handle"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "boxShadowCardHover",
+      "type": "effect",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "shadow/card-hover"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "shadow/card-hover"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "boxShadowCardBorderless",
+      "type": "effect",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "shadow/card-borderless"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "shadow/card-borderless"
           }
         }
       }
@@ -4608,6 +4748,8 @@
       "Semantic/controlInteractiveSize",
       "Semantic/controlIndicatorSize",
       "Primitives/size/22",
+      "Primitives/size/64",
+      "Primitives/size/72",
       "Semantic/switchTrackHeight",
       "Semantic/switchTrackHeightSM",
       "Semantic/switchTrackMinWidth",
@@ -4622,9 +4764,13 @@
       "Primitives/shadow/none",
       "Primitives/shadow/handle",
       "Primitives/shadow/secondary",
+      "Primitives/shadow/card-hover",
+      "Primitives/shadow/card-borderless",
       "Semantic/boxShadowNone",
       "Semantic/boxShadowSecondary",
-      "Semantic/boxShadowHandle"
+      "Semantic/boxShadowHandle",
+      "Semantic/boxShadowCardHover",
+      "Semantic/boxShadowCardBorderless"
     ],
     "derived": [
       {
@@ -4710,6 +4856,14 @@
       {
         "name": "Primitives/size/22",
         "reason": "antd size step 22 (no JSON match; components/switch/style/index.ts: trackHeight)"
+      },
+      {
+        "name": "Primitives/size/64",
+        "reason": "size step 64 (no JSON match; the Card xl head height)"
+      },
+      {
+        "name": "Primitives/size/72",
+        "reason": "size step 72 (no JSON match; the Card xl head height)"
       }
     ],
     "needsValue": [],

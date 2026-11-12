@@ -25,11 +25,16 @@ import { iconRoleOf } from './icon-set.js';
  * @param {{ slot?: string | null, name?: string }[]} layers the layers the slot goes among, in order, without the slot itself
  * @returns {number}
  */
+/** The containers of the anatomy a content slot is (`box`: one, or several of which one exists at a time, like a Card's cover above or below its head). */
+export const boxesOf = slot => [slot.box ?? []].flat();
+
 export function indexAmongLaterSlots(template, slot, layers) {
     // A content slot ranks after every anatomy slot, in its own order (see planAnatomy).
     const rank = (/** @type {string | null | undefined} */ id) => {
         if (id === undefined || id === null) return -1;
-        const at = template.anatomy.findIndex(s => s.id === id);
+        // A content slot that is a container of the anatomy (`box`) ranks where that container does.
+        const boxed = boxesOf((template.slots ?? []).find(s => s.id === id) ?? {})[0];
+        const at = template.anatomy.findIndex(s => s.id === (boxed ?? id));
         return at >= 0 ? at : (template.slots ?? []).findIndex(s => s.id === id) >= 0 ? template.anatomy.length + (template.slots ?? []).findIndex(s => s.id === id) : -1;
     };
     const own = rank(slot);
@@ -265,10 +270,21 @@ export function replacedSlotsOf(template, values) {
         .flatMap(part => (part.side ? slotsOfValue(template, part.side, values[part.side] ?? template.props[part.side].default) : [part.replaces]));
 }
 
+/**
+ * Whether a content slot is a layer of an instance only while something holds: its own condition, or the managed container it sits in (a slot in the Alert's action box
+ * is there exactly while the action box is). Any other content slot belongs to the main component and the instance never adds or removes it.
+ * @param {any} template
+ * @param {{ id: string, shownWhen?: any, parent?: string, box?: string }} slot
+ */
+export function isConditionalSlot(template, slot) {
+    if (boxesOf(slot).length) return false;
+    return slot.shownWhen !== undefined || (slot.parent !== undefined && template.anatomy.some(s => s.id === slot.parent && s.managed));
+}
+
 export function planAnatomy(template, values, children, flip = false) {
     // A layer is planned by its slot only when the template makes that slot conditional (a content slot with shownWhen); a content slot the
     // props do not gate is the instance's own and is never removed here, so its layer reads as no slot.
-    children = children.map(c => (c.slot !== null && !template.anatomy.some(s => s.id === c.slot) && !(template.slots ?? []).some(s => s.id === c.slot && s.shownWhen !== undefined) ? { ...c, slot: null } : c));
+    children = children.map(c => (c.slot !== null && !template.anatomy.some(s => s.id === c.slot) && !(template.slots ?? []).some(s => s.id === c.slot && isConditionalSlot(template, s)) ? { ...c, slot: null } : c));
     /** @type {{ slot: string, component: string | null }[]} */
     const wanted = [];
     const replaced = new Set(replacedSlotsOf(template, values));
@@ -289,7 +305,7 @@ export function planAnatomy(template, values, children, flip = false) {
         if (slot.managed && slot.kind !== 'icon' && conditionHolds(slot.shownWhen, values) && holderAllows(template, slot, values) && !wanted.some(w => w.slot === slot.id)) wanted.push({ slot: slot.id, component: null });
     }
     // A content slot the props show while they hold is a layer only while its condition holds (never hidden): its content is the instance's own.
-    for (const slot of template.slots ?? []) if (slot.shownWhen !== undefined && conditionHolds(slot.shownWhen, values) && !wanted.some(w => w.slot === slot.id)) wanted.push({ slot: slot.id, component: null });
+    for (const slot of template.slots ?? []) if (isConditionalSlot(template, slot) && (slot.shownWhen === undefined || conditionHolds(slot.shownWhen, values)) && holderAllows(template, slot, values) && !wanted.some(w => w.slot === slot.id)) wanted.push({ slot: slot.id, component: null });
     const want = new Set(wanted.map(w => w.slot));
     /** @type {AnatomyOp[]} */
     const ops = [];
@@ -312,7 +328,7 @@ export function planAnatomy(template, values, children, flip = false) {
     // A slot anatomically before the label goes first; one after it goes before the first layer the anatomy puts after it, else last.
     // Slots are placed in anatomy order.
     // A slot inside a container is placed by the container: it is the only layer there, so it has no order of its own and no index among the root's layers.
-    const parentOf = slot => template.anatomy.find(s => s.id === slot)?.parent;
+    const parentOf = slot => template.anatomy.find(s => s.id === slot)?.parent ?? (template.slots ?? []).find(s => s.id === slot)?.parent;
     // A root slot is ordered among the root's own layers only: a container's content (the Switch spinner under the handle) is not a direct
     // child, so counting it would land every later slot one short of where the editor inserts, and the backstop would see a permanent move.
     const working = (flip ? [...kept].reverse() : [...kept]).filter(c => c.slot === null ? c.parent == null : parentOf(c.slot) === undefined);

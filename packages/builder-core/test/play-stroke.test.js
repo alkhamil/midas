@@ -68,7 +68,7 @@ test('a per-side stroke in a plain frame follows the box too', () => {
 
 test('clip-content still clips children: the stroke overlay does not open the frame', () => {
     const kid = { id: 'K', name: 'K', type: 'rect', parentId: 'A', x: -20, y: -20, w: 400, h: 200, fills: solid };
-    const { root } = toDomTree(docOf([card(), frame('A', { strokeWidth: 2, stroke: '#112233' }), kid]), 'card');
+    const { root } = toDomTree(docOf([card(), frame('A', { strokeWidth: 2, stroke: '#112233', clip: true }), kid]), 'card');
     const el = root.children.find(c => c.nodeId === 'A');
     assert.equal(el.style.overflowX, 'clip');
     assert.equal(el.style.overflowY, 'clip');
