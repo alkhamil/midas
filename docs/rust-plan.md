@@ -24,7 +24,7 @@ Goal: Midas becomes a fast native desktop app with the same capabilities as toda
 |---|---|---|---|
 | 0 | Rust workspace, WASM bridge, build scripts wired into dev/build/test | JS can call Rust | Done |
 | 1 | Paint model + stroke pipeline (`stroke_area`: inside/center/outside, open paths, dashes, joins, caps, per-side) in `midas-core`; canvas, Play and SVG export use it | One stroke implementation, one picture extent | Done (2026-11-13) |
-| 2 | Wrap current Midas in Tauri: native open/save, window, shortcuts, Play in its own window | Real desktop app | Not started |
+| 2 | Wrap current Midas in Tauri: native open/save, window, shortcuts, Play in its own window | Real desktop app | In progress (shell on `feat/desktop-shell`) |
 | 3 | Document model, commands, undo/redo in Rust; JS becomes a thin client | Single source of truth | Not started |
 | 4 | Auto design system and auto variable engines in Rust (token extraction, component detection, binding) | Heavy logic native | Not started |
 | 5 | Canvas renderer in Rust (wgpu or vello), shared scene for canvas | Editor-grade canvas speed | Gated |
@@ -47,6 +47,8 @@ Goal: Midas becomes a fast native desktop app with the same capabilities as toda
 - Left over: text strokes stay on the browser's `strokeText` (no glyph outline source yet); fills still use the CSS/data-URL picture layouts in `fills.js`; Docker builds need a Rust toolchain; Play's angular/diamond rasters cost a `toDataURL` read-back per paint and size (the top hotspot at 5k and 20k layers).
 
 ### Phase 2: Tauri shell
+- Decided: a thin shell. `src-tauri` opens the Midas server in a window (no local storage, no sidecar); the server keeps accounts, libraries and MCP. The server URL is in the app config (`%APPDATA%\dev.midas.desktop\config.json`); changing it restarts the app, because runtime capabilities cannot be removed.
+- Remote pages get dialog and file access and the menu events only through a runtime capability for the configured origin (`grant_server`). File access is granted per path by the dialog. Studio hooks: `apps/studio/src/desktop/bridge.js`, Tauri-only, active via `window.__TAURI__`.
 - Scope: Tauri project around the existing app, native file dialogs and save, window management, keyboard shortcuts, Play in a separate window.
 - Core crate called natively where useful; WASM path kept for web dev.
 - Exit criteria: Midas runs as a desktop app with feature parity; installer builds on Windows.

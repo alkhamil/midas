@@ -5,6 +5,9 @@ import { moveStopKeys, gradientColorAt, BLEND_MODES, contrastRatio, wcagLevels, 
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { imageSlotRowHtml, slotRowHtml } from './slotRow.js';
 import { openPlay } from './play.js';
+import { startDesktop } from '../desktop/bridge.js';
+// The desktop shell (src-tauri) owns the native bridge; in a browser it is null and nothing else changes.
+const desktop = startDesktop(window, { onError: e => toast(`Desktop file error: ${e?.message || e}`), commands: { 'save-as': () => saveFile(true), play: () => startPlay() } });
 import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
 import { VAR_TYPES } from './varTypes.js';
@@ -9237,7 +9240,7 @@ async function streamPages(fileId, ids) {
 }
 const failedPages = new Set(); // pages that could not be fetched: never saved, so the stored page is not overwritten with an empty one
 // Autosave ke server: ditahan ±1,5 detik setelah perubahan terakhir, lalu hanya page yang berubah yang dikirim.
-function saveSoon() { state.dirty = true; if (!conflictOpen) $('#save-indicator').innerHTML = '<i></i> Unsaved changes'; clearTimeout(saveTimer); saveTimer = setTimeout(save, 1500); }
+function saveSoon() { state.dirty = true; desktop?.setDocument(doc?.data?.name, true); if (!conflictOpen) $('#save-indicator').innerHTML = '<i></i> Unsaved changes'; clearTimeout(saveTimer); saveTimer = setTimeout(save, 1500); }
 let savingInProgress = false;
 let saveQueued = false;
 async function save() {
@@ -9281,6 +9284,7 @@ async function save() {
         await libSaveIndex();
         await kvPut('last', lib.fileId);
         state.dirty = false;
+        desktop?.setDocument(doc.data.name, false);
         if (indicator) indicator.innerHTML = '<i></i> Saved';
     }
     catch (e) {
@@ -10333,7 +10337,17 @@ document.addEventListener('click', e => {
     renderInspector();
 });
 /** Play: the flow of the active page, from its selected or first top-level frame. One Play at a time. */
-function startPlay() {
+// Play in the desktop app opens its own window, which reads the server copy: pending edits are saved first.
+async function flushSaves() {
+    for (let waited = 0; savingInProgress && waited < 200; waited++) await new Promise(r => setTimeout(r, 25));
+    if (state.dirty) await save();
+    return !state.dirty;
+}
+async function startPlay() {
+    if (desktop?.canOpenPlayWindow()) {
+        if (!(await flushSaves())) return toast('Save did not finish, so Play cannot open the latest changes yet.');
+        return desktop.openPlayWindow();
+    }
     if (document.querySelector('.play-overlay') || !doc.page)
         return;
     const start = playStartOf(doc.data.pages, doc.page.id, activeNode()?.id ?? null);
@@ -12201,20 +12215,43 @@ async function readMidasText(file) {
         return new Response(file.stream().pipeThrough(new DecompressionStream('gzip'))).text();
     return file.text();
 }
-function download(blob, name) { const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 10000); }
+// Open a .midas file: the native dialog in the desktop shell, the file input in a browser.
+function openDocumentPicker() {
+    if (!desktop) return $('#file-input').click();
+    desktop.pick().then(file => file && importDocument(file).then(() => desktop.setDocument(doc.data.name, state.dirty))).catch(e => toast(`Could not open the file: ${e?.message || e}`));
+}
+function download(blob, name) {
+    if (desktop) return void desktop.saveFile(blob, name).then(saved => saved && toast(`Saved ${name}`)).catch(e => toast(`Could not save: ${e?.message || e}`));
+    const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+// The .midas copy. In the desktop app Save writes the file this document was last saved to, and asks only the
+// first time; Save As always asks. A browser downloads it. Resolves to whether the copy was written.
+async function exportMidas(blob, name, saveAs) {
+    if (!desktop) {
+        download(blob, name);
+        return true;
+    }
+    try {
+        return await desktop.saveFile(blob, name, { key: lib.fileId, saveAs: saveAs === true });
+    }
+    catch (e) {
+        toast(`Could not save: ${e?.message || e}`);
+        return false;
+    }
+}
 function safeName(s) { return s.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-').slice(0, 120) || 'Midas'; }
-async function saveFile() {
+async function saveFile(saveAs) {
     finishText();
     toast('Preparing .midas export…');
     try {
         if (!(await waitForAllPages())) return;
         const json = await projectStorage.exportProject(lib.fileId, doc.data);
-        download(await packMidas(json), safeName(doc.data.name) + '.midas');
-        toast('Portable document exported. Includes all pages and images.');
+        if (await exportMidas(await packMidas(json), safeName(doc.data.name) + '.midas', saveAs))
+            toast('Portable document exported. Includes all pages and images.');
     }
     catch (e) {
-        download(await packMidas(doc.serialize()), safeName(doc.data.name) + '.midas');
-        toast('Portable document exported.');
+        if (await exportMidas(await packMidas(doc.serialize()), safeName(doc.data.name) + '.midas', saveAs))
+            toast('Portable document exported.');
     }
 }
 async function doExport(format, scale = 2, ids = [...state.selection]) {
@@ -14625,7 +14662,7 @@ function inspectCSS() {
 function help() { modal(`${modalHeader('A few keys. Endless possibilities.', 'Your Midas field guide.')}<h3>Tools</h3><div class="shortcut-grid">${[['Move', 'V'], ['Frame', 'F'], ['Rectangle', 'R'], ['Ellipse', 'O'], ['Line', 'L'], ['Pen', 'P'], ['Text', 'T'], ['Scale', 'K'], ['Hand', 'H']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><h3>Canvas</h3><div class="shortcut-grid">${[['Pan', 'Space + drag'], ['Zoom', '⌘/Ctrl + scroll'], ['Fit all', 'Shift + 1'], ['Fit selection', 'Shift + 2'], ['Actual size', 'Shift + 0'], ['Hide panels', 'Tab'], ['Draw square / circle', 'Shift + drag'], ['Disable snapping', '⌘/Ctrl + drag']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><h3>Editing</h3><div class="shortcut-grid">${[['Undo', '⌘Z'], ['Redo', '⇧⌘Z'], ['Duplicate', '⌘D'], ['Group', '⌘G'], ['Ungroup / unframe', '⇧⌘G'], ['Frame', '⌥⌘G'], ['Add auto layout', '⇧A'], ['Remove auto layout', '⌥⇧A'], ['Commands', '⌘K'], ['Rename layer', '⌘R / double-click'], ['Edit text / path', 'Double-click'], ['Finish path', 'Enter'], [`Nudge ${options.nudge}px`, 'Arrow keys'], [`Nudge ${options.bigNudge}px`, 'Shift + arrows'], ['Save file', '⌘S'], ['Place image', '⇧⌘K']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><p>On Windows and Linux, use Ctrl in place of ⌘. Pen: drag an anchor while drawing to create Bézier handles. Alt-drag a handle to break tangent symmetry.</p>`); }
 function settings() { modal(`${modalHeader('A workspace that feels like yours.')}<div class="stack"><label class="checkbox-row"><input type="checkbox" id="settings-theme" ${options.theme === 'light' ? 'checked' : ''}>Light appearance</label><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>Canvas dot grid</label><label class="checkbox-row"><input type="checkbox" data-option="snap" ${options.snap ? 'checked' : ''}>Smart alignment guides</label><label class="checkbox-row"><input type="checkbox" data-option="rulers" ${options.rulers ? 'checked' : ''}>Canvas rulers</label></div><h3>Nudge</h3><div class="property-grid"><label class="field" title="Arrow keys"><span>Nudge</span><input type="number" min="0.01" step="any" data-option-num="nudge" value="${options.nudge}" aria-label="Nudge amount"><i class="unit">px</i></label><label class="field" title="Shift + arrow keys"><span>Big</span><input type="number" min="0.01" step="any" data-option-num="bigNudge" value="${options.bigNudge}" aria-label="Big nudge amount"><i class="unit">px</i></label></div><h3>Figma</h3><p class="small-label">Personal access token used to fetch images when you paste from Figma. Stored only in this browser and sent only to api.figma.com.</p><div class="figma-token-row"><label class="field"><span>${icon('lock', 12)}</span><input type="password" id="settings-figma-token" placeholder="${figmaToken() ? 'Saved — type to replace' : 'figd_…'}" autocomplete="off" spellcheck="false" aria-label="Figma personal access token"></label>${figmaToken() ? '<button class="wide-button" id="settings-figma-clear">Remove</button>' : ''}</div><h3>Rendering</h3><pre class="token-code">Backend: ${esc(renderer.backend)}\nVisible layers: ${renderer.visibleCount}\nInstances: ${renderer.instanceCount}\nScene draw calls: ${renderer.drawCalls}\nCPU submission: ${renderer.cpuMs.toFixed(2)} ms\nDevice pixel ratio: ${renderer.dpr}\nStorage: ${storageMode}${renderer.backend !== 'WebGPU' ? `\nWebGPU status: ${esc(renderer.gpuError || 'Unavailable')}` : ''}</pre><p>Midas draws on demand. The displayed time measures CPU scene assembly and command submission, not GPU execution or FPS. WebGPU requires a compatible browser and secure context.</p>`); $('#settings-theme').onchange = () => toggleTheme(); }
 function toggleTheme() { options.theme = options.theme === 'dark' ? 'light' : 'dark'; delete options.canvasColor; $('#canvas-world').style.backgroundColor = ''; document.documentElement.dataset.theme = options.theme; saveOptions(); refreshUI(); invalidate(); }
-function openExport() { modal(`${modalHeader('Take your work with you.', 'Portable by design. No account required.')}<button class="wide-button primary" id="modal-save-file" style="height:43px">${icon('download')} Download .midas document</button><p>Includes every page, editable layer, component, design token, and placed image.</p><h3>Export ${state.selection.size ? 'selection' : 'current page'}</h3><div class="property-grid"><button class="wide-button" id="modal-png">PNG image · 2×</button><button class="wide-button" id="modal-svg">SVG vector</button></div><h3>Already have a Midas file?</h3><button class="wide-button" id="modal-open-file">${icon('upload')} Open document</button><p>Midas files are JSON. This editor does not read or write Figma’s proprietary .fig format.</p>`); $('#modal-save-file').onclick = saveFile; $('#modal-png').onclick = () => doExport('PNG', 2); $('#modal-svg').onclick = () => doExport('SVG'); $('#modal-open-file').onclick = () => { $('#file-input').click(); closeModal(); }; }
+function openExport() { modal(`${modalHeader('Take your work with you.', 'Portable by design. No account required.')}<button class="wide-button primary" id="modal-save-file" style="height:43px">${icon('download')} Download .midas document</button><p>Includes every page, editable layer, component, design token, and placed image.</p><h3>Export ${state.selection.size ? 'selection' : 'current page'}</h3><div class="property-grid"><button class="wide-button" id="modal-png">PNG image · 2×</button><button class="wide-button" id="modal-svg">SVG vector</button></div><h3>Already have a Midas file?</h3><button class="wide-button" id="modal-open-file">${icon('upload')} Open document</button><p>Midas files are JSON. This editor does not read or write Figma’s proprietary .fig format.</p>`); $('#modal-save-file').onclick = saveFile; $('#modal-png').onclick = () => doExport('PNG', 2); $('#modal-svg').onclick = () => doExport('SVG'); $('#modal-open-file').onclick = () => { openDocumentPicker(); closeModal(); }; }
 function newFile() { libNew('blank'); }
 function stressTest() {
     transaction('Generate rendering stress test', () => {
@@ -21927,7 +21964,7 @@ for (const sel of ['[data-pe-drag]', '[data-pui-drag]'])
         e.preventDefault();
     });
 
-const actions = { convertSlot: () => convertToSlot(), signOut, changePassword: () => passwordDialog(), apiAccess: () => apiAccessDialog(), pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, removeAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, unframe: unframeSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, selectMatching: selectMatchingMenu, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
+const actions = { convertSlot: () => convertToSlot(), signOut, changePassword: () => passwordDialog(), apiAccess: () => apiAccessDialog(), pushToMain, 'kind-section': () => convertKind('section'), 'kind-frame': () => convertKind('frame'), 'kind-group': () => convertKind('group'), zoomIn: () => zoomToPercent(zoomStep(1)), zoomOut: () => zoomToPercent(zoomStep(-1)), zoom50: () => zoomToPercent(50), zoom200: () => zoomToPercent(200), zoom400: () => zoomToPercent(400), zoom800: () => zoomToPercent(800), setThumbnail: setAsThumbnail, addEffect, addFill, goHome: () => showHome(), variables: () => toggleVarsWindow(), addAutoLayout, removeAutoLayout, undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, unframe: unframeSelection, frameSelection: () => groupSelection(true), component: makeComponent, combineVariants: combineAsVariants, detachInstance: detachSelectedInstances, resetOverrides: resetSelectedOverrides, createFromInstance, booleanUnion: () => booleanOp('union'), booleanSubtract: () => booleanOp('subtract'), booleanIntersect: () => booleanOp('intersect'), booleanExclude: () => booleanOp('exclude'), flatten: flattenSelection, useAsMask, createMultiple: createMultipleComponents, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, selectMatching: selectMatchingMenu, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: openDocumentPicker, newFile, addPage, theme: toggleTheme, help, settings, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#8fbcf0' : 'none'), toggleStroke, toggleShadow: () => { const n = activeNode(); if (!n)
         return; if (getEffects(n).some(e => e.type === 'drop'))
         transaction('Remove shadow', () => { for (const m of selected()) {
             if (Array.isArray(materializeEffects(m))) {
@@ -23705,7 +23742,7 @@ document.addEventListener('keydown', e => {
             return;
         }
         if (key === 'o') {
-            $('#file-input').click();
+            openDocumentPicker();
             return;
         }
         if (key === 'n') {

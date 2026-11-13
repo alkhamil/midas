@@ -7,3 +7,4 @@ data/
 .env.render
 .artifacts/
 target/
+src-tauri/gen/

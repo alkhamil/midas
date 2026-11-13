@@ -133,6 +133,8 @@
 
 ## Known issues
 
+- Desktop shell (`src-tauri`, `npm run dev:desktop` / `build:desktop`; scripts/desktop.mjs loads vcvars64): the server URL change restarts the app (runtime capabilities cannot be removed). Play flushes pending saves, then opens one reusable window (label `play`) on the document route. Save remembers the file per document (Save As asks again). Paste from the menu reads the clipboard through the clipboard plugin: WebView2 refuses `execCommand('paste')` and `navigator.clipboard` outside a key press.
+
 - The Behavior panel's Text|Icon segmented control and the Input prefix/suffix rows are covered by unit tests only; they have not been looked at in a browser. `affix.browser.test.mjs` was edited to the new rows and not run.
 
 - Strict parity (browser) fails 3 of ~100 Input xs pairs, on HEAD and since: `xs allowClear` and `xs showCount` "outline not found on both shots" and `xs suffix` outline 0.70px. The part boxes match within 0.01px, so it is the outline edge check on a 16px control, not layout. Part 2 (single border) could not re-verify without a browser; presumed unchanged. 2026-11-04: two consecutive full browser runs (before and after the export text-part fill fix) show all 50 strict pairs green including every xs pair, so the 3 failures did not reproduce; kept for one more run before deleting.

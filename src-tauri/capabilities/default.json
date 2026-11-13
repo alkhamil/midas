@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Local pages only: the unreachable-server page and the Server URL window. The server's own pages get their permissions from the runtime capability granted in src/main.rs.",
+  "local": true,
+  "windows": ["main", "server-settings"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "allow-connect",
+    "allow-get-server-url",
+    "allow-set-server-url"
+  ]
+}

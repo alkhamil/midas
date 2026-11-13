@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Server URL</title>
+  <style>
+    :root { color-scheme: light dark; --fg: #1d1d1f; --muted: #6e6e73; --bg: #f5f5f7; --card: #ffffff; --line: #d2d2d7; --accent: #0a84ff; --danger: #d70015; }
+    @media (prefers-color-scheme: dark) { :root { --fg: #f5f5f7; --muted: #a1a1a6; --bg: #1c1c1e; --card: #2c2c2e; --line: #3a3a3c; --accent: #0a84ff; --danger: #ff453a; } }
+    html, body { height: 100%; margin: 0; }
+    body { background: var(--card); color: var(--fg); font: 14px/1.45 system-ui, "Segoe UI", sans-serif; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; }
+    p { margin: 0; color: var(--muted); }
+    label { font-weight: 600; }
+    input { font: inherit; padding: 8px 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+    .row { margin-top: auto; display: flex; gap: 8px; justify-content: flex-end; }
+    button { font: inherit; border-radius: 7px; border: 1px solid var(--line); background: var(--card); color: var(--fg); padding: 7px 14px; cursor: pointer; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    #error { color: var(--danger); min-height: 1.45em; }
+  </style>
+</head>
+<body>
+  <label for="url">Midas server</label>
+  <input id="url" type="url" spellcheck="false">
+  <p>Scheme, host and port. Midas restarts to use the new address.</p>
+  <p id="error" role="alert"></p>
+  <div class="row">
+    <button id="cancel">Cancel</button>
+    <button id="save" class="primary">Save and restart</button>
+  </div>
+  <script>
+    const invoke = (cmd, args) => window.__TAURI__.core.invoke(cmd, args);
+    const $ = id => document.getElementById(id);
+    invoke('get_server_url').then(url => { $('url').value = url; });
+    $('cancel').onclick = () => window.__TAURI__.window.getCurrentWindow().close();
+    $('save').onclick = async () => {
+      $('error').textContent = '';
+      try { await invoke('set_server_url', { url: $('url').value }); }
+      catch (e) { $('error').textContent = String(e); }
+    };
+  </script>
+</body>
+</html>

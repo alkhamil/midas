@@ -11,6 +11,8 @@
     "build:core": "node scripts/build-core.mjs --force",
     "dev:studio": "npm run dev --workspace @midas/studio",
     "dev:server": "npm run dev --workspace @midas/server",
+    "dev:desktop": "node scripts/desktop.mjs dev",
+    "build:desktop": "node scripts/desktop.mjs build",
     "build": "npm run build --workspaces --if-present",
     "db:migrate": "npm run db:migrate --workspace @midas/server",
     "infra:up": "docker compose up -d",
@@ -18,5 +20,8 @@
   },
   "engines": {
     "node": ">=26"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.4"
   }
 }
