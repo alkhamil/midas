@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-tab-menu-target"
+description = "Enables the tab_menu_target command without any pre-configured scope."
+commands.allow = ["tab_menu_target"]
+
+[[permission]]
+identifier = "deny-tab-menu-target"
+description = "Denies the tab_menu_target command without any pre-configured scope."
+commands.deny = ["tab_menu_target"]

@@ -1,13 +1,27 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Local pages only: the tab strip, the unreachable-server page in a tab, and the Server URL window. The server's own pages get their permissions from the runtime capability granted in src/main.rs.",
+  "description": "Local pages only: the title bar and tab strip, the unreachable-server page in a tab, and the Server URL window. The server pages get their permissions from the runtime capability granted in src/main.rs.",
   "local": true,
-  "windows": ["server-settings"],
-  "webviews": ["chrome", "tab-*"],
+  "windows": [
+    "server-settings",
+    "tab-menu"
+  ],
+  "webviews": [
+    "chrome",
+    "home",
+    "tab-*"
+  ],
   "permissions": [
     "core:default",
     "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-is-maximized",
+    "core:window:allow-start-dragging",
+    "clipboard-manager:allow-write-text",
     "allow-connect",
     "allow-get-server-url",
     "allow-set-server-url",
@@ -15,6 +29,14 @@
     "allow-tab-activate",
     "allow-tab-close",
     "allow-tab-new",
-    "allow-tab-move"
+    "allow-tab-move",
+    "allow-tab-pin",
+    "allow-tab-reload",
+    "allow-tab-close-others",
+    "allow-tab-close-all",
+    "allow-tab-rename",
+    "allow-tab-menu-open",
+    "allow-tab-menu-target",
+    "core:window:allow-set-focus"
   ]
 }

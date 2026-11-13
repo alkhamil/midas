@@ -3786,3 +3786,9 @@ body.view-only #file-name::after { content: " · View only"; color: var(--muted)
 .play-frame [aria-disabled="true"] { cursor: not-allowed }
 .play-frame [hidden] { display: none !important }
 .hotspots-on .play-hotspot, .hotspots-held .play-hotspot { outline: 2px dashed #5b8def; outline-offset: 2px }
+
+/* Desktop app menu (logo menu, desktop app only): the top row of File, Edit, View, Window. */
+.app-menu { position: fixed; z-index: 950; display: flex; flex-direction: column; min-width: 0; padding: 4px }
+.app-menu-sub { position: fixed; z-index: 951 }
+.app-menu-top { display: block; width: 100%; padding: 6px 10px; border-radius: 5px; font-size: 11px; color: var(--text); text-align: left }
+.app-menu-top:hover, .app-menu-top.open, .app-menu-top:focus-visible { background: var(--accent-bg); color: var(--accent); outline: none }

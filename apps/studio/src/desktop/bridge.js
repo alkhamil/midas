@@ -188,6 +188,10 @@ export function startDesktop(win = globalThis.window, { onError = () => { }, com
         },
         /** Play runs in its own tab; the editor tab is the one that asks for it. */
         canOpenPlayWindow: () => !isPlayTab,
+        /** Runs an edit command of this page (undo, copy, paste ...), the same as the old menu bar did. */
+        command: (id) => runMenuCommand(id, win, commands),
+        /** Runs an app command in the shell: quit, fullscreen, server-url, tab-next ... */
+        appCommand: (action) => tauri.event.emit('midas:app-command', { action }).catch(onError),
         /** Asks the shell for the Play tab, on the route of the open document. */
         openPlayWindow: () => tauri.event.emit('midas:open-play', { route: win.location.pathname + win.location.search }).catch(onError),
     };

@@ -1,7 +1,8 @@
-//! Tabs of the main window. The window holds one bundled strip (`chrome`) and one webview per tab, all children
-//! of the window; only the active tab's webview is shown. A document tab is a webview on the Midas server at its
-//! route; a Play tab is one on the same server that starts Play. Tab webviews are remote pages: they get the
-//! server's capabilities (`grant_server`) and share the one WebView2 session, so the sign-in cookie is shared.
+//! Tabs of the main window. The window holds one bundled title bar and tab strip (`chrome`) and one webview per
+//! tab, all children of the window; only the active tab's webview is shown. The Home tab (`home`) is always first
+//! and never closes: it is the file browser. A document tab is a webview on the Midas server at its route; a Play
+//! tab is one on the same server that starts Play. Tab webviews are remote pages: they get the server's
+//! capabilities (`grant_server`) and share the one WebView2 session, so the sign-in cookie is shared.
 //!
 //! Every change runs on one worker thread (`submit`). `add_child` waits for the main thread, so it must not run on
 //! the main thread or while the state lock is held; the public functions here only queue work.
@@ -22,14 +23,18 @@ use tauri::{
 use crate::{parse_url, read_config, reachable, MAIN};
 
 pub const CHROME: &str = "chrome";
-pub const STRIP: f64 = 40.0;
+pub const HOME: &str = "home";
+/// Height of the title bar and tab strip, in logical pixels.
+pub const STRIP: f64 = 36.0;
 const UNREACHABLE_PAGE: &str = "server.html";
 const CHROME_PAGE: &str = "chrome.html";
+const MENU: &str = "tab-menu";
+const MENU_PAGE: &str = "tabmenu.html";
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Tab {
-    /// The webview label: `tab-<n>` for a document, `play-<n>` for a Play tab.
+    /// The webview label: `home`, `tab-<n>` for a document, `play-<n>` for a Play tab.
     pub id: String,
     pub play: bool,
     /// For a Play tab: the tab it was opened from, which gets the focus back when Play closes.
@@ -39,6 +44,9 @@ pub struct Tab {
     pub title: String,
     #[serde(default)]
     pub unsaved: bool,
+    /// A pinned tab is icon-only and stays at the left, after Home.
+    #[serde(default)]
+    pub pinned: bool,
 }
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
@@ -52,6 +60,8 @@ pub struct Saved {
 pub struct Model {
     saved: Saved,
     next: u32,
+    /// The tab whose context menu is open (the menu window reads it).
+    menu_for: Option<String>,
 }
 
 type Op = Box<dyn FnOnce(&AppHandle) + Send>;
@@ -72,21 +82,13 @@ pub fn route_of(app: &AppHandle, label: &str) -> Option<String> {
     snapshot(app).tabs.into_iter().find(|t| t.id == label).map(|t| t.route)
 }
 
-pub fn active_label(app: &AppHandle) -> Option<String> {
-    snapshot(app).active
-}
-
-pub fn is_tab_command(id: &str) -> bool {
-    matches!(id, "tab-new" | "tab-close" | "tab-next" | "tab-prev") || jump_number(id).is_some()
-}
-
 fn jump_number(id: &str) -> Option<usize> {
     id.strip_prefix("tab-")?.parse::<usize>().ok().filter(|n| (1..=9).contains(n))
 }
 
 /// Starts the worker and restores the saved tabs. Called once from setup, after the main window exists.
 pub fn init(app: &AppHandle) {
-    app.manage(Mutex::new(Model { saved: Saved::default(), next: 0 }));
+    app.manage(Mutex::new(Model { saved: Saved::default(), next: 0, menu_for: None }));
     let (sender, receiver) = mpsc::channel::<Op>();
     let _ = WORKER.set(sender);
     let worker_app = app.clone();
@@ -98,7 +100,7 @@ pub fn init(app: &AppHandle) {
     submit(restore);
 }
 
-/// The tab strip and every tab fill the window below the strip.
+/// The title bar and tab strip span the top of the window; the tabs fill the window below them.
 pub fn relayout(app: &AppHandle) {
     let Some((width, height)) = content_size(app) else { return };
     if let Some(chrome) = app.get_webview(CHROME) {
@@ -113,12 +115,12 @@ pub fn relayout(app: &AppHandle) {
     }
 }
 
-/// Runs a tab command: `tab-new`, `tab-close`, `tab-next`, `tab-prev` or `tab-1`..`tab-9`.
+/// Runs a tab command: `tab-new`, `tab-close`, `tab-next`, `tab-prev`, `tab-1`..`tab-9`, or `quit`.
 pub fn command(action: &str) {
     let action = action.to_string();
     submit(move |app| match action.as_str() {
         "tab-new" => {
-            let _ = create(app, "/", false, None, "Midas");
+            let _ = create(app, "/", false, None, "New tab");
         }
         "tab-close" => {
             if let Some(id) = snapshot(app).active {
@@ -127,6 +129,7 @@ pub fn command(action: &str) {
         }
         "tab-next" => cycle(app, 1),
         "tab-prev" => cycle(app, -1),
+        "quit" => app.exit(0),
         other => {
             if let Some(n) = jump_number(other) {
                 jump(app, n);
@@ -150,10 +153,7 @@ pub fn open_play(route: &str) {
         match existing {
             Some(id) => {
                 if let Some(view) = app.get_webview(&id) {
-                    if let Ok(url) = tab_url(app, &route).and_then(|u| match u {
-                        WebviewUrl::External(url) => Ok(url),
-                        _ => Err("the server is not reachable".into()),
-                    }) {
+                    if let Ok(WebviewUrl::External(url)) = tab_url(app, &route) {
                         let _ = view.navigate(url);
                     }
                 }
@@ -175,15 +175,15 @@ pub fn record(label: &str, name: &str, unsaved: bool, route: &str) {
             let model = app.state::<Mutex<Model>>();
             let Ok(mut m) = model.lock() else { return };
             let Some(tab) = m.saved.tabs.iter_mut().find(|t| t.id == label) else { return };
-            let title = if tab.play { format!("Play: {name}") } else { name.clone() };
-            let next = (title, unsaved, route.clone());
+            let title = title_for(tab.play, tab.id == HOME, &route, &name);
             let before = (tab.title.clone(), tab.unsaved, tab.route.clone());
-            if before == next {
+            let after = (title, unsaved && route.starts_with("/file/"), route.clone());
+            if before == after {
                 false
             } else {
-                tab.title = next.0;
-                tab.unsaved = next.1;
-                tab.route = next.2;
+                tab.title = after.0;
+                tab.unsaved = after.1;
+                tab.route = after.2;
                 true
             }
         };
@@ -191,6 +191,20 @@ pub fn record(label: &str, name: &str, unsaved: bool, route: &str) {
             publish(app, &snapshot(app));
         }
     });
+}
+
+/// The label a tab shows: Home is "Home", a file browser tab is "New tab", a Play tab "Play: <file>", and a
+/// document its own name.
+fn title_for(play: bool, home: bool, route: &str, name: &str) -> String {
+    if home {
+        "Home".into()
+    } else if play {
+        format!("Play: {name}")
+    } else if !route.starts_with("/file/") {
+        "New tab".into()
+    } else {
+        name.to_string()
+    }
 }
 
 #[tauri::command]
@@ -211,13 +225,103 @@ pub fn tab_close(id: String) {
 #[tauri::command]
 pub fn tab_new() {
     submit(|app| {
-        let _ = create(app, "/", false, None, "Midas");
+        let _ = create(app, "/", false, None, "New tab");
     });
 }
 
 #[tauri::command]
 pub fn tab_move(id: String, index: usize) {
     submit(move |app| move_to(app, &id, index));
+}
+
+#[tauri::command]
+pub fn tab_pin(id: String, pinned: bool) {
+    submit(move |app| set_pinned(app, &id, pinned));
+}
+
+#[tauri::command]
+pub fn tab_reload(id: String) {
+    submit(move |app| {
+        if let Some(view) = app.get_webview(&id) {
+            let _ = view.reload();
+        }
+    });
+}
+
+#[tauri::command]
+pub fn tab_close_others(id: String) {
+    submit(move |app| {
+        let others: Vec<String> = snapshot(app).tabs.into_iter().filter(|t| t.id != id && t.id != HOME).map(|t| t.id).collect();
+        for other in others {
+            close(app, &other);
+        }
+        activate(app, &id);
+    });
+}
+
+#[tauri::command]
+pub fn tab_close_all() {
+    submit(|app| {
+        let all: Vec<String> = snapshot(app).tabs.into_iter().filter(|t| t.id != HOME).map(|t| t.id).collect();
+        for id in all {
+            close(app, &id);
+        }
+        activate(app, HOME);
+    });
+}
+
+/// Rename File on a document tab: the tab shows the document, and its editor runs the rename.
+/// The context menu of a tab opens as its own small window at the pointer (a child webview cannot draw outside the
+/// title bar). It reads its tab with `tab_menu_target`, and closes when it loses focus.
+#[tauri::command]
+pub fn tab_menu_open(id: String, x: f64, y: f64) {
+    submit(move |app| {
+        if let Ok(mut m) = app.state::<Mutex<Model>>().lock() {
+            m.menu_for = Some(id);
+        }
+        if let Err(error) = open_menu_window(app, x, y) {
+            eprintln!("midas: tab menu: {error}");
+        }
+    });
+}
+
+#[tauri::command]
+pub fn tab_menu_target(app: AppHandle) -> Option<Tab> {
+    let model = app.state::<Mutex<Model>>();
+    let m = model.lock().ok()?;
+    let id = m.menu_for.clone()?;
+    m.saved.tabs.iter().find(|t| t.id == id).cloned()
+}
+
+fn open_menu_window(app: &AppHandle, x: f64, y: f64) -> Result<(), String> {
+    use tauri::{LogicalPosition as Pos, WebviewWindowBuilder};
+    if let Some(old) = app.get_webview_window(MENU) {
+        let _ = old.close();
+    }
+    let window = app.get_window(MAIN).ok_or("the main window is closed")?;
+    let scale = window.scale_factor().map_err(|e| e.to_string())?;
+    let origin = window.inner_position().map_err(|e| e.to_string())?;
+    let at = Pos::new(origin.x as f64 / scale + x, origin.y as f64 / scale + y);
+    WebviewWindowBuilder::new(app, MENU, WebviewUrl::App(MENU_PAGE.into()))
+        .title("Tab menu")
+        .decorations(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .resizable(false)
+        .inner_size(232.0, 236.0)
+        .position(at.x, at.y)
+        .focused(true)
+        .build()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn tab_rename(id: String) {
+    submit(move |app| {
+        activate(app, &id);
+        let _ = app.emit_to(EventTarget::webview(id), "menu", "rename-file".to_string());
+    });
 }
 
 /// Listens for the events the pages send: tab commands (keys, the strip), tab state and Play.
@@ -254,7 +358,8 @@ fn path_of(route: &str) -> &str {
     route.split('?').next().unwrap_or(route)
 }
 
-/// The tab after `index` (or before it, at the end) when the tab there closes; a Play tab goes back to its source.
+/// The tab that takes the focus when `removed` (at `index`) closes: a Play tab goes back to its source; otherwise
+/// the tab on the right, or the one on the left at the end. Home is never removed, so the list is never empty.
 pub fn next_after_close(tabs: &[Tab], index: usize, removed: &Tab) -> Option<String> {
     if removed.play {
         if let Some(source) = &removed.source {
@@ -280,6 +385,43 @@ pub fn jump_index(len: usize, n: usize) -> Option<usize> {
     (index < len).then_some(index)
 }
 
+/// The order of the strip: Home first, then the pinned tabs, then the rest. Each group keeps its order.
+pub fn zone_order(tabs: Vec<Tab>) -> Vec<Tab> {
+    let mut home = Vec::new();
+    let mut pinned = Vec::new();
+    let mut rest = Vec::new();
+    for tab in tabs {
+        if tab.id == HOME {
+            home.push(tab);
+        } else if tab.pinned {
+            pinned.push(tab);
+        } else {
+            rest.push(tab);
+        }
+    }
+    home.into_iter().chain(pinned).chain(rest).collect()
+}
+
+/// Moves `id` to `index` inside its own zone: Home never moves, and a pinned tab stays among the pinned tabs.
+pub fn place(tabs: Vec<Tab>, id: &str, index: usize) -> Vec<Tab> {
+    let Some(moved) = tabs.iter().find(|t| t.id == id).cloned() else { return tabs };
+    if moved.id == HOME {
+        return tabs;
+    }
+    let mut pinned = Vec::new();
+    let mut rest = Vec::new();
+    for tab in tabs.iter().filter(|t| t.id != HOME && t.id != id) {
+        if tab.pinned {
+            pinned.push(tab.clone());
+        } else {
+            rest.push(tab.clone());
+        }
+    }
+    let zone = if moved.pinned { &mut pinned } else { &mut rest };
+    zone.insert(index.min(zone.len()), moved);
+    tabs.iter().filter(|t| t.id == HOME).cloned().chain(pinned).chain(rest).collect()
+}
+
 fn cycle(app: &AppHandle, delta: i64) {
     let saved = snapshot(app);
     if saved.tabs.is_empty() {
@@ -299,10 +441,11 @@ fn jump(app: &AppHandle, n: usize) {
 
 fn restore(app: &AppHandle) {
     let mut saved = load(app);
-    if saved.tabs.is_empty() {
-        saved.tabs.push(new_tab(format!("tab-{}", 1), false, None, "/", "Midas"));
+    if !saved.tabs.iter().any(|t| t.id == HOME) {
+        saved.tabs.insert(0, new_tab(HOME.into(), false, None, "/", "Home"));
     }
     let next = saved.tabs.iter().filter_map(|t| t.id.rsplit('-').next()?.parse::<u32>().ok()).max().unwrap_or(0);
+    saved.tabs = zone_order(saved.tabs);
     {
         let model = app.state::<Mutex<Model>>();
         if let Ok(mut m) = model.lock() {
@@ -311,7 +454,7 @@ fn restore(app: &AppHandle) {
         }
     }
     if let Err(error) = add_child(app, CHROME, WebviewUrl::App(CHROME_PAGE.into())) {
-        eprintln!("midas: tab strip: {error}");
+        eprintln!("midas: title bar: {error}");
     }
     for tab in &saved.tabs {
         let outcome = tab_url(app, &tab.route).and_then(|url| add_child(app, &tab.id, url));
@@ -319,16 +462,12 @@ fn restore(app: &AppHandle) {
             eprintln!("midas: tab {}: {error}", tab.id);
         }
     }
-    let active = saved.active.clone().or_else(|| saved.tabs.first().map(|t| t.id.clone()));
-    if let Some(active) = active {
-        activate(app, &active);
-    } else {
-        publish(app, &snapshot(app));
-    }
+    let active = saved.active.clone().filter(|a| saved.tabs.iter().any(|t| &t.id == a)).unwrap_or_else(|| HOME.into());
+    activate(app, &active);
 }
 
 fn new_tab(id: String, play: bool, source: Option<String>, route: &str, title: &str) -> Tab {
-    Tab { id, play, source, route: route.into(), title: title.into(), unsaved: false }
+    Tab { id, play, source, route: route.into(), title: title.into(), unsaved: false, pinned: false }
 }
 
 /// Adds a tab after its source (Play) or at the end, shows it, and returns its label.
@@ -397,34 +536,47 @@ fn activate(app: &AppHandle, id: &str) {
 }
 
 fn close(app: &AppHandle, id: &str) {
-    let (removed, next, blank) = {
+    if id == HOME {
+        return;
+    }
+    let (removed, next) = {
         let model = app.state::<Mutex<Model>>();
         let Ok(mut m) = model.lock() else { return };
         let Some(index) = m.saved.tabs.iter().position(|t| t.id == id) else { return };
         let removed = m.saved.tabs.remove(index);
         let was_active = m.saved.active.as_deref() == Some(id);
         let next = if was_active { next_after_close(&m.saved.tabs, index, &removed) } else { m.saved.active.clone() };
-        (removed, next, m.saved.tabs.is_empty())
+        (removed, next)
     };
     if let Some(view) = app.get_webview(&removed.id) {
         let _ = view.close();
     }
-    if blank {
-        // The last tab closing shows the file browser (the server's home), not an empty window.
-        let _ = create(app, "/", false, None, "Midas");
-    } else if let Some(next) = next {
-        activate(app, &next);
-    }
+    let next = next.unwrap_or_else(|| HOME.into());
+    activate(app, &next);
 }
 
 fn move_to(app: &AppHandle, id: &str, index: usize) {
     let saved = {
         let model = app.state::<Mutex<Model>>();
         let Ok(mut m) = model.lock() else { return };
-        let Some(from) = m.saved.tabs.iter().position(|t| t.id == id) else { return };
-        let tab = m.saved.tabs.remove(from);
-        let at = index.min(m.saved.tabs.len());
-        m.saved.tabs.insert(at, tab);
+        let tabs = std::mem::take(&mut m.saved.tabs);
+        m.saved.tabs = place(tabs, id, index);
+        m.saved.clone()
+    };
+    publish(app, &saved);
+}
+
+fn set_pinned(app: &AppHandle, id: &str, pinned: bool) {
+    let saved = {
+        let model = app.state::<Mutex<Model>>();
+        let Ok(mut m) = model.lock() else { return };
+        if id == HOME {
+            return;
+        }
+        let Some(tab) = m.saved.tabs.iter_mut().find(|t| t.id == id) else { return };
+        tab.pinned = pinned;
+        let tabs = std::mem::take(&mut m.saved.tabs);
+        m.saved.tabs = zone_order(tabs);
         m.saved.clone()
     };
     publish(app, &saved);
@@ -498,29 +650,38 @@ mod tests {
     use super::*;
 
     fn tab(id: &str, play: bool, source: Option<&str>) -> Tab {
-        new_tab(id.into(), play, source.map(str::to_owned), "/", id)
+        new_tab(id.into(), play, source.map(str::to_owned), "/file/x", id)
+    }
+
+    fn pinned(mut t: Tab) -> Tab {
+        t.pinned = true;
+        t
+    }
+
+    fn ids(tabs: &[Tab]) -> Vec<&str> {
+        tabs.iter().map(|t| t.id.as_str()).collect()
     }
 
     #[test]
     fn closing_a_play_tab_returns_to_its_source() {
-        let tabs = vec![tab("tab-1", false, None), tab("play-2", true, Some("tab-1")), tab("tab-3", false, None)];
-        assert_eq!(next_after_close(&tabs[..2], 1, &tabs[1]).as_deref(), Some("tab-1"));
+        let tabs = vec![tab(HOME, false, None), tab("tab-1", false, None), tab("play-2", true, Some("tab-1"))];
+        assert_eq!(next_after_close(&tabs[..2], 2, &tabs[2]).as_deref(), Some("tab-1"));
     }
 
     #[test]
-    fn closing_a_tab_moves_to_its_neighbour_then_the_last_one() {
-        let tabs = vec![tab("tab-1", false, None), tab("tab-3", false, None)];
+    fn closing_a_tab_moves_to_its_right_neighbour_or_the_left_one_at_the_end() {
+        let tabs = vec![tab(HOME, false, None), tab("tab-1", false, None), tab("tab-3", false, None)];
         let removed = tab("tab-2", false, None);
-        assert_eq!(next_after_close(&tabs, 1, &removed).as_deref(), Some("tab-3"));
         assert_eq!(next_after_close(&tabs, 2, &removed).as_deref(), Some("tab-3"));
+        assert_eq!(next_after_close(&tabs, 9, &removed).as_deref(), Some("tab-3"));
         assert_eq!(next_after_close(&[], 0, &removed), None);
     }
 
     #[test]
     fn a_play_tab_whose_source_is_gone_falls_back_to_a_neighbour() {
-        let tabs = vec![tab("tab-3", false, None)];
+        let tabs = vec![tab(HOME, false, None), tab("tab-3", false, None)];
         let removed = tab("play-2", true, Some("tab-1"));
-        assert_eq!(next_after_close(&tabs, 0, &removed).as_deref(), Some("tab-3"));
+        assert_eq!(next_after_close(&tabs, 1, &removed).as_deref(), Some("tab-3"));
     }
 
     #[test]
@@ -540,33 +701,53 @@ mod tests {
     }
 
     #[test]
-    fn tab_command_ids_are_recognised() {
-        for id in ["tab-new", "tab-close", "tab-next", "tab-prev", "tab-1", "tab-9"] {
-            assert!(is_tab_command(id), "{id}");
-        }
-        for id in ["tab-0", "tab-10", "tab-x", "save", "play"] {
-            assert!(!is_tab_command(id), "{id}");
-        }
-    }
-
-    #[test]
     fn a_play_route_is_matched_by_its_path_not_its_query() {
         assert_eq!(path_of("/file/abc?page=p1"), "/file/abc");
         assert_eq!(path_of("/"), "/");
     }
 
     #[test]
+    fn strip_order_is_home_then_pinned_then_the_rest() {
+        let tabs = vec![tab("tab-1", false, None), pinned(tab("tab-2", false, None)), tab(HOME, false, None)];
+        assert_eq!(ids(&zone_order(tabs)), vec![HOME, "tab-2", "tab-1"]);
+    }
+
+    #[test]
+    fn home_never_moves_and_nothing_moves_in_front_of_it() {
+        let tabs = vec![tab(HOME, false, None), tab("tab-1", false, None), tab("tab-2", false, None)];
+        assert_eq!(ids(&place(tabs.clone(), HOME, 2)), ids(&tabs));
+        assert_eq!(ids(&place(tabs, "tab-2", 0)), vec![HOME, "tab-2", "tab-1"]);
+    }
+
+    #[test]
+    fn a_pinned_tab_stays_among_the_pinned_tabs() {
+        let tabs = vec![tab(HOME, false, None), pinned(tab("tab-1", false, None)), pinned(tab("tab-2", false, None)), tab("tab-3", false, None)];
+        // Moving an unpinned tab to the front does not put it before the pinned ones.
+        assert_eq!(ids(&place(tabs.clone(), "tab-3", 0)), vec![HOME, "tab-1", "tab-2", "tab-3"]);
+        // A pinned tab moves within the pinned zone only.
+        assert_eq!(ids(&place(tabs, "tab-2", 0)), vec![HOME, "tab-2", "tab-1", "tab-3"]);
+    }
+
+    #[test]
+    fn titles_follow_the_kind_of_tab() {
+        assert_eq!(title_for(false, true, "/", "anything"), "Home");
+        assert_eq!(title_for(false, false, "/", "Midas"), "New tab");
+        assert_eq!(title_for(false, false, "/file/x", "Hero"), "Hero");
+        assert_eq!(title_for(true, false, "/file/x", "Hero"), "Play: Hero");
+    }
+
+    #[test]
     fn saved_tabs_round_trip_with_the_active_tab() {
-        let saved = Saved { tabs: vec![tab("tab-1", false, None), tab("play-2", true, Some("tab-1"))], active: Some("play-2".into()) };
+        let saved = Saved { tabs: vec![tab(HOME, false, None), tab("play-2", true, Some(HOME))], active: Some("play-2".into()) };
         let text = serde_json::to_string(&saved).unwrap();
         let back: Saved = serde_json::from_str(&text).unwrap();
         assert_eq!(back, saved);
     }
 
     #[test]
-    fn a_saved_file_with_a_byte_order_mark_is_read() {
-        let text = format!("\u{feff}{}", r#"{"tabs":[],"active":null}"#);
-        let parsed: Saved = serde_json::from_str(text.trim_start_matches('\u{feff}')).unwrap();
-        assert!(parsed.tabs.is_empty());
+    fn a_saved_file_from_before_pins_and_home_still_loads() {
+        let text = r#"{"tabs":[{"id":"tab-1","play":false,"source":null,"route":"/","title":"Midas"}],"active":"tab-1"}"#;
+        let parsed: Saved = serde_json::from_str(text).unwrap();
+        assert!(!parsed.tabs[0].pinned);
     }
 }

@@ -17,9 +17,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 use tauri::{
     ipc::CapabilityBuilder,
-    menu::{Menu, PredefinedMenuItem, SubmenuBuilder},
     window::WindowBuilder,
-    AppHandle, Emitter, EventTarget, Manager, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+    AppHandle, Listener, Manager, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 
 pub const MAIN: &str = "main";
@@ -94,7 +93,7 @@ pub fn parse_url(text: &str) -> Result<Url, String> {
 fn grant_server(app: &AppHandle, origin: &str) -> Result<(), String> {
     let capability = CapabilityBuilder::new("midas-server")
         .remote(format!("{origin}/*"))
-        .webviews(["tab-*", "play-*"])
+        .webviews(["home", "tab-*", "play-*"])
         .permission("core:event:default")
         .permission("dialog:allow-open")
         .permission("dialog:allow-save")
@@ -117,49 +116,13 @@ fn open_settings(app: &AppHandle) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
-fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
-    let file = SubmenuBuilder::new(app, "File")
-        .text("tab-new", "New Tab\tCtrl+T")
-        .text("open", "Open…\tCtrl+O")
-        .text("save", "Save\tCtrl+S")
-        .text("save-as", "Save As…")
-        .text("tab-close", "Close Tab\tCtrl+W")
-        .separator()
-        .item(&PredefinedMenuItem::quit(app, Some("Quit Midas"))?)
-        .build()?;
-    let edit = SubmenuBuilder::new(app, "Edit")
-        .text("undo", "Undo\tCtrl+Z")
-        .text("redo", "Redo\tCtrl+Shift+Z")
-        .separator()
-        .text("copy", "Copy\tCtrl+C")
-        .text("paste", "Paste\tCtrl+V")
-        .text("duplicate", "Duplicate\tCtrl+D")
-        .text("select-all", "Select All\tCtrl+A")
-        .text("delete", "Delete\tDelete")
-        .build()?;
-    let view = SubmenuBuilder::new(app, "View")
-        .text("reload", "Reload\tCtrl+R")
-        .text("fullscreen", "Full Screen\tF11")
-        .build()?;
-    let mut window = SubmenuBuilder::new(app, "Window")
-        .text("tab-next", "Next Tab\tCtrl+Tab")
-        .text("tab-prev", "Previous Tab\tCtrl+Shift+Tab");
-    for n in 1..=9 {
-        window = window.text(format!("tab-{n}"), format!("Tab {n}\tCtrl+{n}"));
-    }
-    let window = window
-        .separator()
-        .text("play", "Play in New Tab")
-        .text("server-url", "Server URL…")
-        .separator()
-        .item(&PredefinedMenuItem::minimize(app, None)?)
-        .item(&PredefinedMenuItem::close_window(app, None)?)
-        .build()?;
-    Menu::with_items(app, &[&file, &edit, &view, &window])
-}
-
-fn on_menu(app: &AppHandle, id: &str) -> Result<(), String> {
-    match id {
+/// App commands from the desktop menu in the studio and the title bar: quit, fullscreen, the Server URL window.
+fn app_command(app: &AppHandle, action: &str) -> Result<(), String> {
+    match action {
+        "quit" => {
+            app.exit(0);
+            Ok(())
+        }
         "server-url" => open_settings(app),
         "fullscreen" => match app.get_window(MAIN) {
             Some(window) => {
@@ -168,16 +131,7 @@ fn on_menu(app: &AppHandle, id: &str) -> Result<(), String> {
             }
             None => Ok(()),
         },
-        id if tabs::is_tab_command(id) => {
-            tabs::command(id);
-            Ok(())
-        }
-        // Everything else is an editor command for the active tab (Play included: the studio flushes its saves,
-        // then asks for the Play tab). See apps/studio/src/desktop/bridge.js.
-        other => match tabs::active_label(app) {
-            Some(label) => app.emit_to(EventTarget::webview(label), "menu", other.to_string()).map_err(|e| e.to_string()),
-            None => Ok(()),
-        },
+        _ => Ok(()),
     }
 }
 
@@ -225,17 +179,30 @@ fn main() {
             tabs::tab_close,
             tabs::tab_new,
             tabs::tab_move,
+            tabs::tab_pin,
+            tabs::tab_reload,
+            tabs::tab_close_others,
+            tabs::tab_close_all,
+            tabs::tab_rename,
+            tabs::tab_menu_open,
+            tabs::tab_menu_target,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
             let origin = read_config(&handle).server_url;
             grant_server(&handle, &origin)?;
-            app.set_menu(build_menu(&handle)?)?;
-            app.on_menu_event(|app, event| {
-                let _ = on_menu(app, event.id().as_ref());
+            // The menu is in the studio (the logo menu), not the native menu bar.
+            let _ = app.remove_menu();
+            let commands = handle.clone();
+            handle.listen_any("midas:app-command", move |event| {
+                let action = serde_json::from_str::<serde_json::Value>(event.payload()).ok().and_then(|v| v["action"].as_str().map(str::to_owned));
+                if let Some(action) = action {
+                    let _ = app_command(&commands, &action);
+                }
             });
             let window = WindowBuilder::new(&handle, MAIN)
                 .title("Midas")
+                .decorations(false)
                 .inner_size(1280.0, 800.0)
                 .min_inner_size(900.0, 600.0)
                 .build()?;

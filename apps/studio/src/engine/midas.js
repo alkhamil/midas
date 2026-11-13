@@ -6,8 +6,9 @@ import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { imageSlotRowHtml, slotRowHtml } from './slotRow.js';
 import { openPlay } from './play.js';
 import { startDesktop } from '../desktop/bridge.js';
+import { desktopMenuGroups, openAppMenu } from '../desktop/appMenu.js';
 // The desktop shell (src-tauri) owns the native bridge; in a browser it is null and nothing else changes.
-const desktop = startDesktop(window, { onError: e => toast(`Desktop file error: ${e?.message || e}`), commands: { 'save-as': () => saveFile(true), play: () => startPlay() }, documentName: () => doc?.data?.name });
+const desktop = startDesktop(window, { onError: e => toast(`Desktop file error: ${e?.message || e}`), commands: { 'save-as': () => saveFile(true), play: () => startPlay(), 'rename-file': () => renameFile() }, documentName: () => doc?.data?.name });
 import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
 import { VAR_TYPES } from './varTypes.js';
@@ -22603,7 +22604,7 @@ $('#assets-panel').addEventListener('click', e => {
     if (c && !e.detail)
         instantiate(c.dataset.component);
 });
-$('#main-menu').onclick = () => showMenu([{ header: 'Midas — make room for ideas' }, { label: 'Back to all files', action: 'goHome' }, { label: 'New document', action: 'newFile', key: '⌘N' }, { label: 'Open document…', action: 'openFile', key: '⌘O' }, { label: 'Save portable document', action: 'saveFile', key: '⌘S' }, '-', { label: 'Undo', action: 'undo', key: '⌘Z', disabled: !history.undoStack.length }, { label: 'Redo', action: 'redo', key: '⇧⌘Z', disabled: !history.redoStack.length }, '-', { label: 'Place image…', action: 'placeImage', key: '⇧⌘K' }, { label: 'Add page', action: 'addPage' }, '-', { label: 'Toggle light / dark', action: 'theme' }, { label: (options.grid ? 'Hide' : 'Show') + ' dot grid', action: 'grid' }, { label: (options.rulers ? 'Hide' : 'Show') + ' rulers', action: 'rulers' }, { label: 'Editor settings', action: 'settings' }, { label: 'Keyboard shortcuts', action: 'help', key: '?' }], 9, 46);
+$('#main-menu').onclick = (e) => (desktop ? openAppMenu(e.currentTarget, desktopMenuGroups({ actions: { newFile, openFile: openDocumentPicker, saveFile, startPlay, exportFile: openExport }, desktop })) : showMenu([{ header: 'Midas — make room for ideas' }, { label: 'Back to all files', action: 'goHome' }, { label: 'New document', action: 'newFile', key: '⌘N' }, { label: 'Open document…', action: 'openFile', key: '⌘O' }, { label: 'Save portable document', action: 'saveFile', key: '⌘S' }, '-', { label: 'Undo', action: 'undo', key: '⌘Z', disabled: !history.undoStack.length }, { label: 'Redo', action: 'redo', key: '⇧⌘Z', disabled: !history.redoStack.length }, '-', { label: 'Place image…', action: 'placeImage', key: '⇧⌘K' }, { label: 'Add page', action: 'addPage' }, '-', { label: 'Toggle light / dark', action: 'theme' }, { label: (options.grid ? 'Hide' : 'Show') + ' dot grid', action: 'grid' }, { label: (options.rulers ? 'Hide' : 'Show') + ' rulers', action: 'rulers' }, { label: 'Editor settings', action: 'settings' }, { label: 'Keyboard shortcuts', action: 'help', key: '?' }], 9, 46));
 $('#file-name').onclick = renameFile;
 $('#left-heading-menu').onclick = e => { e.stopPropagation(); openDocMenu(e.currentTarget); };
 $('#left-heading-title').addEventListener('dblclick', e => renameDocFrom(e.currentTarget));
