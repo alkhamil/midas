@@ -7,7 +7,7 @@ import { imageSlotRowHtml, slotRowHtml } from './slotRow.js';
 import { openPlay } from './play.js';
 import { startDesktop } from '../desktop/bridge.js';
 // The desktop shell (src-tauri) owns the native bridge; in a browser it is null and nothing else changes.
-const desktop = startDesktop(window, { onError: e => toast(`Desktop file error: ${e?.message || e}`), commands: { 'save-as': () => saveFile(true), play: () => startPlay() } });
+const desktop = startDesktop(window, { onError: e => toast(`Desktop file error: ${e?.message || e}`), commands: { 'save-as': () => saveFile(true), play: () => startPlay() }, documentName: () => doc?.data?.name });
 import { choiceDialog, confirmDialog } from '../confirm.js';
 import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libraryApi, folderApi, userApi, tokenApi, assetsAsDataUrls } from '../storage.js';
 import { VAR_TYPES } from './varTypes.js';

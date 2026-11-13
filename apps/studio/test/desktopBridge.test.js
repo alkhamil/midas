@@ -1,7 +1,8 @@
-// The desktop bridge: native open and save over the Tauri plugins, and the browser fallback (no Tauri global).
+// The desktop bridge: native open and save over the Tauri plugins, the tab state and shortcuts of a tab page,
+// and the browser fallback (no Tauri global).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { tauriGlobal, saveFilters, basename, titleFor, createFileBridge, runMenuCommand, autoPlayInPlayWindow, startDesktop } from '../src/desktop/bridge.js';
+import { tauriGlobal, saveFilters, basename, createFileBridge, runMenuCommand, autoPlayInPlayTab, tabCommandOf, startDesktop } from '../src/desktop/bridge.js';
 
 class FakeKeyboardEvent {
     constructor(type, init) { Object.assign(this, init, { type }); }
@@ -13,16 +14,17 @@ class MemoryStore {
     setItem(k, v) { this.items.set(k, String(v)); }
 }
 
-function fakeWindow({ tauri = null, hash = '', activeElement = null, clipboard = null, pasteWorks = true } = {}) {
+function fakeWindow({ tauri = null, activeElement = null, pasteWorks = true, pathname = '/', search = '' } = {}) {
     const dispatched = [];
     const execCalls = [];
+    const listeners = {};
     const win = {
         __TAURI__: tauri,
         KeyboardEvent: FakeKeyboardEvent,
         dispatched,
         execCalls,
-        location: { hash, reloads: 0, reload() { this.reloads++; } },
-        navigator: { clipboard: { readText: async () => clipboard ?? '' } },
+        listeners,
+        location: { pathname, search, reloads: 0, reload() { this.reloads++; } },
         document: {
             activeElement,
             execCommand: (cmd, _ui, value) => {
@@ -33,12 +35,13 @@ function fakeWindow({ tauri = null, hash = '', activeElement = null, clipboard =
             getElementById: () => null,
         },
         dispatchEvent: e => dispatched.push(e),
+        addEventListener: (type, handler) => { listeners[type] = handler; },
     };
     return win;
 }
 
-function fakeTauri({ open = null, saveTo = null, bytes = new Uint8Array([7, 8, 9]), label = 'main', clipboard = '' } = {}) {
-    const calls = { open: [], save: [], read: [], write: [], title: [], listen: [], emit: [] };
+function fakeTauri({ open = null, saveTo = null, bytes = new Uint8Array([7, 8, 9]), label = 'tab-1', clipboard = '' } = {}) {
+    const calls = { open: [], save: [], read: [], write: [], listen: [], emit: [] };
     return {
         calls,
         clipboardManager: { readText: async () => clipboard },
@@ -50,8 +53,8 @@ function fakeTauri({ open = null, saveTo = null, bytes = new Uint8Array([7, 8, 9
             readFile: async path => { calls.read.push(path); return bytes; },
             writeFile: async (path, data) => { calls.write.push({ path, data }); },
         },
-        window: {
-            getCurrentWindow: () => ({ label, setTitle: async t => { calls.title.push(t); } }),
+        webview: {
+            getCurrentWebview: () => ({ label }),
         },
         event: {
             listen: async (name, handler) => { calls.listen.push({ name, handler }); return () => { }; },
@@ -145,14 +148,11 @@ test('save: an export with no document key (PNG) asks every time and remembers n
     assert.equal(store.getItem('midas-desktop-save-paths'), null);
 });
 
-test('file helpers: extension filter, base name, title with the unsaved dot', () => {
+test('file helpers: extension filter and base name', () => {
     assert.deepEqual(saveFilters('Hero.midas'), [{ name: 'MIDAS', extensions: ['midas'] }]);
     assert.deepEqual(saveFilters('no-extension'), []);
     assert.equal(basename('C:\\a\\b\\Hero.midas'), 'Hero.midas');
     assert.equal(basename('/home/me/Hero.midas'), 'Hero.midas');
-    assert.equal(titleFor('Hero', false), 'Hero — Midas');
-    assert.equal(titleFor('Hero', true), '• Hero — Midas');
-    assert.equal(titleFor('', false), 'Untitled — Midas');
 });
 
 test('menu: a text field gets the native edit command, the editor gets its own key', async () => {
@@ -203,55 +203,74 @@ test('menu: reload reloads the page, an unknown id does nothing', async () => {
     assert.equal(win.dispatched.length, 0);
 });
 
-test('play window: the Play window starts Play itself once the editor shows the document', async () => {
+test('tab keys: Ctrl+T, Ctrl+W, Ctrl+Tab, Ctrl+Shift+Tab and Ctrl+1..9 are tab commands; other keys are not', () => {
+    assert.equal(tabCommandOf({ ctrlKey: true, key: 't' }), 'tab-new');
+    assert.equal(tabCommandOf({ ctrlKey: true, key: 'w' }), 'tab-close');
+    assert.equal(tabCommandOf({ ctrlKey: true, key: 'Tab' }), 'tab-next');
+    assert.equal(tabCommandOf({ ctrlKey: true, shiftKey: true, key: 'Tab' }), 'tab-prev');
+    assert.equal(tabCommandOf({ ctrlKey: true, key: '3' }), 'tab-3');
+    assert.equal(tabCommandOf({ ctrlKey: true, shiftKey: true, key: 't' }), null);
+    assert.equal(tabCommandOf({ ctrlKey: true, key: 's' }), null);
+    assert.equal(tabCommandOf({ key: 't' }), null);
+});
+
+test('tab keys: a tab command key is sent to the shell and stopped before the studio sees it', async () => {
+    const tauri = fakeTauri();
+    const win = fakeWindow({ tauri });
+    startDesktop(win, { store: new MemoryStore() });
+    let stopped = false, prevented = false;
+    win.listeners.keydown({ ctrlKey: true, key: 'w', preventDefault: () => (prevented = true), stopPropagation: () => (stopped = true) });
+    assert.equal(prevented && stopped, true);
+    assert.deepEqual(tauri.calls.emit.at(-1), { name: 'midas:tab-command', payload: { action: 'tab-close' } });
+
+    let ignored = false;
+    win.listeners.keydown({ ctrlKey: true, key: 's', preventDefault: () => (ignored = true), stopPropagation: () => { } });
+    assert.equal(ignored, false, 'Ctrl+S stays with the studio');
+});
+
+test('tab state: a document tab reports its label, name, unsaved edits and route', () => {
+    const tauri = fakeTauri({ label: 'tab-4' });
+    const win = fakeWindow({ tauri, pathname: '/file/abc', search: '?page=p1' });
+    const bridge = startDesktop(win, { store: new MemoryStore() });
+    bridge.setDocument('Hero', true);
+    const last = tauri.calls.emit.at(-1);
+    assert.equal(last.name, 'midas:tab-state');
+    assert.deepEqual(last.payload, { label: 'tab-4', name: 'Hero', unsaved: true, route: '/file/abc?page=p1' });
+    bridge.setDocument('Hero', false);
+    assert.equal(tauri.calls.emit.at(-1).payload.unsaved, false);
+});
+
+test('Play: a Play tab (label play-*) starts Play itself and never asks for another Play tab', async () => {
     let clicks = 0;
     const play = { disabled: false, click: () => clicks++ };
-    const win = fakeWindow();
+    const win = fakeWindow({ tauri: fakeTauri({ label: 'play-2' }) });
     win.document.getElementById = id => (id === 'play' ? play : null);
-    const tauri = fakeTauri({ label: 'play' });
-    startDesktop(Object.assign(win, { __TAURI__: tauri }), { store: new MemoryStore() });
+    const bridge = startDesktop(win, { store: new MemoryStore() });
     await new Promise(r => setTimeout(r, 300));
     assert.equal(clicks, 1);
+    assert.equal(bridge.canOpenPlayWindow(), false);
 });
 
-test('play window: an editor window that is not the Play window never starts Play', async () => {
+test('Play: a document tab asks the shell for the Play tab with its route, and does not start Play itself', async () => {
+    let started = 0;
+    const tauri = fakeTauri({ label: 'tab-1' });
+    const win = fakeWindow({ tauri, pathname: '/file/abc', search: '?page=page-1' });
+    win.document.getElementById = () => ({ disabled: false, click: () => started++ });
+    const bridge = startDesktop(win, { store: new MemoryStore() });
+    assert.equal(bridge.canOpenPlayWindow(), true);
+    await bridge.openPlayWindow();
+    await new Promise(r => setTimeout(r, 300));
+    assert.equal(started, 0);
+    assert.deepEqual(tauri.calls.emit.at(-1), { name: 'midas:open-play', payload: { route: '/file/abc?page=page-1' } });
+});
+
+test('Play: the autoplay helper gives up when the Play button never appears', async () => {
     let clicks = 0;
     const win = fakeWindow();
-    win.document.getElementById = () => ({ disabled: false, click: () => clicks++ });
-    autoPlayInPlayWindow(win, { tries: 3, every: 1 });
+    win.document.getElementById = () => null;
+    autoPlayInPlayTab(win, { tries: 3, every: 1 });
     await new Promise(r => setTimeout(r, 20));
-    assert.equal(clicks, 1, 'the helper itself clicks; startDesktop decides when to call it');
-    let started = 0;
-    const editor = fakeWindow();
-    editor.document.getElementById = () => ({ disabled: false, click: () => started++ });
-    startDesktop(editor, { store: new MemoryStore() });
-    await new Promise(r => setTimeout(r, 20));
-    assert.equal(started, 0);
-});
-
-test('startDesktop: the title shows the unsaved dot while the server copy has edits', () => {
-    const tauri = fakeTauri();
-    const bridge = startDesktop(fakeWindow({ tauri }), { store: new MemoryStore() });
-    bridge.setDocument('Hero', true);
-    bridge.setDocument('Hero', true);
-    bridge.setDocument('Hero', false);
-    assert.deepEqual(tauri.calls.title, ['• Hero — Midas', 'Hero — Midas']);
-});
-
-test('startDesktop: Play asks the shell for the Play window with the open document route', async () => {
-    const tauri = fakeTauri({ label: 'main' });
-    const win = fakeWindow({ tauri });
-    win.location.pathname = '/file/abc';
-    win.location.search = '?page=page-1';
-    const editor = startDesktop(win, { store: new MemoryStore() });
-    assert.equal(editor.canOpenPlayWindow(), true);
-    await editor.openPlayWindow();
-    assert.deepEqual(tauri.calls.emit, [{ name: 'midas:open-play', payload: { route: '/file/abc?page=page-1' } }]);
-});
-
-test('startDesktop: the Play window never asks for another Play window', () => {
-    const playWindow = startDesktop(fakeWindow({ tauri: fakeTauri({ label: 'play' }) }), { store: new MemoryStore() });
-    assert.equal(playWindow.canOpenPlayWindow(), false);
+    assert.equal(clicks, 0);
 });
 
 test('startDesktop: a menu event from the shell runs the command', async () => {

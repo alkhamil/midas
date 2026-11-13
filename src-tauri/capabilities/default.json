@@ -1,14 +1,20 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Local pages only: the unreachable-server page and the Server URL window. The server's own pages get their permissions from the runtime capability granted in src/main.rs.",
+  "description": "Local pages only: the tab strip, the unreachable-server page in a tab, and the Server URL window. The server's own pages get their permissions from the runtime capability granted in src/main.rs.",
   "local": true,
-  "windows": ["main", "server-settings"],
+  "windows": ["server-settings"],
+  "webviews": ["chrome", "tab-*"],
   "permissions": [
     "core:default",
     "core:window:allow-close",
     "allow-connect",
     "allow-get-server-url",
-    "allow-set-server-url"
+    "allow-set-server-url",
+    "allow-tabs-state",
+    "allow-tab-activate",
+    "allow-tab-close",
+    "allow-tab-new",
+    "allow-tab-move"
   ]
 }

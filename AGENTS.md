@@ -133,7 +133,7 @@
 
 ## Known issues
 
-- Desktop shell (`src-tauri`, `npm run dev:desktop` / `build:desktop`; scripts/desktop.mjs loads vcvars64): the server URL change restarts the app (runtime capabilities cannot be removed). Play flushes pending saves, then opens one reusable window (label `play`) on the document route. Save remembers the file per document (Save As asks again). Paste from the menu reads the clipboard through the clipboard plugin: WebView2 refuses `execCommand('paste')` and `navigator.clipboard` outside a key press.
+- Desktop shell (`src-tauri`, `npm run dev:desktop` / `build:desktop`; scripts/desktop.mjs loads vcvars64): one window with a bundled tab strip (`dist-shell/chrome.html`, webview `chrome`) and a webview per tab (`tab-*`, Play `play-*`) added with `Window::add_child` (Tauri `unstable`); tabs.rs runs every webview change on one worker thread (add_child waits for the main thread). The server URL change restarts the app (runtime capabilities cannot be removed). Play is a tab next to its source; it flushes pending saves first. Save remembers the file per document (Save As asks again). Paste from the menu reads the clipboard through the clipboard plugin (WebView2 refuses `execCommand('paste')` outside a key press).
 
 - The Behavior panel's Text|Icon segmented control and the Input prefix/suffix rows are covered by unit tests only; they have not been looked at in a browser. `affix.browser.test.mjs` was edited to the new rows and not run.
 

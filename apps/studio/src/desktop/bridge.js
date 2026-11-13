@@ -1,13 +1,15 @@
 // Desktop bridge for the Midas desktop shell (src-tauri). Active only when the page runs inside Tauri:
-// `window.__TAURI__` is the global the shell injects (withGlobalTauri) and it is granted to the server
-// origin only. In a browser `startDesktop()` returns null and the editor keeps its own file input and
-// download, so the web studio behaves as before.
+// `window.__TAURI__` is the global the shell injects (withGlobalTauri) and it is granted to the server origin
+// only. In a browser `startDesktop()` returns null and the editor keeps its own file input and download, so the
+// web studio behaves as before.
+//
+// The page is a tab of the desktop window (src-tauri/src/tabs.rs). It reports its name, unsaved edits and route,
+// and the tab strip shows them. Play is a tab too: a tab whose webview label starts with `play-`.
 
 const MIDAS_OPEN = [{ name: 'Midas document', extensions: ['midas', 'vellum', 'json', 'fig'] }];
 const PATHS_KEY = 'midas-desktop-save-paths';
-// The window label of the Play window (src-tauri: PLAY). The label is the Tauri window's own, not the URL,
-// because the studio's router rewrites the URL.
-const PLAY_LABEL = 'play';
+const PLAY_LABEL = 'play-';
+const ROUTE_CHECK_MS = 1000;
 
 /** The Tauri global of `win`, or null in a browser. */
 export function tauriGlobal(win = globalThis.window) {
@@ -21,11 +23,6 @@ export function saveFilters(name) {
 }
 
 export const basename = path => String(path).split(/[\\/]/).pop();
-
-/** Window title: the document name, with a dot while the server copy has edits not yet saved. */
-export function titleFor(name, unsaved) {
-    return `${unsaved ? '• ' : ''}${name || 'Untitled'} — Midas`;
-}
 
 const readPaths = store => {
     try {
@@ -117,8 +114,19 @@ export async function runMenuCommand(id, win = globalThis.window, commands = {})
     win.dispatchEvent(new win.KeyboardEvent('keydown', { ...spec, bubbles: true, cancelable: true }));
 }
 
-/** Play window: starts Play once the editor's Play button exists (the document is loaded by then). */
-export function autoPlayInPlayWindow(win = globalThis.window, { tries = 150, every = 200 } = {}) {
+/** The tab command a key combination asks for (Ctrl+T, Ctrl+W, Ctrl+Tab, Ctrl+Shift+Tab, Ctrl+1..9), or null. */
+export function tabCommandOf(event) {
+    if (!(event.ctrlKey || event.metaKey)) return null;
+    if (event.key === 'Tab') return event.shiftKey ? 'tab-prev' : 'tab-next';
+    if (/^[1-9]$/.test(event.key)) return `tab-${event.key}`;
+    const key = event.key.toLowerCase();
+    if (key === 't' && !event.shiftKey) return 'tab-new';
+    if (key === 'w' && !event.shiftKey) return 'tab-close';
+    return null;
+}
+
+/** The Play tab starts Play once the editor's Play button exists (the document is loaded by then). */
+export function autoPlayInPlayTab(win = globalThis.window, { tries = 150, every = 200 } = {}) {
     let left = tries;
     const timer = setInterval(() => {
         const play = win.document.getElementById('play');
@@ -130,24 +138,45 @@ export function autoPlayInPlayWindow(win = globalThis.window, { tries = 150, eve
 }
 
 /**
- * Starts the bridge in the desktop shell: menu commands, window title, native file access and the Play
- * window. Returns null in a browser. `commands` maps menu ids to studio actions (for example save-as, play);
- * `onError` receives failures of native file access so the editor can show them.
+ * Starts the bridge in the desktop shell: menu commands, the tab state and shortcuts, native file access and
+ * Play. Returns null in a browser. `commands` maps menu ids to studio actions (save-as, play); `onError`
+ * receives failures of native file access so the editor can show them.
  */
-export function startDesktop(win = globalThis.window, { onError = () => { }, commands = {}, store = win?.localStorage } = {}) {
+export function startDesktop(win = globalThis.window, { onError = () => { }, commands = {}, store = win?.localStorage, documentName = () => undefined } = {}) {
     const tauri = tauriGlobal(win);
     if (!tauri) return null;
     const files = createFileBridge(tauri, store);
-    const state = { name: 'Untitled', unsaved: false, title: '' };
-    const setTitle = () => {
-        const title = titleFor(state.name, state.unsaved);
-        if (title === state.title) return;
-        state.title = title;
-        tauri.window.getCurrentWindow().setTitle(title).catch(onError);
+    const label = tauri.webview.getCurrentWebview().label;
+    const isPlayTab = label.startsWith(PLAY_LABEL);
+    const state = { name: 'Untitled', unsaved: false, route: '' };
+    const report = () => {
+        const route = win.location.pathname + win.location.search;
+        state.route = route;
+        // The file browser (home) is not a document: its tab says Midas whatever the studio has open behind it.
+        const name = route.startsWith('/file/') ? state.name : 'Midas';
+        tauri.event.emit('midas:tab-state', { label, name, unsaved: route.startsWith('/file/') && state.unsaved, route }).catch(onError);
     };
     tauri.event.listen('menu', event => runMenuCommand(event.payload, win, commands)).catch(onError);
-    const label = tauri.window.getCurrentWindow().label;
-    if (label === PLAY_LABEL) autoPlayInPlayWindow(win);
+    win.addEventListener('keydown', event => {
+        const action = tabCommandOf(event);
+        if (!action) return;
+        event.preventDefault();
+        event.stopPropagation();
+        tauri.event.emit('midas:tab-command', { action }).catch(onError);
+    }, true);
+    // A route change (the studio's own navigation) is reported so the saved tabs reopen where they were.
+    // The document name and the route are read on a timer, so a tab reports them as soon as the studio has them.
+    const routeTimer = setInterval(() => {
+        const name = documentName();
+        const moved = win.location.pathname + win.location.search !== state.route;
+        if (moved || (name && name !== state.name)) {
+            if (name) state.name = name;
+            report();
+        }
+    }, ROUTE_CHECK_MS);
+    routeTimer.unref?.();
+    report();
+    if (isPlayTab) autoPlayInPlayTab(win);
     return {
         pick: () => files.pick(),
         saveFile: (blob, name, options) => files.saveFile(blob, name, options),
@@ -155,11 +184,11 @@ export function startDesktop(win = globalThis.window, { onError = () => { }, com
         setDocument(name, unsaved) {
             state.name = name || state.name;
             state.unsaved = !!unsaved;
-            setTitle();
+            report();
         },
-        /** Play runs in its own window; the editor window is the one that asks for it. */
-        canOpenPlayWindow: () => label !== PLAY_LABEL,
-        /** Asks the shell for the Play window, on the route of the open document. */
+        /** Play runs in its own tab; the editor tab is the one that asks for it. */
+        canOpenPlayWindow: () => !isPlayTab,
+        /** Asks the shell for the Play tab, on the route of the open document. */
         openPlayWindow: () => tauri.event.emit('midas:open-play', { route: win.location.pathname + win.location.search }).catch(onError),
     };
 }
