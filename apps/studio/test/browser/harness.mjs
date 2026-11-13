@@ -1,18 +1,20 @@
 // Browser harness for the studio: starts the dev servers when they are down, signs in as the local seed admin, imports a .midas
 // file and reads the canvas. Screenshots go to .artifacts/ at the repo root. Used by the *.browser.test.mjs files.
-import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { after } from 'node:test';
 import { chromium } from 'playwright';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const ROOT = resolve(here, '../../../..');
 export const ARTIFACTS = resolve(ROOT, '.artifacts');
-export const STUDIO_URL = 'http://localhost:5174';
+// The studio's port: MIDAS_STUDIO_PORT moves it (a preview of the production build can run beside a dev server on 5174).
+const STUDIO_PORT = process.env.MIDAS_STUDIO_PORT || '5174';
+export const STUDIO_URL = `http://localhost:${STUDIO_PORT}`;
 export const API_URL = 'http://localhost:4000';
 
-const SEED_ADMIN = { email: 'admin@midas.local', password: 'admin12345' };
 
 async function isUp(url) {
     try { await fetch(url); return true; } catch { return false; }
@@ -27,29 +29,108 @@ async function waitUp(url, ms = 90_000) {
     throw new Error(`${url} did not start within ${ms} ms`);
 }
 
-/** Starts the API and the studio dev servers unless they already run. Returns a function that stops what it started. */
+/**
+ * How the studio is served: `preview` (the production build, `vite preview`, the default of the suite) or `dev` (the Vite dev server, the fallback). The suite
+ * runner sets MIDAS_STUDIO; a file run on its own without it uses the dev server, as before.
+ */
+export const STUDIO_MODE = process.env.MIDAS_STUDIO === 'preview' ? 'preview' : 'dev';
+
+/** The servers this process started. They run until `stopServers` (the suite's global teardown) or until the process exits. */
+const started = [];
+let exitHook = false;
+
+/** Stops what this process started and waits until each port is closed (the next start checks the ports at once). */
+export async function stopServers() {
+    const list = started.splice(0);
+    for (const p of list) await new Promise(done => spawn('taskkill', ['/pid', String(p.pid), '/T', '/F'], { stdio: 'ignore' }).on('exit', done));
+    for (const url of [API_URL + '/api/auth/me', STUDIO_URL]) {
+        if (!list.length) break;
+        const end = Date.now() + 15_000;
+        while (Date.now() < end && (await isUp(url))) await new Promise(r => setTimeout(r, 300));
+    }
+}
+
+/** Builds the production studio (what `vite preview` serves). */
+export function buildStudio() {
+    const r = spawnSync('npm', ['run', 'build', '--workspace', '@midas/studio'], { cwd: ROOT, shell: true, stdio: 'ignore' });
+    if (r.status !== 0) throw new Error('the studio build failed (npm run build --workspace @midas/studio)');
+}
+
+/**
+ * Starts the API and the studio unless they already run, once: a second call (the next test of the file) finds them up and starts nothing. The servers are
+ * not stopped between tests: the returned function does nothing, and what this process started is killed when it exits (the suite's global setup
+ * starts them first and stops them at the end, so the files find them up).
+ */
 export async function ensureDevServers() {
-    const started = [];
+    const spawnServer = args => { const p = spawn('npm', args, { cwd: ROOT, shell: true, stdio: 'ignore' }); p.unref(); started.push(p); };
     if (!(await isUp(API_URL + '/api/auth/me'))) {
-        started.push(spawn('npm', ['run', 'dev', '--workspace', '@midas/server'], { cwd: ROOT, shell: true, stdio: 'ignore' }));
+        spawnServer(['run', 'dev', '--workspace', '@midas/server']);
         await waitUp(API_URL + '/api/auth/me');
     }
     if (!(await isUp(STUDIO_URL))) {
-        started.push(spawn('npm', ['run', 'dev', '--workspace', '@midas/studio', '--', '--port', '5174', '--strictPort'], { cwd: ROOT, shell: true, stdio: 'ignore' }));
+        if (STUDIO_MODE === 'preview') {
+            if (!existsSync(resolve(ROOT, 'apps/studio/dist/index.html'))) buildStudio();
+            spawnServer(['run', 'preview', '--workspace', '@midas/studio', '--', '--port', STUDIO_PORT, '--strictPort']);
+        }
+        else spawnServer(['run', 'dev', '--workspace', '@midas/studio', '--', '--port', STUDIO_PORT, '--strictPort']);
         await waitUp(STUDIO_URL);
     }
-    // The stop waits until each process has exited and its port is closed: the next test checks the ports at once, and a server
-    // still listening then would be taken for a live one and left to die under the test.
-    return async () => {
-        for (const p of started) {
-            await new Promise(done => spawn('taskkill', ['/pid', String(p.pid), '/T', '/F'], { stdio: 'ignore' }).on('exit', done));
-        }
-        for (const url of [API_URL + '/api/auth/me', STUDIO_URL]) {
-            if (!started.length) break;
-            const end = Date.now() + 15_000;
-            while (Date.now() < end && (await isUp(url))) await new Promise(r => setTimeout(r, 300));
-        }
-    };
+    if (started.length && !exitHook) {
+        exitHook = true;
+        process.on('exit', () => { for (const p of started) spawnSync('taskkill', ['/pid', String(p.pid), '/T', '/F'], { stdio: 'ignore' }); });
+    }
+    return async () => {};
+}
+
+/** Waits `frames` animation frames: what a fixed pause was waiting for, a canvas frame that has run, without a clock. */
+export function settle(page, frames = 2) {
+    return page.evaluate(n => new Promise(resolve => { let left = n; const tick = () => (--left <= 0 ? resolve() : requestAnimationFrame(tick)); requestAnimationFrame(tick); }), frames);
+}
+
+/**
+ * One Chromium per test file: the first call launches it, the next ones share it. What a test opens through it (contexts and pages) is closed by the
+ * `browser.close()` the test already calls in its cleanup, and the browser itself ends with the process, so each test still starts from a fresh page.
+ */
+let shared = null;
+const opened = new Set();
+// The shared browser ends with its test file: a running Chromium keeps the process alive. (Only under `node --test`: other scripts that import the harness close what they launch.)
+if (process.env.NODE_TEST_CONTEXT) after(async () => { await shared?.close(); shared = null; });
+export async function launchBrowser() {
+    shared ??= await chromium.launch();
+    const track = async make => { const c = await make(); opened.add(c.context ? c.context() : c); return c; };
+    return new Proxy(shared, {
+        get(target, key) {
+            if (key === 'close') return async () => { for (const c of [...opened]) await c.close().catch(() => {}); opened.clear(); };
+            if (key === 'newPage') return options => track(() => target.newPage(options));
+            if (key === 'newContext') return options => track(() => target.newContext(options));
+            const value = target[key];
+            return typeof value === 'function' ? value.bind(target) : value;
+        },
+    });
+}
+
+/**
+ * The signed-in session, made once and kept in .artifacts/session.json: a context starts from it, so a test does not sign in again. The saved state is the
+ * cookies and storage right after the sign-in (before any document is open); a state the server no longer accepts is replaced by a fresh sign-in.
+ */
+const SESSION_FILE = resolve(ARTIFACTS, 'session.json');
+const SEED_ADMIN_LOGIN = { email: 'admin@midas.local', password: 'admin12345' };
+async function signedInPage(browser, { dpr, viewport }) {
+    const readState = () => (existsSync(SESSION_FILE) ? JSON.parse(readFileSync(SESSION_FILE, 'utf8')) : undefined);
+    for (const state of [readState(), undefined]) {
+        const context = await browser.newContext({ viewport, deviceScaleFactor: dpr, storageState: state });
+        const page = await context.newPage();
+        await page.goto(STUDIO_URL + '/');
+        await page.waitForFunction(() => document.querySelector('#home-import') || document.querySelector('input[type="password"]'));
+        if (await page.locator('#home-import').count()) return page;
+        await page.getByLabel('Email').fill(SEED_ADMIN_LOGIN.email);
+        await page.getByLabel('Password').fill(SEED_ADMIN_LOGIN.password);
+        await page.getByRole('button', { name: 'Sign in' }).click();
+        await page.locator('#home-import').waitFor({ state: 'attached' });
+        mkdirSync(ARTIFACTS, { recursive: true });
+        writeFileSync(SESSION_FILE, JSON.stringify(await context.storageState()));
+        return page;
+    }
 }
 
 /**
@@ -57,16 +138,10 @@ export async function ensureDevServers() {
  * collected since the import. Errors from unauthenticated requests before sign-in are not collected.
  */
 export async function openImportedFile(browser, filePath, { dpr = 2 } = {}) {
-    const page = await browser.newPage({ viewport: { width: 1400, height: 900 }, deviceScaleFactor: dpr });
+    const page = await signedInPage(browser, { dpr, viewport: { width: 1400, height: 900 } });
     const errors = [];
     page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
-    await page.goto(STUDIO_URL + '/');
-    await page.getByLabel('Email').fill(SEED_ADMIN.email);
-    await page.getByLabel('Password').fill(SEED_ADMIN.password);
-    await page.getByRole('button', { name: 'Sign in' }).click();
-    await page.locator('#home-import').waitFor({ state: 'attached' });
-    errors.length = 0;
     await page.locator('#home-import').setInputFiles(filePath);
     // The file's own first top-level frame of its active page: a document already open would otherwise satisfy the wait.
     const data = JSON.parse(readFileSync(filePath, 'utf8'));
@@ -74,9 +149,18 @@ export async function openImportedFile(browser, filePath, { dpr = 2 } = {}) {
     // The import replaces the document asynchronously: wait until it has landed (the busy overlay is gone and the file's name is open),
     // so a click or a selection made next is not wiped by the load.
     await page.waitForFunction(([id, name]) => window.midas?.ready && !!window.midas.doc.get(id) && window.midas.doc.data.name === name && !document.getElementById('busy-overlay'), [probeId, data.name]);
-    await page.waitForTimeout(400);
+    await documentQuiet(page);
     await settleFonts(page);
     return { page, errors };
+}
+
+/** Waits until the open document stops changing (its revision holds for ten frames): the import's own follow-up work has run, so the next click is not wiped by it. */
+function documentQuiet(page) {
+    return page.waitForFunction(() => {
+        const w = window, rev = w.midas.doc.revision, s = (w.__quiet ??= { rev, frames: 0 });
+        if (s.rev !== rev) { s.rev = rev; s.frames = 0; } else s.frames++;
+        return s.frames >= 10;
+    }, null, { polling: 'raf', timeout: 180_000 });
 }
 
 /**
@@ -155,14 +239,14 @@ export function frameNode(page, id, zoom = SHOT_ZOOM) {
 export async function shotNode(page, id, name, pad = 16, zoom = SHOT_ZOOM) {
     mkdirSync(ARTIFACTS, { recursive: true });
     await frameNode(page, id, zoom);
-    await page.waitForTimeout(250);
+    await settle(page, 3);
     // A hug text re-measures after a selection change: the shot waits until the root's width holds still, so it is the settled box.
     let last = null;
     for (let i = 0; i < 20; i++) {
         const w = await page.evaluate(id => window.midas.doc.world(id).box.w, id);
         if (w === last) break;
         last = w;
-        await page.waitForTimeout(100);
+        await settle(page, 4);
     }
     const r = await screenRect(page, id);
     // The size is rounded to whole pixels the way Play's shot is (parity-helpers.mjs): a root 0.01px off an integer must not crop a pixel apart.
@@ -179,9 +263,9 @@ export async function shotNode(page, id, name, pad = 16, zoom = SHOT_ZOOM) {
 export async function selectByClick(page, id) {
     const r = await screenRect(page, id);
     await page.mouse.move(r.x + r.w / 2, r.y + r.h / 2);
-    await page.waitForTimeout(100);
+    await settle(page, 2);
     await page.mouse.click(r.x + r.w / 2, r.y + r.h / 2);
-    await page.waitForTimeout(150);
+    await settle(page, 3);
     return page.evaluate(() => [...window.midas.state.selection]);
 }
 

@@ -23,10 +23,11 @@ import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } fro
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { repeatCount } from '../behavior-engine/slot-rules.js';
 import { attrOfProp, elementTagOf, maskedOn, localAttrOf, maskUnlessOf, multilineOf, pressAttrsOf, ariaCheckedOf, canvasPartsOf, conditionHolds, fieldStyleOf, fieldWritersOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
-import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs, svgStrokeExtra } from '../geometry/shapes.js';
+import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs } from '../geometry/shapes.js';
+import { strokeAreaSourceOf, svgStrokeExtra } from '../geometry/stroke-area.js';
 import { cssBackgroundOf, displayFills, getFills, hasVideoFill, imageFillCss, imageFillStyleOf, imageSvgLayer, isGradientFill, patternLonghands, topColorOf, topOpacityOf, videoObjectFit, videoObjectPosition, videoPosterOf } from '../geometry/fills.js';
 import { colorWithAlpha, escapeAttr, shadowCss, svgNumber } from '../geometry/format.js';
-import { paintServerOf } from '../geometry/paint-server.js';
+import { strokeWithPaintLayer } from '../geometry/paint-layer.js';
 import { layoutOrder, ownSizingOf } from '../geometry/autolayout.js';
 
 /**
@@ -47,17 +48,9 @@ const VECTOR = ['line', 'path'];
 export function toDomTree(doc, frameId, { responsive = false } = {}) {
     const pages = doc.pages || [];
     const rawNodes = pages.flatMap(p => p.nodes || []);
-    // A stroke paint that is not a colour (a gradient, a pattern, a picture) is a paint server of the page's hidden svg; the layer's stroke reads it by id.
+    // A stroke paint that is not a colour (a gradient, a pattern, a picture) is a layer clipped by the stroke's area path (an angular or a diamond gradient is a raster Play paints).
     const rawById = new Map(rawNodes.map(n => [n.id, n]));
-    const paintDefs = [];
-    const nodes = rawNodes.map(n => {
-        const sf = n.strokeFill;
-        if (!sf || sf.type === 'solid' || !strokeIsOn(n)) return n;
-        const server = paintServerOf(sf, `midas-sp-${String(n.id).replace(/[^A-Za-z0-9_-]/g, '_')}`, { w: n.w, h: n.h }, doc.assets || {}, id => rawById.get(id));
-        if (!server) return n;
-        paintDefs.push(server.defs);
-        return { ...n, stroke: server.paint };
-    });
+    const nodes = rawNodes.map(n => strokeWithPaintLayer(n, `midas-sp-${String(n.id).replace(/[^A-Za-z0-9_-]/g, '_')}`, doc.assets || {}, id => rawById.get(id), { raster: true }) ?? n);
     const byId = new Map(nodes.map(n => [n.id, n]));
     const frame = byId.get(frameId);
     const parent = frame?.parentId ? byId.get(frame.parentId) : null;
@@ -74,7 +67,6 @@ export function toDomTree(doc, frameId, { responsive = false } = {}) {
     const scope = { byId, assets: doc.assets || {}, variables: doc.variables || {}, pageVarModes, responsive, unsupported: [], problems: [], styles: new Map(), childrenOf: id => kids.get(id) ?? [] };
     const root = renderNode(frame, null, scope);
     if (!root) return { root: null, styles: null, unsupported: scope.unsupported, problems: scope.problems };
-    if (paintDefs.length) root.children = [...(root.children || []), { tag: 'div', attrs: { 'aria-hidden': 'true' }, style: { position: 'absolute', width: '0', height: '0', overflow: 'hidden', pointerEvents: 'none' }, html: `<svg width="0" height="0"><defs>${paintDefs.join('')}</defs></svg>`, children: [] }];
     const styles = [...scope.styles.values()].join('\n');
     return { root, styles: styles || null, unsupported: scope.unsupported, problems: scope.problems };
 }
@@ -599,7 +591,9 @@ function renderTemplate(n, template, parent, scope) {
 function strokeOverlayEl(n) {
     const html = strokeOverlay(n, n.type === 'frame' && fluidStrokeOf(n));
     if (html === undefined) return null;
-    return { tag: 'div', attrs: {}, style: { position: 'absolute', left: '0px', top: '0px', width: '100%', height: '100%', pointerEvents: 'none' }, html, children: [] };
+    // An overlay that holds the stroke's area path carries what Play needs to redraw it at the box's laid-out size (see play.js `fitStrokeArea`): the path is made at the design size.
+    const area = html.includes('data-area') ? { 'data-stroke-area': JSON.stringify(strokeAreaSourceOf(n)), ...(n.strokeLayer ? { 'data-stroke-paint': JSON.stringify({ id: n.strokeLayer.id, paint: n.strokeFill, pad: Math.max(0, n.strokeWidth || 0) }) } : {}) } : {};
+    return { tag: 'div', attrs: area, style: { position: 'absolute', left: '0px', top: '0px', width: '100%', height: '100%', pointerEvents: 'none' }, html, children: [] };
 }
 
 /** @param {any} n */
@@ -680,11 +674,11 @@ function centredStrokeHalf(n) {
 
 /**
  * The clip margin an overlay-drawn outside stroke needs: its widest side, so the part beyond the box still shows. Zero for no stroke,
- * for any other alignment, and for a uniform outside stroke, which is a CSS outline the clip does not cut.
+ * for any other alignment, and for an outside stroke drawn as a CSS outline, which the clip does not cut.
  * @param {any} n
  */
 function outsideOverlayMargin(n) {
-    if (n.type !== 'frame' || !strokeIsOn(n) || (n.strokeAlign ?? 'center') !== 'outside' || strokeSidesUniform(n)) return 0;
+    if (n.type !== 'frame' || !strokeIsOn(n) || (n.strokeAlign ?? 'center') !== 'outside' || outlineDrawn(n)) return 0;
     const s = strokeSideWidths(n);
     return Math.max(s.t, s.r, s.b, s.l);
 }
@@ -736,7 +730,7 @@ function radiusStyle(n) {
 function strokeOverlay(n, fluid = false) {
     if (!strokeIsOn(n)) return undefined;
     if (fluid) return fluidStrokeOverlay(n);
-    return svgMarkup(n, `fill="none" ${svgStrokeAttrs(n, svgNumber, escapeAttr)}`);
+    return svgMarkup(n, `fill="none" ${svgStrokeAttrs(n, svgNumber, escapeAttr)}`, true);
 }
 
 /**
@@ -746,7 +740,7 @@ function strokeOverlay(n, fluid = false) {
  * @returns {boolean}
  */
 function fluidStrokeOf(n) {
-    if (!strokeIsOn(n)) return false;
+    if (!strokeIsOn(n) || n.strokeLayer || (n.strokeAlign === 'outside' && strokeSidesUniform(n) && !outlineDrawn(n))) return false;
     if (!strokeSidesUniform(n)) return true;
     const radii = hasRadii(n) ? n.radii : [n.radius || 0];
     return radii.every(v => (+v || 0) === (+radii[0] || 0));
@@ -755,7 +749,7 @@ function fluidStrokeOf(n) {
 /**
  * A frame stroke drawn at its box, not at the design size: the SVG fills the box (no viewBox, so lengths stay in px) and the
  * outline spans it in full, so the stroke sits on the box edges whatever the box size. An inside stroke is clipped to the
- * box, mirroring the fixed overlay's doubled-width stroke. A uniform outside stroke never reaches here: it is a CSS outline.
+ * box, mirroring the fixed overlay's doubled-width stroke. An outside stroke never reaches here: a solid one is a CSS outline, a painted one is the stroke area at the design size.
  * @param {any} n a frame with a fluid stroke (see fluidStrokeOf)
  * @returns {string}
  */
@@ -771,11 +765,6 @@ function fluidStrokeOverlay(n) {
     if ((n.strokeAlign ?? 'center') === 'inside') {
         const stroked = rect(doubled);
         return `<svg width="100%" height="100%" overflow="visible" style="position:absolute;left:0;top:0;display:block;overflow:visible"><clipPath id="${prefix}k">${rect('')}</clipPath><g clip-path="url(#${prefix}k)">${stroked}</g></svg>`;
-    }
-    if ((n.strokeAlign ?? 'center') === 'outside') {
-        // A doubled stroke masked to the outside, mirroring the fixed overlay's mask; a frame never reaches here (it is an outline).
-        const stroked = rect(doubled);
-        return `<svg width="100%" height="100%" overflow="visible" style="position:absolute;left:0;top:0;display:block;overflow:visible"><mask id="${prefix}m" maskUnits="userSpaceOnUse" x="-100000" y="-100000" width="200000" height="200000"><rect x="-100000" y="-100000" width="200000" height="200000" fill="#fff"/>${rect('fill="#000"')}</mask><g mask="url(#${prefix}m)">${stroked}</g></svg>`;
     }
     return `<svg width="100%" height="100%" overflow="visible" style="position:absolute;left:0;top:0;display:block;overflow:visible">${rect(`fill="none" ${svgStrokeAttrs(n, f, e)}`)}</svg>`;
 }
@@ -815,14 +804,23 @@ function fluidSideBars(n) {
 
 /**
  * The part of a uniform outside frame stroke that lies outside its box, as a CSS outline. An overlay inside the frame would only draw
- * the part the frame clips; an outline is not cut by the frame's own clip. A per-side outside stroke has no outline form: it is an
- * overlay with a clip margin instead (see fluidSideBars and outsideOverlayMargin).
+ * the part the frame clips; an outline is not cut by the frame's own clip. A per-side outside stroke, and one painted with more than a colour
+ * (a CSS outline takes only a colour), have no outline form: they are an overlay of the stroke area with a clip margin instead (see
+ * outsideOverlayMargin).
  * @param {any} n
  * @returns {string | undefined}
  */
 function frameOutlineOf(n) {
-    if (n.type !== 'frame' || !strokeIsOn(n) || n.strokeAlign !== 'outside' || !strokeSidesUniform(n)) return undefined;
+    if (!outlineDrawn(n)) return undefined;
     return `${strokeSideWidths(n).t}px solid ${colorWithAlpha(n.stroke, n.strokeOpacity)}`;
+}
+
+/**
+ * Whether a frame's outside stroke is drawn as a CSS outline: uniform, and a plain colour.
+ * @param {any} n
+ */
+function outlineDrawn(n) {
+    return n.type === 'frame' && strokeIsOn(n) && n.strokeAlign === 'outside' && strokeSidesUniform(n) && (!n.strokeFill || n.strokeFill.type === 'solid');
 }
 
 /**
@@ -838,25 +836,23 @@ function vectorMarkup(n, scope, icon = false) {
 }
 
 /**
- * The SVG of one shape with its attributes, and the clip or mask an inside or outside stroke needs.
+ * The SVG of one shape with its attributes, and the area of an inside or outside stroke.
  * @param {any} n
  * @param {string} attrs
  * @returns {string}
  */
-function svgMarkup(n, attrs) {
-    const { defs, body } = svgParts(n, attrs);
-    return `<svg width="${n.w}" height="${n.h}" viewBox="0 0 ${n.w} ${n.h}" overflow="visible" style="position:absolute;left:0;top:0;display:block;overflow:visible">${defs}${body}</svg>`;
+function svgMarkup(n, attrs, resizable = false) {
+    return `<svg width="${n.w}" height="${n.h}" viewBox="0 0 ${n.w} ${n.h}" overflow="visible" style="position:absolute;left:0;top:0;display:block;overflow:visible">${svgParts(n, attrs, resizable)}</svg>`;
 }
 
 /**
- * The defs and the shape of one outline, without the svg that holds them (see svgMarkup).
+ * The shape of one outline, and the path of its stroke when SVG attributes cannot draw it, without the svg that holds them (see svgMarkup).
  * @param {any} n
  * @param {string} attrs
+ * @returns {string}
  */
-function svgParts(n, attrs) {
-    const prefix = `${String(n.id).replace(/[^A-Za-z0-9_-]/g, '_')}-`;
-    const extra = svgStrokeExtra(n, svgNumber, escapeAttr, prefix);
-    return { defs: extra.defs, body: svgShapeEl(n, svgNumber, attrs) + extra.el };
+function svgParts(n, attrs, resizable = false) {
+    return svgShapeEl(n, svgNumber, attrs) + svgStrokeExtra(n, svgNumber, escapeAttr, resizable);
 }
 
 /**
@@ -872,8 +868,8 @@ function frameSvg(comp, vectors, scope) {
     const shapes = vectors.map(vec => {
         const flow = auto && vec.layoutPositioning !== 'absolute', fillH = flow && vec.layoutSizingH === 'fill', fillV = flow && vec.layoutSizingV === 'fill';
         const box = { ...vec, w: fillH ? comp.w - 2 * pad : vec.w, h: fillV ? comp.h - 2 * pad : vec.h };
-        const { defs, body } = svgParts(box, `${fillAttrs(box, scope, true)} ${svgStrokeAttrs(box, svgNumber, escapeAttr, true)}`);
-        return `<g transform="translate(${svgNumber(flow ? pad : vec.x)} ${svgNumber(flow ? pad : vec.y)})">${defs}${body}</g>`;
+        const body = svgParts(box, `${fillAttrs(box, scope, true)} ${svgStrokeAttrs(box, svgNumber, escapeAttr, true)}`);
+        return `<g transform="translate(${svgNumber(flow ? pad : vec.x)} ${svgNumber(flow ? pad : vec.y)})">${body}</g>`;
     });
     return `<svg viewBox="0 0 ${comp.w} ${comp.h}" width="100%" height="100%" overflow="visible" style="display:block;overflow:visible">${shapes.join('')}</svg>`;
 }

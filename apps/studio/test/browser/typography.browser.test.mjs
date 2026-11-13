@@ -6,8 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { chromium } from 'playwright';
-import { ARTIFACTS, ROOT, ensureDevServers, openImportedFile, shotNode } from './harness.mjs';
+import { ARTIFACTS, ROOT, ensureDevServers, openImportedFile, shotNode, launchBrowser } from './harness.mjs';
 import { fontFamilyCss } from '../../../../packages/builder-core/src/behavior-engine/typography.js';
 
 const FIXTURE = resolve(ROOT, 'scripts/fixtures/typography-matrix.midas');
@@ -53,7 +52,7 @@ test('the Button and Input text at each Size mode is the same on the canvas and 
     const stop = await ensureDevServers();
     t.after(stop);
     mkdirSync(ARTIFACTS, { recursive: true });
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, FIXTURE);
 
@@ -102,7 +101,7 @@ test('the Button and Input text at each Size mode is the same on the canvas and 
 test('switching an instance\'s Size mode re-measures its canvas text', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page } = await openImportedFile(browser, FIXTURE);
     const stack = fontFamilyCss('Inter');

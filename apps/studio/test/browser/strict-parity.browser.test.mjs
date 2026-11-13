@@ -7,8 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { chromium } from 'playwright';
-import { ARTIFACTS, edgeCheck, ensureDevServers, openImportedFile, pixelDiff, shotNode } from './harness.mjs';
+import { ARTIFACTS, edgeCheck, ensureDevServers, openImportedFile, pixelDiff, shotNode, launchBrowser } from './harness.mjs';
 import { FIXTURE, PAD, createFromPanel, isolatedStage, measurePair, setProp } from './parity-helpers.mjs';
 
 
@@ -36,7 +35,7 @@ test('a created Button and Input measure the same on the canvas and in Play at e
     const stop = await ensureDevServers();
     t.after(stop);
     mkdirSync(ARTIFACTS, { recursive: true });
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, isolatedStage());
 

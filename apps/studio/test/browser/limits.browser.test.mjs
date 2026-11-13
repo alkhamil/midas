@@ -3,9 +3,8 @@
 // "5 / 5". Real clicks and keys on the isolated stage. The geometry and export of the limits state are in the parity tests.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
-import { ARTIFACTS, ensureDevServers, openImportedFile } from './harness.mjs';
+import { ARTIFACTS, ensureDevServers, openImportedFile, launchBrowser } from './harness.mjs';
 import { createFromPanel, isolatedStage, setProp } from './parity-helpers.mjs';
 
 /** The instance's stored value of a behavior prop. */
@@ -18,7 +17,7 @@ test('Min length and Max length from the panel: a Min above the Max is refused, 
     const stop = await ensureDevServers();
     t.after(stop);
     mkdirSync(ARTIFACTS, { recursive: true });
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, isolatedStage({ name: 'limits-stage.midas' }));
     const id = await createFromPanel(page, 'input');

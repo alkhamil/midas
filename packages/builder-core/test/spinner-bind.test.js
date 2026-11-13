@@ -73,6 +73,6 @@ test('a loading instance draws its spinner in Play on the instance path: an arc 
     const { root } = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes }], variables }, copies[0].id);
     const element = root.children.find(c => c.nodeId === copies.find(x => x.name === 'spinner').id);
     assert.ok(element, 'the spinner is drawn in Play');
-    assert.match(element.html, /<path d="M[^"]+"[^>]*stroke="#18181b"/, 'the arc path is drawn in the stroke colour');
+    assert.match(element.html, /<path d="M[^"]+" fill-rule="evenodd" fill="#18181b"/, 'the arc is its inside stroke area, filled in the stroke colour');
     assert.deepEqual(root.children.map(c => c.nodeId).filter(id => id === copies.find(x => x.name === 'spinner').id || id === copies.find(x => x.sourceId === label.id)?.id), [copies.find(x => x.name === 'spinner').id, copies.find(x => x.sourceId === label.id).id], 'the spinner comes before the label in Play');
 });

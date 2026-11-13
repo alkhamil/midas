@@ -5,8 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { chromium } from 'playwright';
-import { ARTIFACTS, ROOT, ensureDevServers, inkIn, openImportedFile, shotNode } from './harness.mjs';
+import { ARTIFACTS, ROOT, ensureDevServers, inkIn, openImportedFile, shotNode, launchBrowser } from './harness.mjs';
 import { PAD, canvasTree, createFromPanel, setProp } from './parity-helpers.mjs';
 
 const TESTING = resolve(ROOT, 'testing.midas');
@@ -33,7 +32,7 @@ test('Create Input: the clear and the count show on the screen only when their p
     const stop = await ensureDevServers();
     t.after(stop);
     mkdirSync(ARTIFACTS, { recursive: true });
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, TESTING);
     const id = await createFromPanel(page, 'input');
@@ -62,7 +61,7 @@ test('Create Input: the clear and the count show on the screen only when their p
 test('Create Button: Loading draws the spinner on the screen; the plain Button draws nothing where the spinner would be', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page } = await openImportedFile(browser, TESTING);
     const id = await createFromPanel(page, 'button');

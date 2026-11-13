@@ -42,15 +42,17 @@ test('multiple fills stack in the order stored: the first is the top layer, and 
     assert.equal(drawn({ fills: [{ type: 'solid', color: '#ff0000', opacity: 1, visible: false }] }).style.background, undefined);
 });
 
-test('an inside stroke is an SVG stroke clipped to the shape, not a centred CSS border', () => {
+test('an inside stroke is the SVG path of its area, not a centred CSS border', () => {
     const d = drawn({ strokeWidth: 2, stroke: '#000000', strokeAlign: 'inside' });
     assert.equal(d.style.border, undefined);
-    assert.match(d.html, /<clipPath id="[^"]*k">/);
-    assert.match(d.html, /stroke-width="4"/);
+    assert.match(d.html, /<path data-area d="M0 0L80 0L80 60L0 60ZM2 2L78 2L78 58L2 58Z" fill-rule="evenodd" fill="#000000" fill-opacity="1"\/>/);
+    assert.ok(!/clipPath|mask/.test(d.html));
 });
 
-test('an outside stroke is an SVG stroke cut out of a mask of the shape', () => {
-    assert.match(drawn({ strokeWidth: 2, stroke: '#000000', strokeAlign: 'outside' }).html, /<mask id="[^"]*k"/);
+test('an outside stroke is the SVG path of its area, the shape cut out of the grown band', () => {
+    const d = drawn({ strokeWidth: 2, stroke: '#000000', strokeAlign: 'outside' });
+    assert.match(d.html, /<path data-area d="M-2 0C[^"]*" fill-rule="evenodd" fill="#000000"/);
+    assert.ok(!/clipPath|mask/.test(d.html));
 });
 
 test('a dashed stroke is an SVG stroke with its dash array', () => {

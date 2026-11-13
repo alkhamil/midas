@@ -3,10 +3,9 @@
 // icon size), the wave on a click, the Size height as a fixed height, and the Input's value and placeholder.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { ensureDevServers, openImportedFile, shotNode, ARTIFACTS, ROOT } from './harness.mjs';
+import { ensureDevServers, openImportedFile, shotNode, ARTIFACTS, ROOT, launchBrowser } from './harness.mjs';
 import { setProp, PAD } from './parity-helpers.mjs';
 
 /** The testing file with a stage and one plain frame holding a text layer "Test", on the Testing page. */
@@ -62,7 +61,7 @@ async function closePlay(page) {
 test('a bound Button: its spinner is drawn in Play in the icon colour and size, its solid background shows, and a click waves', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, bindStage('bind-button.midas'));
     const id = await bindAndInstance(page, 'button');
@@ -93,7 +92,7 @@ test('a bound Button: its spinner is drawn in Play in the icon colour and size, 
 test('a bound Button in Play waves on a click, and the bound height is fixed', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, bindStage('bind-button-wave.midas'));
     const id = await bindAndInstance(page, 'button');
@@ -120,7 +119,7 @@ test('a bound Button in Play waves on a click, and the bound height is fixed', a
 test('a bound Input shows its value on the canvas and in Play, and its placeholder in Play while the value is empty', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, bindStage('bind-input.midas'));
     const id = await bindAndInstance(page, 'input');
@@ -145,7 +144,7 @@ test('a bound Input shows its value on the canvas and in Play, and its placehold
 test('a bound solid Button fills its box in Play, and a Dash stroke set on it stays set', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, bindStage('bind-button-solid.midas'));
     const id = await bindAndInstance(page, 'button');

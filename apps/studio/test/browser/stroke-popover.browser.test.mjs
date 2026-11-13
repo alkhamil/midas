@@ -3,8 +3,7 @@
 // popover open and shows Dash, Gap and Cap; Solid hides them again.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright';
-import { ensureDevServers, openImportedFile, ARTIFACTS } from './harness.mjs';
+import { ensureDevServers, openImportedFile, ARTIFACTS, launchBrowser } from './harness.mjs';
 import { isolatedStage } from './parity-helpers.mjs';
 import { mkdirSync } from 'node:fs';
 
@@ -23,7 +22,7 @@ test('the Stroke popover shows Join and Miter angle on a Circle and a Rectangle 
     const stop = await ensureDevServers();
     t.after(stop);
     mkdirSync(ARTIFACTS, { recursive: true });
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, isolatedStage({ icons: false, name: 'stroke-popover.midas' }));
     const ids = await page.evaluate(() => {
@@ -54,7 +53,7 @@ test('choosing Dashed in the Style menu writes dash, keeps the popover open and 
     const stop = await ensureDevServers();
     t.after(stop);
     mkdirSync(ARTIFACTS, { recursive: true });
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, isolatedStage({ icons: false, name: 'stroke-popover-dash.midas' }));
     const ids = await page.evaluate(() => {

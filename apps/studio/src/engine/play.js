@@ -3,8 +3,37 @@
 // through the player, so the history stays consistent. Play reads the document and never writes it: the view settings live in the
 // browser (localStorage), not in the document. The chrome (top bar, bottom controls) hides on a click that triggers nothing, and
 // Ctrl+\ pins it hidden.
-import { counterLabel, toDomTree, createPlayer, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES, showWave, flipToggle, applyPress, blurNumber, forwardFocus, startResizeDrag } from '@midas/builder-core';
+import { counterLabel, toDomTree, createPlayer, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES, showWave, flipToggle, applyPress, blurNumber, forwardFocus, startResizeDrag, strokeAreaAtSize, paintLayerOf, gradientRaster } from '@midas/builder-core';
 import { applyStyle } from './styleApply.js';
+
+/** Data URLs of the gradient rasters of angular and diamond strokes, by paint and size: the same paint at the same size is drawn once. */
+const rasterUrls = new Map();
+/**
+ * An angular or diamond gradient as an image for a stroke layer: the canvas's own gradient drawing (gradientRaster) over the box and `pad` beyond it.
+ * @param {any} paint
+ * @param {number} w
+ * @param {number} h
+ * @param {number} pad
+ * @returns {string}
+ */
+function rasterUrlOf(paint, w, h, pad) {
+    const key = JSON.stringify([paint, w, h, pad]);
+    let url = rasterUrls.get(key);
+    if (!url) {
+        url = gradientRaster(paint, w, h, pad, (cw, ch) => Object.assign(document.createElement('canvas'), { width: cw, height: ch })).canvas.toDataURL('image/png');
+        if (rasterUrls.size >= 64) rasterUrls.delete(rasterUrls.keys().next().value);
+        rasterUrls.set(key, url);
+    }
+    return url;
+}
+
+/** Paints the rasters a stroke overlay holds (the `image` elements that say what to draw in `data-raster`). */
+function hydrateRasters(el) {
+    for (const image of el.querySelectorAll('image[data-raster]')) {
+        const { paint, w, h, pad } = JSON.parse(image.getAttribute('data-raster'));
+        image.setAttribute('href', rasterUrlOf(paint, w, h, pad));
+    }
+}
 
 const PREFS_KEY = 'midas.play';
 const DEFAULT_PREFS = { mode: 'fit-width-and-height', background: '#1e1e20', hotspots: false, resetOnRestart: true };
@@ -141,6 +170,40 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
     document.body.append(overlay);
     const resizeObserver = new ResizeObserver(() => onResize());
     resizeObserver.observe(viewport);
+    // A stroke area is made for the design size: it is redrawn when its box is laid out at another (a frame resized by the window, a hug or fill box).
+    const areaSources = new WeakMap(), areaDrawn = new WeakMap();
+    const areaObserver = new ResizeObserver(entries => { for (const entry of entries) fitStrokeArea(entry.target, entry.borderBoxSize[0].inlineSize, entry.borderBoxSize[0].blockSize); });
+
+    /**
+     * Redraws a stroke overlay's area path at the size its box is laid out at. The area is a path of the core's stroke_area, which caches by outline and stroke, so a size
+     * seen before is a lookup.
+     * @param {Element} el the overlay (it carries the layer fields the area reads)
+     * @param {number} w
+     * @param {number} h
+     */
+    function fitStrokeArea(el, w, h) {
+        if (!(w > 0 && h > 0)) return;
+        let source = areaSources.get(el);
+        if (!source) areaSources.set(el, source = JSON.parse(el.getAttribute('data-stroke-area')));
+        const key = `${w}x${h}`;
+        if ((areaDrawn.get(el) ?? `${source.w}x${source.h}`) === key) return;
+        areaDrawn.set(el, key);
+        const { d, rule } = strokeAreaAtSize(source, w, h), svg = el.querySelector('svg'), path = el.querySelector('path[data-area]');
+        if (!svg || !path) return;
+        svg.setAttribute('width', String(w));
+        svg.setAttribute('height', String(h));
+        svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+        path.setAttribute('d', d);
+        path.setAttribute(path.hasAttribute('clip-rule') ? 'clip-rule' : 'fill-rule', rule);
+        // A painted stroke redraws its paint at the new size too: a gradient's handles, a picture's extent and a raster are in the layer's own size.
+        const painted = el.getAttribute('data-stroke-paint');
+        if (!painted) return;
+        const { id, paint, pad } = JSON.parse(painted), layer = paintLayerOf(paint, id, { w, h }, data.assets ?? {}, nid => nodeById.get(nid), { raster: true, pad });
+        if (!layer) return;
+        el.querySelector('[data-paint-defs]').innerHTML = layer.defs;
+        el.querySelector('[data-paint-content]').innerHTML = layer.content;
+        hydrateRasters(el);
+    }
 
     /**
      * A descriptor as a DOM element. Elements of a node listen to its mouse events; the player decides what they do. A disabled layer,
@@ -158,6 +221,9 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
         applyStyle(el, desc.style);
         if (desc.text !== undefined) el.textContent = desc.text;
         if (desc.html !== undefined) el.innerHTML = desc.html;
+        // Any layer whose stroke is a raster (an angular or a diamond gradient) has it painted now; a frame's stroke area is also redrawn when its box is laid out at another size.
+        if (desc.html?.includes('data-raster')) hydrateRasters(el);
+        if (desc.attrs?.['data-stroke-area']) areaObserver.observe(el);
         if (desc.nodeId) {
             el.dataset.nodeId = desc.nodeId;
             if (ctx.interactionsOf(desc.nodeId).length) el.classList.add('play-hotspot');
@@ -567,6 +633,7 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
         clearTimeout(toastTimer);
         clearTimeout(labelTimer);
         resizeObserver.disconnect();
+        areaObserver.disconnect();
         document.removeEventListener('keydown', onKey, true);
         document.removeEventListener('keyup', onKeyUp, true);
         document.removeEventListener('pointermove', onPointerMove, true);

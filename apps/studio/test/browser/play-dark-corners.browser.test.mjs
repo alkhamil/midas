@@ -4,10 +4,9 @@
 // (Input Middle passes on the pre-fix code): its light stroke hides the ring from a brightness test.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { ARTIFACTS, ensureDevServers, openImportedFile } from './harness.mjs';
+import { ARTIFACTS, ensureDevServers, openImportedFile, launchBrowser } from './harness.mjs';
 import { createFromPanel, isolatedStage } from './parity-helpers.mjs';
 
 const PLAY_BACKGROUND = [30, 30, 32]; // #1e1e20, the Play default
@@ -80,7 +79,7 @@ for (const [templateId, sizeName] of [['button', 'sm'], ['button', 'lg'], ['inpu
         const stop = await ensureDevServers();
         t.after(stop);
         mkdirSync(ARTIFACTS, { recursive: true });
-        const browser = await chromium.launch();
+        const browser = await launchBrowser();
         t.after(() => browser.close());
         const { page, errors } = await openImportedFile(browser, isolatedStage(), DSF);
         const id = await createFromPanel(page, templateId);

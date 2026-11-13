@@ -5,8 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { chromium } from 'playwright';
-import { ARTIFACTS, ROOT, ensureDevServers, inkIn, openImportedFile, shotNode } from './harness.mjs';
+import { ARTIFACTS, ROOT, ensureDevServers, inkIn, openImportedFile, shotNode, launchBrowser } from './harness.mjs';
 
 const TESTING = resolve(ROOT, 'testing.midas');
 const MATRIX = resolve(ROOT, 'scripts/fixtures/typography-matrix.midas');
@@ -23,7 +22,7 @@ test('the editor window changes a member, the chip follows, and a ratio line hei
     const stop = await ensureDevServers();
     t.after(stop);
     mkdirSync(ARTIFACTS, { recursive: true });
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, TESTING);
     await page.getByRole('button', { name: 'Variables' }).first().click();
@@ -49,7 +48,7 @@ test('the editor window changes a member, the chip follows, and a ratio line hei
 test('a style attached to two text nodes resolves per Size mode; switching the mode updates canvas and Play; detach keeps values', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, MATRIX);
 

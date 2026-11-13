@@ -4,11 +4,15 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "node ../../scripts/build-core.mjs",
     "dev": "vite",
+    "prebuild": "node ../../scripts/build-core.mjs",
     "build": "vite build",
     "preview": "vite preview",
+    "pretest": "node ../../scripts/build-core.mjs",
     "test": "node --test test/*.test.js",
-    "test:browser": "node --test --test-concurrency=1 test/browser/*.browser.test.mjs"
+    "pretest:browser": "node ../../scripts/build-core.mjs",
+    "test:browser": "node test/browser/run.mjs"
   },
   "dependencies": {
     "@midas/builder-core": "*",

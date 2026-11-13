@@ -140,15 +140,23 @@ const GRADIENT_STRUCT = `{ type?: 'linear' | 'radial' | 'angular' | 'diamond'; a
 const PATTERN_STRUCT = `{ source?: string; tileType?: 'RECTANGULAR' | 'HORIZONTAL_HEXAGONAL' | 'VERTICAL_HEXAGONAL'; scale?: number; spacingX?: number; spacingY?: number; align?: string; iw?: number; ih?: number }`;
 
 /**
+ * The source text of a function the export embeds. Function.prototype.toString returns the text with the line endings of the file
+ * it was read from, so a Windows checkout (CRLF) would write a different export than a Linux one: the text is always LF.
+ * @param {Function} fn
+ * @returns {string}
+ */
+const sourceOf = fn => fn.toString().replace(/\r\n/g, '\n');
+
+/**
  * The standalone serializers as strict TypeScript: the emitted component compiles under strict, so the params the
  * JavaScript leaves untyped are annotated here, and the alignment lookup reads through a string record.
  * @returns {string[]}
  */
 function fillHelperTs() {
-    const gradient = gradientLayerOf.toString()
+    const gradient = sourceOf(gradientLayerOf)
         .replace('function gradientLayerOf(g) {', 'function gradientLayerOf(g: GradientFill | undefined): string | undefined {')
         .replace('(c, a) =>', '(c: string, a: number | undefined) =>');
-    const pattern = patternLayerOf.toString()
+    const pattern = sourceOf(patternLayerOf)
         .replace('function patternLayerOf(p) {', 'function patternLayerOf(p: PatternFill | undefined): string | undefined {')
         .replace('(x, y) =>', '(x: number, y: number) =>')
         .replace("= { 'top-left'", "= ({ 'top-left'")
@@ -560,8 +568,8 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         '  );',
         '}',
         ...subcomponentLines(template, name),
-        ...controlOf(template)?.number ? ['', `const commitNumber = ${commitNumber.toString()};`] : [],
-        ...(template.press ?? []).some(p => p.resize) ? ['', `const resizeLimits = ${resizeLimits.toString()};`, `const resizeHeight = ${resizeHeight.toString()};`, `const startResizeDrag = ${startResizeDrag.toString()};`] : [],
+        ...controlOf(template)?.number ? ['', `const commitNumber = ${sourceOf(commitNumber)};`] : [],
+        ...(template.press ?? []).some(p => p.resize) ? ['', `const resizeLimits = ${sourceOf(resizeLimits)};`, `const resizeHeight = ${sourceOf(resizeHeight)};`, `const startResizeDrag = ${sourceOf(startResizeDrag)};`] : [],
         ...(template.interaction?.wave ? ['', 'function waveDown(el) {', "  if (!el || el.disabled) return;", "  el.removeAttribute('data-wave-on');", '  void el.offsetWidth;', "  el.setAttribute('data-wave-on', '');", '}'] : []),
         '',
         ...fillHelperTs(),

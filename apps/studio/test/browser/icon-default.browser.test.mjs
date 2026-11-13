@@ -5,8 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { chromium } from 'playwright';
-import { ARTIFACTS, ensureDevServers, inkIn, openImportedFile } from './harness.mjs';
+import { ARTIFACTS, ensureDevServers, inkIn, openImportedFile, launchBrowser } from './harness.mjs';
 import { PAD, canvasTree, createFromPanel, isolatedStage, measurePair, setProp } from './parity-helpers.mjs';
 
 /** The canvas rectangle of a layer, in device pixels of the pair screenshot (the crop starts PAD CSS pixels outside the root). */
@@ -16,7 +15,7 @@ test('Has Icon on with the library: the slot holds the library icon, draws ink i
     const stop = await ensureDevServers();
     t.after(stop);
     mkdirSync(ARTIFACTS, { recursive: true });
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, isolatedStage({ icons: true, name: 'icon-default-stage.midas' }));
     const id = await createFromPanel(page, 'button');
@@ -40,7 +39,7 @@ test('Has Icon on with no Icon/ component in the file: the slot keeps its box, d
     const stop = await ensureDevServers();
     t.after(stop);
     mkdirSync(ARTIFACTS, { recursive: true });
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page } = await openImportedFile(browser, isolatedStage({ icons: false, name: 'icon-empty-stage.midas' }));
     const id = await createFromPanel(page, 'button');

@@ -5,8 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { chromium } from 'playwright';
-import { ARTIFACTS, ensureDevServers, openImportedFile } from './harness.mjs';
+import { ARTIFACTS, ensureDevServers, openImportedFile, launchBrowser } from './harness.mjs';
 import { createFromPanel, isolatedStage, measurePair, setProp } from './parity-helpers.mjs';
 
 /** Every state sets all of its props, so the order of the states does not matter. */
@@ -23,7 +22,7 @@ test('a created Alert measures the same on the canvas and in Play at every Size 
     const stop = await ensureDevServers();
     t.after(stop);
     mkdirSync(ARTIFACTS, { recursive: true });
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, isolatedStage({ name: 'alert.midas' }));
 
@@ -56,7 +55,7 @@ test('a created Alert measures the same on the canvas and in Play at every Size 
 test('a Type change in the Design panel swaps the type icon to the glyph of the new type, and the Play icon follows', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, isolatedStage({ name: 'alert-type.midas' }));
     const id = await createFromPanel(page, 'antd-alert');

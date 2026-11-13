@@ -3,10 +3,9 @@
 // and label keep the nodes' values. Real keyboard and mouse input on the isolated stage.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright';
 import { resolve } from 'node:path';
 import { mkdirSync } from 'node:fs';
-import { ARTIFACTS, ensureDevServers, inkIn, openImportedFile } from './harness.mjs';
+import { ARTIFACTS, ensureDevServers, inkIn, openImportedFile, launchBrowser } from './harness.mjs';
 import { createFromPanel, isolatedStage, setProp } from './parity-helpers.mjs';
 
 /** Opens Play on the instance (selected), at actual size. Animations run. */
@@ -45,7 +44,7 @@ const playState = page => page.evaluate(() => {
 test('the Input in Play follows typing and a click on its clear; the canvas stays as it is', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, isolatedStage());
     const id = await createFromPanel(page, 'input');

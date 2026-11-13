@@ -3,9 +3,8 @@
 // its text and gives its space back; a switch on again restores the text it had.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
-import { ARTIFACTS, ensureDevServers, inkIn, openImportedFile, shotNode } from './harness.mjs';
+import { ARTIFACTS, ensureDevServers, inkIn, openImportedFile, shotNode, launchBrowser } from './harness.mjs';
 import { PAD, canvasTree, createFromPanel, isolatedStage, setProp } from './parity-helpers.mjs';
 
 /** A layer's rectangle in device pixels of the instance's shot (zoom 1, device scale 2, the crop starts PAD css px outside the root). */
@@ -31,7 +30,7 @@ test('Has Prefix and Has Suffix in the Behavior panel show their texts on the ca
     const stop = await ensureDevServers();
     t.after(stop);
     mkdirSync(ARTIFACTS, { recursive: true });
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, isolatedStage({ name: 'affix-stage.midas' }));
     const id = await createFromPanel(page, 'input');

@@ -6,9 +6,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { chromium } from 'playwright';
 import { build } from 'esbuild';
-import { ARTIFACTS, ROOT, ensureDevServers, openImportedFile } from './harness.mjs';
+import { ARTIFACTS, ROOT, ensureDevServers, openImportedFile, launchBrowser } from './harness.mjs';
 import { canvasTree, createFromPanel, isolatedStage, playTree, setProp, TOLERANCE_PX } from './parity-helpers.mjs';
 import { generateComponent } from '../../../../packages/builder-core/src/behavior-engine/codegen.js';
 import { resolveProps } from '../../../../packages/builder-core/src/behavior-engine/instance-props.js';
@@ -77,7 +76,7 @@ const renderExport = (page, props) => page.evaluate(props => {
 test('the exported Input renders its input, clear and counter where Play draws them, at every Size mode and state, within 0.5px', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, isolatedStage());
     const id = await createFromPanel(page, 'input');
@@ -170,7 +169,7 @@ const renderButtonExport = (page, props) => page.evaluate(props => {
 test('the exported Button draws its spinner, icon slots and label where Play draws them, at every Size and icon and loading state', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, isolatedStage());
     const id = await createFromPanel(page, 'button');

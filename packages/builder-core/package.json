@@ -6,6 +6,8 @@
   "type": "module",
   "main": "src/index.js",
   "exports": { ".": "./src/index.js" },
-  "scripts": { "test": "node --test test/*.test.js" },
+  "scripts": { "build": "node ../../scripts/build-core.mjs",
+    "pretest": "node ../../scripts/build-core.mjs",
+    "test": "node --test test/*.test.js" },
   "dependencies": { "polygon-clipping": "^0.15.7" }
 }

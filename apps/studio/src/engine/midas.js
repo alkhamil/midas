@@ -1,7 +1,7 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
 import { mountFloatingWindow } from './floatingWindow.js';
-import { moveStopKeys, gradientColorAt, BLEND_MODES, contrastRatio, wcagLevels, patternStepOf, patternCellOf, gradientStops, gradientReverse, gradientAddStop, gradientRemoveStop, gradientSetStop, colorFormats, colorFromFormat, documentColors, imageAdjustFilter, imageRotationOf, isGradientFill, patternTileOf, patternPhaseOf, patternSvgUrl, patternTileId, imageSvgUrl, gradientCss, remapFillKeys, moveFillKeys, shiftStopKeys, stopBindingKey, parseStopKey, fillParamType, parseCssColor, gradientHandlePoints, gradientHandleMove, cropZoomFor, cropRotateFor, patternLayout, videoPosterOf, PLACEHOLDER_IMAGE, PLACEHOLDER_IMAGE_ID, VIDEO_PENDING, IMAGE_PENDING, newlyShownImageProps, slotListOf, slotRefusal, slotRestricts, textWriteBacks, decorationLinesOf, pinnedFrame, markManagedContainers, rowsBounds, nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, ICONS_SECTION, defaultIconOf, roleIconsOf, iconRolesOf, iconNodes, planIcons, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, managedSlotLayer, managedPartLayer, planManagedTextBindings, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, previewStateOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, pathSegments, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix, pathCurveBounds, pathContours, normalizeVectorGeometry } from '@midas/builder-core';
+import { moveStopKeys, gradientColorAt, BLEND_MODES, contrastRatio, wcagLevels, patternStepOf, patternCellOf, gradientStops, gradientReverse, gradientAddStop, gradientRemoveStop, gradientSetStop, colorFormats, colorFromFormat, documentColors, imageAdjustFilter, imageRotationOf, isGradientFill, patternTileOf, patternPhaseOf, patternSvgUrl, patternTileId, imageSvgUrl, gradientCss, remapFillKeys, moveFillKeys, shiftStopKeys, stopBindingKey, parseStopKey, fillParamType, parseCssColor, gradientHandlePoints, gradientHandleMove, cropZoomFor, cropRotateFor, patternLayout, videoPosterOf, PLACEHOLDER_IMAGE, PLACEHOLDER_IMAGE_ID, VIDEO_PENDING, IMAGE_PENDING, newlyShownImageProps, slotListOf, slotRefusal, slotRestricts, textWriteBacks, decorationLinesOf, pinnedFrame, markManagedContainers, rowsBounds, nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, ICONS_SECTION, defaultIconOf, roleIconsOf, iconRolesOf, iconNodes, planIcons, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, managedSlotLayer, managedPartLayer, planManagedTextBindings, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, previewStateOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, pathSegments, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, strokeAreaOf, strokeWithPaintLayer, gradientRaster, pictureExtent, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix, pathCurveBounds, pathContours, normalizeVectorGeometry } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { imageSlotRowHtml, slotRowHtml } from './slotRow.js';
 import { openPlay } from './play.js';
@@ -3022,22 +3022,11 @@ function imageFillPattern(ctx, f, n) {
     const key = [f.image, mode, Math.round(w * 10), Math.round(h * 10), sc, crop.x ?? 0.5, crop.y ?? 0.5, crop.scale || 1, rot].join(':');
     let p = patternCache.get(key);
     if (!p) {
-        let repeat = 'no-repeat', m = new DOMMatrix();
-        if (mode === 'tile') {
-            repeat = 'repeat';
-            m = m.scale(sc, sc);
-        }
-        else if (mode === 'crop') {
-            const scale = crop.scale || 1, cx = crop.x ?? 0.5, cy = crop.y ?? 0.5;
-            const [bx, by, bw, bh] = coverFit(img, w, h);
-            const dw = bw * scale, dh = bh * scale;
-            const dx = (w - dw) / 2 - (cx - 0.5) * dw, dy = (h - dh) / 2 - (cy - 0.5) * dh;
-            m = m.translate(dx, dy).scale(dw / img.width, dh / img.height);
-        }
-        else {
-            const [dx, dy, dw, dh] = mode === 'fit' ? containFit(img, w, h) : coverFit(img, w, h);
-            m = m.translate(dx, dy).scale(dw / img.width, dh / img.height);
-        }
+        // Where the picture is drawn comes from the core (the one extent of every mode, also Play's); the canvas only turns it into a pattern.
+        const ext = pictureExtent(f, w, h, img.width, img.height);
+        if (!ext) return null;
+        const repeat = ext.tile ? 'repeat' : 'no-repeat';
+        let m = new DOMMatrix().translate(ext.x, ext.y).scale(ext.w / img.width, ext.h / img.height);
         if (rot) m = new DOMMatrix().translate(w / 2, h / 2).rotate(rot).translate(-w / 2, -h / 2).multiply(m);
         p = ctx.createPattern(img, repeat);
         if (!p) return null;
@@ -3049,42 +3038,20 @@ function imageFillPattern(ctx, f, n) {
 }
 // Stops for a gradient fill. The first / last stop follow color / color2, so editing those in the fill picker still works.
 const gradientCache = new Map();
-// Radial / angular / diamond (and linear with explicit handles or many stops) are painted once into a small
-// offscreen canvas in layer space and used as a pattern; gradients are smooth, so 512 px is plenty.
-function gradientPattern(ctx, f, n) {
-    const w = Math.max(1, n.w), h = Math.max(1, n.h), res = Math.min(512, Math.max(16, Math.ceil(Math.max(w, h))));
-    const cw = Math.max(1, Math.round(res * w / Math.max(w, h))), ch = Math.max(1, Math.round(res * h / Math.max(w, h)));
-    const key = JSON.stringify([f.type, gradientStops(f), f.handles, f.angle, cw, ch]);
-    let canvas = gradientCache.get(key);
-    if (!canvas) {
-        canvas = document.createElement('canvas');
-        canvas.width = cw;
-        canvas.height = ch;
-        const g = canvas.getContext('2d'), stops = gradientStops(f), H = f.handles;
-        g.scale(cw, ch); // draw in 0–1 layer space
-        const add = gr => { for (const s of stops)
-            gr.addColorStop(s.pos, s.color); return gr; };
-        if (f.type === 'linear') {
-            const a = H?.a || { x: 0, y: .5 }, b = H?.b || { x: 1, y: .5 };
-            g.fillStyle = add(g.createLinearGradient(a.x, a.y, b.x, b.y));
-            g.fillRect(0, 0, 1, 1);
-        }
-        else {
-            const c = H?.a || { x: .5, y: .5 }, bx = H?.b || { x: 1, y: .5 }, by = H?.c || { x: .5, y: 1 };
-            // Map the unit circle onto the gradient's ellipse (its axes can be rotated and skewed).
-            g.transform(bx.x - c.x, bx.y - c.y, by.x - c.x, by.y - c.y, c.x, c.y);
-            if (f.type === 'angular' && g.createConicGradient)
-                g.fillStyle = add(g.createConicGradient(0, 0, 0));
-            else
-                g.fillStyle = add(g.createRadialGradient(0, 0, 0, 0, 0, f.type === 'diamond' ? 1.2 : 1));
-            g.fillRect(-1000, -1000, 2000, 2000);
-        }
+// Radial / angular / diamond (and linear with explicit handles or many stops) are painted once into a small offscreen canvas in layer space (gradientRaster, the one drawing
+// Play's stroke rasters use too) and used as a pattern. A stroke reaches `pad` beyond the box (an outside or a centred stroke): the pattern covers that margin too.
+function gradientPattern(ctx, f, n, pad = 0) {
+    const w = Math.max(1, n.w), h = Math.max(1, n.h);
+    const key = JSON.stringify([f.type, gradientStops(f), f.handles, f.angle, Math.round(w * 10), Math.round(h * 10), Math.round(pad * 10)]);
+    let raster = gradientCache.get(key);
+    if (!raster) {
+        raster = gradientRaster(f, w, h, pad, (cw, ch) => Object.assign(document.createElement('canvas'), { width: cw, height: ch }));
         if (gradientCache.size > 128)
             gradientCache.delete(gradientCache.keys().next().value);
-        gradientCache.set(key, canvas);
+        gradientCache.set(key, raster);
     }
-    const p = ctx.createPattern(canvas, 'no-repeat');
-    p?.setTransform(new DOMMatrix().scale(w / cw, h / ch));
+    const p = ctx.createPattern(raster.canvas, 'no-repeat');
+    p?.setTransform(pad ? new DOMMatrix().translate(-pad, -pad).scale(1 / raster.k, 1 / raster.k) : new DOMMatrix().scale(w / raster.cw, h / raster.ch));
     return p;
 }
 function patternFillPattern(ctx, f, n) {
@@ -3116,7 +3083,7 @@ function patternFillPattern(ctx, f, n) {
     }
     return p;
 }
-function fillPaint(ctx, f, n) {
+function fillPaint(ctx, f, n, pad = 0) {
     {
         if (f.type === 'pattern') return patternFillPattern(ctx, f, n) || 'rgba(140,140,150,.18)';
         if (f.type === 'video') {
@@ -3125,14 +3092,14 @@ function fillPaint(ctx, f, n) {
             if (img) return imageFillPattern(ctx, { ...f, type: 'image', image: f.poster || f.image, mode: f.mode === 'tile' ? 'tile' : 'fill' }, n) || 'rgba(140,140,150,.18)';
             return 'rgba(140,140,150,.18)';
         }
-        return fillPaintWithFilter(ctx, f, n);
+        return fillPaintWithFilter(ctx, f, n, pad);
     }
 }
-function fillPaintWithFilter(ctx, f, n) {
+function fillPaintWithFilter(ctx, f, n, pad = 0) {
     if (f.type === 'solid')
         return f.color && f.color !== 'none' ? f.color : null;
     if (isRichGradient(f))
-        return gradientPattern(ctx, f, n);
+        return gradientPattern(ctx, f, n, pad);
     if (f.type === 'linear') {
         const r = (f.angle ?? 90) * Math.PI / 180, c = Math.cos(r), s = Math.sin(r), len = Math.abs(n.w * c) + Math.abs(n.h * s);
         const g = ctx.createLinearGradient(n.w / 2 - c * len / 2, n.h / 2 - s * len / 2, n.w / 2 + c * len / 2, n.h / 2 + s * len / 2);
@@ -5873,7 +5840,7 @@ function syncStrokePaint(n) {
 /** The paint a layer's stroke is drawn with on the canvas: its stroke paint when that is not a plain colour (a gradient, a pattern, a picture), else the stroke colour. */
 function strokePaintOf(ctx, n) {
     const sf = n.strokeFill;
-    return sf && sf.type !== 'solid' && sf.visible !== false ? (fillPaint(ctx, sf, n) || n.stroke) : n.stroke;
+    return sf && sf.type !== 'solid' && sf.visible !== false ? (fillPaint(ctx, sf, n, n.strokeWidth) || n.stroke) : n.stroke;
 }
 function openFillPicker(i, anchor, target = 'fill') {
     const was = FP.open && FP.i === i && FP.target === target;
@@ -7971,67 +7938,23 @@ function needsRasterShape(n) {
         return false;
     return hasRadii(n) || strokeNeedsRaster(n) || arcActive(n);
 }
-function paintStroke(ctx, n, path) {
+// A layer's stroke is the area the Rust core outlines: inside, centre and outside, per-side widths, dashes, joins and caps are all in that one path, filled with the stroke's paint.
+const strokeAreaPaths = new WeakMap();
+function paintStroke(ctx, n) {
     if (!strokeIsOn(n) || n.type === 'text')
         return;
-    const rl = RECT_LIKE.includes(n.type), align = strokeClosed(n) ? (n.strokeAlign || 'center') : 'center';
-    const sides = rl ? strokeSideWidths(n) : null, uniform = strokeSidesUniform(n), w = sides ? sides.t : n.strokeWidth;
+    const area = strokeAreaOf(n);
+    let path = strokeAreaPaths.get(area);
+    if (!path)
+        strokeAreaPaths.set(area, path = new Path2D(area.d));
     ctx.save();
     ctx.globalAlpha *= n.strokeOpacity ?? 1;
-    const paint = strokePaintOf(ctx, n);
-    ctx.strokeStyle = paint;
-    ctx.fillStyle = paint;
+    ctx.fillStyle = strokePaintOf(ctx, n);
     if (n.strokeFill?.blend && BLEND_MODES.includes(n.strokeFill.blend) && n.strokeFill.blend !== 'normal')
         ctx.globalCompositeOperation = n.strokeFill.blend;
     if (n.strokeFill?.type === 'image')
         ctx.filter = imageAdjustFilter(n.strokeFill) || 'none';
-    const outsideClip = () => { const c = new Path2D(); c.rect(-1e5, -1e5, 2e5, 2e5); c.addPath(path); ctx.clip(c, 'evenodd'); };
-    if (uniform) {
-        if (w > 0) {
-            ctx.lineJoin = n.strokeJoin || 'round';
-            ctx.lineCap = n.strokeCap || 'round';
-            ctx.miterLimit = strokeMiterLimit(n);
-            ctx.setLineDash(strokeDashArray(n));
-            if (align === 'center') {
-                ctx.lineWidth = w;
-                ctx.stroke(path);
-            }
-            else if (align === 'inside' && rl && strokeDashArray(n).length === 0) {
-                // An inside stroke of a box is the band between its outline and the outline inset by its width, with the corner radius less
-                // the width: how a CSS border draws it, so the corners and the edges match Play's.
-                const inner = new Path2D();
-                inner.roundRect(w, w, Math.max(0, n.w - w * 2), Math.max(0, n.h - w * 2), cornerRadii(n).map(v => Math.max(0, v - w)));
-                const band = new Path2D();
-                band.addPath(path);
-                band.addPath(inner);
-                ctx.fill(band, 'evenodd');
-            }
-            else {
-                if (align === 'outside')
-                    outsideClip();
-                else
-                    ctx.clip(path);
-                ctx.lineWidth = w * 2;
-                ctx.stroke(path);
-            }
-        }
-    }
-    else {
-        const { t, r, b, l } = sides, W = n.w, H = n.h, off = v => align === 'inside' ? 0 : align === 'center' ? v / 2 : v;
-        if (align === 'outside')
-            outsideClip();
-        else if (align === 'inside')
-            ctx.clip(path);
-        const y0 = t > 0 ? -off(t) : 0, y1 = b > 0 ? H + off(b) : H;
-        if (t > 0)
-            ctx.fillRect(-off(l), -off(t), W + off(l) + off(r), t);
-        if (b > 0)
-            ctx.fillRect(-off(l), H - b + off(b), W + off(l) + off(r), b);
-        if (l > 0)
-            ctx.fillRect(-off(l), y0, l, y1 - y0);
-        if (r > 0)
-            ctx.fillRect(W - r + off(r), y0, r, y1 - y0);
-    }
+    ctx.fill(path, area.rule);
     ctx.restore();
 }
 
@@ -8273,7 +8196,7 @@ class Atlas {
                 ctx.clip(pathFor(n));
                 ctx.drawImage(img, ...imageFit(img, n.w, n.h));
                 ctx.restore();
-                paintStroke(ctx, n, pathFor(n));
+                paintStroke(ctx, n);
             }
             else {
                 const path = pathFor(n);
@@ -8281,7 +8204,7 @@ class Atlas {
                     paintFills(ctx, n, path, 1);
                 ctx.globalAlpha = 1;
                 if (mode !== 'fill')
-                    paintStroke(ctx, n, path);
+                    paintStroke(ctx, n);
             }
         });
     }
@@ -8884,7 +8807,7 @@ class Renderer {
                     ctx.drawImage(image, ...imageFit(image, n.w, n.h));
                     ctx.restore();
                 }
-                paintStroke(ctx, n, path);
+                paintStroke(ctx, n);
             }
             else {
                 const ss = Math.hypot(ctx.getTransform().a, ctx.getTransform().b);
@@ -8909,7 +8832,7 @@ class Renderer {
                 }
                 ctx.globalAlpha = s.opacity;
                 if (s.mode !== 'fill')
-                    paintStroke(ctx, n, path);
+                    paintStroke(ctx, n);
             }
             ctx.restore();
         }
@@ -9030,6 +8953,8 @@ function exportSVG(doc, ids) {
         if (!include.has(n.id) || n.type === 'group' || n.isMask || s.boolChild)
             continue;
         const prefix = 'v' + index++;
+        // A stroke painted with more than a colour is a layer clipped by its area (an angular or a diamond gradient is its first colour); `sn` is the layer with it.
+        const sn = strokeWithPaintLayer(n, `${prefix}sp`, doc.data.assets, id => doc.get(id)) ?? n;
         const top = getFills(n).find(x => x.visible !== false);
         let fill = topColorOf(n);
         if (top?.type === 'linear' && fill !== 'none') {
@@ -9038,9 +8963,8 @@ function exportSVG(doc, ids) {
             defs += `<linearGradient id="${prefix}g" gradientUnits="userSpaceOnUse" x1="${f(n.w / 2 - c * len / 2)}" y1="${f(n.h / 2 - ss * len / 2)}" x2="${f(n.w / 2 + c * len / 2)}" y2="${f(n.h / 2 + ss * len / 2)}">${stops}</linearGradient>`;
             fill = `url(#${prefix}g)`;
         }
-        let attrs = `fill="${e(fill)}" fill-opacity="${f(topOpacityOf(n))}" ${svgStrokeAttrs(n, f, e)}`;
-        const sx = svgStrokeExtra(n, f, e, prefix);
-        defs += sx.defs;
+        let attrs = `fill="${e(fill)}" fill-opacity="${f(topOpacityOf(n))}" ${svgStrokeAttrs(sn, f, e)}`;
+        const sx = svgStrokeExtra(sn, f, e);
         let item = '';
         const fxList = getEffects(n).filter(x => x.visible !== false && ['drop', 'inner', 'layerBlur'].includes(x.type));
         if (fxList.length) {
@@ -9065,7 +8989,7 @@ function exportSVG(doc, ids) {
             defs += `<clipPath id="${prefix}i">${svgShapeEl(n, f, '')}</clipPath>`;
             item = `<image href="${e(doc.data.assets[n.assetId] || '')}" width="${f(n.w)}" height="${f(n.h)}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${prefix}i)"/>`;
             if (strokeIsOn(n))
-                item += sx.el || svgShapeEl(n, f, `fill="none" ${svgStrokeAttrs(n, f, e)}`);
+                item += sx || svgShapeEl(n, f, `fill="none" ${svgStrokeAttrs(sn, f, e)}`);
         }
         else if (n.type === 'ellipse' && !arcActive(n))
             item = `<ellipse cx="${f(n.w / 2)}" cy="${f(n.h / 2)}" rx="${f(n.w / 2)}" ry="${f(n.h / 2)}" ${attrs}/>`;
@@ -9073,8 +8997,8 @@ function exportSVG(doc, ids) {
             item = `<path d="${svgPathD(pathCommands(n), f)}" ${attrs}/>`;
         else
             item = svgShapeEl(n, f, attrs);
-        if (n.type !== 'image' && n.type !== 'text' && !needsRasterFill(n) && sx.el)
-            item += sx.el;
+        if (n.type !== 'image' && n.type !== 'text' && !needsRasterFill(n) && sx)
+            item += sx;
         if (needsRasterFill(n)) {
             const geo = a => svgShapeEl(n, f, a);
             const list = getFills(n);
@@ -9136,7 +9060,7 @@ function exportSVG(doc, ids) {
                         parts += `<image href="${e(src)}" width="${f(n.w)}" height="${f(n.h)}" preserveAspectRatio="xMidYMid ${mode === 'fit' ? 'meet' : 'slice'}" clip-path="url(#${id}c)" opacity="${op}"/>`;
                 }
             }
-            const strokeOnly = strokeIsOn(n) ? (sx.el || geo(`fill="none" ${svgStrokeAttrs(n, f, e)}`)) : '';
+            const strokeOnly = strokeIsOn(n) ? (sx || geo(`fill="none" ${svgStrokeAttrs(sn, f, e)}`)) : '';
             item = `<g${fxList.length ? ` filter="url(#${prefix}s)"` : ''}>${parts}${strokeOnly}</g>`;
         }
         let wrapped = `<g transform="matrix(${s.matrix.map(f).join(' ')})" opacity="${f(s.opacity)}"><title>${e(n.name)}</title>${item}</g>`;

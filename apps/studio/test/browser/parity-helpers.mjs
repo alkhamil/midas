@@ -2,7 +2,7 @@
 // tab's props, the canvas and Play measurements, and the comparison of the two. Used by strict-parity and export-parity.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { ARTIFACTS, ROOT, edgeCheck, integerClip, pixelDiff, shotNode } from './harness.mjs';
+import { ARTIFACTS, ROOT, edgeCheck, integerClip, pixelDiff, settle, shotNode } from './harness.mjs';
 
 export const FIXTURE = resolve(ROOT, 'testing.midas');
 // The pair crops: the root's box plus this padding, the same in both shots. Both are taken at zoom 1 (one document unit per CSS pixel).
@@ -42,12 +42,12 @@ export function isolatedStage({ icons = true, name = 'strict-parity.midas' } = {
  */
 export async function createFromPanel(page, templateId) {
     await page.getByRole('button', { name: 'Components' }).first().click();
-    await page.waitForTimeout(300);
+    await settle(page, 4);
     const built = await page.evaluate(() => window.midas.doc.data.pages.some(p => p.name === 'Design System'));
     if (!built) {
         await page.locator('[data-generate-design-system]').click();
         await page.waitForFunction(() => window.midas.doc.page?.name === 'Design System', null, { timeout: 30000 });
-        await page.waitForTimeout(500);
+        await settle(page, 8);
     }
     return page.evaluate(templateId => {
         const nodes = window.midas.doc.data.pages.find(p => p.name === 'Design System').nodes;
@@ -77,7 +77,7 @@ export async function setProp(page, name, value) {
         await field.fill(String(value));
         await field.press('Enter');
     }
-    await page.waitForTimeout(200);
+    await settle(page, 4);
 }
 
 /** Every node of an instance, its root first, with the canvas box relative to the root and whether it is shown. */
@@ -113,7 +113,9 @@ export async function playTree(page, rootId, name, clipSize = null) {
         el.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await page.locator('.play-overlay [data-mode="actual-size"]').click();
-    await page.waitForTimeout(500);
+    // The stage is laid out at scale 1 (no transform) before anything is measured; the frames after it let the layout and the first paint settle.
+    await page.waitForFunction(() => { const s = document.querySelector('.play-overlay .play-stage'); return !!s && (s.style.transform === '' || s.style.transform === 'none'); });
+    await settle(page, 6);
     await page.evaluate(() => document.getAnimations().forEach(anim => anim.cancel()));
     const measured = await page.evaluate(rootId => {
         const overlay = document.querySelector('.play-overlay');
@@ -197,7 +199,7 @@ async function placeholderRects(page, rootId, pad) {
 export async function measurePair(page, browser, id, label, pair, { outline = true } = {}) {
     await page.evaluate(() => window.midas.select([]));
     await page.mouse.move(2, 2);
-    await page.waitForTimeout(150);
+    await settle(page, 3);
     const canvasShot = await shotNode(page, id, pair + '-canvas', PAD, 1);
     const canvas = await canvasTree(page, id);
     // The canvas sets the crop size: both shots are the same size, so a width that rounds across a whole pixel cannot differ between them.

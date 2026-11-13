@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pathCommands, svgPathD, arcPoly, roundRectD, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, strokeDashArray, strokeSideWidths, strokeSidesUniform } from '../src/geometry/shapes.js';
+import { pathCommands, svgPathD, arcPoly, roundRectD, svgShapeEl, svgStrokeAttrs, strokeDashArray, strokeSideWidths, strokeSidesUniform } from '../src/geometry/shapes.js';
+import { svgStrokeExtra } from '../src/geometry/stroke-area.js';
 const solid = (color, opacity = 1) => (color === 'none' ? [] : [{ type: 'solid', color, opacity, visible: true }]);
 
 const f = v => +(+v).toFixed(2);
@@ -71,16 +72,23 @@ test('dash and side widths follow the stroke style and the side setting', () => 
     assert.equal(strokeSidesUniform(shape({ strokeWidth: 2, strokeSides: 'top' })), false);
 });
 
-test('an inside stroke is drawn as a clip of the shape, with twice the width', () => {
+test('an inside stroke is drawn as its area: the band between the outline and the outline inset by the width', () => {
     const n = shape({ strokeWidth: 2, stroke: '#ff0000', strokeAlign: 'inside' });
-    const { defs, el } = svgStrokeExtra(n, f, e, 'p');
-    assert.match(defs, /<clipPath id="pk">/);
-    assert.match(el, /stroke-width="4"/);
+    const el = svgStrokeExtra(n, f, e);
+    assert.equal(el, '<path d="M0 0L100 0L100 100L0 100ZM2 2L98 2L98 98L2 98Z" fill-rule="evenodd" fill="#ff0000" fill-opacity="1"/>');
+    assert.ok(!/clipPath|mask/.test(el), 'no clip and no mask: the geometry is the path');
 });
 
-test('an outside stroke is drawn through a mask that cuts out the shape', () => {
-    const n = shape({ strokeWidth: 2, stroke: '#ff0000', strokeAlign: 'outside' });
-    assert.match(svgStrokeExtra(n, f, e, 'p').defs, /<mask id="pk"/);
+test('an outside stroke is drawn as its area: the band grown out of the outline, with the shape cut out', () => {
+    const n = shape({ strokeWidth: 2, stroke: '#ff0000', strokeAlign: 'outside', strokeJoin: 'miter' });
+    const el = svgStrokeExtra(n, f, e);
+    assert.equal(el, '<path d="M-2 -2L102 -2L102 102L-2 102ZM0 0L100 0L100 100L0 100Z" fill-rule="evenodd" fill="#ff0000" fill-opacity="1"/>');
+});
+
+test('a per-side stroke is the area of its sides, and a centred uniform one stays an attribute set', () => {
+    const top = svgStrokeExtra(shape({ strokeWidth: 4, stroke: '#00ff00', strokeAlign: 'inside', strokeSides: 'top' }), f, e);
+    assert.match(top, /^<path d="M0 0L100 0L100 100L0 100ZM0 4L0 100L100 100L100 4L0 4Z" fill-rule="evenodd" fill="#00ff00"/);
+    assert.equal(svgStrokeExtra(shape({ strokeWidth: 3, stroke: '#00ff00' }), f, e), '');
 });
 
 test('a centred solid stroke is an attribute set on the shape, with caps, joins and dash', () => {

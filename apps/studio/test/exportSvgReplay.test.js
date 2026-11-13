@@ -79,3 +79,39 @@ test('a plain linear gradient keeps its stops and their alpha', () => {
     assert.match(out, /<stop offset="0" stop-color="#000000" stop-opacity="0\.5"\/>/);
     assert.match(out, /<stop offset="1" stop-color="#ffffff"\/>/);
 });
+
+const strokedFrame = (strokeFill, extra = {}) => ({ ...frame([{ type: 'solid', color: '#ffffff', opacity: 1, visible: true }]), strokeWidth: 4, stroke: '#112233', strokeFill, ...extra });
+const stops = [{ pos: 0, color: '#ff0000' }, { pos: 1, color: '#0000ff' }];
+
+test('a linear or radial stroke paint exports as an SVG gradient in a layer clipped by the stroke area', () => {
+    const lin = setup([strokedFrame({ type: 'linear', stops, opacity: 1, visible: true })], {});
+    const out = lin.exportSVG(lin.doc, ['f']);
+    assert.match(out, /<linearGradient id="v0sp" gradientUnits="userSpaceOnUse" x1="[^"]+" y1="[^"]+" x2="[^"]+" y2="[^"]+">/);
+    assert.match(out, /<clipPath id="v0spk"><path d="M[^"]+" clip-rule="[a-z]+"\/><\/clipPath><g clip-path="url\(#v0spk\)" data-paint-content><rect [^>]*fill="url\(#v0sp\)"\/><\/g>/);
+    const rad = setup([strokedFrame({ type: 'radial', stops, opacity: 1, visible: true })], {});
+    assert.match(rad.exportSVG(rad.doc, ['f']), /<radialGradient id="v0sp" gradientUnits="userSpaceOnUse"/);
+});
+
+test('an angular or diamond stroke paint exports as its first colour (SVG has no paint server for it), never a radialGradient', () => {
+    for (const type of ['angular', 'diamond']) {
+        const r = setup([strokedFrame({ type, stops, opacity: 1, visible: true })], {});
+        const out = r.exportSVG(r.doc, ['f']);
+        assert.ok(!out.includes('radialGradient'), `${type}: no radial gradient`);
+        assert.match(out, /<g clip-path="url\(#v0spk\)" data-paint-content><rect [^>]*fill="#ff0000"\/><\/g>/, `${type}: the first stop`);
+    }
+});
+
+test('an outside stroke paint exports as its area clip, the paint drawn inside it', () => {
+    const r = setup([strokedFrame({ type: 'linear', stops, opacity: 1, visible: true }, { strokeAlign: 'outside', strokeJoin: 'miter' })], {});
+    const out = r.exportSVG(r.doc, ['f']);
+    assert.match(out, /<clipPath id="v0spk"><path d="M-4 -4L204 -4L204 104L-4 104ZM0 0L200 0L200 100L0 100Z" clip-rule="evenodd"\/><\/clipPath>/);
+    assert.ok(!/<mask/.test(out), 'no mask for the stroke');
+});
+
+test('a picture stroke exports at its extent with its adjustments as an SVG filter, clipped by the stroke area', () => {
+    const r = setup([strokedFrame({ type: 'image', image: 'a', mode: 'fill', iw: 16, ih: 16, adjust: { exposure: 0.5, contrast: 0.2 }, opacity: 1, visible: true })], { a: 'data:image/png;base64,AAAA' });
+    const out = r.exportSVG(r.doc, ['f']);
+    assert.match(out, /<filter id="v0spf" color-interpolation-filters="sRGB"><feComponentTransfer>/);
+    assert.match(out, /<image href="data:image\/png;base64,AAAA" x="0" y="-50" width="200" height="200" preserveAspectRatio="none" filter="url\(#v0spf\)"\/>/, 'a square picture covers a 200 x 100 box');
+    assert.match(out, /<g clip-path="url\(#v0spk\)" data-paint-content>/);
+});

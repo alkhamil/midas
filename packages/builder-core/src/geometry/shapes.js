@@ -288,9 +288,9 @@ export function strokeDashArray(n) {
 /** @param {any} n */
 export function strokeMiterLimit(n) { return Math.max(1, 1 / Math.max(Math.sin((n.strokeMiter ?? 28.96) * Math.PI / 360), .001)); }
 
-/** A stroke SVG can draw as an attribute set on the shape: centred, uniform, not a per-side one. */
-function strokeSvgAdvanced(n) {
-    return strokeIsOn(n) && ((n.strokeAlign && n.strokeAlign !== 'center' && strokeClosed(n)) || !strokeSidesUniform(n));
+/** A stroke an SVG attribute set cannot draw: inside or outside a closed shape, per-side widths, or a paint that is not a colour (`strokeLayer`). `svgStrokeExtra` draws it as its area. */
+export function strokeSvgAdvanced(n) {
+    return strokeIsOn(n) && (!!n.strokeLayer || (n.strokeAlign && n.strokeAlign !== 'center' && strokeClosed(n)) || !strokeSidesUniform(n));
 }
 
 /**
@@ -311,7 +311,7 @@ export function svgShapeEl(n, f, a) {
 }
 
 /**
- * The stroke attributes of a shape drawn as one element. A stroke that needs a clip or a mask is left to `svgStrokeExtra`.
+ * The stroke attributes of a shape drawn as one element. A stroke that is not a plain centred one is left to `svgStrokeExtra`.
  * @param {any} n
  * @param {(v: number) => string | number} f
  * @param {(s: string) => string} e attribute escaper
@@ -323,40 +323,3 @@ export function svgStrokeAttrs(n, f, e, icon = false) {
     const w = RECT_LIKE.includes(n.type) ? strokeSideWidths(n).t : n.strokeWidth, dash = strokeDashArray(n);
     return `stroke="${icon && n.vars?.stroke ? 'currentColor' : e(n.stroke)}" stroke-opacity="${f(n.strokeOpacity ?? 1)}" stroke-width="${f(w)}" stroke-linecap="${n.strokeCap || 'round'}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`;
 }
-
-/**
- * The stroke of a shape that the attributes cannot draw: an inside or outside stroke (a clip or a mask of the shape), or per-side widths.
- * `defs` holds the clip or mask, `el` the stroke element; both are empty when the stroke is a plain attribute set.
- * @param {any} n
- * @param {(v: number) => string | number} f
- * @param {(s: string) => string} e
- * @param {string} prefix id prefix for the clip or mask
- * @returns {{ defs: string, el: string }}
- */
-export function svgStrokeExtra(n, f, e, prefix) {
-    if (!strokeSvgAdvanced(n))
-        return { defs: '', el: '' };
-    const align = strokeClosed(n) ? (n.strokeAlign || 'center') : 'center', sides = RECT_LIKE.includes(n.type) ? strokeSideWidths(n) : null, uniform = strokeSidesUniform(n);
-    let defs = '', wrap = '';
-    if (align === 'inside') {
-        defs = `<clipPath id="${prefix}k">${svgShapeEl(n, f, '')}</clipPath>`;
-        wrap = ` clip-path="url(#${prefix}k)"`;
-    }
-    else if (align === 'outside') {
-        defs = `<mask id="${prefix}k" maskUnits="userSpaceOnUse" x="-100000" y="-100000" width="200000" height="200000"><rect x="-100000" y="-100000" width="200000" height="200000" fill="#fff"/>${svgShapeEl(n, f, 'fill="#000"')}</mask>`;
-        wrap = ` mask="url(#${prefix}k)"`;
-    }
-    const op = f(n.strokeOpacity ?? 1);
-    let el;
-    if (uniform) {
-        const w = sides ? sides.t : n.strokeWidth, dash = strokeDashArray(n);
-        el = `<g${wrap}>${svgShapeEl(n, f, `fill="none" stroke="${e(n.stroke)}" stroke-opacity="${op}" stroke-width="${f(align === 'center' ? w : w * 2)}" stroke-linejoin="${n.strokeJoin || 'round'}" stroke-linecap="${n.strokeCap || 'round'}" stroke-miterlimit="${f(strokeMiterLimit(n))}"${dash.length ? ` stroke-dasharray="${dash.map(f).join(' ')}"` : ''}`)}</g>`;
-    }
-    else {
-        const { t, r, b, l } = sides, W = n.w, H = n.h, off = v => align === 'inside' ? 0 : align === 'center' ? v / 2 : v, fl = `fill="${e(n.stroke)}" fill-opacity="${op}"`;
-        const y0 = t > 0 ? -off(t) : 0, y1 = b > 0 ? H + off(b) : H, rect = (x, y, w, h) => `<rect x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" ${fl}/>`;
-        el = `<g${wrap}>${t > 0 ? rect(-off(l), -off(t), W + off(l) + off(r), t) : ''}${b > 0 ? rect(-off(l), H - b + off(b), W + off(l) + off(r), b) : ''}${l > 0 ? rect(-off(l), y0, l, y1 - y0) : ''}${r > 0 ? rect(W - r + off(r), y0, r, y1 - y0) : ''}</g>`;
-    }
-    return { defs, el };
-}
-

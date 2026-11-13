@@ -2,8 +2,7 @@
 // instance root; the selection survives a Size mode change and the layout passes that follow it.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright';
-import { ARTIFACTS, ROOT, ensureDevServers, inkIn, openImportedFile, selectByClick } from './harness.mjs';
+import { ARTIFACTS, ROOT, ensureDevServers, inkIn, openImportedFile, selectByClick, launchBrowser } from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -21,7 +20,7 @@ async function canvasInk(page, browser, name) {
 test('a click selects an instance root, and a click inside it selects the same root', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page } = await openImportedFile(browser, TESTING);
     await page.mouse.move(2, 2);
@@ -38,7 +37,7 @@ test('a click selects an instance root, and a click inside it selects the same r
 test('the Behavior panel opens for an instance root selected by a click', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page } = await openImportedFile(browser, TESTING);
     await selectByClick(page, 'i-value');
@@ -50,7 +49,7 @@ test('the Behavior panel opens for an instance root selected by a click', async 
 test('the selection survives a Size mode change and the layout after it', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page } = await openImportedFile(browser, TESTING);
     await selectByClick(page, 'i-size-md');

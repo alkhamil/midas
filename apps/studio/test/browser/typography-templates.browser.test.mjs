@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
-import { ARTIFACTS, ensureDevServers, openImportedFile, shotNode } from './harness.mjs';
+import { ARTIFACTS, ensureDevServers, openImportedFile, shotNode, STUDIO_URL } from './harness.mjs';
 import { PAD, TOLERANCE_PX, ROOT_WIDTH_TOLERANCE_PX, canvasTree, compare, createFromPanel, isolatedStage, playTree, setProp } from './parity-helpers.mjs';
 
 /** Sets a mode (Type, Size, Level) the way a user does: the select of the Behavior tab. */
@@ -149,7 +149,7 @@ for (const dpr of (process.env.DPRS ?? '1,2').split(',').map(Number)) {
         const browser = await chromium.launch({ channel: 'chrome' });
         t.after(() => browser.close());
         const { page, errors } = await openImportedFile(browser, isolatedStage({ name: `typo-paragraph-play.midas` }), { dpr });
-        await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://localhost:5174' });
+        await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: STUDIO_URL });
         const id = await createFromPanel(page, 'antd-paragraph');
         for (const [prop, value] of [['ellipsis', true], ['rows', 1], ['expandable', true], ['copyable', true]]) await setProp(page, prop, value);
         await openPlay(page, id);

@@ -5,8 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { chromium } from 'playwright';
-import { ARTIFACTS, ensureDevServers, openImportedFile } from './harness.mjs';
+import { ARTIFACTS, ensureDevServers, openImportedFile, launchBrowser } from './harness.mjs';
 import { createFromPanel, isolatedStage, measurePair, setProp } from './parity-helpers.mjs';
 
 const STATES = [
@@ -21,7 +20,7 @@ test('a Button with and without an icon, and loading, measures the same on the c
     const stop = await ensureDevServers();
     t.after(stop);
     mkdirSync(ARTIFACTS, { recursive: true });
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, isolatedStage());
     const id = await createFromPanel(page, 'button');

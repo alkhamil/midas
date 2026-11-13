@@ -6,3 +6,4 @@ data/
 .gen-test/
 .env.render
 .artifacts/
+target/

@@ -2,8 +2,7 @@
 // Card's Size step followed, the icons of their roles), and the hover preview drawing its shadow on the canvas overlay only while Hoverable holds.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright';
-import { ensureDevServers, openImportedFile } from './harness.mjs';
+import { ensureDevServers, openImportedFile, launchBrowser } from './harness.mjs';
 import { createFromPanel, isolatedStage, setProp } from './parity-helpers.mjs';
 
 const HEAD = { xs: 32, sm: 40, md: 56, lg: 64, xl: 72 };
@@ -11,7 +10,7 @@ const HEAD = { xs: 32, sm: 40, md: 56, lg: 64, xl: 72 };
 test('the head follows the Size ladder, the actions and the extra start with instances, and Hover draws the shadow on the canvas', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, isolatedStage({ name: 'card-content.midas' }));
     const id = await createFromPanel(page, 'antd-card');

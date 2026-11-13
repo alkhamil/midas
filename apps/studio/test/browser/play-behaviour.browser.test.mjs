@@ -3,8 +3,7 @@
 // clicks and real animation timing; the components are made on the isolated stage from the Components panel.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright';
-import { ensureDevServers, openImportedFile } from './harness.mjs';
+import { ensureDevServers, openImportedFile, launchBrowser } from './harness.mjs';
 import { createFromPanel, isolatedStage, setProp } from './parity-helpers.mjs';
 
 /** Opens Play on the instance (selected), at actual size. Animations are left running. */
@@ -23,7 +22,7 @@ const spinnerId = (page, id) => page.evaluate(id => window.midas.doc.children(id
 test('a loading Button spins in Play: the spinner rotates over time', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, isolatedStage());
     const id = await createFromPanel(page, 'button');
@@ -42,7 +41,7 @@ test('a loading Button spins in Play: the spinner rotates over time', async t =>
 test('a click on a loading Button fires nothing; the same click on a Button that is not loading starts its wave', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page } = await openImportedFile(browser, isolatedStage());
     const id = await createFromPanel(page, 'button');

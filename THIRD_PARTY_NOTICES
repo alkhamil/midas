@@ -1,0 +1,74 @@
+Third-party notices
+===================
+
+Midas core (crates/midas-core) adapts code from FigCraft. Everything else Midas depends on keeps its own licence.
+
+
+FigCraft
+--------
+
+Source:    FigCraft 0.18.1 (workspace version), local checkout of the FigCraft repository
+Licence:   MIT OR Apache-2.0, at the user's option. Midas uses it under the MIT licence below.
+Copyright: (c) 2026 ArtCraft Team and the FigCraft contributors
+
+Adapted into:
+
+  crates/midas-core/src/stroke.rs
+    from figcraft_pathops (`stroke_outline_of`, `stroke_center`, `rounded_side_strokes`, `dash_pattern`, `closed`)
+    and figcraft_render::draw (`stroke_area`, `stroke_rule`: the per-side route, the ring shortcut, the general outline).
+    Changed: Midas names and defaults (round joins and caps), one dash and one gap, dashes run as written (not fitted to an open line),
+    no arrowheads, width profiles, brushes, vector-network point styles or corner smoothing, errors as `Result`, an even-odd operand
+    flattened before the boolean.
+
+  crates/midas-core/src/geom.rs
+    from figcraft_geom (`arc_tolerance`, `finite_path`, `split_subpaths`, the rounded and elliptical rectangle builders).
+    Changed: a command list (`M`, `L`, `C`, `Z`, `E`, `R`) as input; SVG path data as output.
+
+  crates/midas-core/src/paint.rs
+    from figcraft_color (the `Paint` / `PaintKind` split into solid, gradient, image and pattern paints with opacity, visibility and a blend
+    mode; the pattern cell and the image adjustment set).
+    Changed: reads and writes the JSON Midas stores; adds a Video paint (Midas only); SVG paint servers are new (angular and diamond
+    gradients are never written as a radialGradient: they fall back to the first stop's colour).
+
+Not taken: anything under FigCraft's docs/brand/ (the ArtCraft name, wordmark and logos are trademarks of the ArtCraft Team, not open
+source and not covered by the licence), and FigCraft's fonts and icons.
+
+MIT License
+
+Copyright (c) 2026 ArtCraft Team and the FigCraft contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+Rust crates linked into the WASM core
+-------------------------------------
+
+Each keeps its own licence (read from `cargo metadata`; the licence texts ship with the crates):
+
+  kurbo 0.13               Apache-2.0 OR MIT
+  linesweeper 0.4          MIT OR Apache-2.0
+  polycool, arrayvec, smallvec, euclid, num-traits, rustc-hash, autocfg
+                           MIT OR Apache-2.0 (rustc-hash, autocfg: Apache-2.0 OR MIT)
+  serde, serde_core, serde_derive, serde_json, itoa
+                           MIT OR Apache-2.0
+  zmij                     MIT
+  memchr                   Unlicense OR MIT
+  unicode-ident            (MIT OR Apache-2.0) AND Unicode-3.0
+  wasm-bindgen, wasm-bindgen-macro, wasm-bindgen-macro-support, wasm-bindgen-shared, bumpalo, cfg-if, proc-macro2, quote, syn, rustversion
+                           MIT OR Apache-2.0

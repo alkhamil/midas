@@ -4,14 +4,17 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "node ../../scripts/build-core.mjs",
     "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
     "start": "node --env-file-if-exists=.env dist/index.js",
+    "prebuild": "node ../../scripts/build-core.mjs",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=.env src/db/migrate.ts",
     "db:seed": "tsx --env-file-if-exists=.env src/db/seed-run.ts",
     "db:compact": "tsx --env-file-if-exists=.env src/db/compact-pages.ts",
+    "pretest": "node ../../scripts/build-core.mjs",
     "test": "node --env-file-if-exists=.env --import tsx --test test/*.test.ts"
   },
   "dependencies": {

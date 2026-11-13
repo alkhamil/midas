@@ -3,8 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
-import { chromium } from 'playwright';
-import { ARTIFACTS, ROOT, ensureDevServers, openImportedFile } from './harness.mjs';
+import { ARTIFACTS, ROOT, ensureDevServers, openImportedFile, launchBrowser } from './harness.mjs';
 import { resolve } from 'node:path';
 
 const TESTING = resolve(ROOT, 'testing.midas');
@@ -13,7 +12,7 @@ test('the editor shows the Design panel font controls, no preview, and its famil
     const stop = await ensureDevServers();
     t.after(stop);
     mkdirSync(ARTIFACTS, { recursive: true });
-    const browser = await chromium.launch();
+    const browser = await launchBrowser();
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, TESTING);
     await page.getByRole('button', { name: 'Variables' }).first().click();

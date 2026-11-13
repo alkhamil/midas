@@ -84,17 +84,22 @@ test('a spinner width set by hand on the instance stays there; the export draws 
     assert.match(jsx, /strokeWidth=\{1\.5\}/);
 });
 
-test('Play draws the spinner at the node width: a hand-set width survives the clipped overlay doubled', () => {
+test('Play draws the spinner at the node width: a hand-set width is the width of its stroke area', () => {
     const { frame, made } = madeButton();
     let n = 100;
     const copies = instanceOf(BUTTON, frame, made.created, { loading: true, label: 'Save' }, { id: k => `i-${k}-${++n}`, varModes: { [model.ids.size]: 'md', [model.ids.variant]: 'solid', [model.ids.color]: 'primary' }, variables });
     const copy = copies.find(c => c.behavior?.part === 'spinner');
     copy.strokeWidth = 2;
     assert.equal(copy.strokeWidth, 2, 'the copy carries the hand-set width');
-    const { root } = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [frame, ...made.created, ...copies] }], variables }, copies[0].id);
-    const el = root.children.find(c => c.nodeId === copy.id);
+    const playAt = width => {
+        copy.strokeWidth = width;
+        const { root } = toDomTree({ pages: [{ id: 'p', name: 'Screens', nodes: [frame, ...made.created, ...copies] }], variables }, copies[0].id);
+        return root.children.find(c => c.nodeId === copy.id);
+    };
+    const el = playAt(2);
     assert.ok(el, 'the spinner is drawn');
-    assert.match(el.html, /stroke-width="4"/, 'the inside-aligned overlay doubles the node width, so 1.5 stays visible');
+    assert.match(el.html, /<path d="M[^"]+" fill-rule="evenodd" fill="#[0-9a-f]{6}"/, 'the inside-aligned stroke is its area path');
+    assert.notEqual(el.html, playAt(1.5).html, 'the stroke area follows the node width');
 });
 
 test('a spinner missing from the master is not recreated there: it is an instance layer', () => {
@@ -166,6 +171,6 @@ test('Play draws the spinner at the icon size in every Size mode, whatever its s
         assert.ok(el, `${mode.id}: the spinner is drawn`);
         assert.equal(el.style.width, `${value}px`, `${mode.id} width`);
         assert.equal(el.style.height, `${value}px`, `${mode.id} height`);
-        assert.match(el.html, /stroke="#112233"/, 'the arc takes the node\'s foreground colour');
+        assert.match(el.html, /fill="#112233"/, 'the arc takes the node\'s foreground colour');
     }
 });
