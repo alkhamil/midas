@@ -30,6 +30,10 @@ const UNREACHABLE_PAGE: &str = "server.html";
 const CHROME_PAGE: &str = "chrome.html";
 const MENU: &str = "tab-menu";
 const MENU_PAGE: &str = "tabmenu.html";
+/// The route of a new file tab: the studio home with the `#new-file` fragment, which the bridge answers by creating a file.
+pub const NEW_FILE: &str = "/?new=1";
+/// The menu command a new file tab gets from the shell: the page creates a file (the bridge runs New design file).
+pub const NEW_FILE_COMMAND: &str = "new-file";
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -120,7 +124,7 @@ pub fn command(action: &str) {
     let action = action.to_string();
     submit(move |app| match action.as_str() {
         "tab-new" => {
-            let _ = create(app, "/", false, None, "New tab");
+            let _ = create(app, NEW_FILE, false, None, "New file");
         }
         "tab-close" => {
             if let Some(id) = snapshot(app).active {
@@ -171,29 +175,57 @@ pub fn open_play(route: &str) {
 pub fn record(label: &str, name: &str, unsaved: bool, route: &str) {
     let (label, name, route) = (label.to_string(), name.to_string(), route.to_string());
     submit(move |app| {
-        let changed = {
+        if label == HOME && route.starts_with("/file/") {
+            open_from_home(app, &route, &name);
+            return;
+        }
+        // A new file tab reports once it is up: that first report asks the page for a new file (once).
+        let (changed, asks_new_file) = {
             let model = app.state::<Mutex<Model>>();
             let Ok(mut m) = model.lock() else { return };
             let Some(tab) = m.saved.tabs.iter_mut().find(|t| t.id == label) else { return };
+            let asks_new_file = tab.route == NEW_FILE;
             let title = title_for(tab.play, tab.id == HOME, &route, &name);
             let before = (tab.title.clone(), tab.unsaved, tab.route.clone());
             let after = (title, unsaved && route.starts_with("/file/"), route.clone());
             if before == after {
-                false
+                (false, asks_new_file)
             } else {
                 tab.title = after.0;
                 tab.unsaved = after.1;
                 tab.route = after.2;
-                true
+                (true, asks_new_file)
             }
         };
+        if asks_new_file {
+            let _ = app.emit_to(EventTarget::webview(label.clone()), "menu", NEW_FILE_COMMAND.to_string());
+        }
         if changed {
             publish(app, &snapshot(app));
         }
     });
 }
 
-/// The label a tab shows: Home is "Home", a file browser tab is "New tab", a Play tab "Play: <file>", and a
+/// Home stays the file browser: a file opened from it gets its own tab, or the tab that already has it, and the Home
+/// tab goes back to the list.
+fn open_from_home(app: &AppHandle, route: &str, name: &str) {
+    if let (Some(home), Ok(WebviewUrl::External(list))) = (app.get_webview(HOME), tab_url(app, "/")) {
+        let _ = home.navigate(list);
+    }
+    let existing = {
+        let model = app.state::<Mutex<Model>>();
+        let Ok(m) = model.lock() else { return };
+        m.saved.tabs.iter().find(|t| !t.play && t.id != HOME && path_of(&t.route) == path_of(route)).map(|t| t.id.clone())
+    };
+    match existing {
+        Some(id) => activate(app, &id),
+        None => {
+            let _ = create(app, route, false, None, name);
+        }
+    }
+}
+
+/// The label a tab shows: Home is "Home", a new file tab is "New file", a Play tab "Play: <file>", and a
 /// document its own name.
 fn title_for(play: bool, home: bool, route: &str, name: &str) -> String {
     if home {
@@ -201,7 +233,7 @@ fn title_for(play: bool, home: bool, route: &str, name: &str) -> String {
     } else if play {
         format!("Play: {name}")
     } else if !route.starts_with("/file/") {
-        "New tab".into()
+        "New file".into()
     } else {
         name.to_string()
     }
@@ -225,7 +257,7 @@ pub fn tab_close(id: String) {
 #[tauri::command]
 pub fn tab_new() {
     submit(|app| {
-        let _ = create(app, "/", false, None, "New tab");
+        let _ = create(app, NEW_FILE, false, None, "New file");
     });
 }
 
@@ -439,13 +471,20 @@ fn jump(app: &AppHandle, n: usize) {
     }
 }
 
+/// The tabs as restored: exactly one Home, first. A file browser tab saved before Home was fixed (route "/") is
+/// dropped; a new-file tab (route NEW_FILE) and Play tabs stay.
+pub fn restored_tabs(tabs: Vec<Tab>) -> Vec<Tab> {
+    let mut tabs: Vec<Tab> = tabs.into_iter().filter(|t| t.id == HOME || t.play || t.route != "/").collect();
+    if !tabs.iter().any(|t| t.id == HOME) {
+        tabs.insert(0, new_tab(HOME.into(), false, None, "/", "Home"));
+    }
+    zone_order(tabs)
+}
+
 fn restore(app: &AppHandle) {
     let mut saved = load(app);
-    if !saved.tabs.iter().any(|t| t.id == HOME) {
-        saved.tabs.insert(0, new_tab(HOME.into(), false, None, "/", "Home"));
-    }
+    saved.tabs = restored_tabs(std::mem::take(&mut saved.tabs));
     let next = saved.tabs.iter().filter_map(|t| t.id.rsplit('-').next()?.parse::<u32>().ok()).max().unwrap_or(0);
-    saved.tabs = zone_order(saved.tabs);
     {
         let model = app.state::<Mutex<Model>>();
         if let Ok(mut m) = model.lock() {
@@ -729,9 +768,30 @@ mod tests {
     }
 
     #[test]
+    fn restore_keeps_one_home_first_and_drops_old_file_browser_tabs() {
+        let mut old_browser = tab("tab-2", false, None);
+        old_browser.route = "/".into();
+        let mut home_like = tab("tab-3", false, None);
+        home_like.route = NEW_FILE.into();
+        let tabs = vec![old_browser, home_like.clone(), tab("tab-4", false, None)];
+        let restored = restored_tabs(tabs);
+        assert_eq!(ids(&restored), vec![HOME, "tab-3", "tab-4"]);
+        assert_eq!(restored.iter().filter(|t| t.id == HOME).count(), 1);
+    }
+
+    #[test]
+    fn restore_never_has_two_homes() {
+        let mut home = tab(HOME, false, None);
+        home.route = "/".into();
+        let restored = restored_tabs(vec![home, tab("tab-1", false, None)]);
+        assert_eq!(restored.iter().filter(|t| t.id == HOME).count(), 1);
+        assert_eq!(restored[0].id, HOME);
+    }
+
+    #[test]
     fn titles_follow_the_kind_of_tab() {
         assert_eq!(title_for(false, true, "/", "anything"), "Home");
-        assert_eq!(title_for(false, false, "/", "Midas"), "New tab");
+        assert_eq!(title_for(false, false, NEW_FILE, "Midas"), "New file");
         assert_eq!(title_for(false, false, "/file/x", "Hero"), "Hero");
         assert_eq!(title_for(true, false, "/file/x", "Hero"), "Play: Hero");
     }

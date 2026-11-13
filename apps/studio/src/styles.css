@@ -3792,3 +3792,7 @@ body.view-only #file-name::after { content: " · View only"; color: var(--muted)
 .app-menu-sub { position: fixed; z-index: 951 }
 .app-menu-top { display: block; width: 100%; padding: 6px 10px; border-radius: 5px; font-size: 11px; color: var(--text); text-align: left }
 .app-menu-top:hover, .app-menu-top.open, .app-menu-top:focus-visible { background: var(--accent-bg); color: var(--accent); outline: none }
+
+/* Desktop app: a file tab has no way back to the file browser (the home button and the Workspace crumb). */
+.desktop-app #go-home,
+.desktop-app #crumb-home { display: none !important }

@@ -9,6 +9,8 @@
 const MIDAS_OPEN = [{ name: 'Midas document', extensions: ['midas', 'vellum', 'json', 'fig'] }];
 const PATHS_KEY = 'midas-desktop-save-paths';
 const PLAY_LABEL = 'play-';
+// The shell sends this to a new file tab once it is up (src-tauri/src/tabs.rs NEW_FILE_COMMAND).
+const NEW_FILE_COMMAND = 'new-file';
 const ROUTE_CHECK_MS = 1000;
 
 /** The Tauri global of `win`, or null in a browser. */
@@ -125,6 +127,18 @@ export function tabCommandOf(event) {
     return null;
 }
 
+/** A new file tab: the studio creates a file, the same as New design file in the home list. */
+export function autoNewFile(win = globalThis.window, { tries = 150, every = 200 } = {}) {
+    let left = tries;
+    const timer = setInterval(() => {
+        const button = win.document.querySelector('[data-home-new="blank"]');
+        if (button) {
+            clearInterval(timer);
+            button.click();
+        } else if (--left <= 0) clearInterval(timer);
+    }, every);
+}
+
 /** The Play tab starts Play once the editor's Play button exists (the document is loaded by then). */
 export function autoPlayInPlayTab(win = globalThis.window, { tries = 150, every = 200 } = {}) {
     let left = tries;
@@ -156,7 +170,7 @@ export function startDesktop(win = globalThis.window, { onError = () => { }, com
         const name = route.startsWith('/file/') ? state.name : 'Midas';
         tauri.event.emit('midas:tab-state', { label, name, unsaved: route.startsWith('/file/') && state.unsaved, route }).catch(onError);
     };
-    tauri.event.listen('menu', event => runMenuCommand(event.payload, win, commands)).catch(onError);
+    tauri.event.listen('menu', event => (event.payload === NEW_FILE_COMMAND ? autoNewFile(win) : runMenuCommand(event.payload, win, commands))).catch(onError);
     win.addEventListener('keydown', event => {
         const action = tabCommandOf(event);
         if (!action) return;
@@ -177,6 +191,8 @@ export function startDesktop(win = globalThis.window, { onError = () => { }, com
     routeTimer.unref?.();
     report();
     if (isPlayTab) autoPlayInPlayTab(win);
+    // The studio hides its way back to the list in a file tab: the desktop app keeps a file tab a file.
+    win.document.documentElement?.classList.add('desktop-app');
     return {
         pick: () => files.pick(),
         saveFile: (blob, name, options) => files.saveFile(blob, name, options),

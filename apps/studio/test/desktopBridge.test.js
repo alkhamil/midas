@@ -2,7 +2,7 @@
 // and the browser fallback (no Tauri global).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { tauriGlobal, saveFilters, basename, createFileBridge, runMenuCommand, autoPlayInPlayTab, tabCommandOf, startDesktop } from '../src/desktop/bridge.js';
+import { tauriGlobal, saveFilters, basename, createFileBridge, runMenuCommand, autoPlayInPlayTab, autoNewFile, tabCommandOf, startDesktop } from '../src/desktop/bridge.js';
 
 class FakeKeyboardEvent {
     constructor(type, init) { Object.assign(this, init, { type }); }
@@ -279,4 +279,13 @@ test('startDesktop: a menu event from the shell runs the command', async () => {
     startDesktop(win, { store: new MemoryStore() });
     await tauri.calls.listen[0].handler({ payload: 'reload' });
     assert.equal(win.location.reloads, 1);
+});
+
+test('new file tab: the studio creates a file once its home list shows the New design file button', async () => {
+    let clicks = 0;
+    const win = fakeWindow();
+    win.document.querySelector = sel => (sel === '[data-home-new="blank"]' ? { click: () => clicks++ } : null);
+    autoNewFile(win, { tries: 50, every: 1 });
+    await new Promise(r => setTimeout(r, 30));
+    assert.equal(clicks, 1);
 });

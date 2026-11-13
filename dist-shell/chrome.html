@@ -83,8 +83,7 @@
     function tabIcon(tab) {
       if (tab.id === 'home') return ICON.home;
       if (tab.play) return ICON.play;
-      if (tab.route.startsWith('/file/')) return ICON.file;
-      return ICON.home;
+      return ICON.file;
     }
 
     function render() {
