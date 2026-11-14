@@ -11,6 +11,9 @@ const VariablesIcon = () => (
     <RailIcon><circle cx="7.5" cy="7.5" r="3.5" /><circle cx="16.5" cy="7.5" r="3.5" /><circle cx="7.5" cy="16.5" r="3.5" /><circle cx="16.5" cy="16.5" r="3.5" /></RailIcon>
 );
 
+// The desktop app is the Tauri window (window.__TAURI__ is injected before the studio mounts); the web build is unchanged.
+const desktopApp = typeof window !== 'undefined' && !!window.__TAURI__;
+
 export function Topbar({ user }) {
     return (
         <header className="topbar">
@@ -23,7 +26,7 @@ export function Topbar({ user }) {
                 <button className="ui-icon-button" id="go-home" title="All files" aria-label="All files">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11l8-7 8 7" /><path d="M6 10v9h12v-9" /></svg>
                 </button>
-                <button className="ui-icon-button" id="toggle-left" title="Toggle layers panel" aria-label="Toggle layers panel" data-icon="panel"></button>
+                {!desktopApp && <button className="ui-icon-button" id="toggle-left" title="Toggle layers panel" aria-label="Toggle layers panel" data-icon="panel"></button>}
             </div>
             <div className="file-breadcrumb">
                 <button className="crumb-link" id="crumb-home" title="Back to all files">Workspace</button>
@@ -65,6 +68,7 @@ export function LeftPanel() {
                     <div className="lh-row">
                         <span id="left-heading-title" title="Double-click to rename">Design file</span>
                         <button className="lh-chev" id="left-heading-menu" title="File options" aria-label="File options" aria-haspopup="menu"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg></button>
+                        {desktopApp && <button className="ui-icon-button" id="toggle-left" title="Toggle layers panel" aria-label="Toggle layers panel" data-icon="panel"></button>}
                     </div>
                     <small id="left-heading-folder"></small>
                 </div>
