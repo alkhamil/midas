@@ -1874,16 +1874,17 @@ kbd {
   display: none
 }
 
+/* panels-hidden comes last: at equal specificity it must win over left-hidden, which keeps the right column. */
+body.left-hidden .workspace {
+  grid-template-columns: 0 0 minmax(0,1fr) var(--right)
+}
+
 body.panels-hidden .workspace {
   grid-template-columns: 0 0 minmax(0,1fr) 0
 }
 
 body.panels-hidden aside {
   visibility: hidden
-}
-
-body.left-hidden .workspace {
-  grid-template-columns: 0 0 minmax(0,1fr) var(--right)
 }
 
 body.panels-hidden .left-rail,body.left-hidden .left-rail {

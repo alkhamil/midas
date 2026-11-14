@@ -8,9 +8,8 @@
     :root {
       color-scheme: dark;
       --bar: #161618;
-      --tab: #222225;
       --tab-hover: #29292d;
-      --content: #1c1c1e;
+      --header: #242426; /* the studio's topbar (styles.css --panel, dark) */
       --fg: #f5f5f7;
       --dim: #8e8e93;
       --accent: #0a84ff;
@@ -19,10 +18,14 @@
     }
     html, body { margin: 0; height: 100%; background: var(--bar); color: var(--fg); font: 12.5px/1 system-ui, "Segoe UI", sans-serif; overflow: hidden; user-select: none; }
     #bar { display: flex; align-items: stretch; height: 100%; }
-    #tabs { display: flex; align-items: stretch; gap: 1px; padding: 6px 0 0 6px; min-width: 0; }
-    .tab { position: relative; display: flex; align-items: center; gap: 7px; height: 30px; margin-top: 0; padding: 0 6px 0 10px; min-width: 40px; max-width: 200px; flex: 0 1 180px; background: var(--tab); border-radius: 7px 7px 0 0; color: var(--dim); cursor: default; }
+    /* The Home tab stays fixed; the document tabs scroll inside the strip, which takes the room before the add button. */
+    #strip { display: flex; align-items: stretch; flex: 0 1 auto; min-width: 0; padding: 6px 0 0 6px; }
+    #home { display: flex; flex: none; align-items: stretch; }
+    #tabs { display: flex; align-items: stretch; gap: 1px; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+    #tabs::-webkit-scrollbar { display: none; }
+    .tab { position: relative; display: flex; align-items: center; gap: 7px; height: 30px; margin-top: 0; padding: 0 6px 0 10px; flex: 0 0 200px; background: var(--bar); border-radius: 7px 7px 0 0; color: var(--dim); cursor: default; }
     .tab:hover { background: var(--tab-hover); color: var(--fg); }
-    .tab.on { background: var(--content); color: var(--fg); }
+    .tab.on { background: var(--header); color: var(--fg); }
     .tab.drop { box-shadow: inset 2px 0 0 var(--accent); }
     .tab.home { flex: 0 0 36px; justify-content: center; padding: 0; }
     .tab.pinned { flex: 0 0 34px; justify-content: center; padding: 0; }
@@ -37,7 +40,7 @@
     .tab.on .x, .tab:hover .x { display: inline-flex; }
     .x:hover { background: var(--line); color: var(--fg); }
     #add { width: 28px; height: 26px; align-self: center; margin-left: 4px; border: 0; border-radius: 6px; background: transparent; color: var(--dim); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
-    #add:hover { background: var(--tab); color: var(--fg); }
+    #add:hover { background: var(--tab-hover); color: var(--fg); }
     #add svg { width: 14px; height: 14px; }
     /* Empty bar space is the drag region; tabs and buttons are not (only the element carrying the attribute drags). */
     #drag { flex: 1; min-width: 40px; }
@@ -50,7 +53,7 @@
 </head>
 <body>
   <div id="bar" data-tauri-drag-region>
-    <div id="tabs"></div>
+    <div id="strip"><div id="home"></div><div id="tabs"></div></div>
     <button id="add" title="New tab (Ctrl+T)" aria-label="New tab">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
     </button>
@@ -67,6 +70,7 @@
     const tauri = window.__TAURI__;
     const win = tauri.window.getCurrentWindow();
     const tabsEl = document.getElementById('tabs');
+    const homeEl = document.getElementById('home');
     let state = { tabs: [], active: null };
     let dragging = null;
 
@@ -88,6 +92,7 @@
 
     function render() {
       tabsEl.textContent = '';
+      homeEl.textContent = '';
       state.tabs.forEach((tab, index) => {
         const home = tab.id === 'home';
         const el = document.createElement('div');
@@ -125,8 +130,10 @@
         el.ondragleave = () => el.classList.remove('drop');
         el.ondrop = (e) => { e.preventDefault(); el.classList.remove('drop'); if (dragging && dragging !== tab.id) call('tab_move', { id: dragging, index }); dragging = null; };
         el.ondragend = () => { dragging = null; };
-        tabsEl.append(el);
+        (home ? homeEl : tabsEl).append(el);
       });
+      // Keep the selected tab in view when the strip scrolls.
+      tabsEl.querySelector('.tab.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }
 
     // The window controls.
@@ -161,6 +168,8 @@
 
     // Drag-reorder: a tab dropped on another moves to its place (the Home tab and pinned zone are kept by the shell).
     tabsEl.addEventListener('dragover', (e) => e.preventDefault());
+    // A mouse wheel over the strip scrolls it sideways, as in a browser.
+    tabsEl.addEventListener('wheel', (e) => { if (e.deltaY) { tabsEl.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
   </script>
 </body>
 </html>

@@ -205,6 +205,8 @@ fn main() {
                 .decorations(false)
                 .inner_size(1280.0, 800.0)
                 .min_inner_size(900.0, 600.0)
+                // The bar colour: the window is white until its webviews paint, which showed as a white box.
+                .background_color(tauri::window::Color(0x16, 0x16, 0x18, 0xff))
                 .build()?;
             let resized = handle.clone();
             window.on_window_event(move |event| {

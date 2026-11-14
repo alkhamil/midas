@@ -9,6 +9,8 @@
 const MIDAS_OPEN = [{ name: 'Midas document', extensions: ['midas', 'vellum', 'json', 'fig'] }];
 const PATHS_KEY = 'midas-desktop-save-paths';
 const PLAY_LABEL = 'play-';
+// The webview label of the Home tab (src-tauri/src/tabs.rs HOME).
+const HOME_LABEL = 'home';
 // The shell sends this to a new file tab once it is up (src-tauri/src/tabs.rs NEW_FILE_COMMAND).
 const NEW_FILE_COMMAND = 'new-file';
 const ROUTE_CHECK_MS = 1000;
@@ -170,7 +172,9 @@ export function startDesktop(win = globalThis.window, { onError = () => { }, com
         const name = route.startsWith('/file/') ? state.name : 'Midas';
         tauri.event.emit('midas:tab-state', { label, name, unsaved: route.startsWith('/file/') && state.unsaved, route }).catch(onError);
     };
-    tauri.event.listen('menu', event => (event.payload === NEW_FILE_COMMAND ? autoNewFile(win) : runMenuCommand(event.payload, win, commands))).catch(onError);
+    // The shell sends menu commands to one webview: this listener is scoped to it. A global listen would also get the
+    // commands sent to other tabs, and Home would then answer a new file's request with its own (a tab loop).
+    tauri.webview.getCurrentWebview().listen('menu', event => (event.payload === NEW_FILE_COMMAND ? autoNewFile(win) : runMenuCommand(event.payload, win, commands))).catch(onError);
     win.addEventListener('keydown', event => {
         const action = tabCommandOf(event);
         if (!action) return;
@@ -190,6 +194,25 @@ export function startDesktop(win = globalThis.window, { onError = () => { }, com
     }, ROUTE_CHECK_MS);
     routeTimer.unref?.();
     report();
+    // Home never shows a document: the moment the studio writes a file's route into the Home page, the shell opens that
+    // file in its own tab and sends Home back to the list (the timer above is only the fallback).
+    if (label === HOME_LABEL) {
+        for (const method of ['pushState', 'replaceState']) {
+            const original = win.history[method].bind(win.history);
+            win.history[method] = (historyState, title, url) => {
+                original(historyState, title, url);
+                if (String(url ?? '').startsWith('/file/')) report();
+            };
+        }
+        // A new file from Home (New design, a template) is made in a new tab, not in the Home page: the tab asks for it.
+        win.addEventListener('click', event => {
+            if (!event.target.closest?.('[data-home-new]')) return;
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            tauri.event.emit('midas:tab-command', { action: 'tab-new' }).catch(onError);
+        }, true);
+    }
     if (isPlayTab) autoPlayInPlayTab(win);
     // The studio hides its way back to the list in a file tab: the desktop app keeps a file tab a file.
     win.document.documentElement?.classList.add('desktop-app');
@@ -202,6 +225,8 @@ export function startDesktop(win = globalThis.window, { onError = () => { }, com
             state.unsaved = !!unsaved;
             report();
         },
+        /** The Home tab is the file browser: it boots to the list, never to the last file. */
+        isHome: label === HOME_LABEL,
         /** Play runs in its own tab; the editor tab is the one that asks for it. */
         canOpenPlayWindow: () => !isPlayTab,
         /** Runs an edit command of this page (undo, copy, paste ...), the same as the old menu bar did. */

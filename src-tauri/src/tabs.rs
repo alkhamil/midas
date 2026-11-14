@@ -16,7 +16,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 use tauri::{
-    webview::WebviewBuilder, AppHandle, Emitter, EventTarget, Listener, LogicalPosition, LogicalSize, Manager,
+    webview::{Color, WebviewBuilder}, AppHandle, Emitter, EventTarget, Listener, LogicalPosition, LogicalSize, Manager,
     WebviewUrl,
 };
 
@@ -471,10 +471,11 @@ fn jump(app: &AppHandle, n: usize) {
     }
 }
 
-/// The tabs as restored: exactly one Home, first. A file browser tab saved before Home was fixed (route "/") is
-/// dropped; a new-file tab (route NEW_FILE) and Play tabs stay.
+/// The tabs as restored: exactly one Home, first. A file browser tab saved before Home was fixed (route "/") and a
+/// new-file tab that never got its file (route NEW_FILE, which would ask for one again on every start) are dropped;
+/// Play tabs stay.
 pub fn restored_tabs(tabs: Vec<Tab>) -> Vec<Tab> {
-    let mut tabs: Vec<Tab> = tabs.into_iter().filter(|t| t.id == HOME || t.play || t.route != "/").collect();
+    let mut tabs: Vec<Tab> = tabs.into_iter().filter(|t| t.id == HOME || t.play || (t.route != "/" && t.route != NEW_FILE)).collect();
     if !tabs.iter().any(|t| t.id == HOME) {
         tabs.insert(0, new_tab(HOME.into(), false, None, "/", "Home"));
     }
@@ -526,6 +527,13 @@ fn create(app: &AppHandle, route: &str, play: bool, source: Option<String>, titl
             .and_then(|s| m.saved.tabs.iter().position(|t| &t.id == s).map(|i| i + 1))
             .unwrap_or(m.saved.tabs.len());
         m.saved.tabs.insert(at, tab);
+    }
+    // Hide the tabs first: a new webview is shown as soon as it is made, so the page that was showing (Home) would
+    // flash over it until activate() hides it.
+    for shown in snapshot(app).tabs {
+        if let Some(view) = app.get_webview(&shown.id) {
+            let _ = view.hide();
+        }
     }
     let added = tab_url(app, route).and_then(|url| add_child(app, &id, url));
     if let Err(error) = added {
@@ -660,7 +668,10 @@ fn add_child(app: &AppHandle, label: &str, url: WebviewUrl) -> Result<(), String
     } else {
         (LogicalPosition::new(0.0, STRIP), LogicalSize::new(width, (height - STRIP).max(1.0)))
     };
-    window.add_child(WebviewBuilder::new(label, url), at, size).map(|_| ()).map_err(|e| e.to_string())
+    // WebView2 paints white until a page draws, which showed as white boxes on every new tab, file and start-up.
+    // A page that has not drawn yet takes the window's colour (the bar, main.rs), so there is no seam between them.
+    let builder = WebviewBuilder::new(label, url).background_color(Color(0x16, 0x16, 0x18, 0xff));
+    window.add_child(builder, at, size).map(|_| ()).map_err(|e| e.to_string())
 }
 
 fn persist(app: &AppHandle, saved: &Saved) {
@@ -771,11 +782,11 @@ mod tests {
     fn restore_keeps_one_home_first_and_drops_old_file_browser_tabs() {
         let mut old_browser = tab("tab-2", false, None);
         old_browser.route = "/".into();
-        let mut home_like = tab("tab-3", false, None);
-        home_like.route = NEW_FILE.into();
-        let tabs = vec![old_browser, home_like.clone(), tab("tab-4", false, None)];
+        let mut new_file = tab("tab-3", false, None);
+        new_file.route = NEW_FILE.into();
+        let tabs = vec![old_browser, new_file, tab("tab-4", false, None)];
         let restored = restored_tabs(tabs);
-        assert_eq!(ids(&restored), vec![HOME, "tab-3", "tab-4"]);
+        assert_eq!(ids(&restored), vec![HOME, "tab-4"]);
         assert_eq!(restored.iter().filter(|t| t.id == HOME).count(), 1);
     }
 

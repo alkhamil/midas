@@ -3870,7 +3870,9 @@ async function libBoot() {
     catch {
         lib.folders = [];
     }
-    const last = deepLink && lib.index.some(m => m.id === deepLink.id && !m.trashed) ? deepLink.id : await kvGet('last');
+    // The desktop Home tab boots to the file list: it does not reopen the last file (its page would stay an editor).
+    const listFirst = !deepLink && desktop?.isHome === true;
+    const last = deepLink && lib.index.some(m => m.id === deepLink.id && !m.trashed) ? deepLink.id : listFirst ? null : await kvGet('last');
     let json = null;
     if (last && lib.index.some(m => m.id === last && !m.trashed)) {
         json = await loadStored(last);
@@ -3903,7 +3905,7 @@ async function libBoot() {
         for (const m of [...lib.index].sort((a, b) => (b.opened || 0) - (a.opened || 0))) {
             if (m.trashed || await hasStored(m.id)) {
                 keep.push(m);
-                if (!json && !m.trashed) {
+                if (!json && !m.trashed && !listFirst) {
                     json = await loadStored(m.id);
                     if (json)
                         lib.fileId = m.id;
@@ -5943,11 +5945,10 @@ function pickerContrastHtml(hex, n) {
 /** Image and Video: the mode and rotate row, the checkerboard drop area (Upload from computer), then the adjustments for an image. */
 function pickerPictureBody(f, n, pbind) {
     const isVideo = f.type === 'video', has = isVideo ? !!f.video : !!f.image, adj = f.adjust || {}, mode = f.mode || 'fill';
-    const ratio = n && n.h ? Math.max(0.2, Math.min(3, n.w / Math.max(1, n.h))) : 1;
     const slider = (key, label) => `<label class="pk-slide"><span>${label}</span><input type="range" min="-1" max="1" step="0.01" value="${adj[key] || 0}" data-fill-idx="${FP.i}" ${FP.target === 'stroke' ? 'data-fill-target="stroke"' : ''} data-fill-key="${key}" aria-label="${label}"></label>`;
     const num = (label, key, value, min, max, step, unit) => `<label class="pk-prow"><span>${label}</span><span class="pk-fld"><input type="number" min="${min}" max="${max}" step="${step}" value="${fmt(value)}" data-fill-idx="${FP.i}" ${FP.target === 'stroke' ? 'data-fill-target="stroke"' : ''} data-fill-key="${key}" aria-label="${label}"><i class="unit">${unit}</i></span></label>`;
     const row = `<div class="pk-row"><select class="pk-modesel" data-fill-idx="${FP.i}" ${FP.target === 'stroke' ? 'data-fill-target="stroke"' : ''} data-fill-key="mode" aria-label="Fill mode">${[['fill', 'Fill'], ['fit', 'Fit'], ['crop', 'Crop'], ['tile', 'Tile']].map(([v, l]) => `<option value="${v}" ${mode === v ? 'selected' : ''}>${l}</option>`).join('')}</select>${pbind('mode')}<span class="pk-sp"></span>${pbind(isVideo ? 'video' : 'image')}<button class="pk-ibtn" data-pk-rotate90 title="Rotate 90°" aria-label="Rotate 90 degrees">${PK_ROTATE_ICON}</button></div>`;
-    const drop = `<div class="pk-preview pk-drop" style="aspect-ratio:${Math.min(ratio, 1.6)};${has ? pickerPreviewStyle(f, n) : ''}background-color:var(--checker-sm);border-radius:6px">${has ? '' : `<button class="pk-upload" data-fill-image-pick="${FP.i}">Upload from computer</button>`}</div>${has ? `<button class="pk-replace" data-fill-image-pick="${FP.i}">Replace ${isVideo ? 'video' : 'image'}</button>` : ''}`;
+    const drop = `<div class="pk-preview pk-drop" style="aspect-ratio:1;${has ? pickerPreviewStyle(f, n) : ''}background-color:var(--checker-sm);border-radius:6px">${has ? '' : `<button class="pk-upload" data-fill-image-pick="${FP.i}">Upload from computer</button>`}</div>${has ? `<button class="pk-replace" data-fill-image-pick="${FP.i}">Replace ${isVideo ? 'video' : 'image'}</button>` : ''}`;
     const extra = (mode === 'tile' ? num('Scale', 'scale', (f.scale || 1) * 100, 5, 1000, 1, '%') : '') + (mode === 'crop' ? num('X', 'cropX', f.crop?.x ?? 0.5, 0, 1, 0.01, '') + num('Y', 'cropY', f.crop?.y ?? 0.5, 0, 1, 0.01, '') + num('Zoom', 'cropScale', (f.crop?.scale || 1) * 100, 20, 800, 1, '%') : '');
     const play = isVideo ? [['autoplay', 'Autoplay', f.autoplay !== false], ['loop', 'Loop', f.loop !== false], ['sound', 'Sound', f.sound === true]].map(([k, l, on]) => `<label class="pk-prow"><span>${l}</span><input type="checkbox" ${on ? 'checked' : ''} data-fill-idx="${FP.i}" ${FP.target === 'stroke' ? 'data-fill-target="stroke"' : ''} data-fill-key="${k}" aria-label="${l}"></label>`).join('') : '';
     const sliders = isVideo ? '' : `<div class="pk-sliders2">${['exposure', 'contrast', 'saturation', 'temperature', 'tint', 'highlights', 'shadows'].map(k => slider(k, k[0].toUpperCase() + k.slice(1))).join('')}</div>`;
@@ -24037,7 +24038,8 @@ $('#go-home').addEventListener('click', () => showHome());
 $('#inspector').addEventListener('change', onBehaviorChange);
 $('#inspector').addEventListener('click', onBehaviorClick);
 $('#fill-image-input').onchange = e => {
-        const n = activeNode(), f = n && getFills(n)[state.fillPickIndex ?? 0];
+        // The picker's own paint: a stroke's paint is its strokeFill, not the node's first fill.
+        const n = activeNode(), f = n && fillsOfPicker(n)[state.fillPickIndex ?? 0];
         const file = e.target.files[0];
         e.target.value = '';
         if (f && f.type === 'video') applyFillVideo(file);
