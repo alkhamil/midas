@@ -3798,7 +3798,6 @@ body.view-only #file-name::after { content: " · View only"; color: var(--muted)
 .desktop-app #crumb-home { display: none !important }
 
 /* Desktop app: the layer toggle sits by the file title; the breadcrumb file name is the title above (no second copy); the design tabs are larger. */
-.desktop-app .lh-row #toggle-left { margin-left: auto; flex: none }
 .desktop-app .file-breadcrumb #file-name,
 .desktop-app .file-breadcrumb .crumb-slash { display: none }
 .desktop-app .inspector-tabs>button:not(.ui-icon-button) { font-size: 13px }

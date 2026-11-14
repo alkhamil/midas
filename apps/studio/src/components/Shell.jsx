@@ -26,15 +26,16 @@ export function Topbar({ user }) {
                 <button className="ui-icon-button" id="go-home" title="All files" aria-label="All files">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11l8-7 8 7" /><path d="M6 10v9h12v-9" /></svg>
                 </button>
-                {!desktopApp && <button className="ui-icon-button" id="toggle-left" title="Toggle layers panel" aria-label="Toggle layers panel" data-icon="panel"></button>}
+                <button className="ui-icon-button" id="toggle-left" title="Toggle layers panel" aria-label="Toggle layers panel" data-icon="panel"></button>
             </div>
             <div className="file-breadcrumb">
                 <button className="crumb-link" id="crumb-home" title="Back to all files">Workspace</button>
                 <span className="crumb-slash">/</span>
                 <button id="file-name" title="Rename document">Untitled</button>
-                <span className="save-indicator" id="save-indicator"><i></i> Saved</span>
+                {!desktopApp && <span className="save-indicator" id="save-indicator"><i></i> Saved</span>}
             </div>
             <div className="top-actions">
+                {desktopApp && <span className="save-indicator" id="save-indicator"><i></i> Saved</span>}
                 <button className="avatar" id="profile" title={user?.name || 'Account'}>{(user?.name || user?.email || 'M').trim().charAt(0).toUpperCase()}</button>
                 <button className="share-button play-button" id="play" aria-label="Play" title="Play (Alt+Enter)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"></path></svg></button>
                 <button className="share-button" id="share" title="Save a portable Midas file">Export <span data-icon="arrowUpRight"></span></button>
@@ -68,7 +69,6 @@ export function LeftPanel() {
                     <div className="lh-row">
                         <span id="left-heading-title" title="Double-click to rename">Design file</span>
                         <button className="lh-chev" id="left-heading-menu" title="File options" aria-label="File options" aria-haspopup="menu"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg></button>
-                        {desktopApp && <button className="ui-icon-button" id="toggle-left" title="Toggle layers panel" aria-label="Toggle layers panel" data-icon="panel"></button>}
                     </div>
                     <small id="left-heading-folder"></small>
                 </div>
