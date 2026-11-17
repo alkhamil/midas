@@ -37,6 +37,9 @@
 - Provenance: a component cell aliases Semantic (directly or through its own template's cells). Fixtures build every literal as a Primitive plus a Semantic alias (`scripts/literal-bank.mjs`).
 - Gap ladder (`gapXS` 4, `gapSM` 6, `gapMD` 8, `gapLG` 8, `gapXL` 10) replaces margin; `gapXXS`/plain `gap`/32-step `gapXL` are deleted. Button `gap` is per Size mode (xs→`gapXS` … xl→`gapXL`, md role is plain `gap`); Input gap is `gapXS` (4, same value the old `gapXXS` held). Padding ladder is `paddingXS` 8 … `paddingXL` 24 (plain `padding`→`paddingMD`, 32-step `paddingXL` deleted).
 - Input has no wave in antd (`components/input` imports none); Input uses the focus halo only.
+- Conditional part copies: `syncParts` removes only a part the instance made itself (no `sourceId`). A copy of a master part stays and is hidden by its visibility write, else a second placeholder appears on the next copy (`export-parity`, Input after a Size change).
+- A template without slots exports untyped `.jsx` with no TypeScript syntax (`fillHelpers(false)`); the typed `.tsx` path keeps its annotations.
+- Root width: the component class carries the master's width only when `rootClassWidth(master)` says so (fixed, no width variable). Play drops it for an instance that fills or hugs (`dom-tree.js`, root only); the export uses the same rule. Children are never touched (a Badge dot is sized by its token).
 - Colour literals are hex with alpha (`#rrggbbaa`); the studio reads no `rgba(...)` text. The token importer normalises them (`colorLiteral`), so a rebuilt snapshot stays hex.
 - Variant border style (`styles`, e.g. dashed) is applied on a Variant mode change and on instantiate, never on sync, so a hand-set Stroke Dash stays. A user stroke style (Solid, Dash) is the node's own: Play and the export draw it, and the Variant only sets the default on those two events.
 - Auto layout alignment has nine positions and the node owns them: Play and the export read the master's `primaryAlign`/`counterAlign` (an instance's own fields win in Play) through `layout.js`; a template's `rootAlign` only seeds a new master.
@@ -137,7 +140,8 @@
 
 - The Behavior panel's Text|Icon segmented control and the Input prefix/suffix rows are covered by unit tests only; they have not been looked at in a browser. `affix.browser.test.mjs` was edited to the new rows and not run.
 
-- Strict parity (browser) fails 3 of ~100 Input xs pairs, on HEAD and since: `xs allowClear` and `xs showCount` "outline not found on both shots" and `xs suffix` outline 0.70px. The part boxes match within 0.01px, so it is the outline edge check on a 16px control, not layout. Part 2 (single border) could not re-verify without a browser; presumed unchanged. 2026-11-04: two consecutive full browser runs (before and after the export text-part fill fix) show all 50 strict pairs green including every xs pair, so the 3 failures did not reproduce; kept for one more run before deleting.
+- Strict parity (browser, 2026-11-17): all 50 pairs pass. Button's outline is the root box (`outlineFromBox`: width and height from the boxes), not the pixel edges (`edgeCheck` moves 0.7px with sub-pixel position while the boxes agree within 0.02px); Input's outline is skipped at rest (transparent). Other suites still use `edgeCheck`.
+- The strict pixel share must not include the open Play view menu: `playTree` closes it with Esc before the shot (a menu left open covered the Input's right end and read as 8% difference).
 - The browser harness reuses any server already listening on 4000/5174, so a stale `test:browser` run (or its servers) shares the database with the next run and makes it flaky (timeouts, a "changed somewhere else" dialog). Stop stale runs before a baseline. Browser DevTools unchecking a declaration comments it out in the style attribute and is not a product bug.
 
 - Fase 0 browser verification (canvas, Play, codegen in a real React project) not done — no browser automation.

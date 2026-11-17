@@ -55,9 +55,11 @@ test('a created Button and Input measure the same on the canvas and in Play at e
                 for (const [name, value] of Object.entries(state.props)) await setProp(page, name, value);
                 const label = `${templateId} ${mode.name} ${state.name}`;
                 const pair = `pair-${templateId}-${mode.name.toLowerCase()}-${state.name.toLowerCase()}`;
-                const m = await measurePair(page, browser, id, label, pair);
+                // An Input's outline is transparent at rest (outline-color is 0% in every mode, AGENTS.md), so there is no outline to find at rest.
+                const m = await measurePair(page, browser, id, label, pair, { outline: templateId !== 'input', outlineFromBox: true });
                 failures.push(...m.failures);
-            if (state.name === 'placeholder' && m.rows.length !== 1) failures.push(`${label}: the empty input draws ${m.rows.length} parts, not the root alone`);
+                // The empty Input draws its root and its placeholder, once each: a second placeholder layer is a failure.
+                if (state.name === 'placeholder' && m.rows.map(r => r.name).join(',') !== 'Input,placeholder') failures.push(`${label}: the empty input draws ${m.rows.map(r => r.name).join(', ')}, not the root and its placeholder once`);
                 if (m.rows) report.push({ label, rows: m.rows, unmapped: m.unmapped, diff: m.diff, edges: m.edges });
             }
             // Back to the rest state before the next Size mode, so each mode starts from the same props.

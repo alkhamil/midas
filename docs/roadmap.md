@@ -1,6 +1,10 @@
 # Midas Roadmap
 
+Diperbarui 2026-11-17 dari kondisi kode (`AGENTS.md`, `docs/behavior-spec.md`, `docs/slots.md`, `docs/prototype-spec.md`, `docs/rust-plan.md`). Kalau ada yang beda, dokumen-dokumen itu yang menang.
+
 Urutan fase: **0 → 1 → 2 → 3 → 4**. Fase berikutnya baru mulai kalau exit criteria fase sebelumnya terpenuhi.
+
+Legenda: `[x]` = kode ada dan teruji unit test; `[ ]` = belum; catatan "browser" = belum diverifikasi di browser.
 
 ## Prinsip (berlaku di semua fase)
 
@@ -27,13 +31,10 @@ Tujuan: fondasi Button bersih, supaya component lain tidak mewarisi bug.
 - [ ] Push branch `feat/fahmi` (butuh instruksi eksplisit; sudah merge PR #11)
 - [x] Catat known issue: test `selColorSwatch` gagal (pre-existing) — basi, tidak ada di repo (triase 2026-10-31)
 
-Triase 2026-10-31 (baseline: builder-core 642 lulus, studio 43 lulus, 0 gagal):
-kode semua item di atas sudah jadi dan teruji (`codegen.test.js`, `focus-outline.test.js`,
-`variant-style.test.js`, `icon-only.test.js`, `icon-slot.test.js`, `prototype-dom.test.js`).
-Deviasi dari teks roadmap dicatat di `AGENTS.md`; spec tetap menang bila beda.
-Sisa exit Fase 0: verifikasi manual di browser.
+Triase 2026-10-31 (baseline: builder-core 642 lulus, studio 43 lulus, 0 gagal). Baseline terakhir di `AGENTS.md`: builder-core 842, studio 53, 0 gagal.
+Sisa exit Fase 0: verifikasi manual di browser belum dilakukan.
 
-**Exit:** Button outlined/solid/dashed tampil benar di canvas, Play, dan codegen. Verifikasi manual di browser.
+**Exit:** Button outlined/solid/dashed tampil benar di canvas, Play, dan codegen. **Belum terpenuhi**: kodenya ada, verifikasi browser belum.
 
 ---
 
@@ -43,12 +44,13 @@ Tujuan: semua component punya schema JSON, template sebagai component, dan behav
 
 Referensi struktur: `D:\antd-ref\components\<nama>` (read-only).
 
-| Batch | Component | Catatan |
+| Batch | Component | Status |
 |---|---|---|
-| 1 | Input | ✅ done 2026-10-31. Menambah kind `control` (`<input>` asli). Variant, Status, Size. Slot prefix/suffix/addon. allowClear, showCount |
-| 2 | Checkbox, Radio, Switch | Pakai `control`, tinggal data schema |
-| 3 | Tag, Alert | Alert butuh slot icon + close |
-| 4+ | Daftar lanjutan (Select, Modal, Tabs, dll.) | Ditentukan setelah batch 3 stabil |
+| 1 | Input | ✅ kode selesai 2026-10-31 (kind `control`, variant, status, size, prefix/suffix, allowClear, showCount, managed text). Single-line. Browser belum (lihat `docs/input-managed-text.md`). |
+| 2 | Checkbox, Radio, Switch | Kode dan template ada (`AGENTS.md`). Radio.Group masih Tier 3, belum. Browser belum. |
+| 3 | Tag, Alert | Kode dan template ada. Alert punya slot icon, close, action, dan Banner. Browser belum. |
+| 2a (tambahan) | Badge, Card, Divider, Avatar, Text, Title, Paragraph, Link, Icon Button, FormItem, List | Kode ada (registry dan template). Badge corner count belum dibuat. Browser belum untuk sebagian besar. |
+| 4+ | Select, TextField, Textarea, Modal, Tabs, Table, dll. | Belum mulai. Template Select belum ada, jadi `accepts` FormItem hanya `input`. Daftar lengkap ada di `docs/specs/web-components.md`. |
 
 Per component, selesai kalau:
 - [ ] Schema JSON (collections, persistent props, slots, features)
@@ -60,7 +62,9 @@ Per component, selesai kalau:
 - [ ] Test untuk binding dan kind baru
 - [ ] `AGENTS.md` terupdate
 
-**Exit:** semua component di daftar punya template yang jalan di canvas, Play, dan codegen. Engine tidak punya kode per component.
+Catatan: Input (batch 1) memenuhi semua item kode di atas. Item browser tetap terbuka untuk semua component.
+
+**Exit:** semua component di daftar punya template yang jalan di canvas, Play, dan codegen. **Belum terpenuhi**: batch 4+ belum ada, dan verifikasi browser belum dilakukan.
 
 ---
 
@@ -68,28 +72,34 @@ Per component, selesai kalau:
 
 Tujuan: preview DOM setia ke canvas dan prototype lengkap.
 
-Prototype fase 2:
-- [ ] Conditional
+Prototype (`docs/prototype-spec.md`):
+- [x] Conditional (Round 7: model, validator, Play, panel. Copy/paste/delete belum dicek di browser)
 - [ ] Set variable
-- [ ] Overlay / dropdown / popover
-- [ ] Interaksi template Input / Alert / Modal
+- [ ] Overlay / dropdown / popover (connector sengaja tidak dibangun)
+- [ ] Interaksi template Input / Alert / Modal (Modal belum ada template)
 
 Fidelity Play:
-- [ ] Grid layout di Play
-- [ ] Mask di auto layout
-- [ ] Motion (Play dan codegen saja, bukan canvas)
-- [ ] Audit stroke overlay: inside/center/outside, per-side, radius
+- [ ] Grid layout di Play (saat ini DOM memakai flex row)
+- [ ] Mask di auto layout (masih dilaporkan, tidak digambar)
+- [x] Motion (Play dan codegen saja, bukan canvas): sudah untuk Button, Input, Checkbox, Radio, Switch, Divider
+- [ ] Audit stroke overlay: sebagian. Inside/centre/outside dan per-side ada di core (Rust Fase 1). Sisa: bagian luar stroke per-side yang di-centre belum digambar (`docs/manual-test.md`)
 
 Opsional:
 - [ ] Generator schema dari source antd (struktur saja, nilai tetap dari variable)
 
-**Exit:** flow prototype dengan conditional, variable, dan overlay jalan di Play tanpa beda dengan canvas.
+Di luar daftar ini tapi masih rencana (lihat `docs/play-from-tsx.md`, `docs/form-validation.md`, belum dibangun):
+- [ ] Play dari TSX (langkah 1 sampai 9)
+- [ ] Validasi FormItem (rules, validateStatus, trigger)
+
+**Exit:** flow prototype dengan conditional, variable, dan overlay jalan di Play tanpa beda dengan canvas. **Belum terpenuhi**: variable dan overlay belum ada.
 
 ---
 
 ## Fase 3: Publish library + dokumentasi live
 
 Tujuan: library bisa dipublish dan tiap component punya dokumentasi dengan live preview.
+
+Status: **belum mulai.**
 
 - [ ] Format paket library (components + variables + schema + versi)
 - [ ] Flow publish / update / versioning
@@ -107,6 +117,8 @@ Tujuan: library bisa dipublish dan tiap component punya dokumentasi dengan live 
 
 Tujuan: icon reusable tanpa harus ditaruh di page design.
 
+Status: **belum mulai.** Icon saat ini masih dari page `Icons` dan `ICON_SET` (lihat `AGENTS.md`).
+
 - [ ] Penyimpanan icon di server (upload, kategori, nama unik, versi)
 - [ ] API list / search / fetch (SVG)
 - [ ] Icon picker baca dari server (ganti sumber "semua component di semua page")
@@ -121,7 +133,28 @@ Tujuan: icon reusable tanpa harus ditaruh di page design.
 
 ---
 
+## Jalur Rust (paralel, `docs/rust-plan.md`)
+
+| Fase Rust | Status |
+|---|---|
+| 0 WASM bridge | Selesai |
+| 1 Paint dan stroke | Selesai (2026-11-13) |
+| 2 Shell Tauri | Sedang berjalan (`feat/desktop-shell`) |
+| 3 Model dokumen di Rust | Belum mulai |
+| 4 Auto design system di Rust | Belum mulai |
+| 5 Canvas renderer di Rust | Gated |
+| 6 Compiler Play ke HTML/CSS di Rust | Belum mulai |
+| 7 Keputusan UI | Gated |
+
+---
+
 ## Known issues
 
-- Test `selColorSwatch` tidak ada di repo (triase 2026-10-31: builder-core 642 + studio 43 lulus, 0 gagal) — isu basi, ditutup.
-- Hampir semua fix terbaru belum diverifikasi di browser (tanpa browser automation)
+- Test `selColorSwatch` tidak ada di repo (triase 2026-10-31) — isu basi, ditutup.
+- Hampir semua fix terbaru belum diverifikasi di browser (tanpa browser automation). Checklist ada di `docs/manual-test.md`, `docs/slots.md` bagian 6, dan `docs/input-managed-text.md` bagian 6.
+- Suite browser punya kegagalan yang sudah diketahui (lihat `AGENTS.md`, Known issues).
+- 2026-11-17, langkah 1 (exporter): `.jsx` untyped tidak lagi memuat sintaks TypeScript (`codegen.js`, `fillHelpers(false)`); hash pin Button dan Input di `icon-button-wave.test.js` di-repin setelah diff hanya memuat anotasi yang dibuang. 2626 tes builder-core lulus. `export-parity`: Button lulus. Input gagal di keadaan kosong: input tidak berada di posisi yang sama antara export dan Play (sm, md, lg, xl, "empty"). Itu selisih geometri yang sudah tercatat sebagai drift (placeholder tanpa elemen Play, gap nilai), belum diperbaiki. Satu percobaan pertama juga gagal karena navigasi halaman, tidak terulang di percobaan kedua.
+- 2026-11-17, lanjutan: `export-parity` lulus penuh (Button dan Input). Penyebab selisih Input: `syncParts` (`midas.js`) menghapus salinan placeholder master saat value terisi, lalu menyalin ulang saat ganti Size, sehingga ada dua layer placeholder. Sekarang hanya part yang dibuat instance sendiri yang dihapus. `parts` browser lulus. Unit test studio: 6 gagal di `desktopBridge.test.js`, sama dengan kode sebelum perubahan (sudah ada sebelumnya, bukan dari perubahan ini).
+- 2026-11-17, langkah 2 (tes basi): `input-live` dan `limits` lulus setelah locator dipersempit ke `input.input-value` (frame Play memuat InputNumber dari stage yang sama). `strict-parity`: ekspektasi outline Input dimatikan (outline transparan saat rest) dan check placeholder kini memastikan tepat dua baris, Input dan placeholder. Yang masih gagal, keputusan Anda: (1) Input piksel 8,0 sampai 8,5% vs batas 8% (sisa rasterizer?); (2) Button xl outline 0,68px vs 0,5px (geometri, bukan tes). Selisih teks Button xs rest (1,13px) berubah-ubah antar run.
+- 2026-11-17, lanjutan: penyebab piksel Input 8% bukan teks (mask teks memperburuk angka). Penyebabnya view menu Play (View options) yang tertinggal terbuka dan menimpa ujung kanan Input saat screenshot; `playTree` sekarang menutupnya dengan Esc. Piksel Input turun ke 0,0 sampai 0,5%. `strict-parity` sekarang lulus penuh (50 pair). Outline Button diukur dari box root (`outlineFromBox`), bukan dari tepi piksel screenshot, karena tepi piksel bergeser 0,7px oleh posisi sub-piksel sementara box cocok dalam 0,02px. Keputusan user: pilihan 1.
+- 2026-11-17, langkah 3 (Alert): penyebab rootWidth adalah kelas CSS root yang membawa lebar master 400px ke semua instance. Sekarang `rootClassWidth` (layout.js) dipakai codegen dan Play; instance yang fill atau hug di root tidak membawa lebar itu. Keputusan user: rootWidth 400 hanya default saat dibuat, Play mengikuti canvas, banner tetap fill. `alert.browser.test.mjs`: 30 pair lulus. Builder-core 2629 lulus. Belum dikerjakan: slot kosong 444px.

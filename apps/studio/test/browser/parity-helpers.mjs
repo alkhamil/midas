@@ -113,6 +113,8 @@ export async function playTree(page, rootId, name, clipSize = null) {
         el.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await page.locator('.play-overlay [data-mode="actual-size"]').click();
+    // The view menu stays open after a choice, and its panel would sit on the shot: Esc closes an open menu first (prototype-spec.md).
+    if (await page.locator('.play-overlay [data-mode="actual-size"]').isVisible()) await page.keyboard.press('Escape');
     // The stage is laid out at scale 1 (no transform) before anything is measured; the frames after it let the layout and the first paint settle.
     await page.waitForFunction(() => { const s = document.querySelector('.play-overlay .play-stage'); return !!s && (s.style.transform === '' || s.style.transform === 'none'); });
     await settle(page, 6);
@@ -196,7 +198,7 @@ async function placeholderRects(page, rootId, pad) {
     }, [rootId, pad]);
 }
 
-export async function measurePair(page, browser, id, label, pair, { outline = true } = {}) {
+export async function measurePair(page, browser, id, label, pair, { outline = true, outlineFromBox = false } = {}) {
     await page.evaluate(() => window.midas.select([]));
     await page.mouse.move(2, 2);
     await settle(page, 3);
@@ -208,7 +210,10 @@ export async function measurePair(page, browser, id, label, pair, { outline = tr
     const { rows, unmapped } = compare(canvas, play);
     const ignore = await placeholderRects(page, id, PAD);
     const diff = await pixelDiff(browser, resolve(ARTIFACTS, pair + '-canvas.png'), resolve(ARTIFACTS, pair + '-play.png'), resolve(ARTIFACTS, pair + '-diff.png'), { inset: PAD * 2, tolerance: 24, ignore });
-    const edges = outline ? await edgeCheck(browser, resolve(ARTIFACTS, pair + '-canvas.png'), resolve(ARTIFACTS, pair + '-play.png'), { inset: PAD * 2 }) : { found: true, delta: 0 };
+    // The outline is the root's own box: both sides' width and height from the boxes, not the pixel edges of the shots (a half-pixel sub-pixel
+    // position moves a pixel edge by up to 0.7px while the boxes agree within 0.02px).
+    const boxEdges = { found: true, delta: Math.max(Math.abs(rows[0].canvas.w - rows[0].play.w), Math.abs(rows[0].canvas.h - rows[0].play.h)) };
+    const edges = !outline ? { found: true, delta: 0 } : outlineFromBox ? boxEdges : await edgeCheck(browser, resolve(ARTIFACTS, pair + '-canvas.png'), resolve(ARTIFACTS, pair + '-play.png'), { inset: PAD * 2 });
     const failures = [];
     if (outline && !edges.found) failures.push(label + ': the outline is not found on both shots');
     else if (outline && edges.delta > TOLERANCE_PX) failures.push(label + ': the outline differs by ' + edges.delta.toFixed(2) + ' px (width, height or centre)');

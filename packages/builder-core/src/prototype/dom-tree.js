@@ -19,7 +19,7 @@ import { previewOf } from '../behavior-engine/preview.js';
 import { overrideStyleOf } from './node-overrides.js';
 import { componentNameOf, generateComponent, SPIN_ANIMATION } from '../behavior-engine/codegen.js';
 import { controlOf, iconDefOn, placementsOfDef, primarySlotOf, slotDefsOf, swapDefsOf } from '../behavior-engine/anatomy.js';
-import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf } from '../behavior-engine/layout.js';
+import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf, rootClassWidth } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
 import { repeatCount } from '../behavior-engine/slot-rules.js';
 import { attrOfProp, elementTagOf, maskedOn, localAttrOf, maskUnlessOf, multilineOf, pressAttrsOf, ariaCheckedOf, canvasPartsOf, conditionHolds, fieldStyleOf, fieldWritersOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
@@ -544,7 +544,9 @@ function renderTemplate(n, template, parent, scope) {
     // The stroke overlay is absolutely positioned, so it is not a laid-out child.
     // A top-level component that hugs its content is inline-flex, so it keeps its natural width in the frame (as the export's root does).
     const flowCount = children.length - (strokeEl ? 1 : 0);
-    const style = { display: ownSizingOf(n, 'h') === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...fields.vars, ...fields.style, ...placement(n, parent, scope.responsive), ...rootLayoutOf(instanceLayoutOf(master, n), flowCount) };
+    // The component class carries the master's fixed width; an instance that fills or hugs takes its node's sizing instead (the same rule the export reads).
+    const ownWidth = rootClassWidth(master) !== null && ownSizingOf(n, 'h') !== 'fixed' ? { width: 'auto' } : {};
+    const style = { display: ownSizingOf(n, 'h') === 'hug' && !parent ? 'inline-flex' : 'flex', boxSizing: 'border-box', ...fields.vars, ...fields.style, ...placement(n, parent, scope.responsive), ...ownWidth, ...rootLayoutOf(instanceLayoutOf(master, n), flowCount) };
     // The host draws its own border, and the box is positioned for it.
     if (hasStroke) {
         Object.assign(style, useSvg ? { borderWidth: '0px', borderStyle: 'none', ...(template.display.root.paddingX ? { paddingInline: `var(${cssVarOf(template.id, template.display.root.paddingX)})` } : {}), ...(template.display.root.paddingY ? { paddingBlock: `var(${cssVarOf(template.id, template.display.root.paddingY)})` } : {}) } : (() => { if (!useSvg && lineStyle === 'solid' && strokeSidesUniform(shape) && shape.strokeSides === undefined && 'stroke' in (template.display.root ?? {}) && !('shadow' in template.display.root) && !('paddingX' in template.display.root) && !('paddingY' in template.display.root) && bw > 0) { const width = `var(${cssVarOf(template.id, template.display.root.strokeWidth)})`; return { borderWidth: '0px', borderStyle: 'none', outline: `${width} solid ${bound ? `var(${cssVarOf(template.id, template.display.root.stroke)})` : colorWithAlpha(shape.stroke, shape.strokeOpacity)}`, outlineOffset: `calc(-1 * ${width})`, backgroundClip: 'border-box' }; } const uniform = strokeSidesUniform(shape); if (!uniform) { const s = strokeSideWidths(shape); const per = {}; for (const [k, v] of [['Top', s.t], ['Right', s.r], ['Bottom', s.b], ['Left', s.l]]) { per[`border${k}Width`] = `${v}px`; per[`border${k}Style`] = v > 0 ? lineStyle : 'none'; if (!bound && v > 0) per[`border${k}Color`] = colorWithAlpha(shape.stroke, shape.strokeOpacity); } per.backgroundClip = 'border-box'; return per; } return bw > 0 ? { borderWidth: `${bw}px`, borderStyle: lineStyle, ...(bound ? {} : { borderColor: colorWithAlpha(shape.stroke, shape.strokeOpacity) }), backgroundClip: 'border-box' } : { borderWidth: '0px', borderStyle: 'none' }; })()); if (hasStroke && !style.position) style.position = 'relative';

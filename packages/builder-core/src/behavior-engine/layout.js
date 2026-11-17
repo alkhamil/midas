@@ -3,6 +3,17 @@
 // by the surface (flex in Play and on canvas, inline-flex in generated code so a hug-sized component still hugs).
 import { layoutPads, layoutGap, layoutGapCross, ownSizingOf, strokeOutside } from '../geometry/autolayout.js';
 /**
+ * The width the component's class carries for its root: the master's own width, but only for a fixed master with no width variable (a
+ * variable binds the width in every mode, and a hugging or filling master has no width of its own). Play and the export read this one rule;
+ * an instance whose own sizing is not fixed drops that class width, so it takes its node's sizing.
+ * @param {{ layoutSizingH?: string, w?: number, vars?: Record<string, unknown> }} master
+ * @returns {number | null}
+ */
+export function rootClassWidth(master) {
+    return master.layoutSizingH === 'fixed' && master.vars?.w === undefined && master.w > 0 ? master.w : null;
+}
+
+/**
  * How a child of an auto layout frame sizes itself on the parent's main axis (the flow direction) and on its cross axis.
  * - main fill: takes the free space (flex 1, may shrink to zero). Main fixed or hug: keeps its size and does not shrink, so a child
  *   wider than its frame is clipped by the frame instead of squeezed.

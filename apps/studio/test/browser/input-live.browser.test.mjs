@@ -28,7 +28,8 @@ async function inkOnScreen(browser, locator, name) {
 
 /** The Play parts of the input: the input, the clear and the counter, with their text, hidden state and root width. */
 const playState = page => page.evaluate(() => {
-    const input = document.querySelector('.play-overlay input[data-role="value"]');
+    // The Input's own value input (class input-value); the stage's InputNumber shares the frame Play opens and has its own.
+    const input = document.querySelector('.play-overlay input.input-value[data-role="value"]');
     const root = input.parentElement;
     const clear = root.querySelector(':scope > [data-role="clear"]');
     const count = root.querySelector(':scope > [data-role="count"]');
@@ -64,7 +65,7 @@ test('the Input in Play follows typing and a click on its clear; the canvas stay
     assert.equal(start.count, '0', 'the counter starts at the length of the empty value');
     // On the screen: the placeholder is drawn in the input, and the hidden clear is not.
     mkdirSync(ARTIFACTS, { recursive: true });
-    const input = page.locator('.play-overlay input[data-role="value"]');
+    const input = page.locator('.play-overlay input.input-value[data-role="value"]');
     assert.equal(await page.locator('.play-overlay [data-role="clear"]').isVisible(), false, 'no clear is on the screen while the value is empty');
     assert.ok(await inkOnScreen(browser, input, 'play-input-placeholder') > 0, 'the placeholder is drawn on the screen');
 

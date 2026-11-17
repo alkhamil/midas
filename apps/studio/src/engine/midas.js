@@ -10759,7 +10759,9 @@ function syncParts(inst) {
             } else placeAmongChildren(holder, n, doc.children(holder.id).length);
             changed = true;
         }
-        else if (!wanted && layer) {
+        // A copy of the master's part stays: a value hides the placeholder (applyLiteralFields writes its visibility), so removing it here
+        // would make a second placeholder when the layer is copied again. Only a part the instance made itself is removed.
+        else if (!wanted && layer && layer.sourceId === undefined) {
             doc.remove([layer.id]);
             changed = true;
         }

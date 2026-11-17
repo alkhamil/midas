@@ -30,7 +30,7 @@ function alignExprOf(writer) {
 
 /** A camelCase name as kebab-case (the custom properties and data attributes a prop is written as). */
 const kebabCase = name => name.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`);
-import { rootLayoutOf, labelLayoutOf, flexOf, flowSizing } from './layout.js';
+import { rootLayoutOf, labelLayoutOf, flexOf, flowSizing, rootClassWidth } from './layout.js';
 import { labelEntryOf } from './layers.js';
 import { managedContainerLayer, managedTextLayer } from './template-master.js';
 import { modeOfStyleKey } from './variant-style.js';
@@ -148,11 +148,13 @@ const PATTERN_STRUCT = `{ source?: string; tileType?: 'RECTANGULAR' | 'HORIZONTA
 const sourceOf = fn => fn.toString().replace(/\r\n/g, '\n');
 
 /**
- * The standalone serializers as strict TypeScript: the emitted component compiles under strict, so the params the
- * JavaScript leaves untyped are annotated here, and the alignment lookup reads through a string record.
+ * The standalone serializers the component carries. A template without slots is an untyped .jsx, so its copy is the plain JavaScript;
+ * a typed .tsx gets the same functions with the params annotated (strict), the struct types, and the alignment lookup through a string record.
+ * @param {boolean} typed
  * @returns {string[]}
  */
-function fillHelperTs() {
+function fillHelpers(typed) {
+    if (!typed) return [sourceOf(gradientLayerOf), '', sourceOf(patternLayerOf), ''];
     const gradient = sourceOf(gradientLayerOf)
         .replace('function gradientLayerOf(g) {', 'function gradientLayerOf(g: GradientFill | undefined): string | undefined {')
         .replace('(c, a) =>', '(c: string, a: number | undefined) =>');
@@ -546,7 +548,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             ...(needsFilled ? ['', 'function filled(node: ReactNode): boolean {', `  return Array.isArray(node) ? node.some(filled) : node !== undefined && node !== null && typeof node !== 'boolean' && node !== '';`, '}'] : []),
             ...(counts.length ? ['', 'function copies(count: number | null | undefined, fallback: number): number {', '  const n = count ?? fallback;', '  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;', '}'] : []),
             '',
-            ...fillHelperTs(),
+            ...fillHelpers(true),
         ].join('\n');
     }
     return [
@@ -572,7 +574,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         ...(template.press ?? []).some(p => p.resize) ? ['', `const resizeLimits = ${sourceOf(resizeLimits)};`, `const resizeHeight = ${sourceOf(resizeHeight)};`, `const startResizeDrag = ${sourceOf(startResizeDrag)};`] : [],
         ...(template.interaction?.wave ? ['', 'function waveDown(el) {', "  if (!el || el.disabled) return;", "  el.removeAttribute('data-wave-on');", '  void el.offsetWidth;', "  el.setAttribute('data-wave-on', '');", '}'] : []),
         '',
-        ...fillHelperTs(),
+        ...fillHelpers(false),
     ].join('\n');
 }
 
@@ -650,7 +652,7 @@ function displayRules(template, master, childrenOf, geometry) {
         // with display:flex (a real element in its parent's layout); the export is inline-flex so a hug Button keeps its
         // natural width. The label keeps its own width and alignment from its layer.
         const decls = kind === 'glyph' ? ['  display: block;\n', '  flex-shrink: 0;\n'] : key === 'root'
-            ? ['  display: inline-flex;\n', '  box-sizing: border-box;\n', ...cssDecls(rootLayoutOf(master, 0)), ...(master.layoutSizingH === 'fixed' && master.vars?.w === undefined && master.w > 0 ? [`  width: ${master.w}px;\n`] : [])]
+            ? ['  display: inline-flex;\n', '  box-sizing: border-box;\n', ...cssDecls(rootLayoutOf(master, 0)), ...(rootClassWidth(master) !== null ? [`  width: ${rootClassWidth(master)}px;\n`] : [])]
             : kind === 'text' ? cssDecls(labelLayoutOf(entryFor(key)?.node, entryFor(key)?.parent ?? master)) : [];
         // A container pinned to the right edge is out of the flow: it starts on the box's top border line (the padding box starts inside the border, so top is minus the border)
         // and its height is the box's height token, so it is as tall as the box at every Size mode.

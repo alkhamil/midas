@@ -41,7 +41,8 @@ test('Min length and Max length from the panel: a Min above the Max is refused, 
     await page.evaluate(id => window.midas.select([id]), id);
     await page.locator('#play').click();
     await page.waitForSelector('.play-overlay');
-    const input = page.locator('.play-overlay input[data-role="value"]');
+    // The Input's own value input: the frame Play opens may hold the stage's InputNumber, which has its own input.
+    const input = page.locator('.play-overlay input.input-value[data-role="value"]');
     const counter = page.locator('.play-overlay [data-role="count"]');
     await input.click();
     await page.keyboard.type('ab');

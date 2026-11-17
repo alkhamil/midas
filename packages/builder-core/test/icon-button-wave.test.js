@@ -108,11 +108,11 @@ test('an export is the same text on every checkout: functions the export embeds 
 
 test('Button and Input output match their pinned hashes (the Input text part is named value)', () => {
     const hash = text => createHash('sha256').update(text).digest('hex').slice(0, 16);
-    assert.equal(hash(buttonFiles['Button.jsx']), '76e9cfd93e39c1bb');
+    assert.equal(hash(buttonFiles['Button.jsx']), '700fbfa68f3b6158', 'untyped .jsx: no TypeScript annotations or struct types (2026-11-17)');
     assert.equal(hash(buttonFiles['Button.css']), '6d3e551f44899222', 'the fill sits under the border (border-box)');
     const im = inputModel({ ids: { variant: 'c-input-variant', status: 'c-input-status', size: 'c-input-size', semantic: 'c-input-semantic' }, prefix: 'in-' });
     const input = generateComponent(BUILT_IN_TEMPLATES.get('input'), im.binding, { collections: im.collections, items: im.items }, 'Input', { id: 'm', name: 'Input', type: 'frame', layout: 'horizontal' }, () => []).files;
-    assert.equal(hash(input['Input.jsx']), '16aff3c3049671a5', 'the password eye swaps by a local revealed state, plus the per-instance Gradient, Pattern and Fill channel (0763638987cfc7bb was recorded from a state the commit does not hold; the delta from b7ac69e36e2a7eeb is that channel only)');
+    assert.equal(hash(input['Input.jsx']), 'c319e373389c5f93', 'untyped .jsx: no TypeScript annotations or struct types (2026-11-17); the password eye swaps by a local revealed state, plus the per-instance Gradient, Pattern and Fill channel (0763638987cfc7bb was recorded from a state the commit does not hold; the delta from b7ac69e36e2a7eeb is that channel only)');
     assert.equal(hash(input['Input.css']), '0953026fc13ecd13', 'a master with no layers lays the managed text slots out as an instance draws them (the value fills); a generated master gives the same sheet as before, plus the swap rules (hide-only, !important)');
 });
 
