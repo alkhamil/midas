@@ -198,7 +198,7 @@ async function placeholderRects(page, rootId, pad) {
     }, [rootId, pad]);
 }
 
-export async function measurePair(page, browser, id, label, pair, { outline = true, outlineFromBox = false } = {}) {
+export async function measurePair(page, browser, id, label, pair, { outline = true, outlineFromBox = false, tolerance = TOLERANCE_PX, rootTolerance = ROOT_WIDTH_TOLERANCE_PX } = {}) {
     await page.evaluate(() => window.midas.select([]));
     await page.mouse.move(2, 2);
     await settle(page, 3);
@@ -216,14 +216,14 @@ export async function measurePair(page, browser, id, label, pair, { outline = tr
     const edges = !outline ? { found: true, delta: 0 } : outlineFromBox ? boxEdges : await edgeCheck(browser, resolve(ARTIFACTS, pair + '-canvas.png'), resolve(ARTIFACTS, pair + '-play.png'), { inset: PAD * 2 });
     const failures = [];
     if (outline && !edges.found) failures.push(label + ': the outline is not found on both shots');
-    else if (outline && edges.delta > TOLERANCE_PX) failures.push(label + ': the outline differs by ' + edges.delta.toFixed(2) + ' px (width, height or centre)');
+    else if (outline && edges.delta > tolerance) failures.push(label + ': the outline differs by ' + edges.delta.toFixed(2) + ' px (width, height or centre)');
     const rootRow = rows[0];
-    if (Math.abs(rootRow.canvas.w - rootRow.play.w) > ROOT_WIDTH_TOLERANCE_PX) failures.push(label + ': root width ' + rootRow.canvas.w.toFixed(4) + ' on the canvas, ' + rootRow.play.w.toFixed(4) + ' in Play');
+    if (Math.abs(rootRow.canvas.w - rootRow.play.w) > rootTolerance) failures.push(label + ': root width ' + rootRow.canvas.w.toFixed(4) + ' on the canvas, ' + rootRow.play.w.toFixed(4) + ' in Play');
     if (diff.sizeA.join() !== diff.sizeB.join()) failures.push(label + ': canvas and Play crops differ in size');
     else if (diff.changed / diff.pixels > DIFF_LIMIT) failures.push(label + ': ' + (100 * diff.changed / diff.pixels).toFixed(1) + '% of pixels differ');
     for (const row of rows) {
         if (row.missing) failures.push(label + ': ' + row.name + ' is on the canvas but not in Play');
-        else if (row.delta > TOLERANCE_PX) failures.push(label + ': ' + row.name + ' differs by ' + row.delta + 'px');
+        else if (row.delta > tolerance) failures.push(label + ': ' + row.name + ' differs by ' + row.delta + 'px');
     }
     for (const u of unmapped) failures.push(label + ': Play draws ' + u + ' with no node');
     return { rows, unmapped, diff, edges, failures };
