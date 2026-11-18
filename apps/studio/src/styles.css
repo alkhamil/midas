@@ -1838,6 +1838,13 @@ kbd {
   line-height: 1.8
 }
 
+/* Play's notice for an empty slot the template requires (dom-tree.js): a Play-only message, not drawn on the canvas. */
+.midas-play-warning {
+  color: var(--danger);
+  font-size: 12px;
+  padding: 4px 8px
+}
+
 .inline-link {
   color: var(--accent);
   font-size: 10px

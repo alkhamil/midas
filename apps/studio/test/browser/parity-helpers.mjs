@@ -2,7 +2,7 @@
 // tab's props, the canvas and Play measurements, and the comparison of the two. Used by strict-parity and export-parity.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { ARTIFACTS, ROOT, edgeCheck, integerClip, pixelDiff, settle, shotNode } from './harness.mjs';
+import { ARTIFACTS, ROOT, cornerColour, edgeCheck, integerClip, pixelDiff, settle, shotNode } from './harness.mjs';
 
 export const FIXTURE = resolve(ROOT, 'testing.midas');
 // The pair crops: the root's box plus this padding, the same in both shots. Both are taken at zoom 1 (one document unit per CSS pixel).
@@ -100,18 +100,18 @@ export const canvasTree = (page, rootId) => page.evaluate(rootId => {
  * Opens Play on the instance (selected), measures its elements relative to its root, saves a screenshot of the root's Play element to
  * `name`, and closes Play. Animations are read at rest.
  */
-export async function playTree(page, rootId, name, clipSize = null) {
+export async function playTree(page, rootId, name, clipSize = null, background = '#ffffff') {
     await page.evaluate(id => window.midas.select([id]), rootId);
     await page.locator('#play').click();
     await page.waitForSelector('.play-overlay');
-    // Actual size (1:1), so Play and the canvas are the same scale. The default fits the window. The viewport is white: Play's default
-    // dark background would hide a dark stroke, and the pixels compared are the component's own box.
+    // Actual size (1:1), so Play and the canvas are the same scale. The default fits the window. The viewport is white unless the caller gives the
+    // canvas's backdrop: Play's default dark background would hide a dark stroke, and the pixels compared are the component's own box.
     await page.locator('.play-overlay [aria-label="View options"]').click();
-    await page.locator('.play-overlay [data-background]').evaluate(el => {
-        el.value = '#ffffff';
+    await page.locator('.play-overlay [data-background]').evaluate((el, background) => {
+        el.value = background;
         el.dispatchEvent(new Event('input', { bubbles: true }));
         el.dispatchEvent(new Event('change', { bubbles: true }));
-    });
+    }, background);
     await page.locator('.play-overlay [data-mode="actual-size"]').click();
     // The view menu stays open after a choice, and its panel would sit on the shot: Esc closes an open menu first (prototype-spec.md).
     if (await page.locator('.play-overlay [data-mode="actual-size"]').isVisible()) await page.keyboard.press('Escape');
@@ -141,8 +141,9 @@ export async function playTree(page, rootId, name, clipSize = null) {
         return { rootWidth: r0.width, rootHeight: r0.height, boxes, unmapped };
     }, rootId);
     if (measured) {
-        // A component far down the Design System page (the Divider is made last) is scrolled to before its shot.
-        await page.locator(`.play-overlay [data-node-id="${rootId}"]`).scrollIntoViewIfNeeded();
+        // A component far down the Design System page (the Divider is made last) is scrolled to before its shot. It is centred, not just brought
+        // into view: at the bottom edge the shot's padding runs past the viewport and is cut short.
+        await page.locator(`.play-overlay [data-node-id="${rootId}"]`).evaluate(el => el.scrollIntoView({ block: 'center', inline: 'center' }));
         const r = await page.locator(`.play-overlay [data-node-id="${rootId}"]`).boundingBox();
         await page.screenshot({ path: resolve(ARTIFACTS, `${name}-play.png`), clip: { ...integerClip({ x: r.x, y: r.y, w: r.width, h: r.height }, PAD), ...(clipSize ? { width: clipSize.width, height: clipSize.height } : {}) } });
     }
@@ -198,14 +199,17 @@ async function placeholderRects(page, rootId, pad) {
     }, [rootId, pad]);
 }
 
-export async function measurePair(page, browser, id, label, pair, { outline = true, outlineFromBox = false, tolerance = TOLERANCE_PX, rootTolerance = ROOT_WIDTH_TOLERANCE_PX } = {}) {
+export async function measurePair(page, browser, id, label, pair, { outline = true, outlineFromBox = false, tolerance = TOLERANCE_PX, rootTolerance = ROOT_WIDTH_TOLERANCE_PX, matchBackdrop = false } = {}) {
     await page.evaluate(() => window.midas.select([]));
     await page.mouse.move(2, 2);
     await settle(page, 3);
     const canvasShot = await shotNode(page, id, pair + '-canvas', PAD, 1);
     const canvas = await canvasTree(page, id);
+    // A root with no fill shows the canvas stage behind it, so Play's viewport takes the same colour when `matchBackdrop` is set: the diff then compares the
+    // component's ink, not two different backgrounds.
+    const background = matchBackdrop ? await cornerColour(browser, canvasShot.file) : '#ffffff';
     // The canvas sets the crop size: both shots are the same size, so a width that rounds across a whole pixel cannot differ between them.
-    const play = await playTree(page, id, pair, { width: canvasShot.clip.width, height: canvasShot.clip.height });
+    const play = await playTree(page, id, pair, { width: canvasShot.clip.width, height: canvasShot.clip.height }, background);
     if (!play) return { failures: [label + ': Play draws no component'] };
     const { rows, unmapped } = compare(canvas, play);
     const ignore = await placeholderRects(page, id, PAD);

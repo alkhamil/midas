@@ -349,7 +349,8 @@ function renderTemplate(n, template, parent, scope) {
         const held = scope.childrenOf(layer.id).some(c => c.visible !== false);
         const fallback = slot.repeat && typeof template.props[slot.repeat].default === 'number' ? template.props[slot.repeat].default : 0;
         const copies = !held ? 0 : slot.repeat ? repeatCount(props[slot.repeat], fallback) : 1;
-        if (copies === 0 && slot.showEmpty !== true) return null;
+        // An empty slot the template requires is not drawn; Play says what is missing, so the component is not silently without its content.
+        if (copies === 0 && slot.showEmpty !== true) return slot.required === true ? { tag: 'div', attrs: { class: 'midas-play-warning', role: 'status' }, style: {}, text: `${template.name}: fill the ${slot.name} slot`, children: [] } : null;
         const kids = [];
         for (let i = 0; i < copies; i++) kids.push(...renderChildren(layer, scope));
         // An empty hug slot keeps the canvas's floor (emptySlotFloor), as the export's :empty rule does.

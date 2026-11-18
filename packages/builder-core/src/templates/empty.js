@@ -25,7 +25,7 @@ export const EMPTY = {
     icons: [{ show: 'hasImage', slot: 'icon', component: 'icon', label: 'Image', tokens: { colour: 'fg-secondary', disabledColour: 'fg-secondary', size: 'imageSize' } }],
     slots: [
         // The action is an instance (a Button or a Link) that sits under the description, shown while hasAction is on.
-        { id: 'action', name: 'Action', description: 'A Button or Link under the description', holds: 'instance', min: 0, max: 1, accepts: ['button', 'antd-link'], onlyAccepts: true, showEmpty: true, layout: 'horizontal', shownWhen: { prop: 'hasAction', is: true } },
+        { id: 'action', name: 'Action', description: 'A Button or Link under the description', holds: 'instance', min: 0, max: 1, accepts: ['button', 'antd-link'], onlyAccepts: true, required: true, layout: 'horizontal', shownWhen: { prop: 'hasAction', is: true }, seed: [{ template: 'button', props: { label: 'Action' }, follow: { size: 'size' } }] },
     ],
     rootLayout: 'vertical',
     rootAlign: 'center',

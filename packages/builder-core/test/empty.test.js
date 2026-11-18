@@ -34,3 +34,10 @@ test('the image shows by hasImage; the description shows while it is not empty',
 test('the action is an instance slot that shows only while hasAction is on', () => {
     assert.deepEqual(empty.slots[0].shownWhen, { prop: 'hasAction', is: true });
 });
+
+test('the action starts with a Button, is required, and is not drawn empty', () => {
+    const action = empty.slots[0];
+    assert.deepEqual(action.seed, [{ template: 'button', props: { label: 'Action' }, follow: { size: 'size' } }]);
+    assert.equal(action.required, true, 'Play says when it is empty');
+    assert.equal(action.showEmpty, undefined, 'an empty action takes no space in Play');
+});

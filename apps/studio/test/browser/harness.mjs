@@ -275,6 +275,26 @@ export async function selectByClick(page, id) {
  */
 const dataUrlOf = file => 'data:image/png;base64,' + readFileSync(file).toString('base64');
 
+/** The colour of a screenshot's top-left pixel, as #rrggbb: the canvas stage shows through a transparent root, so this is its backdrop. */
+export async function cornerColour(browser, file) {
+    const page = await browser.newPage();
+    try {
+        return await page.evaluate(async src => {
+            const img = new Image();
+            await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = src; });
+            const c = document.createElement('canvas');
+            c.width = img.width; c.height = img.height;
+            const x = c.getContext('2d');
+            x.drawImage(img, 0, 0);
+            const [r, g, b] = x.getImageData(0, 0, 1, 1).data;
+            return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+        }, dataUrlOf(file));
+    }
+    finally {
+        await page.close();
+    }
+}
+
 export async function pixelDiff(browser, fileA, fileB, fileOut, { tolerance = 16, inset = 0, ignore = [] } = {}) {
     const page = await browser.newPage();
     try {
