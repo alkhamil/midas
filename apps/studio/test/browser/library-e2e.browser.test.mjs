@@ -129,6 +129,41 @@ test('removing a library unmounts it: its variables and image go, and its instan
     assert.equal(await page.evaluate(() => Object.keys(window.midas.doc.data.assets).includes('lib-img')), false, 'the library image is gone');
     assert.equal((await nodeWith(page, instId))?.sourceId, copyId, 'the instance stays in the file, still pointing at the library layer');
     assert.equal(await nodeWith(page, copyId), null, 'its component is no longer in the file');
+    // The instance's Behavior tab names the missing library in Diagnostics.
+    await page.evaluate(id => window.midas.select([id]), instId);
+    await page.locator('#inspector-tab-behavior').click();
+    await page.getByText(/its library is not added to this file/).first().waitFor({ state: 'visible', timeout: 15000 });
+
     const uses = await (await page.request.get(`${API_URL}/api/files/${dstId}/libraries`)).json();
     assert.deepEqual(uses.libraries, [], 'the file no longer uses the library on the server');
+});
+
+test('Duplicate keeps the library uses: the copy of a file that uses a library uses it too', async t => {
+    const stop = await ensureDevServers();
+    t.after(stop);
+    mkdirSync(ARTIFACTS, { recursive: true });
+    const browser = await launchBrowser();
+    t.after(() => browser.close());
+    const { page, dstId, srcId } = await publishAndPlace(browser);
+
+    // Save, then go Home, where the file menu (right-click on its card) has Duplicate.
+    await page.evaluate(() => window.midas.save());
+    await page.waitForFunction(() => document.querySelector('#save-indicator')?.textContent.includes('Saved'), null, { timeout: 30000 });
+    const before = (await (await page.request.get(`${API_URL}/api/files`)).json()).files.map(f => f.id);
+    await page.locator('#go-home').click();
+    const card = page.locator(`[data-hf="${dstId}"]`).first();
+    await card.waitFor({ state: 'visible', timeout: 30000 });
+    await card.click({ button: 'right' });
+    await page.locator('#home-menu').getByText('Duplicate', { exact: true }).click();
+
+    // The copy is the file that did not exist before; it must use the same library on the server.
+    let copyId = null;
+    for (let i = 0; i < 60 && !copyId; i++) {
+        const now = (await (await page.request.get(`${API_URL}/api/files`)).json()).files.map(f => f.id);
+        copyId = now.find(id => !before.includes(id)) ?? null;
+        if (!copyId) await page.waitForTimeout(500);
+    }
+    assert.ok(copyId, 'the duplicate is created');
+    const uses = await (await page.request.get(`${API_URL}/api/files/${copyId}/libraries`)).json();
+    assert.deepEqual(uses.libraries.map(l => l.id), [srcId], 'the copy uses the same library');
 });
