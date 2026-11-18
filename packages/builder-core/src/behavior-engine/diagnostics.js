@@ -77,6 +77,10 @@ export function diagnoseDocument(doc) {
     /** @type {Record<string, unknown>[]} */
     const out = [];
 
+    // An instance of a library component whose library is not in the file: its component is missing, so the instance shows as missing.
+    for (const n of nodes.filter(x => x.isInstance && x.libRef && !byId.has(x.sourceId)))
+        out.push({ severity: 'warning', code: 'library-missing', node: n.name, nodeId: n.id, library: n.libRef.slice(0, n.libRef.indexOf(':')), message: `${n.name}: its library is not added to this file, so its component is missing.` });
+
     for (const m of masters) {
         const template = TEMPLATES.get(m.behavior.templateId);
         if (!template) continue;

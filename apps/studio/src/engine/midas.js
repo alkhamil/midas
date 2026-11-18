@@ -3,6 +3,7 @@ import { errorBoundaryHtml, guarded } from './errorBoundary.js';
 import { mountFloatingWindow } from './floatingWindow.js';
 import { moveStopKeys, gradientColorAt, BLEND_MODES, contrastRatio, wcagLevels, patternStepOf, patternCellOf, gradientStops, gradientReverse, gradientAddStop, gradientRemoveStop, gradientSetStop, colorFormats, colorFromFormat, documentColors, imageAdjustFilter, imageRotationOf, isGradientFill, patternTileOf, patternPhaseOf, patternSvgUrl, patternTileId, imageSvgUrl, gradientCss, remapFillKeys, moveFillKeys, shiftStopKeys, stopBindingKey, parseStopKey, fillParamType, parseCssColor, gradientHandlePoints, gradientHandleMove, cropZoomFor, cropRotateFor, patternLayout, videoPosterOf, PLACEHOLDER_IMAGE, PLACEHOLDER_IMAGE_ID, VIDEO_PENDING, IMAGE_PENDING, newlyShownImageProps, slotListOf, slotRefusal, slotRestricts, textWriteBacks, decorationLinesOf, pinnedFrame, markManagedContainers, rowsBounds, nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, ICONS_SECTION, defaultIconOf, roleIconsOf, iconRolesOf, iconNodes, planIcons, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, managedSlotLayer, managedPartLayer, planManagedTextBindings, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, previewStateOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, pathSegments, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, strokeAreaOf, strokeWithPaintLayer, gradientRaster, pictureExtent, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix, pathCurveBounds, pathContours, normalizeVectorGeometry } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
+import { cachedSnapshot, cacheSnapshot } from '../libraryCache.js';
 import { imageSlotRowHtml, slotRowHtml } from './slotRow.js';
 import { openPlay } from './play.js';
 import { startDesktop } from '../desktop/bridge.js';
@@ -14,7 +15,7 @@ import { kv, settings as localStore, projectStorage, auth, getSignedInUser, libr
 import { VAR_TYPES } from './varTypes.js';
 import { boot } from '../boot.js';
 import { AtlasPacker, marginFor, planLayer, resolveTileSet, placeInAtlas, tileQuad, fullQuad, hasDrawableArea, snapQuad, edgePadding, rasterMargin, placeQuad } from './atlasPacker.js';
-import { commitAffectsComponents, layerFlagsOf } from '@midas/builder-core';
+import { commitAffectsComponents, layerFlagsOf, snapshotPageOf, isLibraryPage, persistedPages, persistedDocumentOf, libraryVariablesOf, legacyLibraryProblem } from '@midas/builder-core';
 import { boundsIn, descendantsOf, effectBleed, planRasterRoots } from './rasterRoutes.js';
 import { applyGuideHost, clonedGuides, hostFrameAt, pointInBox, pruneGuides } from './guides.js';
 import { subtreeFrom } from './nodeIndex.js';
@@ -3987,6 +3988,7 @@ async function loadIntoEditor(data, id) {
     }
     catch { }
     lib.fileId = id;
+    libMountUsed(data).catch(e => console.warn("Mounting the libraries failed", e));
     try {
         await kvPut('last', id);
     }
@@ -7546,7 +7548,7 @@ class DocumentModel {
         activateDocumentTemplates(this.data.behavior);
         this.refresh();
     }
-    serialize() { return JSON.stringify({ ...this.data, format: 'midas', version: 1 }); }
+    serialize() { return JSON.stringify({ ...persistedDocumentOf(this.data), format: 'midas', version: 1 }); }
     // `partial`: some pages are still to come (a lazy open); phase 2 then runs per page (see assertPagesBehavior).
     static parse(text, { partial = false } = {}) {
         const g = DocumentModel.parseGen(text, partial);
@@ -7572,6 +7574,9 @@ class DocumentModel {
             throw new Error('This is not a supported Midas document.');
         // The data is checked against its own Custom templates; the registry is the open document's again afterwards (a document is adopted by loadIntoEditor).
         withDocumentTemplates(d.behavior, () => (partial ? assertPagesBehavior(d, d.pages.map(p => p.id)) : assertBehaviorData(d)));
+        // A file that holds a copied library page from the earlier format cannot be rebuilt here: it is refused, not repaired.
+        const libraryProblem = legacyLibraryProblem(d.pages ?? []);
+        if (libraryProblem) throw new Error(libraryProblem);
         assertPrototypeData(d, { complete: !partial });
         const all = new Set();
         let total = 0, donePages = 0;
@@ -9276,9 +9281,9 @@ async function save() {
             unindexedFile = null;
             lib.index.unshift(m);
         }
-        const changedPages = doc.data.pages.filter(p => !failedPages.has(p.id) && !lazyPages.has(p.id) && (p === doc.page || savedPageSigs.get(p.id) !== pageSig(p)));
+        const changedPages = persistedPages(doc.data.pages).filter(p => !failedPages.has(p.id) && !lazyPages.has(p.id) && (p === doc.page || savedPageSigs.get(p.id) !== pageSig(p)));
         for (const p of changedPages)
-            await projectStorage.saveActivePage(lib.fileId, doc.data, p);
+            await projectStorage.saveActivePage(lib.fileId, persistedDocumentOf(doc.data), p);
         for (const p of changedPages)
             savedPageSigs.set(p.id, pageSig(p));
         m.name = doc.data.name;
@@ -15594,9 +15599,9 @@ async function ensureThumb(n) {
 // ===== libraries: publish this file, use another file's components and variable collections =====
 // A published library is a versioned snapshot kept on the Midas server (/api/libraries), shared by the whole workspace;
 // its id is the id of the source file; each publish is a numbered version.
-// Files that add a library get its variable collections (tagged with libId) and can place its components: the main
-// component is copied once into a "Library · name" page of the file (every copied layer remembers its origin in
-// libRef), and placed components are ordinary instances of that copy. Updating a library re-syncs those copies in place.
+// Like Figma, a file refers to a library and does not copy its components: the library's snapshot is mounted in memory as a
+// library page (libMount, never saved), and an instance points at a layer of it by an id that depends on the library, not the file.
+// Updating a library mounts its new snapshot; removing it unmounts the page.
 const LIBS = { published: [], snaps: new Map(), use: null, useFile: null, open: new Set() };
 async function libsLoad(force = false) {
     if (!force && LIBS.useFile === lib.fileId && Date.now() - (LIBS.at || 0) < 1500)
@@ -15621,11 +15626,16 @@ async function libsLoad(force = false) {
 async function libSnap(id, fresh = false) {
     if (!fresh && LIBS.snaps.has(id))
         return LIBS.snaps.get(id);
+    // The server's snapshot when it answers (and is cached here); otherwise the last one this browser fetched.
     let snap = null;
     try {
         snap = await libraryApi.snapshot(id);
     }
     catch { }
+    if (snap)
+        cacheSnapshot(id, snap);
+    else
+        snap = await cachedSnapshot(id);
     if (snap)
         LIBS.snaps.set(id, snap);
     return snap;
@@ -16133,14 +16143,11 @@ function importIcons() {
     };
     input.click();
 }
+// The library's variables join the file in memory, tagged with the library (never saved with the file, see persistedDocumentOf).
 function libSyncVariables(snap) {
-    const store = varStore();
-    store.collections = store.collections.filter(c => c.libId !== snap.id);
-    store.items = store.items.filter(i => i.libId !== snap.id);
-    for (const c of snap.variables?.collections || [])
-        store.collections.push({ ...structuredClone(c), libId: snap.id });
-    for (const i of snap.variables?.items || [])
-        store.items.push({ ...structuredClone(i), libId: snap.id });
+    const store = varStore(), v = libraryVariablesOf(snap);
+    store.collections = store.collections.filter(c => c.libId !== snap.id).concat(v.collections);
+    store.items = store.items.filter(i => i.libId !== snap.id).concat(v.items);
     pruneBehaviorData(allNodes(), store.collections);
 }
 async function libUse(id, on) {
@@ -16154,114 +16161,60 @@ async function libUse(id, on) {
         }
         if (!LIBS.use.some(u => u.id === id))
             LIBS.use.push({ id, name: snap.name, version: snap.version });
-        transaction('Add library', () => { libSyncVariables(snap); doc.refresh(); });
+        transaction('Add library', () => libMount(snap));
         toast(`Library “${snap.name}” added. Its variables are available and its components are in Assets.`);
     }
     else {
         LIBS.use = LIBS.use.filter(u => u.id !== id);
-        toast('Library removed. Components and variables already used in this file stay.');
+        transaction('Remove library', () => {
+            const at = doc.data.pages.findIndex(p => isLibraryPage(p) && p.library.id === id);
+            if (at >= 0) {
+                for (const asset of doc.data.pages[at].library.assets)
+                    delete doc.data.assets[asset];
+                doc.data.pages.splice(at, 1);
+            }
+            const store = varStore();
+            store.collections = store.collections.filter(c => c.libId !== id);
+            store.items = store.items.filter(i => i.libId !== id);
+            doc.refresh();
+        });
+        toast('Library removed. Its components and variables are no longer available: instances of them stay in the file and show as missing.');
     }
     await libraryApi.setFileUses(lib.fileId, LIBS.use);
     renderAssets();
     renderInspector();
 }
-// Copy (or refresh) the main components of a library into this file. Layers are matched by libRef so ids, and with
-// them existing instances, survive an update.
-function libImportComponents(snap, onlyIds = null) {
-    const name = `Library · ${snap.name}`;
-    // Gambar/ikon SVG yang dipakai komponen library (id aset unik, jadi aman digabung).
+// ===== library components: the file holds references; the components come from the library's snapshot, in memory only =====
+// The page of a library's components, built from its snapshot (snapshotPageOf). It is never saved (persistedPages): an instance finds
+// its component again through the library id and the layer id, which do not depend on the file.
+function libPageOf(libId) {
+    return doc.data.pages.find(p => isLibraryPage(p) && p.library.id === libId) ?? null;
+}
+function libMount(snap) {
+    const page = snapshotPageOf(snap);
+    libSyncVariables(snap);
     for (const [id, url] of Object.entries(snap.assets || {}))
         if (!doc.data.assets[id])
             doc.data.assets[id] = url;
-    let page = doc.data.pages.find(p => p.name === name);
-    if (!page) {
-        page = { id: uid(), name, nodes: [], internal: true };
+    const at = doc.data.pages.findIndex(p => isLibraryPage(p) && p.library.id === snap.id);
+    if (at >= 0)
+        doc.data.pages.splice(at, 1, page);
+    else
         doc.data.pages.push(page);
-    }
-    page.internal = true; // the copies are working parts of the file, not pages to browse or edit
-    const byRef = new Map(page.nodes.filter(n => n.libRef).map(n => [n.libRef, n]));
-    let y = page.nodes.filter(n => !n.parentId).reduce((m, n) => Math.max(m, n.y + n.h), -80) + 80;
-    const idFor = new Map(), ordered = new Map();
-    for (const c of snap.components) {
-        ordered.set(c.id, snapshotNodesInOrder(c));
-        for (const n of c.nodes)
-            idFor.set(n.id, byRef.get(`${snap.id}:${n.id}`)?.id || uid());
-    }
-    const map = v => idFor.get(v) ?? v;
-    for (const c of snap.components) {
-        if (onlyIds && !onlyIds.has(c.id))
-            continue;
-        const keep = new Set();
-        for (const src of ordered.get(c.id)) {
-            const ref = `${snap.id}:${src.id}`, existing = byRef.get(ref), n = structuredClone(src);
-            n.id = map(src.id);
-            n.parentId = src.parentId ? map(src.parentId) : null;
-            for (const k of ['sourceId', 'swapOf'])
-                if (n[k] != null)
-                    n[k] = map(n[k]);
-            if (Array.isArray(n.exposedNested))
-                n.exposedNested = n.exposedNested.map(map);
-            // Instance-swap values (chosen on an instance, or the default / preferred ones of a property) are layer ids too.
-            if (n.propValues)
-                for (const [k, v] of Object.entries(n.propValues))
-                    if (typeof v === 'string' && idFor.has(v))
-                        n.propValues[k] = map(v);
-            if (Array.isArray(n.cprops))
-                n.cprops = remapCprops(n.cprops, idFor);
-            n.libRef = ref;
-            n.libVersion = snap.version;
-            if (!n.parentId && !existing) {
-                n.x = 0;
-                n.y = y;
-                y += n.h + 80;
-            }
-            else if (!n.parentId && existing) {
-                n.x = existing.x;
-                n.y = existing.y;
-            }
-            keep.add(n.id);
-            if (existing)
-                Object.assign(existing, n, { version: (existing.version || 0) + 1 });
-            else {
-                n.version = 0;
-                page.nodes.push(n);
-            }
-        }
-        // Layers copied by an earlier import take the order of the snapshot (the slots they occupy are reused).
-        const copies = ordered.get(c.id).map(s => byRef.get(`${snap.id}:${s.id}`)).filter(Boolean);
-        if (copies.length > 1) {
-            const at = new Map(page.nodes.map((x, i) => [x, i])), slots = copies.map(x => at.get(x)).filter(i => i !== undefined).sort((a, b) => a - b);
-            if (slots.length === copies.length)
-                copies.forEach((x, i) => { page.nodes[slots[i]] = x; });
-        }
-        // Layers that no longer exist in the library disappear from the copy.
-        page.nodes = page.nodes.filter(n => !(n.libRef?.startsWith(snap.id + ':') && c.nodes.some(o => map(o.id) === n.id) === false && byRef.has(n.libRef) && isInLibComp(n, c, snap, map) && !keep.has(n.id)));
-    }
     doc.refresh();
     return page;
 }
-function isInLibComp(n, c, snap, map) {
-    // an old layer belongs to component `c` when walking up its parents reaches c's root copy
-    const root = map(c.id), nodes = new Map(allNodes().map(x => [x.id, x]));
-    let cur = n, guard = 0;
-    while (cur && guard++ < 100) {
-        if (cur.id === root)
-            return true;
-        cur = nodes.get(cur.parentId);
-    }
-    return false;
+// The root of a library component in the mounted page, mounting the library first when the page is missing or of another version.
+function libMountedRoot(libId, snap, compId) {
+    const page = libPageOf(libId)?.library.version === snap.version ? libPageOf(libId) : libMount(snap);
+    return page.nodes.find(n => n.libRef === `${libId}:${compId}`) ?? null;
 }
-// The main component of a library component inside this file (imported when it is not there yet), or null.
+// The main component of a library component inside this file, or null.
 async function libLocalMain(libId, compId) {
     const snap = await libSnap(libId);
     if (!snap?.components.some(c => c.id === compId))
         return null;
-    let page = doc.data.pages.find(p => p.name === `Library · ${snap.name}`), root = page?.nodes.find(n => n.libRef === `${libId}:${compId}`);
-    const need = snapshotDependencies(snap, new Set([compId]));
-    if (!root || [...need].some(id => !page.nodes.some(n => n.libRef === `${libId}:${id}` && !n.parentId))) {
-        transaction('Import library component', () => { page = libImportComponents(snap, need); });
-        root = page.nodes.find(n => n.libRef === `${libId}:${compId}`);
-    }
+    const root = libMountedRoot(libId, snap, compId);
     return root?.componentSet ? defaultVariantOf(root) : root || null;
 }
 async function libInstantiate(libId, compId, at = null, parent = null) {
@@ -16271,15 +16224,21 @@ async function libInstantiate(libId, compId, at = null, parent = null) {
         toast('This library component is no longer available.');
         return;
     }
-    let page = doc.data.pages.find(p => p.name === `Library · ${snap.name}`), root = page?.nodes.find(n => n.libRef === `${libId}:${compId}`);
-    const need = snapshotDependencies(snap, new Set([compId]));
-    if (!root || [...need].some(id => !page.nodes.some(n => n.libRef === `${libId}:${id}` && !n.parentId))) {
-        transaction('Import library component', () => { page = libImportComponents(snap, need); });
-        root = page.nodes.find(n => n.libRef === `${libId}:${compId}`);
-    }
-    const main = root.componentSet ? defaultVariantOf(root) : root;
+    const root = libMountedRoot(libId, snap, compId);
+    const main = root?.componentSet ? defaultVariantOf(root) : root;
     if (main)
         instantiate(main.id, at, parent);
+}
+// The libraries a file uses are mounted from their snapshots when the file opens: the file itself holds only the references.
+async function libMountUsed(data) {
+    await libsLoad();
+    for (const u of LIBS.use) {
+        const snap = await libSnap(u.id);
+        if (snap && doc.data === data)
+            libMount(snap);
+    }
+    if (doc.data === data)
+        syncComponents(true);
 }
 async function libUpdate(libId) {
     if (!(await waitForAllPages())) return;
@@ -16287,10 +16246,7 @@ async function libUpdate(libId) {
     if (!snap)
         return;
     transaction('Update library', () => {
-        libSyncVariables(snap);
-        const page = doc.data.pages.find(p => p.name === `Library · ${snap.name}`);
-        if (page)
-            libImportComponents(snap, snapshotDependencies(snap, new Set(page.nodes.filter(n => n.libRef && !n.parentId).map(n => n.libRef.slice(libId.length + 1)))));
+        libMount(snap);
         for (const n of allNodes())
             if (n.libRef?.startsWith(libId + ':'))
                 doc.touch(n);
@@ -24033,6 +23989,8 @@ invalidate();
 // Dokumen starter (tidak ada file yang bisa dibuka) sengaja TIDAK langsung disimpan: ia baru dibuat di server saat pertama
 // kali diedit. Dulu setiap boot tanpa file menyimpan "Untitled" baru, sehingga file yang sudah dihapus tampak muncul lagi.
 // Explicit, inspectable automation surface. This is the same model and command path used by the UI.
+// A file opened at start is mounted with its libraries too (the boot path builds the document without loadIntoEditor).
+libMountUsed(doc.data).catch(e => console.warn('Mounting the libraries failed', e));
 window.midas = { thumbCache, ensureThumb, componentById, doc, history, state, renderer, actions, select, fit, setTool, setProperty, transaction, createAtCenter, insertAsset, instantiate, doExport, save, importDocument, importImage, exportSVG, render: invalidate, ready: true, version: '0.1.0' };
 
 $('#open-variables')?.addEventListener('click', () => toggleVarsWindow());

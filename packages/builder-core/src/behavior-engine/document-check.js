@@ -47,6 +47,9 @@ function checkPages(doc, arrived) {
         for (const n of page.nodes || []) {
             const isInstance = n.isInstance === true;
             const masterMissing = isInstance && !nodes.has(n.sourceId);
+            // An instance of a library component: the component is in the library, which mounts after the file opens (libraries are
+            // referenced, not copied), so its master is not in the file yet. It is checked when the library is mounted.
+            if (masterMissing && n.libRef) continue;
             if (!isArrived && !(isInstance && arrivedNodes.has(n.sourceId))) continue;
             if (arrived && masterMissing) continue; // deferred until the master's page arrives
             if (isInstance && n.behavior && 'props' in n.behavior) checkInstance(n, nodes, collections, page.name);

@@ -23,6 +23,7 @@
 ## Decisions
 
 - Fase 0 triage (2026-10-31): Button stroke/label/icon-slot/disabled code is done and tested; triage changed no product code.
+- Libraries are referenced like Figma, not copied: a file keeps `libRef`s, the library is mounted in memory from its snapshot (`libraryCopyId`, `snapshotPageOf`, `libMount`), never saved; snapshots cache in the browser (`libraryCache.js`). Variables and images are referenced the same way and never saved with the file (`persistedDocumentOf`); a missing library shows as `library-missing` (see `docs/behavior-spec.md` decision 7).
 - Baseline green: builder-core 842 tests, studio 53 tests, 0 failing. Button root owns a stroke bound to `border`; bound strokes never emit inline border props (`outline-color` is the focus ring only); testing.midas regenerates via `scripts/make-testing-file.js`.
 - Commit scope (`packages/builder-core/src/commit-scope.js`): a commit skips the component sync and its checks only when every change is a plain layer with whitelisted keys (`PLAIN_KEYS`); an edit whose keys are not known, undo/redo/paste/import, and any master, instance, boolean or flagged layer take the full path.
 - Input parity: the wrapper owns all box visuals and interaction states (`focusTarget: "wrapper"`, `:has()` selectors in codegen); the inner control owns text only. No per-component code in the engine.

@@ -8,7 +8,7 @@
 // → ConflictError (409).
 
 import { boot } from './boot.js';
-import { withDocumentTemplates, assertBehaviorData, assertBehaviorShape } from '@midas/builder-core';
+import { withDocumentTemplates, assertBehaviorData, assertBehaviorShape, persistedPages } from '@midas/builder-core';
 export { settings } from './legacyStorage.js';
 
 export class ApiError extends Error {
@@ -145,7 +145,7 @@ export const kv = {
 };
 
 function metaFor(fileId, docData) {
-    const pages = docData.pages || [];
+    const pages = persistedPages(docData.pages || []);
     const assetUrls = {};
     for (const [id, url] of Object.entries(docData.assets || {}))
         if (typeof url === 'string' && !url.startsWith('data:') && !isServerAsset(fileId, url)) assetUrls[id] = url;
@@ -261,7 +261,7 @@ export const projectStorage = {
 
     // Simpan dokumen utuh sebagai file baru (import, duplikat). File yang sudah ada disimpan per page.
     async saveProject(fileId, docData, { onProgress } = {}) {
-        const pages = docData.pages || [];
+        const pages = persistedPages(docData.pages || []);
         try {
             const res = await api('POST', '/api/files/import', { id: fileId, data: { ...docData, pages, created: docData.created || Date.now() } });
             fileVersions.set(fileId, res.version);
