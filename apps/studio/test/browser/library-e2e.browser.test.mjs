@@ -1,6 +1,7 @@
-// A library is referenced, not copied (like Figma). A source file's Button is published through the server, another file uses the library,
-// places an instance, saves, and reopens: the instance still finds its component, and no "Library · …" page is written to the server. With the
-// server cut off, the same file renders from the snapshot this browser cached.
+// A library is referenced, not copied (like Figma). A source file's Button, a colour variable and an image are published through the
+// server; another file uses the library and places an instance of the Button. The tests check that the file saves no library page,
+// variable or image, that the instance resolves again after reopen and offline (from this browser's cache), and that removing the
+// library unmounts it while the instance stays and points at the missing component.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync } from 'node:fs';
@@ -27,20 +28,24 @@ function snapshotOf(path, components) {
     return { components: comps, variables: { collections: [], items: [] }, assets: {} };
 }
 
-test('a library is referenced: published, used by another file, saved without its pages, and resolved after reopen and offline', async t => {
-    const stop = await ensureDevServers();
-    t.after(stop);
-    mkdirSync(ARTIFACTS, { recursive: true });
-    const browser = await launchBrowser();
-    t.after(() => browser.close());
+/** The node with this id on any page of the open file, or null. */
+const nodeWith = (page, id) => page.evaluate(id => window.midas.doc.data.pages.flatMap(p => p.nodes).find(n => n.id === id) ?? null, id);
 
-    // The source file: its Button and the default icon are the library.
+/**
+ * A source file publishes its Button, a colour variable and an image as a library; a second file uses it and places an instance of the
+ * Button. Returns the consumer page and the ids the tests need.
+ */
+async function publishAndPlace(browser) {
     const srcPath = isolatedStage({ name: 'library-source.midas' });
     const src = await openImportedFile(browser, srcPath, { dpr: 1 });
     const srcId = fileIdOf(src.page);
     // The library also brings a colour variable and an image: both join the file in memory only.
     const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
-    const snapshot = { ...snapshotOf(srcPath, ['btn', 'icon-check']), assets: { 'lib-img': 'data:image/png;base64,' + PNG }, variables: { collections: [{ id: 'lib-coll', name: 'Library colours', modes: [{ id: 'm', name: 'Light' }] }], items: [{ id: 'lib-red', collectionId: 'lib-coll', name: 'red', type: 'color', values: { m: '#ff0000ff' } }] } };
+    const snapshot = {
+        ...snapshotOf(srcPath, ['btn', 'icon-check']),
+        assets: { 'lib-img': 'data:image/png;base64,' + PNG },
+        variables: { collections: [{ id: 'lib-coll', name: 'Library colours', modes: [{ id: 'm', name: 'Light' }] }], items: [{ id: 'lib-red', collectionId: 'lib-coll', name: 'red', type: 'color', values: { m: '#ff0000ff' } }] },
+    };
     const published = await src.page.request.post(`${API_URL}/api/libraries/${srcId}/versions`, {
         data: { name: 'Source library', snapshot, componentKeys: ['btn', 'icon-check'] },
     });
@@ -48,7 +53,6 @@ test('a library is referenced: published, used by another file, saved without it
     // One page at a time: the server keeps the last file open, so the source page must not write it again.
     await src.page.context().close();
 
-    // The consumer file: it uses the library and places an instance of its Button.
     const dst = await openImportedFile(browser, isolatedStage({ name: 'library-consumer.midas' }), { dpr: 1 });
     const dstId = fileIdOf(dst.page);
     const page = dst.page;
@@ -58,7 +62,7 @@ test('a library is referenced: published, used by another file, saved without it
     await page.waitForFunction(() => window.midas?.doc?.data?.pages?.some(p => p.library), null, { timeout: 30000 });
 
     const copyId = libraryCopyId(srcId, 'btn');
-    assert.equal(await page.evaluate(id => window.midas.doc.data.pages.flatMap(p => p.nodes).find(n => n.id === id)?.name, copyId), 'Button', 'the library page holds the Button');
+    assert.equal((await nodeWith(page, copyId))?.name, 'Button', 'the library page holds the Button');
 
     const instId = await page.evaluate(async cid => {
         window.midas.instantiate(cid);
@@ -66,14 +70,23 @@ test('a library is referenced: published, used by another file, saved without it
         return inst?.id ?? null;
     }, copyId);
     assert.ok(instId, 'an instance of the library Button is placed in the file');
+    return { page, srcId, dstId, copyId, instId };
+}
+
+test('a library is referenced: published, used by another file, saved without its pages, and resolved after reopen and offline', async t => {
+    const stop = await ensureDevServers();
+    t.after(stop);
+    mkdirSync(ARTIFACTS, { recursive: true });
+    const browser = await launchBrowser();
+    t.after(() => browser.close());
+    const { page, dstId, copyId, instId } = await publishAndPlace(browser);
 
     await page.evaluate(() => window.midas.save());
     await page.waitForFunction(() => document.querySelector('#save-indicator')?.textContent.includes('Saved'), null, { timeout: 30000 });
-    const meta = await (await page.request.get(`${API_URL}/api/files/${dstId}`)).json();
-    const pageNames = (meta.file?.meta?.pageMeta ?? []).map(p => p.name);
+    const saved = await (await page.request.get(`${API_URL}/api/files/${dstId}`)).json();
+    const pageNames = (saved.file.meta.pageMeta ?? []).map(p => p.name);
     assert.ok(pageNames.length > 0, 'the file has pages on the server');
     assert.deepEqual(pageNames.filter(n => n.startsWith('Library · ')), [], 'no library page is written to the server');
-    const saved = await (await page.request.get(`${API_URL}/api/files/${dstId}`)).json();
     assert.deepEqual((saved.file.meta.variables?.items ?? []).filter(i => i.libId || i.id === 'lib-red'), [], 'no library variable is saved');
     assert.equal(JSON.stringify(saved.file.meta.assetUrls ?? {}).includes('lib-img'), false, 'no library image is saved');
     const uploaded = await (await page.request.get(`${API_URL}/api/files/${dstId}/assets`)).text();
@@ -82,9 +95,8 @@ test('a library is referenced: published, used by another file, saved without it
     // Reopen: the instance still resolves to the library's component, from the mounted snapshot.
     await page.reload();
     await page.waitForFunction(() => window.midas?.doc?.data?.pages?.some(p => p.library), null, { timeout: 30000 });
-    const after = await page.evaluate(([iid, cid]) => ({ sourceId: window.midas.doc.data.pages.flatMap(p => p.nodes).find(n => n.id === iid)?.sourceId ?? null, component: !!window.midas.doc.data.pages.flatMap(p => p.nodes).find(n => n.id === cid) }), [instId, copyId]);
-    assert.equal(after.sourceId, copyId, 'the instance keeps its reference to the library layer');
-    assert.equal(after.component, true, 'the library component is mounted again');
+    assert.equal((await nodeWith(page, instId))?.sourceId, copyId, 'the instance keeps its reference to the library layer');
+    assert.ok(await nodeWith(page, copyId), 'the library component is mounted again');
     assert.equal(await page.evaluate(() => window.midas.doc.data.variables.items.some(i => i.id === 'lib-red' && i.libId)), true, 'the library variable is in the file, read-only');
     assert.equal(await page.evaluate(() => !!window.midas.doc.data.assets['lib-img']), true, 'the library image is in the file, from its snapshot');
 
@@ -92,7 +104,31 @@ test('a library is referenced: published, used by another file, saved without it
     await page.route(/\/api\/libraries\/[^/]+\/snapshot/, route => route.abort());
     await page.reload();
     await page.waitForFunction(() => window.midas?.doc?.data?.pages?.some(p => p.library), null, { timeout: 30000 });
-    const offline = await page.evaluate(([iid, cid]) => ({ sourceId: window.midas.doc.data.pages.flatMap(p => p.nodes).find(n => n.id === iid)?.sourceId ?? null, component: !!window.midas.doc.data.pages.flatMap(p => p.nodes).find(n => n.id === cid) }), [instId, copyId]);
-    assert.equal(offline.sourceId, copyId, 'the instance is still there offline');
-    assert.equal(offline.component, true, 'the library renders offline from the cached snapshot');
+    assert.equal((await nodeWith(page, instId))?.sourceId, copyId, 'the instance is still there offline');
+    assert.ok(await nodeWith(page, copyId), 'the library renders offline from the cached snapshot');
+});
+
+test('removing a library unmounts it: its variables and image go, and its instance stays pointing at the missing component', async t => {
+    const stop = await ensureDevServers();
+    t.after(stop);
+    mkdirSync(ARTIFACTS, { recursive: true });
+    const browser = await launchBrowser();
+    t.after(() => browser.close());
+    const { page, dstId, srcId, copyId, instId } = await publishAndPlace(browser);
+
+    // The Assets panel's toggle removes the library the file uses.
+    await page.locator('[data-rail="assets"]').click();
+    // The removal is saved to the server (its uses) as the click lands: wait for that request, not a delay.
+    await Promise.all([
+        page.waitForResponse(r => r.request().method() === 'PUT' && r.url().endsWith(`/api/files/${dstId}/libraries`)),
+        page.locator(`[data-lib-toggle="${srcId}"]`).first().click(),
+    ]);
+    await page.waitForFunction(() => !window.midas.doc.data.pages.some(p => p.library), null, { timeout: 15000 });
+
+    assert.equal(await page.evaluate(() => window.midas.doc.data.variables.items.some(i => i.libId)), false, 'the library variables are gone');
+    assert.equal(await page.evaluate(() => Object.keys(window.midas.doc.data.assets).includes('lib-img')), false, 'the library image is gone');
+    assert.equal((await nodeWith(page, instId))?.sourceId, copyId, 'the instance stays in the file, still pointing at the library layer');
+    assert.equal(await nodeWith(page, copyId), null, 'its component is no longer in the file');
+    const uses = await (await page.request.get(`${API_URL}/api/files/${dstId}/libraries`)).json();
+    assert.deepEqual(uses.libraries, [], 'the file no longer uses the library on the server');
 });

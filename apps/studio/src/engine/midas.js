@@ -4140,6 +4140,15 @@ async function libImportFile(file) {
         hideBusy();
     }
 }
+// A copy of a file uses the same libraries as the file it copies: the uses are the server's record of the file, not part of its data.
+async function libCopyUses(fromId, toId) {
+    try {
+        const uses = await libraryApi.fileUses(fromId);
+        if (uses.length)
+            await libraryApi.setFileUses(toId, uses);
+    }
+    catch { }
+}
 async function libDuplicate(id) {
     const meta = lib.index.find(m => m.id === id);
     if (!meta)
@@ -4151,6 +4160,7 @@ async function libDuplicate(id) {
     data.name = `${meta.name} copy`;
     data.id = nid;
     await projectStorage.saveProject(nid, data);
+    await libCopyUses(id, nid);
     lib.index.unshift({ ...meta, id: nid, name: data.name, created: now, updated: now, opened: now, trashed: undefined });
     await libSaveIndex();
     renderHome();
@@ -9342,6 +9352,7 @@ async function resolveConflict() {
             const data = JSON.parse(doc.serialize()), id = uid(), now = Date.now();
             data.name = `${doc.data.name} (copy)`;
             await projectStorage.saveProject(id, data);
+            await libCopyUses(lib.fileId, id);
             lib.index.unshift({ id, name: data.name, created: now, updated: now, opened: now, thumb: null });
             await loadIntoEditor(DocumentModel.parse(data), id);
             libSaveIndex().catch(() => { });
@@ -15475,7 +15486,8 @@ function detachOrphans(activeOnly = true) {
             allIds.add(n.id);
     for (const page of targetPages)
         for (const n of page.nodes)
-            if (n.sourceId && !allIds.has(n.sourceId)) {
+            // An instance of a library component whose library is not mounted is missing, not an orphan: it keeps its reference (libRef).
+            if (n.sourceId && !n.libRef && !allIds.has(n.sourceId)) {
                 delete n.sourceId;
                 delete n.isInstance;
                 delete n.overrides;
