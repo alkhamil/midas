@@ -1,6 +1,6 @@
 # Midas Roadmap
 
-Diperbarui 2026-11-17 dari kondisi kode (`AGENTS.md`, `docs/behavior-spec.md`, `docs/slots.md`, `docs/prototype-spec.md`, `docs/rust-plan.md`). Kalau ada yang beda, dokumen-dokumen itu yang menang.
+Diperbarui 2026-11-18 dari kondisi kode (`AGENTS.md`, `docs/behavior-spec.md`, `docs/slots.md`, `docs/prototype-spec.md`, `docs/rust-plan.md`). Kalau ada yang beda, dokumen-dokumen itu yang menang.
 
 Urutan fase: **0 → 1 → 2 → 3 → 4**. Fase berikutnya baru mulai kalau exit criteria fase sebelumnya terpenuhi.
 
@@ -28,13 +28,12 @@ Tujuan: fondasi Button bersih, supaya component lain tidak mewarisi bug.
 - [x] Fix icon slot: fill slot, gap default 16, icon tampil di Play, picker start/end untuk `both`
 - [x] Disabled state tidak mewarisi hover/pressed/focus
 - [x] Bikin `AGENTS.md` awal: Decisions, Code map, Known issues, Antrean
-- [ ] Push branch `feat/fahmi` (butuh instruksi eksplisit; sudah merge PR #11)
+- [x] Push branch `feat/fahmi` (sudah ada di origin)
 - [x] Catat known issue: test `selColorSwatch` gagal (pre-existing) — basi, tidak ada di repo (triase 2026-10-31)
 
 Triase 2026-10-31 (baseline: builder-core 642 lulus, studio 43 lulus, 0 gagal). Baseline terakhir di `AGENTS.md`: builder-core 842, studio 53, 0 gagal.
-Sisa exit Fase 0: verifikasi manual di browser belum dilakukan.
 
-**Exit:** Button outlined/solid/dashed tampil benar di canvas, Play, dan codegen. **Belum terpenuhi**: kodenya ada, verifikasi browser belum.
+**Exit:** Button outlined/solid/dashed tampil benar di canvas, Play, dan codegen. **Terpenuhi** (dikonfirmasi user 2026-11-18).
 
 ---
 
@@ -46,11 +45,12 @@ Referensi struktur: `D:\antd-ref\components\<nama>` (read-only).
 
 | Batch | Component | Status |
 |---|---|---|
-| 1 | Input | ✅ kode selesai 2026-10-31 (kind `control`, variant, status, size, prefix/suffix, allowClear, showCount, managed text). Single-line. Browser belum (lihat `docs/input-managed-text.md`). |
-| 2 | Checkbox, Radio, Switch | Kode dan template ada (`AGENTS.md`). Radio.Group masih Tier 3, belum. Browser belum. |
-| 3 | Tag, Alert | Kode dan template ada. Alert punya slot icon, close, action, dan Banner. Browser belum. |
-| 2a (tambahan) | Badge, Card, Divider, Avatar, Text, Title, Paragraph, Link, Icon Button, FormItem, List | Kode ada (registry dan template). Badge corner count belum dibuat. Browser belum untuk sebagian besar. |
-| 4+ | Select, TextField, Textarea, Modal, Tabs, Table, dll. | Belum mulai. Template Select belum ada, jadi `accepts` FormItem hanya `input`. Daftar lengkap ada di `docs/specs/web-components.md`. |
+| 1 | Input (kind `text`, `password`, `textarea`) | ✅ Kode selesai. Text dan Password single-line; Textarea (kind `textarea`) multi-line. Browser: lihat `docs/input-managed-text.md`. |
+| 2 | Checkbox, Radio, Switch | ✅ Kode dan template ada. Radio.Group belum dibuat (Tier 3). |
+| 3 | Tag, Alert | ✅ Kode dan template ada. Alert punya slot icon, close, action, dan Banner. |
+| 2a (tambahan) | Badge, Card, Divider, Avatar, Text, Title, Paragraph, Link, Icon Button, FormItem, List, InputNumber | ✅ Kode ada (registry dan template). Badge corner count belum dibuat. |
+| 4 | Spin, Empty, Search Field | ✅ Kode dan test unit ada (2026-11-18). Browser belum dicek. |
+| 5+ | Select, Dialog, Tabs, Table, Pagination, Radio.Group, dll. | ❌ Belum ada template. Daftar lengkap dan urutan ada di `docs/specs/web-components.md` (P1 dulu). |
 
 Per component, selesai kalau:
 - [ ] Schema JSON (collections, persistent props, slots, features)
@@ -64,7 +64,7 @@ Per component, selesai kalau:
 
 Catatan: Input (batch 1) memenuhi semua item kode di atas. Item browser tetap terbuka untuk semua component.
 
-**Exit:** semua component di daftar punya template yang jalan di canvas, Play, dan codegen. **Belum terpenuhi**: batch 4+ belum ada, dan verifikasi browser belum dilakukan.
+**Exit:** semua component P1 di `docs/specs/web-components.md` punya template yang jalan di canvas, Play, dan codegen. **Belum terpenuhi**: component P1 yang belum ada (Select, Search Field, Table, Dialog, Tabs, dan lainnya, lihat batch 4+).
 
 ---
 

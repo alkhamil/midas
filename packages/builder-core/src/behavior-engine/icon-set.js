@@ -47,6 +47,8 @@ export const ICON_SET = [
     { name: 'setting', role: 'setting', closed: true, fillRule: 'evenodd', points: GEAR_POINTS, contours: [dot(12, 12, 3.5)] },
     { name: 'edit', role: 'edit', closed: true, points: [{ x: 3, y: 21 }, { x: 3, y: 16.2 }, { x: 15.6, y: 3.6 }, { x: 20.4, y: 8.4 }, { x: 7.8, y: 21 }] },
     { name: 'ellipsis', role: 'ellipsis', closed: true, points: dot(5, 12, 2).points, contours: [dot(12, 12, 2), dot(19, 12, 2)] },
+    // The magnifier: a ring (outer radius 7, the hole 5 about the centre) and its handle, which starts clear of the ring's outer edge.
+    { name: 'search', role: 'search', closed: true, fillRule: 'evenodd', points: dot(11, 11, 7).points, contours: [dot(11, 11, 5), { points: [{ x: 16.94, y: 15.24 }, { x: 21.85, y: 20.15 }, { x: 20.15, y: 21.85 }, { x: 15.24, y: 16.94 }], closed: true }] },
     // The solar eye glyph (CC BY 4.0), converted losslessly: every sub-path with its handles, the even-odd fill rule.
     {
         name: 'eye', role: 'eyeOn', closed: true, fillRule: 'evenodd',
