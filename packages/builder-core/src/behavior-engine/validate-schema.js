@@ -163,7 +163,9 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
             if (slot.managed && slot.shownWhen === undefined) out.push(`frame slot "${slot.id}" is managed but unconditional: a managed container names when it shows`);
             // A container that holds nothing is a drawn box when the display maps it (a Switch's handle).
             const holdsContent = (Array.isArray(schema.slots) ? schema.slots : []).some(c => isPlainObject(c) && c.parent === slot.id);
-            if (!anatomy.some(c => isPlainObject(c) && c.parent === slot.id) && !holdsContent && !drawnBox(schema, slot.id)) out.push(`frame slot "${slot.id}" holds no slot`);
+            // A container holds slots or parts (a Spin's ring holder turns its arcs, which are parts).
+            const holdsPart = (Array.isArray(schema.parts) ? schema.parts : []).some(p => isPlainObject(p) && p.parent === slot.id);
+            if (!anatomy.some(c => isPlainObject(c) && c.parent === slot.id) && !holdsPart && !holdsContent && !drawnBox(schema, slot.id)) out.push(`frame slot "${slot.id}" holds no slot`);
         }
         if (slot.parent !== undefined) {
             const holder = anatomy.find(c => isPlainObject(c) && c.id === slot.parent);

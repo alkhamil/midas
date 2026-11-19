@@ -95,6 +95,8 @@ A component with a Size variable that holds an instance in a slot, where that ne
 
 ## Status
 
+2026-11-19 (Spin rings): Type has seven values now (dots, arc, and five rings from SpinThatShit). Loaders 06 to 12 are not done yet. Builder-core 2723 tests, studio 7 known failures.
+
 2026-11-19 (Read only): read only is an inert state with its own tokens, not the disabled attribute; only the value text stays `fg`. Builder-core 2719 lulus; studio: the 7 known failures. Canvas and Play match (probe). Statistic browser parity passes.
 
 2026-11-19 (List): List is parked until ListItem is built; its browser parity case needs a filled item. Next: ListItem.

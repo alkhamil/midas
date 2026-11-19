@@ -22,7 +22,7 @@ test('Spin is registered, valid, with Color, Size, spinning and Type (dots or ar
     assert.deepEqual(Object.keys(spin.props).sort(), ['color', 'size', 'spinning', 'type']);
     assert.deepEqual(spin.props.color.modes, COLOR_PRESETS);
     assert.deepEqual(spin.props.size.modes, SIZE_MODES);
-    assert.deepEqual(spin.props.type.options, ['dots', 'arc']);
+    assert.deepEqual(spin.props.type.options, ['dots', 'arc', 'ring', 'ringTwo', 'ringDot', 'ringGap', 'ringScale']);
     assert.equal(spin.props.type.default, 'dots', 'dots is antd\'s default indicator');
     assert.equal(spin.props.spinning.default, true);
     assert.ok(!spin.element.disabledState, 'a status element has no disabled state');
@@ -65,7 +65,7 @@ test('the export draws the dots for the dots type and the arc for the arc type',
 
 test('the geometry is antd\'s: the holder is 14, 20 or 32 by Size (small, default, large), each dot (holder - 2) / 2, the gap 2', () => {
     const role = token => spin.tokenRoles[token];
-    assert.deepEqual(role('dotBox'), { xs: 'space-14', sm: 'space-14', md: 'space-20', lg: 'space-32', xl: 'space-32', default: 'space-20' });
+    assert.deepEqual(role('boxSize'), { xs: 'space-14', sm: 'space-14', md: 'space-20', lg: 'space-32', xl: 'space-32', default: 'space-20' });
     assert.deepEqual(role('dotSize'), { xs: 'space-6', sm: 'space-6', md: 'space-9', lg: 'space-15', xl: 'space-15', default: 'space-9' });
     assert.equal(role('dotGap'), 'space-2');
 });

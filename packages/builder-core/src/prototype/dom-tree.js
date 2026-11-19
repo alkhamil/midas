@@ -17,7 +17,7 @@ import { resolveMode } from '../behavior-engine/modes.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { previewOf } from '../behavior-engine/preview.js';
 import { overrideStyleOf } from './node-overrides.js';
-import { componentNameOf, generateComponent, pulseAnimation, SPIN_ANIMATION, spinAnimation } from '../behavior-engine/codegen.js';
+import { componentNameOf, generateComponent, pulseAnimation, scaleAnimation, SPIN_ANIMATION, spinAnimation } from '../behavior-engine/codegen.js';
 import { controlOf, iconDefOn, placementsOfDef, primarySlotOf, slotDefsOf, swapDefsOf } from '../behavior-engine/anatomy.js';
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf, rootClassWidth } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
@@ -368,6 +368,7 @@ function renderTemplate(n, template, parent, scope) {
             if (!el) continue;
             if (part.spin) el.style.animation = SPIN_ANIMATION;
             if (part.pulse) el.style.animation = pulseAnimation(part.pulse.delayMs);
+            if (part.scale) el.style.animation = scaleAnimation(part.scale.delayMs);
             out.push(el);
         }
     };
@@ -477,6 +478,7 @@ function renderTemplate(n, template, parent, scope) {
             if (!el) continue;
             if (part.spin) el.style.animation = SPIN_ANIMATION;
             if (part.pulse) el.style.animation = pulseAnimation(part.pulse.delayMs);
+            if (part.scale) el.style.animation = scaleAnimation(part.scale.delayMs);
             inner.push(el);
         }
         // A content slot the container holds is drawn in it, after its anatomy layers.

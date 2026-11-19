@@ -53,6 +53,9 @@ export const SPIN_ANIMATION = `${SPIN_KEYFRAMES} 1s linear infinite`;
 export const spinAnimation = spin => (typeof spin === 'object' ? `${SPIN_KEYFRAMES} ${spin.seconds}s linear infinite` : SPIN_ANIMATION);
 /** A dot of a spinner pulses its opacity (antd's dot-pulse, scale fixed at 0.75): the keyframes are in the stylesheet of a template with such a part; each dot starts `delayMs` after the first. */
 export const PULSE_KEYFRAMES = 'midas-pulse';
+/** A ring of a spinner scales up and fades out (antd-free: the SpinThatShit ring), `delayMs` after the first. Keyframes in the stylesheet of a template with such a part. */
+export const SCALE_KEYFRAMES = 'midas-scale';
+export const scaleAnimation = delayMs => `${SCALE_KEYFRAMES} 1s ease-out ${delayMs}ms infinite`;
 export const pulseAnimation = delayMs => `${PULSE_KEYFRAMES} 1s linear ${delayMs}ms infinite alternate`;
 
 /** The DOM handler each schema event is written to. */
@@ -1310,6 +1313,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     for (const [state, def] of Object.entries(template.persistentStates)) if (def.hide === true) blocks.push(`.${template.id}${template.statePseudo[state]} {\n  display: none;\n}\n`);
     blocks.push(...iconHoverRules(template), ...blockedRules(template), ...swapRules(template));
     if (template.parts?.some(part => part.spin) || template.anatomy?.some(slot => slot.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
+    if (template.parts?.some(part => part.scale)) blocks.push(`@keyframes ${SCALE_KEYFRAMES} {\n  0% { transform: scale(0); opacity: 0; }\n  50% { opacity: 1; }\n  100% { transform: scale(1); opacity: 0; }\n}\n`);
     if (template.parts?.some(part => part.pulse)) blocks.push(`@keyframes ${PULSE_KEYFRAMES} {\n  from { opacity: 0.3; transform: scale(0.75); }\n  to { opacity: 1; transform: scale(0.75); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
     blocks.push(...expandRules(template), ...pressRules(template), ...glyphHoverRules(template), ...fieldRules(template, master, childrenOf), ...gradientPatternRules(template, master, childrenOf), ...fillOverrideRules(template), ...cursorRules(template), ...multilineRules(template), ...revealRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
