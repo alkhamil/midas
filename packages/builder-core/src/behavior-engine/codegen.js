@@ -1136,13 +1136,17 @@ function groupRules(template, master, childrenOf) {
         if (node.vars?.w !== undefined) delete sizing.width;
         if (node.vars?.h !== undefined) delete sizing.height;
         // Padding and gap a display token maps are the token's: the layer's own fallback numbers would be written after it and win.
-        const layout = flexOf(node, 0);
+        // A frame that stacks its layers (layout none) is a grid of one cell: every layer takes the same cell, so they overlap.
+        const layout = node.layout === 'none' ? { display: 'grid' } : flexOf(node, 0);
         const mapped = template.display[slot.id] ?? {};
         if (mapped.paddingX !== undefined || mapped.paddingY !== undefined) delete layout.padding;
         if (mapped.gap !== undefined) { delete layout.columnGap; delete layout.rowGap; }
         return `.${template.id}-${slot.id} {
 ${cssDecls({ ...layout, ...sizing }).join('')}}
-`;
+${node.layout === 'none' ? `.${template.id}-${slot.id} > * {
+  grid-area: 1 / 1;
+}
+` : ''}`;
     });
 }
 

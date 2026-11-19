@@ -156,7 +156,8 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
         seen.add(slot.id);
         if (!['text', 'control', 'icon', 'frame', 'glyph', 'line'].includes(slot.kind)) out.push(`anatomy slot "${slot.id}" has unknown kind "${slot.kind}"`);
         if (slot.kind === 'frame') {
-            if (slot.layout !== 'horizontal' && slot.layout !== 'vertical') out.push(`frame slot "${slot.id}" layout must be horizontal or vertical`);
+            // A frame may stack its layers (layout none): they overlap, each at the frame's corner (a Spin's ring holder).
+            if (slot.layout !== 'horizontal' && slot.layout !== 'vertical' && slot.layout !== 'none') out.push(`frame slot "${slot.id}" layout must be horizontal, vertical or none`);
             if (slot.optional) out.push(`frame slot "${slot.id}" cannot be optional`);
             if (slot.edge !== undefined && (slot.edge !== 'right' || slot.parent !== undefined)) out.push(`frame slot "${slot.id}" edge must be right, on a container of the box itself`);
             if (slot.strokeSides !== undefined && !['left', 'top', 'right', 'bottom'].includes(slot.strokeSides)) out.push(`frame slot "${slot.id}" strokeSides must be left, top, right or bottom`);

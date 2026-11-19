@@ -22,7 +22,7 @@ const DOT_RING = ON('ringDot');
 const GAP_RING = ON('ringGap');
 const SCALE_RING = ON('ringScale');
 /** The holder of the rings whose parts turn together (two arcs, a head on a track, a gap). */
-const RING_BOX = { all: [SPINNING, { any: [TYPE('ringTwo'), TYPE('ringDot'), TYPE('ringGap')] }] };
+const RING_BOX = { all: [SPINNING, { any: [TYPE('ring'), TYPE('ringTwo'), TYPE('ringDot'), TYPE('ringGap')] }] };
 /** antd's holder turns in 1.2 seconds; the SpinThatShit loaders turn in one. */
 const HOLDER_SPIN = { seconds: 1.2 };
 const RING_SPIN = { seconds: 1 };
@@ -46,7 +46,7 @@ export const SPIN = {
         { id: 'dotBox', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center', managed: true, shownWhen: DOTS, spin: HOLDER_SPIN },
         { id: 'dotCol1', kind: 'frame', parent: 'dotBox', layout: 'vertical', primaryAlign: 'start', counterAlign: 'center', managed: true, shownWhen: DOTS },
         { id: 'dotCol2', kind: 'frame', parent: 'dotBox', layout: 'vertical', primaryAlign: 'start', counterAlign: 'center', managed: true, shownWhen: DOTS },
-        { id: 'ringBox', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center', managed: true, shownWhen: RING_BOX, spin: RING_SPIN },
+        { id: 'ringBox', kind: 'frame', layout: 'none', managed: true, shownWhen: RING_BOX, spin: RING_SPIN },
     ],
     icons: [],
     rootLayout: 'horizontal',
@@ -85,8 +85,8 @@ export const SPIN = {
         { id: 'spinner', kind: 'frame', shownWhen: ARC, spin: true, tokens: { colour: 'fg', disabledColour: 'fg', size: 'iconSize' }, arc: { size: 14, start: -90, sweep: 25, ratio: 75, width: 1.5 } },
         ...DOT_PARTS.map((id, i) => ({ id, kind: 'frame', parent: i < 2 ? 'dotCol1' : 'dotCol2', shownWhen: DOTS, pulse: { delayMs: i * 400 } })),
         // Ring: a track, and a head that turns over it.
-        ring('ringTrack', 'ring-track', 0, 100, RING),
-        ring('ringHead', 'fg', -90, 25, RING, { spin: true }),
+        ring('ringTrack', 'ring-track', 0, 100, RING, { parent: 'ringBox' }),
+        ring('ringHead', 'fg', -90, 25, RING, { parent: 'ringBox' }),
         // Two arcs: a top and a bottom one, turning together in the holder.
         ring('ringTop', 'fg', -135, 25, TWO_ARCS, { parent: 'ringBox' }),
         ring('ringBottom', 'fg', 45, 25, TWO_ARCS, { parent: 'ringBox' }),

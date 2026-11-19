@@ -23,7 +23,7 @@ test('the ring holder holds the parts that turn together, and only for the holde
     assert.ok(keysOf({ type: 'ringTwo' }).includes('ringBox'));
     assert.ok(keysOf({ type: 'ringDot' }).includes('ringBox'));
     assert.ok(keysOf({ type: 'ringGap' }).includes('ringBox'));
-    assert.ok(!keysOf({ type: 'ring' }).includes('ringBox'), 'the ring turns its own head');
+    assert.ok(keysOf({ type: 'ring' }).includes('ringBox'), 'the ring stacks its track and head in the holder, which turns');
     assert.ok(!keysOf({ type: 'ringScale' }).includes('ringBox'));
     assert.deepEqual(spin.anatomy.find(s => s.id === 'ringBox').spin, { seconds: 1 });
 });

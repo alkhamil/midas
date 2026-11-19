@@ -41,7 +41,7 @@ const problems = anatomy => validateTemplateSchema(withAnatomy(anatomy)).join('\
 test('the validator holds a container to its rules: a layout, children that name it, one level of nesting, and a required text inside or beside it', () => {
     assert.deepEqual(validateTemplateSchema(BOXED), []);
     const [box, mark, label] = BOXED.anatomy;
-    assert.match(problems([{ ...box, layout: undefined }, mark, label]), /frame slot "labelBox" layout must be horizontal or vertical/);
+    assert.match(problems([{ ...box, layout: "bogus" }, mark, label]), /frame slot "labelBox" layout must be horizontal, vertical or none/);
     assert.match(problems([box, { ...mark, parent: 'nope' }, label]), /anatomy slot "requiredMark" has the parent "nope", which is not a frame slot/);
     assert.match(problems([box, mark, { ...label, parent: 'label' }]), /anatomy slot "label" has the parent "label", which is not a frame slot/);
     // Containers nest one level (the handler column holds its halves), never two.
