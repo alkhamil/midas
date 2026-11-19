@@ -20,7 +20,7 @@ const px = v => {
 };
 
 const sw = TEMPLATES.get('switch');
-const EXPECT = { default: { min: 44, h: 22, handle: 18 }, small: { min: 28, h: 16, handle: 12 } };
+const EXPECT = { md: { min: 44, h: 22, handle: 18 }, xs: { min: 28, h: 16, handle: 12 } };
 
 function modesOf(model, size) {
     return Object.fromEntries(Object.entries(model.binding.variables).map(([prop, cid]) => {
@@ -60,7 +60,7 @@ function resolveVars(value, vars) {
     return value.replace(/var\((--[a-z0-9-]+)\)/g, (_, v) => vars[v] ?? `var(${v})`);
 }
 
-for (const size of ['default', 'small']) {
+for (const size of ['md', 'xs']) {
     for (const checked of [false, true]) {
         for (const pressed of [false, true]) {
             test(`switch ${size} ${checked ? 'checked' : 'unchecked'} ${pressed ? 'pressed' : 'idle'}: handle lies inside track minus padding`, () => {

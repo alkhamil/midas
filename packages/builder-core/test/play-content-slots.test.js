@@ -9,6 +9,7 @@ import { applyTemplateToFrame, instanceOf } from '../src/behavior-engine/templat
 import { generateComponent } from '../src/behavior-engine/codegen.js';
 import { toDomTree } from '../src/prototype/dom-tree.js';
 import { repeatCount } from '../src/behavior-engine/slot-rules.js';
+import { modelFor } from './helpers/box-template.js';
 
 const list = TEMPLATES.get('list');
 const plain = { ...structuredClone(list), id: 'plainlist', name: 'PlainList', slots: [{ ...list.slots[0], repeat: undefined }] };
@@ -22,15 +23,16 @@ let seq = 0;
 
 /** A document with a master of `template`, and an instance of it (the frame to draw) holding `held` text layers in its slot, with `props`. */
 function documentOf(template, props, held) {
+    const m = modelFor(template);
     const master = { id: `master-${++seq}`, name: template.name, type: 'frame', parentId: null, fills: [] };
-    const created = applyTemplateToFrame(template, { frame: master, children: [], binding: { variables: {} }, variables: { collections: [], items: [] }, idOf: key => `${master.id}-${key}` }).created;
+    const created = applyTemplateToFrame(template, { frame: master, children: [], binding: m.binding, variables: m.variables, idOf: key => `${master.id}-${key}` }).created;
     const [root, ...copies] = instanceOf(template, master, created, props, { id: src => `i${seq}-${src}` });
     const nodes = copies.map(n => (n.propBind?.slot ? { ...n, visible: true } : n));
     const slot = nodes.find(n => n.propBind?.slot);
     const instance = { ...root, id: `inst-${seq}`, name: 'My list', x: 0, y: 0, w: 200, h: 100, fills: solid };
     const inner = nodes.map(n => (n.parentId === root.id ? { ...n, parentId: instance.id } : n));
     const content = Array.from({ length: held }, (_, i) => ({ id: `c${i}`, name: `Item ${i}`, type: 'text', parentId: slot.id, x: 0, y: 0, w: 60, h: 20, text: `Item ${i}`, fills: solid, fontSize: 14, autoW: true }));
-    return { frameId: instance.id, doc: { variables: { collections: [], items: [] }, pages: [{ id: 'p', name: 'Screens', nodes: [master, ...created, instance, ...inner, ...content] }] } };
+    return { frameId: instance.id, doc: { variables: m.variables, pages: [{ id: 'p', name: 'Screens', nodes: [master, ...created, instance, ...inner, ...content] }] } };
 }
 const rootOf = ({ doc, frameId }) => toDomTree(doc, frameId).root;
 const slotEl = (el, template) => el.children.find(c => c.attrs?.class === `${template.id}-${template.slots[0].id}`);
@@ -74,7 +76,8 @@ test('copies share no id: no element has an id attribute, and every copy keeps t
 });
 
 test('Play and the export count alike: repeatCount is the clamp the generated copies() function writes', () => {
-    const { files } = generateComponent(list, { variables: {} }, { collections: [], items: [] }, 'List', { id: 'm', type: 'frame', layout: 'vertical' }, () => []);
+    const model = modelFor(list);
+    const { files } = generateComponent(list, model.binding, model.variables, 'List', { id: 'm', type: 'frame', layout: 'vertical' }, () => []);
     const tsx = files['List.tsx'];
     const body = tsx.slice(tsx.indexOf('function copies'), tsx.includes('type GradientFill') ? tsx.indexOf('type GradientFill') : undefined);
     const copies = new Function(`${body.replace(/count: number \| null \| undefined, fallback: number\): number/, 'count, fallback)')}; return copies;`)();

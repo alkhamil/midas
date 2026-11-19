@@ -28,6 +28,7 @@ const MODELS = {
     'antd-spin': generated('antd-spin'),
     'antd-empty': generated('antd-empty'),
     'antd-search': generated('antd-search'),
+    'antd-statistic': generated('antd-statistic'),
     'antd-avatar': generated('antd-avatar'),
     'antd-text': generated('antd-text'),
     'antd-title': generated('antd-title'),
@@ -40,7 +41,7 @@ const MODELS = {
         const model = buttonModel({ colors: ['primary'], variantModes: ['solid'] });
         return { variables: { collections: model.collections, items: model.items }, binding: { variables: { variant: model.ids.variant, color: model.ids.color, size: model.ids.size } } };
     },
-    list: () => ({ variables: { collections: [], items: [] }, binding: { variables: {} } }),
+    list: generated('list'),
     'icon-button': () => {
         const model = iconButtonModel();
         return { variables: { collections: model.collections, items: model.items }, binding: { variables: model.binding.variables } };

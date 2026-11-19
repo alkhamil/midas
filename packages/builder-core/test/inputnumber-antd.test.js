@@ -126,7 +126,7 @@ test('hover and press colour the chevron of a half, a half at its limit is muted
     assert.ok(css.includes(`.inputnumber:not([data-at-max])${off} .inputnumber-stepUpBox:active .inputnumber-stepUp {\n  color: var(--inputnumber-step-active-fg);\n}`), 'pressed');
     assert.ok(css.includes('.inputnumber[data-at-max] .inputnumber-stepUpBox {\n  cursor: not-allowed;\n  pointer-events: none;\n}'), 'at the max the up half takes no click');
     assert.ok(css.includes('.inputnumber[data-at-min] .inputnumber-stepDownBox {\n  cursor: not-allowed;\n  pointer-events: none;\n}'));
-    assert.match(css, /\[data-at-max\]:not\(:has\(:disabled\)\) \{\s*--inputnumber-step-up-fg: #/, 'and its chevron takes the disabled colour');
+    assert.match(css, /\[data-at-max\]\):not\(:has\(:disabled\)\):not\(:has\(\[readonly\]\)\) \{\s*--inputnumber-step-up-fg: #/, 'and its chevron takes the disabled colour');
     assert.ok(css.includes('.inputnumber:has(:disabled) .inputnumber-stepUpBox {\n  cursor: not-allowed;\n}'));
     assert.match(css, /\.inputnumber:hover:not\(:has\(:disabled\)\) \.inputnumber-stepper,\n\.inputnumber:focus-within:not\(:has\(:disabled\)\) \.inputnumber-stepper \{\s*opacity: 1;/, 'a disabled control never reveals it');
     assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.inputnumber-stepper \{\s*transition: none;/);

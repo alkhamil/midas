@@ -123,6 +123,6 @@ test('the export computes the limits from the props, reports a press, and recolo
     assert.match(jsx, /data-at-max=\{atMax \|\| undefined\}/);
     assert.match(jsx, /onClick=\{\(\) => \{ if \(!\(disabled \|\| readOnly\)\) onStep\?\.\(1\); \}\}/);
     assert.match(jsx, /\{\(noStepper === false\) && <div className="inputnumber-stepper">/);
-    assert.match(css, /\[data-at-max\]:not\(:has\(:disabled\)\) \{\s*--inputnumber-step-up-fg: #/, 'a limit swaps the arrow colour token on the root');
+    assert.match(css, /\[data-at-max\]\):not\(:has\(:disabled\)\):not\(:has\(\[readonly\]\)\) \{\s*--inputnumber-step-up-fg: #/, 'a limit swaps the arrow colour token on the root');
     assert.match(css, /\.inputnumber-stepUpBox \{\s*cursor: pointer;/);
 });

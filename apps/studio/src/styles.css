@@ -1497,6 +1497,9 @@ button svg {
 .cmp-ctl { display: flex; align-items: center; gap: 6px; min-width: 0 }
 .cmp-ctl select { flex: 1; min-width: 0; height: 28px; border: 0; border-radius: 6px; background: var(--field); color: var(--text); padding: 0 8px; font-size: 12px }
 .cmp-ctl .var-chip-row { flex: 1; margin: 0; min-width: 0 }
+/* A segmented control in a row is the width of the inputs beside it (the row's control), its segments share that width equally, and it is as tall as an input. */
+.cmp-ctl .ly-seg { flex: 1; min-width: 0; height: 28px; box-sizing: border-box }
+.cmp-ctl .ly-seg button { height: auto; min-width: 0 }
 .vsw-spacer { flex: 1 }
 .cmp-title .ui-icon-button { margin-left: auto }
 .variant-bool { appearance: none; -webkit-appearance: none; width: 34px; height: 20px; border-radius: 10px; background: var(--field); border: 1px solid var(--border); position: relative; cursor: pointer; margin: 0; transition: background .15s }

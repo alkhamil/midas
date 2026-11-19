@@ -1,4 +1,13 @@
+import { DEFAULT_SIZE_MODE, SIZE_MODES, roleLadder } from './size-modes.js';
+
 /** @typedef {import('./schema.js').TemplateSchema} TemplateSchema */
+
+/**
+ * antd's Switch has two sizes, small and default. Midas's Size has five (xs to xl): xs and sm take the small track, md, lg and xl the default one.
+ * @param {string} small the role at the small sizes
+ * @param {string} big the role at the default and larger sizes
+ */
+const twoSizes = (small, big) => ({ xs: small, sm: small, md: big, lg: big, xl: big, default: big });
 
 // Switch: a track and, inside it, a handle. The root is the track (fill, radius, a fixed height and width, padding); the handle is a container of the anatomy (a
 // group frame with its own fill, radius and size). Checked moves the handle to the end of the track (the root's alignment is written by the prop) and swaps the
@@ -43,7 +52,7 @@ export const SWITCH = {
         // The colours, as Button's Color collection holds its own: only the checked track follows the mode (default is the text colour, primary the brand colour,
         // danger the error colour). A new instance takes primary. The Size collection holds sizes, typography and the handle shadow (the same in every size).
         color: { source: 'variable', collection: 'Color', modes: ['default', 'primary', 'danger'], defaultMode: 'primary' },
-        size: { source: 'variable', collection: 'Size', modes: ['small', 'default'], defaultMode: 'default' },
+        size: { source: 'variable', collection: 'Size', modes: SIZE_MODES, defaultMode: DEFAULT_SIZE_MODE, standard: true },
         // Checked writes the root's alignment: on puts the handle at the end of the track, off at the start.
         checked: { source: 'literal', type: 'boolean', default: false, node: { key: 'root', field: 'primaryAlign' } },
         // Loading dims the root and blocks clicks (the spinner shows); exclusive with Disabled, like Button.
@@ -67,15 +76,15 @@ export const SWITCH = {
         'track-bg': 'color', 'track-bg-checked': 'color', 'track-bg-disabled': 'color', 'track-bg-hover': 'color', 'track-bg-focus': 'color', 'handle-bg': 'color', 'handle-shadow': 'effect', 'wave-color': 'color',
     },
     tokenRoles: {
-        trackHeight: { small: 'switch-height-sm', default: 'switch-height' },
-        trackWidth: { small: 'switch-min-width-sm', default: 'switch-min-width' },
+        trackHeight: twoSizes('switch-height-sm', 'switch-height'),
+        trackWidth: twoSizes('switch-min-width-sm', 'switch-min-width'),
         trackPadding: 'switch-padding',
-        handleSize: { small: 'switch-handle-sm', default: 'switch-handle' },
+        handleSize: twoSizes('switch-handle-sm', 'switch-handle'),
         radiusFull: 'radius-full',
-        iconSize: { small: 'icon-sm', default: 'icon-md' },
-        textTypography: { small: 'text-sm', default: 'text-sm' },
+        iconSize: twoSizes('icon-sm', 'icon-md'),
+        textTypography: roleLadder(['text-xs', 'text-sm', 'text-sm', 'text-base', 'text-lg']),
         innerPadNear: 'switch-inner-pad-near',
-        innerPadFar: { small: 'switch-inner-pad-far-sm', default: 'switch-inner-pad-far' },
+        innerPadFar: twoSizes('switch-inner-pad-far-sm', 'switch-inner-pad-far'),
         'track-bg': 'track-off', 'track-bg-checked': ACCENT, 'track-bg-disabled': 'border', 'track-bg-hover': 'track-off-hover', 'track-bg-focus': 'track-off-hover', 'handle-bg': 'solid-text', 'handle-shadow': 'shadow-handle', 'wave-color': ACCENT,
     },
     // Checked swaps the track colour; Disabled is declared last, so it wins over Checked.

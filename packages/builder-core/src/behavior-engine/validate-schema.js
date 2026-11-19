@@ -313,7 +313,8 @@ function stateProblems(schema, allTokens, props) {
             const target = isPlainObject(persistent) ? persistent[def.as] : undefined;
             if (!isPlainObject(target)) out.push(`persistent state "${state}" is an alias of "${def.as}", which is not a persistent state`);
             else if (target.as !== undefined) out.push(`persistent state "${state}" is an alias of "${def.as}", which is itself an alias`);
-            if (Object.keys(def.tokens).length) out.push(`persistent state "${state}" is an alias and takes no tokens of its own`);
+            // An inert alias (read only) draws its own tokens instead of the target's; any other alias takes none of its own.
+            if (Object.keys(def.tokens).length && def.inert !== true) out.push(`persistent state "${state}" is an alias and takes no tokens of its own`);
         }
         for (const [base, stateToken] of Object.entries(def.tokens)) {
             if (!allTokens.includes(base)) out.push(`persistent state "${state}" overrides "${base}", which is not a token`);

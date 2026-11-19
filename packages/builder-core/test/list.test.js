@@ -7,18 +7,20 @@ import { validateTemplateSchema } from '../src/behavior-engine/validate-schema.j
 import { applyTemplateToFrame, instanceOf, layerSpecsOf } from '../src/behavior-engine/template-master.js';
 import { diagnoseDocument } from '../src/behavior-engine/diagnostics.js';
 import { resolveProps } from '../src/behavior-engine/instance-props.js';
+import { modelFor } from './helpers/box-template.js';
 
 const list = TEMPLATES.get('list');
-const variables = { collections: [], items: [] };
-const binding = { variables: {} };
+const model = modelFor(list);
+const variables = model.variables;
+const binding = model.binding;
 const frame = () => ({ id: 'master', name: 'List', type: 'frame', parentId: null, fills: [] });
 const build = f => applyTemplateToFrame(list, { frame: f, children: [], binding, variables, idOf: key => `l-${key}` });
 
-test('List is a registered template, valid on its own: no anatomy, no variable props, one repeated item slot of exactly one layer', () => {
+test('List is a registered template, valid on its own: no anatomy, one Size variable prop, one repeated item slot of exactly one layer', () => {
     assert.ok(list, 'registered');
     assert.deepEqual(validateTemplateSchema(list, { templateIds: new Set(TEMPLATES.keys()) }), []);
     assert.deepEqual(list.anatomy, []);
-    assert.deepEqual(Object.values(list.props).filter(p => p.source === 'variable'), []);
+    assert.deepEqual(Object.keys(list.props).filter(p => list.props[p].source === 'variable'), ['size']);
     assert.deepEqual(list.slots.map(s => [s.id, s.min, s.max, s.repeat, s.layout, s.showEmpty]), [['item', 1, 1, 'itemCount', 'vertical', true]]);
     assert.equal(list.props.itemCount.default, 3);
     assert.deepEqual(layerSpecsOf(list).map(s => [s.key, s.role]), [['root', 'root'], ['item', 'content']]);

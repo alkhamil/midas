@@ -15403,6 +15403,8 @@ function syncInstanceStructure(activeOnly = true) {
             // A nested instance swapped through an instance-swap property keeps its slot via `swapOf`;
             // its own subtree is synced when it is visited as an instance root itself.
             const inst = instanceTree(page, root.id), bySource = new Map(), slotKey = n => n.swapOf || n.sourceId;
+            // The props decide which managed containers the instance holds (a Spin's dot columns are not copied under the arc type).
+            const template = managedTemplateOf(root), resolved = template ? resolveProps(template, root.behavior?.props ?? {}) : null;
             for (const n of inst)
                 if (slotKey(n))
                     bySource.set(slotKey(n), n);
@@ -15425,7 +15427,14 @@ function syncInstanceStructure(activeOnly = true) {
                 const owner = isContentSlot(parent) ? parent : parent === root ? null : slotOf(parent, root.id);
                 if (slotKeepsContent(owner))
                     continue;
+                // A managed container the props hide is not copied: the instance's own sync makes it while its condition holds.
+                const containerDef = template && (s.behavior?.group ?? s.behavior?.slot) !== undefined ? template.anatomy.find(a => a.id === (s.behavior.group ?? s.behavior.slot) && a.managed && a.kind === 'frame') : undefined;
+                if (containerDef && !slotShown(template, containerDef.id, resolved))
+                    continue;
                 const c = structuredClone(s);
+                // A managed container is marked as its slot, as one the instance makes is (a group marker would leave it unseen by the anatomy sync).
+                if (containerDef)
+                    c.behavior = managedBehavior(containerDef.id);
                 c.id = uid();
                 c.parentId = parent.id;
                 c.sourceId = s.id;

@@ -16,8 +16,8 @@ test('Switch is a registered form control with managed text and icon slots: chec
     assert.equal(sw.isControl, true);
     assert.equal(sw.primarySlot, 'checkedChildren');
     assert.deepEqual(Object.keys(sw.props), ['color', 'size', 'checked', 'loading', 'disabled', 'checkedKind', 'checkedChildren', 'checkedIcon', 'uncheckedKind', 'uncheckedChildren', 'uncheckedIcon']);
-    assert.deepEqual(sw.props.size.modes, ['small', 'default']);
-    assert.equal(sw.props.size.defaultMode, 'default');
+    assert.deepEqual(sw.props.size.modes, ['xs', 'sm', 'md', 'lg', 'xl']);
+    assert.equal(sw.props.size.defaultMode, 'md');
     assert.ok(sw.anatomy.some(s => s.kind === 'text'), 'managed text slots');
     assert.ok(sw.anatomy.some(s => s.kind === 'icon'), 'managed icon slots');
 });

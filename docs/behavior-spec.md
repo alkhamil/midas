@@ -89,9 +89,25 @@ Execute in the order listed. The numbers are stage IDs, not the execution order.
 8. Code generator
 9. Diagnostics
 
+## Rule: nested Size follows the parent (2026-11-19, from the user)
+
+A component with a Size variable that holds an instance in a slot, where that nested instance has a Size collection too, makes the nested instance follow its parent's Size. When the component is an instance, changing its Size in the Behavior tab changes the nested instance's Size mode to the same. Today only the seed does this (`seed.follow` at creation); the propagation on change is not built yet.
+
 ## Status
 
-2026-11-18: batch 4 started with Spin (`antd-spin`), Empty (`antd-empty`) and Search Field (`antd-search`, the Input family with the suffix on as the search glyph). Code and unit tests pass (builder-core 2693, studio: the same 7 failures as before, desktop and `managedLayersOf` source test). Not run: the browser parity of the three. Open: Spin does not turn in the export and its Play spin ignores reduced motion (Button shares both); Empty's image is the file's default icon, no own glyph.
+2026-11-19 (Read only): read only is an inert state with its own tokens, not the disabled attribute; only the value text stays `fg`. Builder-core 2719 lulus; studio: the 7 known failures. Canvas and Play match (probe). Statistic browser parity passes.
+
+2026-11-19 (List): List is parked until ListItem is built; its browser parity case needs a filled item. Next: ListItem.
+
+2026-11-19 (Spin): Spin has a `type` prop (dots, arc). Dots are four frame parts in two managed columns, pulsing in Play (`pulse`); the arc is the existing part. Builder-core 2717 lulus; studio: the 7 known failures. Browser parity for both types: see AGENTS.
+
+2026-11-19 (parity): Switch passes canvas against Play in both states at every Size (`spin-empty-search.browser.test.mjs`). List fails: the empty item is 120px on the canvas and 0 in Play (test needs a filled item; not fixed). Statistic: the root width now matches (test waits for fonts); open are the crop size and a nested suffix glyph that is not scaled (see AGENTS). Size is kept on every component that has one; new components announce Size first.
+
+2026-11-19: Size audit against antd. Size is a variable only where antd has a size prop; it is xs to xl everywhere it exists. Switch maps antd's small and default onto xs to xl (`twoSizes`); List's Size sets the gap between copies; Divider's Size is removed (antd Divider has no size that Size would own); Title keeps Level (no Size). Open: Size on Alert, Checkbox, Tag, Empty, Statistic, Text, Paragraph and Link, which antd does not size, is kept until the user decides. Browser parity of Switch, List and Statistic not rerun after this change.
+
+2026-11-19: Statistic (`antd-statistic`) added: Size (variable), a managed title, a value text, prefix and suffix icons (`hasPrefix`, `hasSuffix`). Builder-core and studio unit tests pass (studio: the same 7 known failures). Browser parity is open: the canvas root hugs the value, not the title (33.95px vs 37.73px in Play), and the suffix icon is placed 27px off. Progress is blocked on percentage-of-parent width, which the node model does not have.
+
+2026-11-18: batch 4 started with Spin (`antd-spin`), Empty (`antd-empty`) and Search Field (`antd-search`, the Input family with the suffix on as the search glyph). Code and unit tests pass (builder-core 2693, studio: the same 7 failures as before, desktop and `managedLayersOf` source test). Browser parity of the three passes (2026-11-19). Open: Spin does not turn in the export and its Play spin ignores reduced motion (Button shares both); Empty's image is the file's default icon, no own glyph.
 
 2026-11-17: the browser parity gates pass for Button, Input and Alert (`strict-parity`, `export-parity`, `alert.browser.test.mjs`, `input-live`, `limits`). Changes behind that: a conditional part copy is never removed by `syncParts` (only one the instance made itself), so a Size change no longer adds a second placeholder; an untyped `.jsx` has no TypeScript syntax; the component class carries the master's width only through `rootClassWidth`, and Play drops it for an instance that fills or hugs (root only, as the export does). Open: an empty Has Icon slot draws a dot (`icon-default` test, 444px ink; decision pending: draw nothing per the Icon slot decision, or keep the dot as a placeholder); Button xl outline is measured from the root box, not the pixels (`edgeCheck` is still used by the other suites); Input pixel share is under 0.5% with the Play view menu closed before the shot.
 

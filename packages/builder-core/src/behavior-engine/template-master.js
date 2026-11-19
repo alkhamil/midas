@@ -423,7 +423,8 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
     for (const part of canvasPartsOf(template)) {
         if (part.shownWhen === undefined || out.some(n => n.behavior?.part === part.id)) continue;
         if (partWrites(template, resolved).find(w => w.key === part.id && w.field === 'visible')?.value !== true) continue;
-        const holder = part.parent === undefined ? root : out.find(n => n.behavior?.group === part.parent) ?? root;
+        // A container part hangs under the instance's copy of its container: a group, or a managed frame slot (the Spin dots' columns).
+        const holder = part.parent === undefined ? root : out.find(n => n.behavior?.group === part.parent || n.behavior?.slot === part.parent) ?? root;
         const node = managedPartLayer(template, part.id, resolved, { id: id(`part-${part.id}`), parentId: holder.id });
         out.push(node);
         if (variables !== undefined) {
@@ -470,7 +471,15 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
             const holder = slot.parent === undefined ? root : out.find(n => n.behavior?.group === slot.parent || n.behavior?.slot === slot.parent) ?? stubBySlot.get(slot.parent);
             return holder ? [{ ...nodeOf({ key: slot.id, role: 'content', type: 'frame', content: slot }, template, null, () => id(`slot-${slot.id}`), holder.id), sourceId: undefined, isInstance: false, component: false, overrides: {} }] : [];
         });
-    return [root, ...layers, ...inContainer.map(s => s.node), ...contentLayers];
+    // A slot in a container goes among its siblings in anatomy order: before the first sibling the anatomy ranks after it (a prefix before the value text), else last.
+    const anatomyIndexOf = node => template.anatomy.findIndex(s => s.id === (node.behavior?.slot ?? node.behavior?.group ?? node.name));
+    const inside = [...layers];
+    for (const s of inContainer.sort((a, b) => a.anatomy - b.anatomy)) {
+        const at = inside.findIndex(n => n.parentId === s.node.parentId && anatomyIndexOf(n) > s.anatomy);
+        if (at === -1) inside.push(s.node);
+        else inside.splice(at, 0, s.node);
+    }
+    return [root, ...inside, ...contentLayers];
 }
 
 /**

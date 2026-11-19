@@ -83,6 +83,7 @@ export const INPUTNUMBER = inputFamily({
             atMin: { prop: 'atMin', tokens: { 'step-down-fg': 'step-fg-disabled' } },
             atMax: { prop: 'atMax', tokens: { 'step-up-fg': 'step-fg-disabled' } },
             disabled: { prop: 'disabled', tokens: { ...INPUT.persistentStates.disabled.tokens, 'step-up-fg': 'step-fg-disabled', 'step-down-fg': 'step-fg-disabled' } },
+            readOnly: { ...INPUT.persistentStates.readOnly, tokens: { ...INPUT.persistentStates.readOnly.tokens, 'step-up-fg': 'step-fg-disabled', 'step-down-fg': 'step-fg-disabled' } },
         },
         statePseudo: { noStepper: '[data-no-stepper]', atMin: '[data-at-min]', atMax: '[data-at-max]' },
         control: { ...Object.fromEntries(Object.entries(INPUT.control).filter(([k]) => !['count', 'maxlength', 'minlength'].includes(k))), number: { min: 'min', max: 'max', step: 'step', precision: 'precision' } },

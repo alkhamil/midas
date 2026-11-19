@@ -263,7 +263,7 @@ function derivedTextOf(text, props) {
  * @param {Record<string, unknown>} props the resolved props
  */
 export function stateOn(template, state, props) {
-    return Object.entries(template.persistentStates).some(([name, def]) => (name === state || /** @type {any} */ (def).as === state) && props[/** @type {any} */ (def).prop] === true);
+    return Object.entries(template.persistentStates).some(([name, def]) => (name === state || (/** @type {any} */ (def).as === state && /** @type {any} */ (def).inert !== true)) && props[/** @type {any} */ (def).prop] === true);
 }
 
 /** Whether one condition holds for the resolved props: `{ prop, is }`, `{ prop, empty }` (a string prop is empty), `{ all: [...] }` (every one holds) or `{ any: [...] }` (one holds). */

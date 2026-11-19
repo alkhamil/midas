@@ -89,6 +89,8 @@ export const INPUT = inputFamily({
         },
         persistentStates: {
             disabled: { prop: 'disabled', tokens: { ...INPUT_BASE.persistentStates.disabled.tokens, 'glyph-fg': 'glyph-fg-disabled' } },
+            // Read only: the disabled background and glyphs, the value text keeps its colour.
+            readOnly: { ...INPUT_BASE.persistentStates.readOnly, tokens: { ...INPUT_BASE.persistentStates.readOnly.tokens, 'glyph-fg': 'glyph-fg-disabled' } },
         },
         // The control is an input, a masked one for the password kind, a textarea for the text area kind whose whole box acts as the field.
         control: {

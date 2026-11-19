@@ -34,7 +34,7 @@ test('the master holds no inner box, and the tokens alias the inner-pad roles pe
     assert.equal(sw.tokenKinds.innerPadNear, 'length');
     assert.equal(sw.tokenKinds.innerPadFar, 'length');
     assert.equal(sw.tokenRoles.innerPadNear, 'switch-inner-pad-near');
-    assert.deepEqual(sw.tokenRoles.innerPadFar, { small: 'switch-inner-pad-far-sm', default: 'switch-inner-pad-far' });
+    assert.deepEqual(sw.tokenRoles.innerPadFar, { xs: 'switch-inner-pad-far-sm', sm: 'switch-inner-pad-far-sm', md: 'switch-inner-pad-far', lg: 'switch-inner-pad-far', xl: 'switch-inner-pad-far', default: 'switch-inner-pad-far' });
 });
 
 test('an instance holds the text inside its box, before the handle when checked and after it when unchecked', () => {

@@ -73,6 +73,10 @@ export async function setProp(page, name, value) {
         await page.keyboard.press('Delete');
         await page.keyboard.press('Enter');
     }
+    else if (await field.evaluate(el => el.tagName === 'SELECT')) {
+        // An enum prop shown as a dropdown is a select: choose the option.
+        await field.selectOption(String(value));
+    }
     else {
         await field.fill(String(value));
         await field.press('Enter');

@@ -74,7 +74,7 @@ test('the root takes className after the template class, style and rest props, a
 
 /** The List template compiled from its own schema (no variables: it has none). */
 function listComponent(template = TEMPLATES.get('list')) {
-    const { files, problems } = generateComponent(template, { variables: {} }, { collections: [], items: [] }, 'List', master, () => []);
+    const { files, problems } = generateComponent(template, { variables: { size: model.collections.find(c => c.name === 'Button Size').id } }, { collections: model.collections, items: model.items }, 'List', master, () => []);
     assert.deepEqual(problems, []);
     const { code } = transformSync(files['List.tsx'].replace(/^import '\.\/List\.css';\n/m, ''), { loader: 'tsx', format: 'cjs', jsx: 'automatic', target: 'es2022' });
     const module = { exports: {} };

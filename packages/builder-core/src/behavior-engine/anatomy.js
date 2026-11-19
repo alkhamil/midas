@@ -342,7 +342,9 @@ export function planAnatomy(template, values, children, flip = false) {
         if (parent !== undefined) {
             const held = kept.find(c => c.slot === w.slot);
             const siblings = inside.get(parent) ?? [];
-            const index = siblings.filter(s => s !== w.slot && slotIndex(s) < slotIndex(w.slot)).length;
+            // The index counts the container's children that the anatomy ranks before this slot: the managed ones held, and the plain ones always there (a text
+            // the anatomy names in the container, before or after it), so a suffix after a value lands after the value.
+            const index = template.anatomy.filter(e => e.id !== w.slot && e.parent === parent && slotIndex(e.id) < slotIndex(w.slot) && (!(e.managed || e.optional) || siblings.includes(e.id))).length;
             if (!held) { inside.set(parent, [...siblings, w.slot]); ops.push(w.component ? { op: 'insert', slot: w.slot, index, parent, component: w.component } : { op: 'insert', slot: w.slot, index, parent }); }
             else if ((held.component ?? null) !== w.component) ops.push({ op: 'swap', id: held.id, component: w.component });
             continue;

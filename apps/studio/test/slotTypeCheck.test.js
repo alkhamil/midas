@@ -74,7 +74,7 @@ test('a consumer\'s use of the component type-checks: slots as children or named
 
 /** The List's .tsx (it has no variables). */
 const listTsx = () => {
-    const { files, problems } = generateComponent(TEMPLATES.get('list'), { variables: {} }, { collections: [], items: [] }, 'List', master, () => []);
+    const { files, problems } = generateComponent(TEMPLATES.get('list'), { variables: { size: button.collections.find(c => c.name === 'Button Size').id } }, { collections: button.collections, items: button.items }, 'List', master, () => []);
     assert.deepEqual(problems, []);
     return { 'List.tsx': files['List.tsx'] };
 };

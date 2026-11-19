@@ -6,8 +6,11 @@ import assert from 'node:assert/strict';
 import { generateComponent } from '../src/behavior-engine/codegen.js';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
 
+import { modelFor } from './helpers/box-template.js';
+
 const list = TEMPLATES.get('list');
-const emit = (template = list) => generateComponent(template, { variables: {} }, { collections: [], items: [] }, 'List', { id: 'm', type: 'frame', layout: 'vertical' }, () => []);
+const model = modelFor(list);
+const emit = (template = list) => generateComponent(template, model.binding, model.variables, 'List', { id: 'm', type: 'frame', layout: 'vertical' }, () => []);
 const withSlot = over => ({ ...structuredClone(list), slots: [{ ...list.slots[0], ...over }] });
 
 test('a List is List.tsx with itemCount typed as a number, 3 by default, and the item copies in one slot element', () => {

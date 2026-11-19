@@ -27,9 +27,11 @@ export function activeStateOf(template, props, preview) {
         // a token that is not a colour of the interaction (the padding an attached handler column leaves).
         if (alias.marker === true) { Object.assign(markerOverrides, alias.tokens); continue; }
         // An alias is the state it names turned on by its own prop: it draws that state.
-        const name = alias.as ?? own, def = template.persistentStates[name];
+        // An inert alias (read only) is a state of its own: its tokens are its own, and the layers bind to them, not to the disabled state's.
+        const inert = alias.inert === true;
+        const name = inert ? own : alias.as ?? own, def = inert ? alias : template.persistentStates[name];
         if (!names.includes(name)) names.push(name);
-        Object.assign(overrides, def.tokens);
+        Object.assign(overrides, inert || !Object.keys(alias.tokens ?? {}).length ? def.tokens : alias.tokens);
     }
     if (names.length) return { state: names.join('+'), overrides: { ...markerOverrides, ...overrides } };
     // A preview state a boolean prop gates (Card's hover needs Hoverable) is Default while the prop is off.

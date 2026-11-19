@@ -49,7 +49,9 @@ Referensi struktur: `D:\antd-ref\components\<nama>` (read-only).
 | 2 | Checkbox, Radio, Switch | ✅ Kode dan template ada. Radio.Group belum dibuat (Tier 3). |
 | 3 | Tag, Alert | ✅ Kode dan template ada. Alert punya slot icon, close, action, dan Banner. |
 | 2a (tambahan) | Badge, Card, Divider, Avatar, Text, Title, Paragraph, Link, Icon Button, FormItem, List, InputNumber | ✅ Kode ada (registry dan template). Badge corner count belum dibuat. |
-| 4 | Spin, Empty, Search Field | ✅ Kode dan test unit ada (2026-11-18). Browser belum dicek. |
+| 4 | Spin, Empty, Search Field | ✅ Kode, test unit, dan browser lulus (2026-11-19). |
+| 5a | Statistic (Tier 0) | 🟡 Kode, template, unit test, conformance ada (2026-11-19). Browser: lebar root sudah sama (tes menunggu font); belum lulus karena crop tidak sama dan glyph ikon suffix di dalam valueBox tidak di-scale di canvas. Size xs sampai xl. |
+| 5b | Progress (Tier 0) | ⛔ Diblokir: butuh lebar dalam persen dari parent (bar), belum ada di model sizing node. Perlu keputusan. |
 | 5+ | Select, Dialog, Tabs, Table, Pagination, Radio.Group, dll. | ❌ Belum ada template. Daftar lengkap dan urutan ada di `docs/specs/web-components.md` (P1 dulu). |
 
 Per component, selesai kalau:
@@ -64,7 +66,7 @@ Per component, selesai kalau:
 
 Catatan: Input (batch 1) memenuhi semua item kode di atas. Item browser tetap terbuka untuk semua component.
 
-**Exit:** semua component P1 di `docs/specs/web-components.md` punya template yang jalan di canvas, Play, dan codegen. **Belum terpenuhi**: component P1 yang belum ada (Select, Search Field, Table, Dialog, Tabs, dan lainnya, lihat batch 4+).
+**Exit:** semua component P1 di `docs/specs/web-components.md` punya template yang jalan di canvas, Play, dan codegen. **Belum terpenuhi**: component P1 yang belum ada (Select, Table, Dialog, Tabs, dan lainnya, lihat batch 5+).
 
 ---
 

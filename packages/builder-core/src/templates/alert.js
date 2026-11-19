@@ -79,7 +79,7 @@ export const ALERT = {
     },
     // The action is a Button in the content slot below, inside the action box (a layer only while the `action` prop is on).
     // The slot is named apart from the prop: a slot's id is its prop name in the generated code.
-    slots: [{ id: 'actionButton', name: 'Action', description: 'A Button shown after the message', holds: 'instance', min: 0, max: 1, accepts: ['button'], onlyAccepts: true, showEmpty: true, layout: 'horizontal', parent: 'actionBox' }],
+    slots: [{ id: 'actionButton', name: 'Action', description: 'A Button shown after the message', holds: 'instance', min: 0, max: 1, accepts: ['button'], onlyAccepts: true, showEmpty: true, layout: 'horizontal', parent: 'actionBox', seed: [{ template: 'button', props: { label: 'Action' }, follow: { size: 'size' } }] }],
     tokens: {
         fromType: ['bg', 'border', 'icon', 'fg', 'fgSecondary'],
         fromVariant: ['borderWidth', 'borderWidthNone'],

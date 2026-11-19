@@ -110,7 +110,7 @@ test('switch sizes come from tokens: 44x22 handle 18, small 28x16 handle 12, pad
     const template = TEMPLATES.get('switch');
     const model = modelFor(template);
     const px = (vars, token) => vars[cssVarOf('switch', token)];
-    for (const [size, w, h, handle] of [['default', '44px', '22px', '18px'], ['small', '28px', '16px', '12px']]) {
+    for (const [size, w, h, handle] of [['md', '44px', '22px', '18px'], ['xs', '28px', '16px', '12px']]) {
         const { vars } = previewOf(template, model.binding, modesOf(model, size), model.variables, {}, 'default');
         assert.equal(px(vars, 'trackWidth'), w, `switch ${size} track width`);
         assert.equal(px(vars, 'trackHeight'), h, `switch ${size} track height`);

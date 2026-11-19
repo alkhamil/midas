@@ -1,4 +1,4 @@
-// Spin, Empty and Search Field on the canvas and in Play: a created instance measured at every Size mode and each state, the same comparison as
+// Spin, Empty, Search Field, Statistic, Switch and List on the canvas and in Play: a created instance measured at every Size mode and each state, the same comparison as
 // strict-parity (every canvas node is a Play element within 0.5px, and Play draws nothing the canvas does not). Writes one pair per Size and state.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -8,11 +8,44 @@ import { createFromPanel, isolatedStage, measurePair, setProp } from './parity-h
 
 const CASES = [
     {
+        templateId: 'switch',
+        name: 'Switch',
+        // The track is the root: no outline is drawn (the focus ring is not drawn), so there is nothing to measure beyond the boxes.
+        outline: false,
+        states: [
+            { name: 'off', props: { checked: false } },
+            { name: 'on', props: { checked: true } },
+        ],
+    },
+    {
+        templateId: 'list',
+        name: 'List',
+        // The canvas draws the item once and Play repeats it itemCount times: one copy is the case the two draw alike.
+        outline: false,
+        states: [{ name: 'one-copy', props: { itemCount: 1 } }],
+    },
+    {
+        templateId: 'antd-statistic',
+        name: 'Statistic',
+        // The title and value are text, no outline: nothing to measure beyond the boxes.
+        outline: false,
+        // Statistic is the last thing in its frame, so Play's viewport clips its shot at the bottom: the frame gets room below, as Search Field does.
+        room: 200,
+        states: [
+            { name: 'plain', props: { hasPrefix: false, hasSuffix: false } },
+            { name: 'prefix', props: { hasPrefix: true, hasSuffix: false } },
+            { name: 'suffix', props: { hasPrefix: false, hasSuffix: true } },
+        ],
+    },
+    {
         templateId: 'antd-spin',
         name: 'Spin',
         // A status with no border: no outline to measure.
         outline: false,
-        states: [{ name: 'spinning', props: { spinning: true } }],
+        states: [
+            { name: 'dots', props: { type: 'dots' } },
+            { name: 'arc', props: { type: 'arc' } },
+        ],
     },
     {
         templateId: 'antd-empty',
@@ -77,7 +110,9 @@ for (const c of CASES) {
         for (const mode of modes) {
             await page.locator('[data-inspector-tab="design"]').click();
             await page.selectOption(`select[data-var-mode="${sizeColl}"]`, mode.id);
-            await page.waitForTimeout(200);
+            // The text is measured with the fonts it draws with: wait for them, or the canvas measures the fallback face.
+            await page.evaluate(() => document.fonts.ready);
+            await settle(page, 6);
             for (const state of c.states) {
                 for (const [name, value] of Object.entries(state.props)) await setProp(page, name, value);
                 const label = `${c.templateId} ${mode.name} ${state.name}`;

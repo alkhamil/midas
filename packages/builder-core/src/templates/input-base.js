@@ -127,8 +127,9 @@ export const INPUT_BASE = {
     // Persistent: stored on the instance and drawn on the canvas. `tokens` says which base token the state replaces.
     persistentStates: {
         disabled: { prop: 'disabled', tokens: { bg: 'bg-disabled', fg: 'fg-disabled' } },
-        // Read only is non-interactive too and draws the disabled look: it is the disabled state turned on by its own prop.
-        readOnly: { prop: 'readOnly', as: 'disabled', tokens: {} },
+        // Read only is non-interactive too, and draws the disabled look (the background) without the disabled attribute: its text stays the
+        // text colour. It is an inert state (an attribute of the control, `[readonly]`), not the disabled state.
+        readOnly: { prop: 'readOnly', as: 'disabled', inert: true, tokens: { bg: 'bg-disabled' } },
     },
     // Preview only: studio-side, colours only. Never written to the document.
     previewStates: {
@@ -137,7 +138,7 @@ export const INPUT_BASE = {
         'focus-visible': { 'outline-color': 'outline-color-active' },
     },
     // The CSS pseudo-class each state is written as.
-    statePseudo: { disabled: ':disabled', hover: ':hover', focus: ':focus', 'focus-visible': ':focus-visible' },
+    statePseudo: { disabled: ':disabled', readOnly: '[readonly]', hover: ':hover', focus: ':focus', 'focus-visible': ':focus-visible' },
     // The parts the canvas draws beside the value: each is a node in the master and in every instance, shown by its own condition.
     // The placeholder is the one text layer of a master; the value, the affix texts and the counter (which shows the value's length, see
     // counterLabel) are managed layers of an instance, made while their props ask for them. Play renders each from its node.

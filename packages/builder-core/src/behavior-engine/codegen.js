@@ -49,6 +49,11 @@ const WAVE_COLOR_VAR = '--midas-wave-color';
 // A part declared `spin` turns about its centre; the arc it draws is what shows the turn.
 export const SPIN_KEYFRAMES = 'midas-spin';
 export const SPIN_ANIMATION = `${SPIN_KEYFRAMES} 1s linear infinite`;
+/** A spin with its own duration: `spin: { seconds }` on an anatomy frame or a part (antd's holder turns in 1.2 seconds); `spin: true` is the default turn. */
+export const spinAnimation = spin => (typeof spin === 'object' ? `${SPIN_KEYFRAMES} ${spin.seconds}s linear infinite` : SPIN_ANIMATION);
+/** A dot of a spinner pulses its opacity (antd's dot-pulse, scale fixed at 0.75): the keyframes are in the stylesheet of a template with such a part; each dot starts `delayMs` after the first. */
+export const PULSE_KEYFRAMES = 'midas-pulse';
+export const pulseAnimation = delayMs => `${PULSE_KEYFRAMES} 1s linear ${delayMs}ms infinite alternate`;
 
 /** The DOM handler each schema event is written to. */
 const DOM_EVENT = { onClick: 'onClick', onHover: 'onMouseEnter', onFocus: 'onFocus', onBlur: 'onBlur' };
@@ -66,8 +71,17 @@ const pseudoOf = (template, state) => (state === template.element.disabledState 
 /** The disabled pseudo-class of a template, or '' when it declares no disabled state (a non-interactive one). */
 const disabledPseudoOf = template => (template.element.disabledState === undefined ? '' : pseudoOf(template, template.element.disabledState));
 
-/** `:not(<disabled>)` for the interaction rules, or '' when the template has no disabled state. */
-const notDisabledOf = template => (disabledPseudoOf(template) ? `:not(${disabledPseudoOf(template)})` : '');
+/** The pseudo-classes of the inert states (read only): a state that blocks the interaction without the disabled attribute. */
+const inertPseudosOf = template => Object.entries(template.persistentStates).filter(([, def]) => def.inert === true).map(([state]) => template.statePseudo[state]);
+
+/** `:not(<disabled>)` for the interaction rules, inert states included, or '' when the template has no disabled state. */
+const notDisabledOf = template => (disabledPseudoOf(template) ? [`:not(${disabledPseudoOf(template)})`, ...inertPseudosOf(template).map(p => `:not(${p})`)].join('') : '');
+
+/** The disabled attribute's value: the disabled prop alone. An inert state (read only) is not the disabled attribute; it is its own selector. */
+const disabledAttrOf = template => {
+    const off = template.element.disabledState;
+    return off === undefined || !template.persistentStates[off] ? '' : template.persistentStates[off].prop;
+};
 
 /** The props that turn the disabled state on (its own prop and each alias of it), joined for a condition; '' when the template has no disabled state. */
 const disabledPropsOf = template => {
@@ -373,10 +387,16 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     const varsExpr = varPairs.length ?`{ ${varPairs.join(', ')} }` : null;
     // Whatever turns the disabled state on: its own prop, and the prop of each state that is an alias of it (the Input's Read only).
     const disabledProp = disabledPropsOf(template);
+    const disabledAttr = disabledAttrOf(template);
     const children = [];
     // The canvas frame parts (the spinner) are drawn as the canvas places them: before the first text layer. An arc is an SVG path
     // of the same geometry the canvas and Play draw, shown while its condition holds (at rest: the turn is Play's).
     const framePartJsx = (part, extra = '') => {
+        // A part's condition is written as the template states it: a plain prop, or an all or any of them.
+        const cond = shownJsx(part.shownWhen);
+        const when = `{${part.shownWhen.all || part.shownWhen.any ? `(${cond})` : cond}${extra ? ` && ${extra}` : ''} && `;
+        // A plain frame part (a dot) is a box the stylesheet draws from its display mapping: fill, radius and size.
+        if (!part.arc) return `${when}<div className="${template.id}-${part.id}" />}`;
         const { size, start, sweep } = part.arc;
     // A user stroke width is the node's own: Play and the export draw it, so a width set by hand on the part layer wins over the template default.
     const width = partWidthOf(part);
@@ -385,9 +405,9 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         // The box is the part's icon size token (its display mapping), so the arc follows the Size; the stroke keeps its own width.
         const sizeToken = template.display?.[part.id]?.size;
         const box = sizeToken ? `style={{ width: "var(${cssVarOf(template.id, sizeToken)})", height: "var(${cssVarOf(template.id, sizeToken)})" }}` : `width={${size}} height={${size}}`;
-        return `{${part.shownWhen.prop} === true${extra ? ` && ${extra}` : ''} && (<svg className="${template.id}-${part.id}" ${box} viewBox="0 0 ${size} ${size}" aria-hidden="true"><path transform="translate(${width / 2} ${width / 2})" d="${d}" fill="none" stroke="currentColor" strokeWidth={${width}} vectorEffect="non-scaling-stroke" /></svg>)}`;
+        return `${when}(<svg className="${template.id}-${part.id}" ${box} viewBox="0 0 ${size} ${size}" aria-hidden="true"><path transform="translate(${width / 2} ${width / 2})" d="${d}" fill="none" stroke="currentColor" strokeWidth={${width}} vectorEffect="non-scaling-stroke" /></svg>)}`;
     };
-    const framed = canvasPartsOf(template).filter(part => part.kind === 'frame' && part.arc);
+    const framed = canvasPartsOf(template).filter(part => part.kind === 'frame');
     // A part with a parent draws inside its container (the Switch spinner in the handle), never at the root.
     const rooted = framed.filter(part => !part.parent);
     const parented = part => framed.filter(p => p.parent === part);
@@ -415,7 +435,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             if (!template.props[slot.id] && !isControl && !slot.text?.overflow && typeof slot.defaultText !== 'string') problems.push({ slot: slot.id, reason: 'no-prop' });
             // A control slot is an input holding the value prop (and the placeholder beside it), not a span.
             const label = control && control.slot === slot.id
-                ? `<${control.multiline ? (control.multiline.when ? 'Control' : 'textarea') : 'input'} className="${template.id}-${slot.id}" ${control.number ? `defaultValue={${control.value}} key={${control.value}} data-committed={${control.value}}` : `value={${control.value}}`}${control.placeholder ? ` placeholder={${placeholderCondition(template, control)}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''}${control.maskUnless ? ` type={${control.maskWhen ? `(${shownJsx(control.maskWhen)}) && !${control.maskUnless}` : `!${control.maskUnless}`} ? "password" : undefined}` : ''}${control.multiline ? ` rows={${control.multiline.when ? `(${shownJsx(control.multiline.when)}) ? ${control.multiline.rows} : undefined` : control.multiline.rows}}` : ''}${control.number ? ` min={${control.number.min} ?? undefined} max={${control.number.max} ?? undefined} step={${control.number.step}} onBlur={(e) => { const next = commitNumber(e.target.value, e.target.dataset.committed ?? "", { min: ${control.number.min} ?? null, max: ${control.number.max} ?? null, precision: ${control.number.precision} ?? null }); e.target.value = next; e.target.dataset.committed = next; onCommit?.(next); }}` : ''} disabled={${disabledProp}} />`
+                ? `<${control.multiline ? (control.multiline.when ? 'Control' : 'textarea') : 'input'} className="${template.id}-${slot.id}" ${control.number ? `defaultValue={${control.value}} key={${control.value}} data-committed={${control.value}}` : `value={${control.value}}`}${control.placeholder ? ` placeholder={${placeholderCondition(template, control)}}` : ''}${control.readonly ? ` readOnly={${control.readonly}}` : ''}${control.maxlength ? ` maxLength={${control.maxlength}}` : ''}${control.minlength ? ` minLength={${control.minlength}}` : ''}${control.maskUnless ? ` type={${control.maskWhen ? `(${shownJsx(control.maskWhen)}) && !${control.maskUnless}` : `!${control.maskUnless}`} ? "password" : undefined}` : ''}${control.multiline ? ` rows={${control.multiline.when ? `(${shownJsx(control.multiline.when)}) ? ${control.multiline.rows} : undefined` : control.multiline.rows}}` : ''}${control.number ? ` min={${control.number.min} ?? undefined} max={${control.number.max} ?? undefined} step={${control.number.step}} onBlur={(e) => { const next = commitNumber(e.target.value, e.target.dataset.committed ?? "", { min: ${control.number.min} ?? null, max: ${control.number.max} ?? null, precision: ${control.number.precision} ?? null }); e.target.value = next; e.target.dataset.committed = next; onCommit?.(next); }}` : ''} disabled={${disabledAttr}} />`
                 : `<span className="${template.id}-${slot.id}">${slot.text?.overflow ? overflowJsx(slot.text.overflow) : typeof slot.defaultText === 'string' ? `{${JSON.stringify(slot.defaultText)}}` : `{${slot.id}}`}</span>`;
             // The control is always written: the input holds the value and the placeholder whether or not the canvas has a layer for them.
             out.push(isControl ? label : slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${label}}` : slot.optional ? `{${slot.id} && ${label}}` : label);
@@ -513,7 +533,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         // A prop that aligns the row's content on the cross axis (top or centre) says which as a data attribute (an Alert with a description).
         ...fieldWritersOf(template).filter(w => w.field === 'counterAlign').map(w => `data-${w.prop}-cross={${alignExprOf(w)}}`),
         // Only some elements have a `disabled` attribute; any other root says it with aria-disabled (and the schema's state pseudo selects on it).
-        ...(ctl || !disabledProp ? [] : [DISABLEABLE.has(tag) ? `disabled={${disabledProp}}` : `aria-disabled={${disabledProp} || undefined}`]),
+        ...(ctl || !disabledAttr ? [] : [DISABLEABLE.has(tag) ? `disabled={${disabledAttr}}` : `aria-disabled={${disabledAttr} || undefined}`]),
         // A root whose click a prop blocks says so, so the loading rule (see blockedRules) matches in Play and in the export alike.
         ...(blockClickProps.length ? ['data-blocked={blocked || undefined}'] : []),
         ...template.events.map(event => `${DOM_EVENT[event.name]}={${event.name === 'onClick' ? (template.interaction?.wave ? 'blocked ? undefined : (e) => { if (onClick) onClick(e); waveDown(e.currentTarget); }' : 'blocked ? undefined : onClick') : event.name}}`),
@@ -1248,7 +1268,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
         const base = previewOf(template, binding, combo, variables, defaults, 'default');
         for (const u of base.unresolved) problems.push({ ...u, ...combo });
         if (Object.keys(base.vars).length) blocks.push(`${selector} {\n${declarations(base.vars)}}\n`);
-        for (const state of [...Object.keys(template.persistentStates).filter(name => !template.persistentStates[name].as), ...Object.keys(template.previewStates)]) {
+        for (const state of [...Object.keys(template.persistentStates).filter(name => !template.persistentStates[name].as || template.persistentStates[name].inert === true), ...Object.keys(template.previewStates)]) {
             const pseudo = pseudoOf(template, state);
             const persistent = template.persistentStates[state];
             const changed = persistent
@@ -1269,9 +1289,9 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
             const wrapperTarget = template.focusTarget === 'wrapper';
             // A click-blocking prop held hides the interaction states, like disabled does; a persistent state it carries (a checked Switch that loads) still applies, as the canvas binds it.
             const blockedGuard = !persistent && (template.element.blockClickProps?.length ?? 0) ? ':not([data-blocked])' : '';
-            const noDisabled = wrapperTarget ? ':not(:has(:disabled))' : notDisabledOf(template);
+            const noDisabled = wrapperTarget ? [':not(:has(:disabled))', ...inertPseudosOf(template).map(p => `:not(:has(${p}))`)].join('') : notDisabledOf(template);
             // A marker state (strong, code) says how the text looks, not what it is doing: a disabled element keeps it, so it carries no disabled guard.
-            const guard = state === disabledState || persistent?.marker === true ? '' : `${noDisabled}${blockedGuard}`;
+            const guard = state === disabledState || persistent?.marker === true || persistent?.inert === true ? '' : `${noDisabled}${blockedGuard}`;
             if (!Object.keys(delta).length) continue;
             // A preview state does not apply while a state the root says as an attribute replaces the tokens it changes (the checked look wins over hover).
             const replaced = persistent ? '' : stateAttributesOf(template).filter(a => Object.keys(template.persistentStates[a.state].tokens).some(base => Object.hasOwn(template.previewStates[state] ?? {}, base))).map(a => `:not(${template.statePseudo[a.state]})`).join('');
@@ -1280,6 +1300,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
             const gate = gateAttr ? `[${gateAttr}]` : '';
             const sels = !wrapperTarget ? [`${selector}${gate}${pseudo}${replaced}${guard}`]
                 : state === disabledState ? [`${selector}:has(:disabled)`]
+                : persistent && pseudo ? [`${selector}:has(${pseudo})${guard}`]
                 : pseudo === ':focus' || pseudo === ':focus-visible' ? [`${selector}:has(:focus-visible)${guard}`, `${selector}:focus-within${guard}`]
                 : [`${selector}${pseudo}${guard}`];
             for (const sel of sels) blocks.push(`${sel} {\n${declarations(delta)}}\n`);
@@ -1288,7 +1309,8 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     // A hiding state takes the root out of Play and the export while it holds (the canvas keeps the node).
     for (const [state, def] of Object.entries(template.persistentStates)) if (def.hide === true) blocks.push(`.${template.id}${template.statePseudo[state]} {\n  display: none;\n}\n`);
     blocks.push(...iconHoverRules(template), ...blockedRules(template), ...swapRules(template));
-    if (template.parts?.some(part => part.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
+    if (template.parts?.some(part => part.spin) || template.anatomy?.some(slot => slot.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
+    if (template.parts?.some(part => part.pulse)) blocks.push(`@keyframes ${PULSE_KEYFRAMES} {\n  from { opacity: 0.3; transform: scale(0.75); }\n  to { opacity: 1; transform: scale(0.75); }\n}\n`);
     if (template.interaction?.wave) blocks.push(waveRules(template));
     blocks.push(...expandRules(template), ...pressRules(template), ...glyphHoverRules(template), ...fieldRules(template, master, childrenOf), ...gradientPatternRules(template, master, childrenOf), ...fillOverrideRules(template), ...cursorRules(template), ...multilineRules(template), ...revealRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
     if (template.interaction || template.motion) blocks.push(reducedMotion(template));
