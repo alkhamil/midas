@@ -1,4 +1,3 @@
-import { ICON_PART_DISPLAY } from './icon-slots.js';
 import { DEFAULT_SIZE_MODE, SIZE_MODES, roleLadder } from './size-modes.js';
 import { COLOR_PRESETS, presetRoleMap } from './color-presets.js';
 
@@ -47,6 +46,8 @@ export const SPIN = {
         { id: 'dotCol1', kind: 'frame', parent: 'dotBox', layout: 'vertical', primaryAlign: 'start', counterAlign: 'center', managed: true, shownWhen: DOTS },
         { id: 'dotCol2', kind: 'frame', parent: 'dotBox', layout: 'vertical', primaryAlign: 'start', counterAlign: 'center', managed: true, shownWhen: DOTS },
         { id: 'ringBox', kind: 'frame', layout: 'none', managed: true, shownWhen: RING_BOX, spin: RING_SPIN },
+        // The cap of the dot ring: a column the holder's size, its dot at the top and centred.
+        { id: 'dotCap', kind: 'frame', parent: 'ringBox', layout: 'vertical', primaryAlign: 'start', counterAlign: 'center', managed: true, shownWhen: DOT_RING },
     ],
     icons: [],
     rootLayout: 'horizontal',
@@ -82,7 +83,7 @@ export const SPIN = {
     statePseudo: {},
     // Parts: the arc (type arc); the four dots, two per column, each pulsing 0.4 seconds after the one before (type dots); the ring parts; the scale ring.
     parts: [
-        { id: 'spinner', kind: 'frame', shownWhen: ARC, spin: true, tokens: { colour: 'fg', disabledColour: 'fg', size: 'iconSize' }, arc: { size: 14, start: -90, sweep: 25, ratio: 75, width: 1.5 } },
+        { id: 'spinner', kind: 'frame', shownWhen: ARC, spin: true, tokens: { colour: 'fg', disabledColour: 'fg', size: 'boxSize' }, arc: { size: 14, start: -90, sweep: 25, ratio: 75, width: 1.5 } },
         ...DOT_PARTS.map((id, i) => ({ id, kind: 'frame', parent: i < 2 ? 'dotCol1' : 'dotCol2', shownWhen: DOTS, pulse: { delayMs: i * 400 } })),
         // Ring: a track, and a head that turns over it.
         ring('ringTrack', 'ring-track', 0, 100, RING, { parent: 'ringBox' }),
@@ -92,9 +93,10 @@ export const SPIN = {
         ring('ringBottom', 'fg', 45, 25, TWO_ARCS, { parent: 'ringBox' }),
         // Dot ring: a track and a head, turning together in the holder.
         ring('dotRingTrack', 'ring-track', 0, 100, DOT_RING, { parent: 'ringBox' }),
-        ring('dotRingHead', 'fg', -90, 12, DOT_RING, { parent: 'ringBox' }),
         // Gap ring: a ring with an open quarter, turning in the holder.
         ring('gapRing', 'fg', 0, 75, GAP_RING, { parent: 'ringBox' }),
+        // The dot of the dot ring: a circle at the top of its cap.
+        { id: 'dotHead', kind: 'frame', parent: 'dotCap', shownWhen: DOT_RING },
         // Scale ring: a full ring that grows and fades.
         ring('scaleRing', 'fg', 0, 100, SCALE_RING, { scale: { delayMs: 0 } }),
     ],
@@ -106,15 +108,16 @@ export const SPIN = {
         dotCol1: { gap: 'dotGap' },
         dotCol2: { gap: 'dotGap' },
         ringBox: { size: 'boxSize' },
-        spinner: ICON_PART_DISPLAY,
+        spinner: { stroke: 'fg', size: 'boxSize' },
         ringTrack: { stroke: 'ring-track', size: 'boxSize' },
         ringHead: { stroke: 'fg', size: 'boxSize' },
         ringTop: { stroke: 'fg', size: 'boxSize' },
         ringBottom: { stroke: 'fg', size: 'boxSize' },
         dotRingTrack: { stroke: 'ring-track', size: 'boxSize' },
-        dotRingHead: { stroke: 'fg', size: 'boxSize' },
         gapRing: { stroke: 'fg', size: 'boxSize' },
         scaleRing: { stroke: 'fg', size: 'boxSize' },
+        dotCap: { size: 'boxSize' },
+        dotHead: { fill: 'fg', radius: 'radiusFull', size: 'dotSize' },
         dot1: { fill: 'fg', radius: 'radiusFull', size: 'dotSize' },
         dot2: { fill: 'fg', radius: 'radiusFull', size: 'dotSize' },
         dot3: { fill: 'fg', radius: 'radiusFull', size: 'dotSize' },

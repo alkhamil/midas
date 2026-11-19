@@ -8,12 +8,12 @@ import { modelFor, instanceFor } from './helpers/box-template.js';
 const spin = TEMPLATES.get('antd-spin');
 const model = modelFor(spin);
 const keysOf = props => instanceFor(model, props).slice(1).map(n => n.behavior?.part ?? n.behavior?.slot ?? n.name);
-const RING_PARTS = ['ringTrack', 'ringHead', 'ringTop', 'ringBottom', 'dotRingTrack', 'dotRingHead', 'gapRing', 'scaleRing'];
+const RING_PARTS = ['ringTrack', 'ringHead', 'ringTop', 'ringBottom', 'dotRingTrack', 'dotHead', 'gapRing', 'scaleRing'];
 
 test('each ring type draws only its own parts', () => {
     assert.deepEqual(keysOf({ type: 'ring' }).filter(k => RING_PARTS.includes(k)), ['ringTrack', 'ringHead']);
     assert.deepEqual(keysOf({ type: 'ringTwo' }).filter(k => RING_PARTS.includes(k)), ['ringTop', 'ringBottom']);
-    assert.deepEqual(keysOf({ type: 'ringDot' }).filter(k => RING_PARTS.includes(k)), ['dotRingTrack', 'dotRingHead']);
+    assert.deepEqual(keysOf({ type: 'ringDot' }).filter(k => RING_PARTS.includes(k)), ['dotRingTrack', 'dotHead']);
     assert.deepEqual(keysOf({ type: 'ringGap' }).filter(k => RING_PARTS.includes(k)), ['gapRing']);
     assert.deepEqual(keysOf({ type: 'ringScale' }).filter(k => RING_PARTS.includes(k)), ['scaleRing']);
     assert.deepEqual(keysOf({ type: 'ringScale' }).filter(k => /^dot\d$/.test(k)), [], 'no dots with the scale ring');
