@@ -29,12 +29,34 @@ const CASES = [
         name: 'Search Field',
         // Input's outline is transparent at rest and is skipped, as in strict-parity.
         outline: false,
+        // The Design System frame grows by this much below the component, which is the last template made: see frameWithRoom.
+        room: 200,
         states: [
             { name: 'suffix', props: { hasSuffix: true } },
             { name: 'no-suffix', props: { hasSuffix: false } },
         ],
     },
 ];
+
+/**
+ * Play opens the top-level frame that holds the selection. Search is the last template made, so it sits at the end of that frame: its padding
+ * reaches the bottom of Play's viewport and the shot is cut short. The frame grows by `room` below its content, and its Prototype Scroll
+ * behaviour is vertical, so Play scrolls it like any scrolling frame.
+ */
+async function frameWithRoom(page, id, room) {
+    const frameId = await page.evaluate(id => {
+        let n = window.midas.doc.get(id);
+        while (n.parentId) n = window.midas.doc.get(n.parentId);
+        return n.id;
+    }, id);
+    await page.evaluate(fid => window.midas.select([fid]), frameId);
+    const h = await page.evaluate(fid => window.midas.doc.get(fid).h, frameId);
+    await page.evaluate(v => window.midas.setProperty('h', v), h + room);
+    await page.locator('[data-inspector-tab="prototype"]').click();
+    await page.selectOption('[data-pt-overflow]', 'vertical');
+    await settle(page, 4);
+    await page.evaluate(id => window.midas.select([id]), id);
+}
 
 for (const c of CASES) {
     test(`a created ${c.name} measures the same on the canvas and in Play at every Size and state, within 0.5px`, async t => {
@@ -46,6 +68,7 @@ for (const c of CASES) {
         const { page, errors } = await openImportedFile(browser, isolatedStage({ name: `${c.templateId}.midas` }));
 
         const id = await createFromPanel(page, c.templateId);
+        if (c.room) await frameWithRoom(page, id, c.room);
         const master = await page.evaluate(id => window.midas.doc.get(window.midas.doc.get(id).sourceId), id);
         const sizeColl = master.behavior.variables.size;
         const modes = await page.evaluate(sizeColl => window.midas.doc.data.variables.collections.find(x => x.id === sizeColl).modes, sizeColl);
