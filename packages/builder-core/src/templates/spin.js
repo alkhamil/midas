@@ -27,10 +27,10 @@ const HOLDER_SPIN = { seconds: 1.2 };
 const RING_SPIN = { seconds: 1 };
 
 /** An arc part of the rings: the same ring geometry, drawn at the Size's box, with its colour token. */
-const ring = (id, colour, start, sweep, shownWhen, extra = {}) => ({
+const ring = (id, colour, start, sweep, shownWhen, { ratio = 75, ...extra } = {}) => ({
     id, kind: 'frame', shownWhen, ...extra,
     tokens: { colour, disabledColour: colour, size: 'boxSize' },
-    arc: { size: 14, start, sweep, ratio: 75, width: 1.5 },
+    arc: { size: 14, start, sweep, ratio, width: 1.5 },
 });
 
 /** @type {TemplateSchema} */
@@ -65,9 +65,9 @@ export const SPIN = {
     },
     tokens: {
         fromColor: ['fg', 'ring-track'],
-        fromSize: ['iconSize', 'boxSize', 'dotSize', 'dotGap', 'radiusFull'],
+        fromSize: ['iconSize', 'boxSize', 'dotSize', 'ringDot', 'dotGap', 'radiusFull'],
     },
-    tokenKinds: { fg: 'color', 'ring-track': 'color', iconSize: 'length', boxSize: 'length', dotSize: 'length', dotGap: 'length', radiusFull: 'length' },
+    tokenKinds: { fg: 'color', 'ring-track': 'color', iconSize: 'length', boxSize: 'length', dotSize: 'length', dotGap: 'length', ringDot: 'length', radiusFull: 'length' },
     tokenRoles: {
         fg: presetRoleMap('text'),
         'ring-track': presetRoleMap('border'),
@@ -76,6 +76,8 @@ export const SPIN = {
         boxSize: roleLadder(['space-14', 'space-14', 'space-20', 'space-32', 'space-32']),
         dotSize: roleLadder(['space-6', 'space-6', 'space-9', 'space-15', 'space-15']),
         dotGap: 'space-2',
+        // The dot of the dot ring is a fifth of the holder (antd's proportions: 2 at the small sizes, 4 at md, 6 at the large sizes).
+        ringDot: roleLadder(['space-2', 'space-2', 'space-4', 'space-6', 'space-6']),
         radiusFull: 'radius-full',
     },
     persistentStates: {},
@@ -92,7 +94,7 @@ export const SPIN = {
         ring('ringTop', 'fg', -135, 25, TWO_ARCS, { parent: 'ringBox' }),
         ring('ringBottom', 'fg', 45, 25, TWO_ARCS, { parent: 'ringBox' }),
         // Dot ring: a track and a head, turning together in the holder.
-        ring('dotRingTrack', 'ring-track', 0, 100, DOT_RING, { parent: 'ringBox' }),
+        ring('dotRingTrack', 'ring-track', 0, 100, DOT_RING, { parent: 'ringBox', ratio: 90 }),
         // Gap ring: a ring with an open quarter, turning in the holder.
         ring('gapRing', 'fg', 0, 75, GAP_RING, { parent: 'ringBox' }),
         // The dot of the dot ring: a circle at the top of its cap.
@@ -117,7 +119,7 @@ export const SPIN = {
         gapRing: { stroke: 'fg', size: 'boxSize' },
         scaleRing: { stroke: 'fg', size: 'boxSize' },
         dotCap: { size: 'boxSize' },
-        dotHead: { fill: 'fg', radius: 'radiusFull', size: 'dotSize' },
+        dotHead: { fill: 'fg', radius: 'radiusFull', size: 'ringDot' },
         dot1: { fill: 'fg', radius: 'radiusFull', size: 'dotSize' },
         dot2: { fill: 'fg', radius: 'radiusFull', size: 'dotSize' },
         dot3: { fill: 'fg', radius: 'radiusFull', size: 'dotSize' },
