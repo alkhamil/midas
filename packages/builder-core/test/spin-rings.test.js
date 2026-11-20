@@ -2,7 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
-import { generateComponent, componentNameOf } from '../src/behavior-engine/codegen.js';
+import { generateComponent, componentNameOf, spinAnimation } from '../src/behavior-engine/codegen.js';
+import { ringMiddleOffset } from '../src/behavior-engine/template-master.js';
 import { modelFor, instanceFor } from './helpers/box-template.js';
 
 const spin = TEMPLATES.get('antd-spin');
@@ -21,11 +22,20 @@ test('each ring type draws only its own parts', () => {
 
 test('the ring holder holds the parts that turn together, and only for the holder types', () => {
     assert.ok(keysOf({ type: 'ringTwo' }).includes('ringBox'));
-    assert.ok(keysOf({ type: 'ringDot' }).includes('ringBox'));
     assert.ok(keysOf({ type: 'ringGap' }).includes('ringBox'));
     assert.ok(keysOf({ type: 'ring' }).includes('ringBox'), 'the ring stacks its track and head in the holder, which turns');
+    assert.ok(!keysOf({ type: 'ringDot' }).includes('ringBox'), 'the dot ring has its own holder');
     assert.ok(!keysOf({ type: 'ringScale' }).includes('ringBox'));
     assert.deepEqual(spin.anatomy.find(s => s.id === 'ringBox').spin, { seconds: 1 });
+});
+
+test('the dot ring turns in its own holder with ease-in-out, as SpinThatShit loader 04 (the others are linear)', () => {
+    assert.deepEqual(keysOf({ type: 'ringDot' }).filter(k => k === 'dotRingBox'), ['dotRingBox']);
+    assert.deepEqual(keysOf({ type: 'ring' }).filter(k => k === 'dotRingBox'), []);
+    assert.deepEqual(spin.anatomy.find(s => s.id === 'dotRingBox').spin, { seconds: 1, easing: 'ease-in-out' });
+    assert.deepEqual(spin.parts.filter(p => p.id === 'dotRingTrack' || p.id === 'dotHead').map(p => p.parent), ['dotRingBox', 'dotRingBox']);
+    assert.equal(spinAnimation({ seconds: 1, easing: 'ease-in-out' }), 'midas-spin 1s ease-in-out infinite');
+    assert.equal(spinAnimation({ seconds: 1.2 }), 'midas-spin 1.2s linear infinite');
 });
 
 test('nothing of a ring is drawn while spinning is off', () => {
@@ -37,4 +47,12 @@ test('the scale ring grows and fades in Play, and the export draws the ring at r
     const files = generateComponent(spin, model.binding, model.variables, componentNameOf(spin), model.frame, () => []).files;
     assert.match(files['Spin.jsx'], /className="antd-spin-scaleRing"/);
     assert.match(files['Spin.jsx'], /className="antd-spin-ringBox"/);
+});
+
+test('the dot is centred on the track: its middle is at the track\'s middle at every Size', () => {
+    assert.equal(spin.parts.find(p => p.id === 'dotHead').lift.ring, spin.parts.find(p => p.id === 'dotRingTrack').arc.ratio);
+    for (const box of [12, 14, 20, 28, 32]) {
+        const trackMiddle = (1 - 0.93) * box / 2 / 2;
+        assert.ok(Math.abs(ringMiddleOffset(93, box) - trackMiddle) < 1e-9, `box ${box}`);
+    }
 });

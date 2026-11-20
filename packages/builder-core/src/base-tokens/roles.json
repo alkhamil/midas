@@ -188,6 +188,8 @@
   "space-6": { "base": "Semantic/space6", "derive": { "from": "Primitives/size/6" } },
   "space-8": { "base": "Semantic/space8", "derive": { "from": "Primitives/size/8" } },
   "space-2": { "base": "Semantic/space2", "derive": { "from": "Primitives/size/2" } },
+  "space-3": { "base": "Semantic/space3", "derive": { "from": "Primitives/size/3" } },
+  "space-5": { "base": "Semantic/space5", "derive": { "from": "Primitives/size/5" } },
   "space-9": { "base": "Semantic/space9", "derive": { "from": "Primitives/size/9" } },
   "space-15": { "base": "Semantic/space15", "derive": { "from": "Primitives/size/15" } },
   "space-10": { "base": "Semantic/space10", "derive": { "from": "Primitives/size/10" } },

@@ -21,10 +21,12 @@ const DOT_RING = ON('ringDot');
 const GAP_RING = ON('ringGap');
 const SCALE_RING = ON('ringScale');
 /** The holder of the rings whose parts turn together (two arcs, a head on a track, a gap). */
-const RING_BOX = { all: [SPINNING, { any: [TYPE('ring'), TYPE('ringTwo'), TYPE('ringDot'), TYPE('ringGap')] }] };
+const RING_BOX = { all: [SPINNING, { any: [TYPE('ring'), TYPE('ringTwo'), TYPE('ringGap')] }] };
 /** antd's holder turns in 1.2 seconds; the SpinThatShit loaders turn in one. */
 const HOLDER_SPIN = { seconds: 1.2 };
 const RING_SPIN = { seconds: 1 };
+/** The dot ring's holder turns with ease-in-out, as SpinThatShit's loader 04 does (the other rings turn linearly). */
+const DOT_RING_SPIN = { seconds: 1, easing: 'ease-in-out' };
 
 /** An arc part of the rings: the same ring geometry, drawn at the Size's box, with its colour token. */
 const ring = (id, colour, start, sweep, shownWhen, { ratio = 75, fill = false, ...extra } = {}) => ({
@@ -47,6 +49,7 @@ export const SPIN = {
         { id: 'dotCol1', kind: 'frame', parent: 'dotBox', layout: 'vertical', primaryAlign: 'start', counterAlign: 'center', managed: true, shownWhen: DOTS },
         { id: 'dotCol2', kind: 'frame', parent: 'dotBox', layout: 'vertical', primaryAlign: 'start', counterAlign: 'center', managed: true, shownWhen: DOTS },
         { id: 'ringBox', kind: 'frame', layout: 'none', managed: true, shownWhen: RING_BOX, spin: RING_SPIN },
+        { id: 'dotRingBox', kind: 'frame', layout: 'none', managed: true, shownWhen: DOT_RING, spin: DOT_RING_SPIN },
     ],
     icons: [],
     rootLayout: 'horizontal',
@@ -72,11 +75,11 @@ export const SPIN = {
         'ring-track': presetRoleMap('border'),
         iconSize: roleLadder(['icon-xs', 'icon-sm', 'icon-md', 'icon-lg', 'icon-xl']),
         // antd: the holder is 14 (small), 20 (default), 32 (large); each dot is (holder - 2) / 2 across: 6, 9, 15.
-        boxSize: roleLadder(['space-14', 'space-14', 'space-20', 'space-32', 'space-32']),
-        dotSize: roleLadder(['space-6', 'space-6', 'space-9', 'space-15', 'space-15']),
+        boxSize: roleLadder(['space-12', 'space-14', 'space-20', 'space-28', 'space-32']),
+        dotSize: roleLadder(['space-5', 'space-6', 'space-9', 'space-12', 'space-15']),
         dotGap: 'space-2',
-        // The dot of the dot ring is a fifth of the holder (antd's proportions: 2 at the small sizes, 4 at md, 6 at the large sizes).
-        ringDot: roleLadder(['space-2', 'space-2', 'space-4', 'space-6', 'space-6']),
+        // The dot of the dot ring is about a fifth of the holder: 2, 3, 4, 5, 6 across the five Sizes (every Size its own value).
+        ringDot: roleLadder(['space-2', 'space-3', 'space-4', 'space-5', 'space-6']),
         radiusFull: 'radius-full',
     },
     persistentStates: {},
@@ -93,12 +96,13 @@ export const SPIN = {
         ring('ringTop', 'fg', -135, 25, TWO_ARCS, { parent: 'ringBox' }),
         ring('ringBottom', 'fg', 45, 25, TWO_ARCS, { parent: 'ringBox' }),
         // Dot ring: a track and a head, turning together in the holder.
-        ring('dotRingTrack', 'ring-track', 0, 100, DOT_RING, { parent: 'ringBox', ratio: 90, fill: true }),
+        // The track's inner radius is 93% of its outer one: a thin ring of about 3.5% of the box, as SpinThatShit's loader 04 (a 2 px border on 56 px).
+        ring('dotRingTrack', 'ring-track', 0, 100, DOT_RING, { parent: 'dotRingBox', ratio: 93, fill: true }),
         // Gap ring: a ring with an open quarter, turning in the holder.
         ring('gapRing', 'fg', 0, 75, GAP_RING, { parent: 'ringBox' }),
         // The dot of the dot ring: a circle at the top of its cap.
-        // The dot sits centred on the holder, lifted 1.5 px above its top edge at every Size (out of the holder's flow). It is drawn after the track, so it sits on the ring.
-        { id: 'dotHead', kind: 'frame', parent: 'ringBox', shownWhen: DOT_RING, lift: -1.5 },
+        // The dot is centred on the track's middle (out of the holder's flow), so it sits on the ring at every Size. It is drawn after the track.
+        { id: 'dotHead', kind: 'frame', parent: 'dotRingBox', shownWhen: DOT_RING, lift: { ring: 93 } },
         // Scale ring: a full ring that grows and fades.
         ring('scaleRing', 'fg', 0, 100, SCALE_RING, { scale: { delayMs: 0 } }),
     ],
@@ -110,6 +114,7 @@ export const SPIN = {
         dotCol1: { gap: 'dotGap' },
         dotCol2: { gap: 'dotGap' },
         ringBox: { size: 'boxSize' },
+        dotRingBox: { size: 'boxSize' },
         spinner: { stroke: 'fg', size: 'boxSize' },
         ringTrack: { stroke: 'ring-track', size: 'boxSize' },
         ringHead: { stroke: 'fg', size: 'boxSize' },

@@ -49,8 +49,8 @@ const WAVE_COLOR_VAR = '--midas-wave-color';
 // A part declared `spin` turns about its centre; the arc it draws is what shows the turn.
 export const SPIN_KEYFRAMES = 'midas-spin';
 export const SPIN_ANIMATION = `${SPIN_KEYFRAMES} 1s linear infinite`;
-/** A spin with its own duration: `spin: { seconds }` on an anatomy frame or a part (antd's holder turns in 1.2 seconds); `spin: true` is the default turn. */
-export const spinAnimation = spin => (typeof spin === 'object' ? `${SPIN_KEYFRAMES} ${spin.seconds}s linear infinite` : SPIN_ANIMATION);
+/** A spin with its own duration and easing: `spin: { seconds, easing? }` on an anatomy frame or a part (antd's holder turns in 1.2 seconds, linear; SpinThatShit's dot ring eases in and out); `spin: true` is the default turn. */
+export const spinAnimation = spin => (typeof spin === 'object' ? `${SPIN_KEYFRAMES} ${spin.seconds}s ${spin.easing ?? 'linear'} infinite` : SPIN_ANIMATION);
 /** A dot of a spinner pulses its opacity (antd's dot-pulse, scale fixed at 0.75): the keyframes are in the stylesheet of a template with such a part; each dot starts `delayMs` after the first. */
 export const PULSE_KEYFRAMES = 'midas-pulse';
 /** A ring of a spinner scales up and fades out (antd-free: the SpinThatShit ring), `delayMs` after the first. Keyframes in the stylesheet of a template with such a part. */
@@ -682,9 +682,12 @@ function displayRules(template, master, childrenOf, geometry) {
         // A container pinned to the right edge is out of the flow: it starts on the box's top border line (the padding box starts inside the border, so top is minus the border)
         // and its height is the box's height token, so it is as tall as the box at every Size mode.
         if (template.anatomy.find(s => s.id === key)?.edge === 'right') decls.push('  position: absolute;\n', `  top: calc(-1 * var(${cssVarOf(template.id, template.display.root.strokeWidth)}));\n`, '  right: 0;\n');
-        // A lifted part (see LIFT_NODE) is out of its container's flow: centred across the container's size token, `lift` px from its top. The container is the positioning box.
+        // A lifted part (see LIFT_NODE) is out of its container's flow: centred across the container's size token and on the ring's middle (ringMiddleOffset). The container is the positioning box.
         const lifted = template.parts?.find(p => p.id === key && p.lift !== undefined);
-        if (lifted) decls.push('  position: absolute;\n', `  left: calc((var(${cssVarOf(template.id, template.display[lifted.parent].size)}) - var(${cssVarOf(template.id, template.display[key].size)})) / 2);\n`, `  top: ${lifted.lift}px;\n`);
+        if (lifted) {
+            const box = `var(${cssVarOf(template.id, template.display[lifted.parent].size)})`, self = `var(${cssVarOf(template.id, template.display[key].size)})`;
+            decls.push('  position: absolute;\n', `  left: calc((${box} - ${self}) / 2);\n`, `  top: calc(${box} * ${(1 - lifted.lift.ring / 100) / 4} - ${self} / 2);\n`);
+        }
         if (template.parts?.some(p => p.parent === key && p.lift !== undefined)) decls.push('  position: relative;\n');
         // A template that clips its content (a Card's cover follows the rounded top) clips the root's children to its corners, as the canvas does.
         if (key === 'root' && template.clipsContent) decls.push('  overflow: hidden;\n');

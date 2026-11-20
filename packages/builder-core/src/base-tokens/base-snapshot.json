@@ -983,6 +983,16 @@
     },
     {
       "collection": "Primitives",
+      "name": "size/3",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 3
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
       "name": "size/4",
       "type": "number",
       "values": {
@@ -4543,6 +4553,7 @@
       "Primitives/secondary/900",
       "Primitives/size/0",
       "Primitives/size/2",
+      "Primitives/size/3",
       "Primitives/size/4",
       "Primitives/size/5",
       "Primitives/size/6",

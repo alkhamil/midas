@@ -285,11 +285,14 @@ export const EDGE_NODE = { layoutPositioning: 'absolute', constraintH: 'right', 
 
 export const CORNER_NODE = { layoutPositioning: 'absolute', constraintH: 'right', constraintV: 'bottom' };
 
-/** A part lifted off its container's flow (`lift`): absolutely positioned, centred on the container's width and set `lift` px from its top. */
+/** A part lifted off its container's flow (`lift: { ring }`): absolutely positioned, centred on the container's width and on the ring of inner radius `ring`% (its middle). */
 export const LIFT_NODE = { layoutPositioning: 'absolute', constraintH: 'center', constraintV: 'top' };
 
+/** The top of a part centred on a ring of the container: the ring's middle is (1 - ring) / 4 of the container's size from its top (half the ring's thickness). */
+export const ringMiddleOffset = (ring, box) => (1 - ring / 100) * box / 4;
+
 /**
- * The frame of a lifted part (see LIFT_NODE) in its container's coordinates: centred across the container's size token and `lift` px from its top,
+ * The frame of a lifted part (see LIFT_NODE) in its container's coordinates: centred across the container's size token and on the ring's middle,
  * both from the resolved variables, so it follows the Size at once (like pinnedFrame).
  * @param {any} template
  * @param {any} part the canvas part with `lift` and a `parent`
@@ -300,7 +303,7 @@ export function liftedPartFrame(template, part, vars) {
     const px = token => parseFloat(vars[cssVarOf(template.id, token)]) || 0;
     const w = px(template.display[part.id].size), h = px(template.display[part.id].size);
     const box = px(template.display[part.parent].size);
-    return { x: (box - w) / 2, y: part.lift, w, h };
+    return { x: (box - w) / 2, y: ringMiddleOffset(part.lift.ring, box) - h / 2, w, h };
 }
 
 /**

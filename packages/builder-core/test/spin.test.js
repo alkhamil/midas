@@ -63,11 +63,13 @@ test('the export draws the dots for the dots type and the arc for the arc type',
     assert.match(files['Spin.jsx'], /className="antd-spin-spinner"/, 'the arc is drawn too, under its type');
 });
 
-test('the geometry is antd\'s: the holder is 14, 20 or 32 by Size (small, default, large), each dot (holder - 2) / 2, the gap 2', () => {
+test('the geometry is antd\'s proportions, and every Size has its own value: the holder 12, 14, 20, 28, 32 and each dot about (holder - 2) / 2', () => {
     const role = token => spin.tokenRoles[token];
-    assert.deepEqual(role('boxSize'), { xs: 'space-14', sm: 'space-14', md: 'space-20', lg: 'space-32', xl: 'space-32', default: 'space-20' });
-    assert.deepEqual(role('dotSize'), { xs: 'space-6', sm: 'space-6', md: 'space-9', lg: 'space-15', xl: 'space-15', default: 'space-9' });
+    assert.deepEqual(role('boxSize'), { xs: 'space-12', sm: 'space-14', md: 'space-20', lg: 'space-28', xl: 'space-32', default: 'space-20' });
+    assert.deepEqual(role('dotSize'), { xs: 'space-5', sm: 'space-6', md: 'space-9', lg: 'space-12', xl: 'space-15', default: 'space-9' });
+    assert.deepEqual(role('ringDot'), { xs: 'space-2', sm: 'space-3', md: 'space-4', lg: 'space-5', xl: 'space-6', default: 'space-4' });
     assert.equal(role('dotGap'), 'space-2');
+    assert.equal(new Set(Object.entries(role('boxSize')).filter(([m]) => m !== 'default').map(([, r]) => r)).size, 5);
 });
 
 test('the holder turns as a whole (1.2 seconds, antd), and each dot pulses 0.4 seconds after the one before', () => {
