@@ -42,9 +42,12 @@ const CASES = [
         name: 'Spin',
         // A status with no border: no outline to measure.
         outline: false,
+        // The dot ring's dot is lifted above the holder: the frame gets room, as Statistic and Search Field do.
+        room: 200,
         states: [
             { name: 'dots', props: { type: 'dots' } },
             { name: 'arc', props: { type: 'arc' } },
+            { name: 'dot-ring', props: { type: 'ringDot' } },
         ],
     },
     {

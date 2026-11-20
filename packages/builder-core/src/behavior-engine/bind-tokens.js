@@ -120,6 +120,8 @@ export function applyBindTokens(layers, ops) {
         const n = layer.node;
         n.vars = varsWithBinding(n.vars, op.varKey, op.itemId);
         if (op.varKey === 'fills.0') delete n.vars.fill;
+        // A fill arc (a donut) starts with no paint: the bound fill gives it one, as the stroke op gives a stroked layer its stroke.
+        if (op.varKey === 'fills.0' && n.type === 'ellipse' && !(n.fills?.length)) n.fills = [{ type: 'solid', color: '#18181b', opacity: 1, visible: true }];
         if (op.varKey === 'stroke') {
             if (!(n.strokeWidth > 0)) setStrokeWeight(n, 1);
             if (n.strokeAlign === undefined) n.strokeAlign = 'inside';

@@ -408,7 +408,9 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         // The box is the part's icon size token (its display mapping), so the arc follows the Size; the stroke keeps its own width.
         const sizeToken = template.display?.[part.id]?.size;
         const box = sizeToken ? `style={{ width: "var(${cssVarOf(template.id, sizeToken)})", height: "var(${cssVarOf(template.id, sizeToken)})" }}` : `width={${size}} height={${size}}`;
-        return `${when}(<svg className="${template.id}-${part.id}" ${box} viewBox="0 0 ${size} ${size}" aria-hidden="true"><path transform="translate(${width / 2} ${width / 2})" d="${d}" fill="none" stroke="currentColor" strokeWidth={${width}} vectorEffect="non-scaling-stroke" /></svg>)}`;
+        // A fill arc (no stroke width) is the sector itself, filled in the CSS colour; a stroked one is the outline of its sector.
+        const paint = width === 0 ? 'fill="currentColor" stroke="none"' : `fill="none" stroke="currentColor" strokeWidth={${width}} vectorEffect="non-scaling-stroke"`;
+        return `${when}(<svg className="${template.id}-${part.id}" ${box} viewBox="0 0 ${size} ${size}" aria-hidden="true"><path transform="translate(${width / 2} ${width / 2})" d="${d}" ${paint} /></svg>)}`;
     };
     const framed = canvasPartsOf(template).filter(part => part.kind === 'frame');
     // A part with a parent draws inside its container (the Switch spinner in the handle), never at the root.
@@ -680,6 +682,10 @@ function displayRules(template, master, childrenOf, geometry) {
         // A container pinned to the right edge is out of the flow: it starts on the box's top border line (the padding box starts inside the border, so top is minus the border)
         // and its height is the box's height token, so it is as tall as the box at every Size mode.
         if (template.anatomy.find(s => s.id === key)?.edge === 'right') decls.push('  position: absolute;\n', `  top: calc(-1 * var(${cssVarOf(template.id, template.display.root.strokeWidth)}));\n`, '  right: 0;\n');
+        // A lifted part (see LIFT_NODE) is out of its container's flow: centred across the container's size token, `lift` px from its top. The container is the positioning box.
+        const lifted = template.parts?.find(p => p.id === key && p.lift !== undefined);
+        if (lifted) decls.push('  position: absolute;\n', `  left: calc((var(${cssVarOf(template.id, template.display[lifted.parent].size)}) - var(${cssVarOf(template.id, template.display[key].size)})) / 2);\n`, `  top: ${lifted.lift}px;\n`);
+        if (template.parts?.some(p => p.parent === key && p.lift !== undefined)) decls.push('  position: relative;\n');
         // A template that clips its content (a Card's cover follows the rounded top) clips the root's children to its corners, as the canvas does.
         if (key === 'root' && template.clipsContent) decls.push('  overflow: hidden;\n');
         if (key === 'root' && template.outline) {

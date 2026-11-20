@@ -27,10 +27,11 @@ const HOLDER_SPIN = { seconds: 1.2 };
 const RING_SPIN = { seconds: 1 };
 
 /** An arc part of the rings: the same ring geometry, drawn at the Size's box, with its colour token. */
-const ring = (id, colour, start, sweep, shownWhen, { ratio = 75, ...extra } = {}) => ({
+const ring = (id, colour, start, sweep, shownWhen, { ratio = 75, fill = false, ...extra } = {}) => ({
     id, kind: 'frame', shownWhen, ...extra,
     tokens: { colour, disabledColour: colour, size: 'boxSize' },
-    arc: { size: 14, start, sweep, ratio, width: 1.5 },
+    // A fill ring is a donut drawn in its colour (the ratio is its inner radius): no stroke, so its width is 0.
+    arc: { size: 14, start, sweep, ratio, width: fill ? 0 : 1.5 },
 });
 
 /** @type {TemplateSchema} */
@@ -46,8 +47,6 @@ export const SPIN = {
         { id: 'dotCol1', kind: 'frame', parent: 'dotBox', layout: 'vertical', primaryAlign: 'start', counterAlign: 'center', managed: true, shownWhen: DOTS },
         { id: 'dotCol2', kind: 'frame', parent: 'dotBox', layout: 'vertical', primaryAlign: 'start', counterAlign: 'center', managed: true, shownWhen: DOTS },
         { id: 'ringBox', kind: 'frame', layout: 'none', managed: true, shownWhen: RING_BOX, spin: RING_SPIN },
-        // The cap of the dot ring: a column the holder's size, its dot at the top and centred.
-        { id: 'dotCap', kind: 'frame', parent: 'ringBox', layout: 'vertical', primaryAlign: 'start', counterAlign: 'center', managed: true, shownWhen: DOT_RING },
     ],
     icons: [],
     rootLayout: 'horizontal',
@@ -94,11 +93,12 @@ export const SPIN = {
         ring('ringTop', 'fg', -135, 25, TWO_ARCS, { parent: 'ringBox' }),
         ring('ringBottom', 'fg', 45, 25, TWO_ARCS, { parent: 'ringBox' }),
         // Dot ring: a track and a head, turning together in the holder.
-        ring('dotRingTrack', 'ring-track', 0, 100, DOT_RING, { parent: 'ringBox', ratio: 90 }),
+        ring('dotRingTrack', 'ring-track', 0, 100, DOT_RING, { parent: 'ringBox', ratio: 90, fill: true }),
         // Gap ring: a ring with an open quarter, turning in the holder.
         ring('gapRing', 'fg', 0, 75, GAP_RING, { parent: 'ringBox' }),
         // The dot of the dot ring: a circle at the top of its cap.
-        { id: 'dotHead', kind: 'frame', parent: 'dotCap', shownWhen: DOT_RING },
+        // The dot sits centred on the holder, lifted 1.5 px above its top edge at every Size (out of the holder's flow). It is drawn after the track, so it sits on the ring.
+        { id: 'dotHead', kind: 'frame', parent: 'ringBox', shownWhen: DOT_RING, lift: -1.5 },
         // Scale ring: a full ring that grows and fades.
         ring('scaleRing', 'fg', 0, 100, SCALE_RING, { scale: { delayMs: 0 } }),
     ],
@@ -115,10 +115,9 @@ export const SPIN = {
         ringHead: { stroke: 'fg', size: 'boxSize' },
         ringTop: { stroke: 'fg', size: 'boxSize' },
         ringBottom: { stroke: 'fg', size: 'boxSize' },
-        dotRingTrack: { stroke: 'ring-track', size: 'boxSize' },
+        dotRingTrack: { fill: 'ring-track', size: 'boxSize' },
         gapRing: { stroke: 'fg', size: 'boxSize' },
         scaleRing: { stroke: 'fg', size: 'boxSize' },
-        dotCap: { size: 'boxSize' },
         dotHead: { fill: 'fg', radius: 'radiusFull', size: 'ringDot' },
         dot1: { fill: 'fg', radius: 'radiusFull', size: 'dotSize' },
         dot2: { fill: 'fg', radius: 'radiusFull', size: 'dotSize' },

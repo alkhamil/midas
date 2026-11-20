@@ -59,7 +59,9 @@ export const NODE_PROPERTIES = {
         minHeight: { kind: 'length', css: 'min-height' },
     },
     // An arc part (the spinner) is an SVG drawn with `currentColor`: its colour is the CSS colour, and it is the icon size wide and high.
+    // An arc is a circle cut to a sector, so it takes a fill too (a donut when its ratio is set); the fill and the stroke both draw in the CSS colour.
     arc: {
+        fill: { kind: 'color', css: 'color' },
         stroke: { kind: 'color', css: 'color' },
         size: { kind: 'length', css: ['width', 'height'] },
     },

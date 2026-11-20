@@ -112,6 +112,7 @@ function nodeOf(spec, template, binding, idOf, parentId) {
             behavior: { version: BEHAVIOR_DATA_VERSION, part: spec.key } };
     }
     return { ...LAYER, id, name: spec.key, type: 'frame', parentId, w: 0, h: 0, layout: 'none', fills: [], layoutSizingH: 'hug', layoutSizingV: 'hug',
+        ...(spec.part?.lift !== undefined ? LIFT_NODE : {}),
         ...(spec.behavior ? { behavior: { version: BEHAVIOR_DATA_VERSION, ...spec.behavior } } : {}) };
 }
 
@@ -283,6 +284,24 @@ export function managedTextLayer(template, slotId, resolved, { id, parentId }) {
 export const EDGE_NODE = { layoutPositioning: 'absolute', constraintH: 'right', constraintV: 'stretch', layoutSizingH: 'fixed', layoutSizingV: 'fixed' };
 
 export const CORNER_NODE = { layoutPositioning: 'absolute', constraintH: 'right', constraintV: 'bottom' };
+
+/** A part lifted off its container's flow (`lift`): absolutely positioned, centred on the container's width and set `lift` px from its top. */
+export const LIFT_NODE = { layoutPositioning: 'absolute', constraintH: 'center', constraintV: 'top' };
+
+/**
+ * The frame of a lifted part (see LIFT_NODE) in its container's coordinates: centred across the container's size token and `lift` px from its top,
+ * both from the resolved variables, so it follows the Size at once (like pinnedFrame).
+ * @param {any} template
+ * @param {any} part the canvas part with `lift` and a `parent`
+ * @param {Record<string, string>} vars
+ * @returns {{ x: number, y: number, w: number, h: number }}
+ */
+export function liftedPartFrame(template, part, vars) {
+    const px = token => parseFloat(vars[cssVarOf(template.id, token)]) || 0;
+    const w = px(template.display[part.id].size), h = px(template.display[part.id].size);
+    const box = px(template.display[part.parent].size);
+    return { x: (box - w) / 2, y: part.lift, w, h };
+}
 
 /**
  * The frame of a layer pinned to its box (the handler column on the right edge, the grip in the corner) in the box's coordinates, from the box's size and the layer's own tokens
