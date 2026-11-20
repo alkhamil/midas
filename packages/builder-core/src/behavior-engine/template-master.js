@@ -292,8 +292,16 @@ export const LIFT_NODE = { layoutPositioning: 'absolute', constraintH: 'center',
 export const ringMiddleOffset = (ring, box) => (1 - ring / 100) * box / 4;
 
 /**
+ * The centre of a part on an orbit (`lift: { orbit: { angle, radius } }`), as fractions of its container's size: `angle` in degrees from the top, clockwise;
+ * `radius` is a fraction of the container's half size (1 reaches its edge). Every Size keeps the same proportions.
+ * @param {{ angle: number, radius: number }} orbit
+ * @returns {{ x: number, y: number }}
+ */
+export const orbitCentre = ({ angle, radius }) => ({ x: 0.5 + radius * Math.sin(angle * Math.PI / 180) / 2, y: 0.5 - radius * Math.cos(angle * Math.PI / 180) / 2 });
+
+/**
  * The frame of a lifted part (see LIFT_NODE) in its container's coordinates: centred across the container's size token and on the ring's middle,
- * both from the resolved variables, so it follows the Size at once (like pinnedFrame).
+ * or on its orbit's centre, both from the resolved variables, so it follows the Size at once (like pinnedFrame).
  * @param {any} template
  * @param {any} part the canvas part with `lift` and a `parent`
  * @param {Record<string, string>} vars
@@ -303,6 +311,10 @@ export function liftedPartFrame(template, part, vars) {
     const px = token => parseFloat(vars[cssVarOf(template.id, token)]) || 0;
     const w = px(template.display[part.id].size), h = px(template.display[part.id].size);
     const box = px(template.display[part.parent].size);
+    if (part.lift.orbit) {
+        const c = orbitCentre(part.lift.orbit);
+        return { x: c.x * box - w / 2, y: c.y * box - h / 2, w, h };
+    }
     return { x: (box - w) / 2, y: ringMiddleOffset(part.lift.ring, box) - h / 2, w, h };
 }
 

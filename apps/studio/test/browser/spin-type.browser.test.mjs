@@ -23,14 +23,14 @@ test('Spin switches Type between dots and arc and back with no hidden or duplica
     const hidden = layers => layers.filter(l => !l.visible).map(l => l.name);
 
     const dots = await layersOf();
-    assert.deepEqual(keys(dots), ['spinBox', 'dotCol1', 'dot1', 'dot2', 'dotCol2', 'dot3', 'dot4'], 'dots: two columns of two');
+    assert.deepEqual(keys(dots), ['dotBox', 'dotCol1', 'dot1', 'dot2', 'dotCol2', 'dot3', 'dot4'], 'dots: two columns of two');
     await setProp(page, 'type', 'arc');
     const arc = await layersOf();
-    assert.deepEqual(keys(arc), ['spinBox', 'spinner'], 'arc: the spinner only');
+    assert.deepEqual(keys(arc), ['spinner'], 'arc: the spinner only');
     assert.deepEqual(hidden(arc), [], 'arc: nothing is left hidden');
     await setProp(page, 'type', 'dots');
     const back = await layersOf();
-    assert.deepEqual(keys(back), ['spinBox', 'dotCol1', 'dot1', 'dot2', 'dotCol2', 'dot3', 'dot4'], 'back to dots: the same two columns, no second copy');
+    assert.deepEqual(keys(back), ['dotBox', 'dotCol1', 'dot1', 'dot2', 'dotCol2', 'dot3', 'dot4'], 'back to dots: the same two columns, no second copy');
     assert.deepEqual(hidden(back), []);
     assert.deepEqual(errors, [], 'console errors');
 });

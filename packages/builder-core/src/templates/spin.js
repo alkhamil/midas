@@ -20,6 +20,29 @@ const TWO_ARCS = ON('ringTwo');
 const DOT_RING = ON('ringDot');
 const GAP_RING = ON('ringGap');
 const SCALE_RING = ON('ringScale');
+const TWO_SCALE_RINGS = ON('ringScaleTwo');
+const SQUARES = ON('squares');
+const SLIDE = ON('dotSlide');
+/** The stops a looping highlight is keyed at (SpinThatShit loaders 08 and 12 light one of four or five steps per cycle). */
+const LOOP_STOPS = [0, 25, 50, 75, 100];
+/** Opacity keys of a loop that lights one stop: full at `peak`, dim at every other stop. */
+const lit = peak => LOOP_STOPS.map(at => ({ at, props: { opacity: at === peak ? 1 : 0.2 } }));
+const ORBIT = ON('orbit');
+const BARS = ON('bars');
+const BOUNCE = ON('bounce');
+const BOUNCE_ALT = ON('bounceAlt');
+/** Eight dots on a circle (SpinThatShit loader 07): the colours step one place each eighth of the cycle, so the lit dot moves round clockwise. */
+const ORBIT_ALPHAS = [0.05, 0.1, 0.2, 0.3, 0.4, 0.6, 0.8, 1];
+const orbitFrames = k => ORBIT_ALPHAS.map((_, s) => ({ at: s * 12.5, props: { opacity: ORBIT_ALPHAS[(((k - s) % 8) + 8) % 8] } })).concat([{ at: 100, props: { opacity: ORBIT_ALPHAS[k] } }]);
+/** The dots sit on a circle of 0.8 of the holder's half size, with the dot of the dot ring (the eight dots need that much room: a chord of 0.77 radius). */
+const ORBIT_RADIUS = 0.8;
+/** Loader 09: each bar is stretched by its box-shadow copies, 12 px up and down of its 20 px height: 44 of 20 at the middle of the cycle. */
+const BAR_STRETCH = 44 / 20;
+const STRETCH_FRAMES = [{ at: 0, props: { transform: 'scaleY(1)' } }, { at: 50, props: { transform: `scaleY(${BAR_STRETCH})` } }, { at: 100, props: { transform: 'scaleY(1)' } }];
+/** Loader 10: a dot grows from a point to its full size where it sits, and back (alternate). */
+const GROW_FRAMES = [{ at: 0, props: { transform: 'scale(0)' } }, { at: 100, props: { transform: 'scale(1)' } }];
+/** Loader 11: a dot moves up by its own box (the loop's `travel` token, the Size's box), and back (alternate). */
+const HOP_UP_FRAMES = [{ at: 0, props: { transform: 'translateY(0)' } }, { at: 100, props: { transform: 'translateY(calc($travel * -1))' } }];
 /** The holder of the rings whose parts turn together (two arcs, a head on a track, a gap). */
 const RING_BOX = { all: [SPINNING, { any: [TYPE('ring'), TYPE('ringTwo'), TYPE('ringGap')] }] };
 /** antd's holder turns in 1.2 seconds; the SpinThatShit loaders turn in one. */
@@ -49,6 +72,14 @@ export const SPIN = {
         { id: 'dotCol1', kind: 'frame', parent: 'dotBox', layout: 'vertical', primaryAlign: 'start', counterAlign: 'center', managed: true, shownWhen: DOTS },
         { id: 'dotCol2', kind: 'frame', parent: 'dotBox', layout: 'vertical', primaryAlign: 'start', counterAlign: 'center', managed: true, shownWhen: DOTS },
         { id: 'ringBox', kind: 'frame', layout: 'none', managed: true, shownWhen: RING_BOX, spin: RING_SPIN },
+        { id: 'scaleBox', kind: 'frame', layout: 'none', managed: true, shownWhen: TWO_SCALE_RINGS },
+        { id: 'squareBox', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center', managed: true, shownWhen: SQUARES },
+        { id: 'squareCol1', kind: 'frame', parent: 'squareBox', layout: 'vertical', primaryAlign: 'start', counterAlign: 'center', managed: true, shownWhen: SQUARES },
+        { id: 'squareCol2', kind: 'frame', parent: 'squareBox', layout: 'vertical', primaryAlign: 'start', counterAlign: 'center', managed: true, shownWhen: SQUARES },
+        { id: 'slideBox', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center', managed: true, shownWhen: SLIDE },
+        { id: 'orbitBox', kind: 'frame', layout: 'none', managed: true, shownWhen: ORBIT },
+        { id: 'hopBox', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center', managed: true, shownWhen: BARS },
+        { id: 'bounceBox', kind: 'frame', layout: 'horizontal', primaryAlign: 'center', counterAlign: 'center', managed: true, shownWhen: { any: [BOUNCE, BOUNCE_ALT] } },
         { id: 'dotRingBox', kind: 'frame', layout: 'none', managed: true, shownWhen: DOT_RING, spin: DOT_RING_SPIN },
     ],
     icons: [],
@@ -61,15 +92,15 @@ export const SPIN = {
         spinning: { source: 'literal', type: 'boolean', default: true },
         type: {
             source: 'literal', type: 'enum', default: 'dots',
-            options: ['dots', 'arc', 'ring', 'ringTwo', 'ringDot', 'ringGap', 'ringScale'],
-            labels: { dots: 'Dots', arc: 'Arc', ring: 'Ring', ringTwo: 'Two arcs', ringDot: 'Dot ring', ringGap: 'Gap ring', ringScale: 'Scale ring' },
+            options: ['dots', 'arc', 'ring', 'ringTwo', 'ringDot', 'ringGap', 'ringScale', 'ringScaleTwo', 'squares', 'dotSlide', 'orbit', 'bars', 'bounce', 'bounceAlt'],
+            labels: { dots: 'Dots', arc: 'Arc', ring: 'Ring', ringTwo: 'Two arcs', ringDot: 'Dot ring', ringGap: 'Gap ring', ringScale: 'Scale ring', ringScaleTwo: 'Two scale rings', squares: 'Squares', dotSlide: 'Dot slide', orbit: 'Eight dots', bars: 'Bars', bounce: 'Bounce', bounceAlt: 'Bounce (alternate)' },
         },
     },
     tokens: {
         fromColor: ['fg', 'ring-track'],
-        fromSize: ['iconSize', 'boxSize', 'dotSize', 'ringDot', 'dotGap', 'radiusFull'],
+        fromSize: ['iconSize', 'boxSize', 'dotSize', 'ringDot', 'dotGap', 'radiusFull', 'barGap', 'barHeight'],
     },
-    tokenKinds: { fg: 'color', 'ring-track': 'color', iconSize: 'length', boxSize: 'length', dotSize: 'length', dotGap: 'length', ringDot: 'length', radiusFull: 'length' },
+    tokenKinds: { fg: 'color', 'ring-track': 'color', iconSize: 'length', boxSize: 'length', dotSize: 'length', dotGap: 'length', ringDot: 'length', radiusFull: 'length', barGap: 'length', barHeight: 'length' },
     tokenRoles: {
         fg: presetRoleMap('text'),
         'ring-track': presetRoleMap('border'),
@@ -80,6 +111,10 @@ export const SPIN = {
         dotGap: 'space-2',
         // The dot of the dot ring is about a fifth of the holder: 2, 3, 4, 5, 6 across the five Sizes (every Size its own value).
         ringDot: roleLadder(['space-2', 'space-3', 'space-4', 'space-5', 'space-6']),
+        // Loader 09 proportions, of its 56 px box: the gap of the bars is 12 px (2.6, 3, 4.3, 6, 6.9 across the Sizes; no 7 role, so xl takes 6).
+        barGap: roleLadder(['space-3', 'space-3', 'space-4', 'space-6', 'space-6']),
+        // The bar's height is 20 px of 56 (4.3, 5, 7.1, 10, 11.4 across the Sizes).
+        barHeight: roleLadder(['space-4', 'space-5', 'space-8', 'space-10', 'space-12']),
         radiusFull: 'radius-full',
     },
     persistentStates: {},
@@ -105,9 +140,34 @@ export const SPIN = {
         { id: 'dotHead', kind: 'frame', parent: 'dotRingBox', shownWhen: DOT_RING, lift: { ring: 93 } },
         // Scale ring: a full ring that grows and fades.
         ring('scaleRing', 'fg', 0, 100, SCALE_RING, { scale: { delayMs: 0 } }),
+        // Two scale rings (SpinThatShit loader 06): a track ring and a solid ring, the solid one half a turn of the 1s cycle behind. Both in one holder.
+        // The track is drawn at the box size, not the loader's 1.2x (the pulse is the same).
+        ring('scaleTrackRing', 'ring-track', 0, 100, TWO_SCALE_RINGS, { parent: 'scaleBox', scale: { delayMs: 0 } }),
+        ring('scaleSolidRing', 'fg', 0, 100, TWO_SCALE_RINGS, { parent: 'scaleBox', scale: { delayMs: 500 } }),
+        // Squares (SpinThatShit loader 08): four squares in the holder's two columns, lit in turn clockwise from the top left (a quarter cycle each).
+        { id: 'square1', kind: 'frame', parent: 'squareCol1', shownWhen: SQUARES, loop: { seconds: 1, easing: 'ease', delayMs: 0, frames: lit(0) } },
+        { id: 'square2', kind: 'frame', parent: 'squareCol1', shownWhen: SQUARES, loop: { seconds: 1, easing: 'ease', delayMs: 750, frames: lit(0) } },
+        { id: 'square3', kind: 'frame', parent: 'squareCol2', shownWhen: SQUARES, loop: { seconds: 1, easing: 'ease', delayMs: 250, frames: lit(0) } },
+        { id: 'square4', kind: 'frame', parent: 'squareCol2', shownWhen: SQUARES, loop: { seconds: 1, easing: 'ease', delayMs: 500, frames: lit(0) } },
+        // Dot slide (SpinThatShit loader 12): five dots in a row, the lit one moves along and back (alternate).
+        ...[0, 1, 2, 3, 4].map(k => ({ id: `slide${k + 1}`, kind: 'frame', parent: 'slideBox', shownWhen: SLIDE, loop: { seconds: 1, easing: 'linear', delayMs: 0, alternate: true, frames: lit(25 * k) } })),
+        // Eight dots (loader 07): on a circle, clockwise from the top, each lit in turn.
+        ...[0, 1, 2, 3, 4, 5, 6, 7].map(k => ({ id: `orbit${k + 1}`, kind: 'frame', parent: 'orbitBox', shownWhen: ORBIT, lift: { orbit: { angle: 45 * k, radius: ORBIT_RADIUS } }, loop: { seconds: 1, easing: 'linear', delayMs: 0, frames: orbitFrames(k) } })),
+        // Three bars (loader 09): the box-shadow copies stretch each bar up and down. Delays: left 0.2 s, middle 0.4 s, right 0.6 s (ease-in-out).
+        { id: 'bar1', kind: 'frame', parent: 'hopBox', shownWhen: BARS, loop: { seconds: 1, easing: 'ease-in-out', delayMs: 200, frames: STRETCH_FRAMES } },
+        { id: 'bar2', kind: 'frame', parent: 'hopBox', shownWhen: BARS, loop: { seconds: 1, easing: 'ease-in-out', delayMs: 400, frames: STRETCH_FRAMES } },
+        { id: 'bar3', kind: 'frame', parent: 'hopBox', shownWhen: BARS, loop: { seconds: 1, easing: 'ease-in-out', delayMs: 600, frames: STRETCH_FRAMES } },
+        // Three dots (loader 10): each grows from a point to its full size and back. Delays: left 0.2 s, middle 0.4 s, right 0.6 s (ease, alternate).
+        { id: 'bounce1', kind: 'frame', parent: 'bounceBox', shownWhen: BOUNCE, loop: { seconds: 1, easing: 'ease', delayMs: 200, alternate: true, frames: GROW_FRAMES } },
+        { id: 'bounce2', kind: 'frame', parent: 'bounceBox', shownWhen: BOUNCE, loop: { seconds: 1, easing: 'ease', delayMs: 400, alternate: true, frames: GROW_FRAMES } },
+        { id: 'bounce3', kind: 'frame', parent: 'bounceBox', shownWhen: BOUNCE, loop: { seconds: 1, easing: 'ease', delayMs: 600, alternate: true, frames: GROW_FRAMES } },
+        // Three dots hop up (loader 11): one box up and back. Delays: left 0.6 s, middle 0.4 s, right 0.2 s (ease-in-out, alternate).
+        { id: 'bounceAlt1', kind: 'frame', parent: 'bounceBox', shownWhen: BOUNCE_ALT, loop: { seconds: 1, easing: 'ease-in-out', delayMs: 600, alternate: true, travel: 'boxSize', frames: HOP_UP_FRAMES } },
+        { id: 'bounceAlt2', kind: 'frame', parent: 'bounceBox', shownWhen: BOUNCE_ALT, loop: { seconds: 1, easing: 'ease-in-out', delayMs: 400, alternate: true, travel: 'boxSize', frames: HOP_UP_FRAMES } },
+        { id: 'bounceAlt3', kind: 'frame', parent: 'bounceBox', shownWhen: BOUNCE_ALT, loop: { seconds: 1, easing: 'ease-in-out', delayMs: 200, alternate: true, travel: 'boxSize', frames: HOP_UP_FRAMES } },
     ],
     playOnly: [
-        { id: 'spin', reason: 'the arcs and the holders turn, the dots pulse and the scale ring grows: animations, so the canvas and the export draw the indicator at rest' },
+        { id: 'spin', reason: 'the arcs and the holders turn, the dots pulse, the scale rings grow and the squares and slide dots light in turn: animations, so the canvas and the export draw the indicator at rest' },
     ],
     display: {
         dotBox: { size: 'boxSize', gap: 'dotGap' },
@@ -123,6 +183,42 @@ export const SPIN = {
         dotRingTrack: { fill: 'ring-track', size: 'boxSize' },
         gapRing: { stroke: 'fg', size: 'boxSize' },
         scaleRing: { stroke: 'fg', size: 'boxSize' },
+        scaleBox: { size: 'boxSize' },
+        squareBox: { size: 'boxSize', gap: 'dotGap' },
+        squareCol1: { gap: 'dotGap' },
+        squareCol2: { gap: 'dotGap' },
+        square1: { fill: 'fg', size: 'dotSize' },
+        square2: { fill: 'fg', size: 'dotSize' },
+        square3: { fill: 'fg', size: 'dotSize' },
+        square4: { fill: 'fg', size: 'dotSize' },
+        slideBox: { gap: 'dotGap' },
+        slide1: { fill: 'fg', radius: 'radiusFull', size: 'dotSize' },
+        slide2: { fill: 'fg', radius: 'radiusFull', size: 'dotSize' },
+        slide3: { fill: 'fg', radius: 'radiusFull', size: 'dotSize' },
+        slide4: { fill: 'fg', radius: 'radiusFull', size: 'dotSize' },
+        slide5: { fill: 'fg', radius: 'radiusFull', size: 'dotSize' },
+        orbitBox: { size: 'boxSize' },
+        hopBox: { gap: 'barGap' },
+        bounceBox: { gap: 'barGap' },
+        orbit1: { fill: 'fg', radius: 'radiusFull', size: 'ringDot' },
+        orbit2: { fill: 'fg', radius: 'radiusFull', size: 'ringDot' },
+        orbit3: { fill: 'fg', radius: 'radiusFull', size: 'ringDot' },
+        orbit4: { fill: 'fg', radius: 'radiusFull', size: 'ringDot' },
+        orbit5: { fill: 'fg', radius: 'radiusFull', size: 'ringDot' },
+        orbit6: { fill: 'fg', radius: 'radiusFull', size: 'ringDot' },
+        orbit7: { fill: 'fg', radius: 'radiusFull', size: 'ringDot' },
+        orbit8: { fill: 'fg', radius: 'radiusFull', size: 'ringDot' },
+        bar1: { fill: 'fg', width: 'boxSize', height: 'barHeight' },
+        bar2: { fill: 'fg', width: 'boxSize', height: 'barHeight' },
+        bar3: { fill: 'fg', width: 'boxSize', height: 'barHeight' },
+        bounce1: { fill: 'fg', radius: 'radiusFull', size: 'boxSize' },
+        bounce2: { fill: 'fg', radius: 'radiusFull', size: 'boxSize' },
+        bounce3: { fill: 'fg', radius: 'radiusFull', size: 'boxSize' },
+        bounceAlt1: { fill: 'fg', radius: 'radiusFull', size: 'boxSize' },
+        bounceAlt2: { fill: 'fg', radius: 'radiusFull', size: 'boxSize' },
+        bounceAlt3: { fill: 'fg', radius: 'radiusFull', size: 'boxSize' },
+        scaleTrackRing: { stroke: 'ring-track', size: 'boxSize' },
+        scaleSolidRing: { stroke: 'fg', size: 'boxSize' },
         dotHead: { fill: 'fg', radius: 'radiusFull', size: 'ringDot' },
         dot1: { fill: 'fg', radius: 'radiusFull', size: 'dotSize' },
         dot2: { fill: 'fg', radius: 'radiusFull', size: 'dotSize' },

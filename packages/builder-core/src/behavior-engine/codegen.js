@@ -32,7 +32,7 @@ function alignExprOf(writer) {
 const kebabCase = name => name.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`);
 import { rootLayoutOf, labelLayoutOf, flexOf, flowSizing, rootClassWidth } from './layout.js';
 import { labelEntryOf } from './layers.js';
-import { managedContainerLayer, managedTextLayer } from './template-master.js';
+import { managedContainerLayer, managedTextLayer, orbitCentre } from './template-master.js';
 import { modeOfStyleKey } from './variant-style.js';
 
 // Motion constants (antd seed): the focus ring animates in and out; the click wave expands and fades. Durations and
@@ -57,6 +57,9 @@ export const PULSE_KEYFRAMES = 'midas-pulse';
 export const SCALE_KEYFRAMES = 'midas-scale';
 export const scaleAnimation = delayMs => `${SCALE_KEYFRAMES} 1s ease-out ${delayMs}ms infinite`;
 export const pulseAnimation = delayMs => `${PULSE_KEYFRAMES} 1s linear ${delayMs}ms infinite alternate`;
+/** A part that loops its own properties (SpinThatShit loaders 08 and 12): `loop: { seconds, easing?, delayMs?, alternate?, frames: [{ at, props }] }`, `at` a percentage, `props` CSS declarations. Keyframes are in the stylesheet, named by template and part. */
+export const loopKeyframes = (templateId, partId) => `midas-loop-${templateId}-${partId}`;
+export const loopAnimation = (templateId, partId, loop) => `${loopKeyframes(templateId, partId)} ${loop.seconds}s ${loop.easing ?? 'linear'} ${loop.delayMs ?? 0}ms infinite${loop.alternate ? ' alternate' : ''}`;
 
 /** The DOM handler each schema event is written to. */
 const DOM_EVENT = { onClick: 'onClick', onHover: 'onMouseEnter', onFocus: 'onFocus', onBlur: 'onBlur' };
@@ -686,7 +689,10 @@ function displayRules(template, master, childrenOf, geometry) {
         const lifted = template.parts?.find(p => p.id === key && p.lift !== undefined);
         if (lifted) {
             const box = `var(${cssVarOf(template.id, template.display[lifted.parent].size)})`, self = `var(${cssVarOf(template.id, template.display[key].size)})`;
-            decls.push('  position: absolute;\n', `  left: calc((${box} - ${self}) / 2);\n`, `  top: calc(${box} * ${(1 - lifted.lift.ring / 100) / 4} - ${self} / 2);\n`);
+            if (lifted.lift.orbit) {
+                const c = orbitCentre(lifted.lift.orbit);
+                decls.push('  position: absolute;\n', `  left: calc(${box} * ${Number(c.x.toFixed(4))} - ${self} / 2);\n`, `  top: calc(${box} * ${Number(c.y.toFixed(4))} - ${self} / 2);\n`);
+            } else decls.push('  position: absolute;\n', `  left: calc((${box} - ${self}) / 2);\n`, `  top: calc(${box} * ${(1 - lifted.lift.ring / 100) / 4} - ${self} / 2);\n`);
         }
         if (template.parts?.some(p => p.parent === key && p.lift !== undefined)) decls.push('  position: relative;\n');
         // A template that clips its content (a Card's cover follows the rounded top) clips the root's children to its corners, as the canvas does.
@@ -1328,6 +1334,11 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     if (template.parts?.some(part => part.spin) || template.anatomy?.some(slot => slot.spin)) blocks.push(`@keyframes ${SPIN_KEYFRAMES} {\n  to { transform: rotate(360deg); }\n}\n`);
     if (template.parts?.some(part => part.scale)) blocks.push(`@keyframes ${SCALE_KEYFRAMES} {\n  0% { transform: scale(0); opacity: 0; }\n  50% { opacity: 1; }\n  100% { transform: scale(1); opacity: 0; }\n}\n`);
     if (template.parts?.some(part => part.pulse)) blocks.push(`@keyframes ${PULSE_KEYFRAMES} {\n  from { opacity: 0.3; transform: scale(0.75); }\n  to { opacity: 1; transform: scale(0.75); }\n}\n`);
+    // A frame value may name `$travel`: the loop's travel token (a Size-keyed role), so a travel keeps its proportion at every Size.
+    for (const part of template.parts ?? []) if (part.loop) {
+        const travel = part.loop.travel ? `var(${cssVarOf(template.id, part.loop.travel)})` : '';
+        blocks.push(`@keyframes ${loopKeyframes(template.id, part.id)} {\n${part.loop.frames.map(f => `  ${f.at}% { ${Object.entries(f.props).map(([p, v]) => `${p}: ${String(v).replaceAll('$travel', travel)};`).join(' ')} }`).join('\n')}\n}\n`);
+    }
     if (template.interaction?.wave) blocks.push(waveRules(template));
     blocks.push(...expandRules(template), ...pressRules(template), ...glyphHoverRules(template), ...fieldRules(template, master, childrenOf), ...gradientPatternRules(template, master, childrenOf), ...fillOverrideRules(template), ...cursorRules(template), ...multilineRules(template), ...revealRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
     if (template.interaction || template.motion) blocks.push(reducedMotion(template));

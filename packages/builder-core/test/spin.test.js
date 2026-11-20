@@ -22,7 +22,7 @@ test('Spin is registered, valid, with Color, Size, spinning and Type (dots or ar
     assert.deepEqual(Object.keys(spin.props).sort(), ['color', 'size', 'spinning', 'type']);
     assert.deepEqual(spin.props.color.modes, COLOR_PRESETS);
     assert.deepEqual(spin.props.size.modes, SIZE_MODES);
-    assert.deepEqual(spin.props.type.options, ['dots', 'arc', 'ring', 'ringTwo', 'ringDot', 'ringGap', 'ringScale']);
+    assert.deepEqual(spin.props.type.options, ['dots', 'arc', 'ring', 'ringTwo', 'ringDot', 'ringGap', 'ringScale', 'ringScaleTwo', 'squares', 'dotSlide', 'orbit', 'bars', 'bounce', 'bounceAlt']);
     assert.equal(spin.props.type.default, 'dots', 'dots is antd\'s default indicator');
     assert.equal(spin.props.spinning.default, true);
     assert.ok(!spin.element.disabledState, 'a status element has no disabled state');

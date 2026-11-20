@@ -36,7 +36,7 @@ function hydrateRasters(el) {
 }
 
 const PREFS_KEY = 'midas.play';
-const DEFAULT_PREFS = { mode: 'fit-width-and-height', background: '#1e1e20', hotspots: false, resetOnRestart: true };
+const DEFAULT_PREFS = { mode: 'actual-size', background: '#1e1e20', hotspots: false, resetOnRestart: true };
 /** How long the one-time "toolbar hidden" toast and the scaling label stay on screen. */
 const TOAST_MS = 3000;
 const MODE_LABEL_MS = 1000;
