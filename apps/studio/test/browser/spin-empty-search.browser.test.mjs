@@ -18,13 +18,6 @@ const CASES = [
         ],
     },
     {
-        templateId: 'list',
-        name: 'List',
-        // The canvas draws the item once and Play repeats it itemCount times: one copy is the case the two draw alike.
-        outline: false,
-        states: [{ name: 'one-copy', props: { itemCount: 1 } }],
-    },
-    {
         templateId: 'antd-statistic',
         name: 'Statistic',
         // The title and value are text, no outline: nothing to measure beyond the boxes.

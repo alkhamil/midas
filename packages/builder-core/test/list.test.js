@@ -1,72 +1,43 @@
-// List: a template made of one content slot, `item`, that is repeated `itemCount` times in Play and in the export (the canvas draws it once). The slot is
-// min 1 and max 1 on purpose: one item template, repeated. This file covers the template as data and the master and instance the generator makes from it.
+// List: a column of List Item instances only. Its Items box holds List Items (one at the start), and Separator puts a Divider between two items.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
 import { validateTemplateSchema } from '../src/behavior-engine/validate-schema.js';
-import { applyTemplateToFrame, instanceOf, layerSpecsOf } from '../src/behavior-engine/template-master.js';
-import { diagnoseDocument } from '../src/behavior-engine/diagnostics.js';
-import { resolveProps } from '../src/behavior-engine/instance-props.js';
-import { modelFor } from './helpers/box-template.js';
+import { LIST } from '../src/templates/list.js';
 
-const list = TEMPLATES.get('list');
-const model = modelFor(list);
-const variables = model.variables;
-const binding = model.binding;
-const frame = () => ({ id: 'master', name: 'List', type: 'frame', parentId: null, fills: [] });
-const build = f => applyTemplateToFrame(list, { frame: f, children: [], binding, variables, idOf: key => `l-${key}` });
-
-test('List is a registered template, valid on its own: no anatomy, one Size variable prop, one repeated item slot of exactly one layer', () => {
-    assert.ok(list, 'registered');
-    assert.deepEqual(validateTemplateSchema(list, { templateIds: new Set(TEMPLATES.keys()) }), []);
-    assert.deepEqual(list.anatomy, []);
-    assert.deepEqual(Object.keys(list.props).filter(p => list.props[p].source === 'variable'), ['size']);
-    assert.deepEqual(list.slots.map(s => [s.id, s.min, s.max, s.repeat, s.layout, s.showEmpty]), [['item', 1, 1, 'itemCount', 'vertical', true]]);
-    assert.equal(list.props.itemCount.default, 3);
-    assert.deepEqual(layerSpecsOf(list).map(s => [s.key, s.role]), [['root', 'root'], ['item', 'content']]);
+test('List is valid and registered', () => {
+    assert.deepEqual(validateTemplateSchema(LIST, { templateIds: new Set(TEMPLATES.keys()) }), []);
+    assert.ok(TEMPLATES.get('list'));
 });
 
-test('the generator builds a vertical master with the item slot frame and its property, and builds nothing the second time', () => {
-    const f = frame();
-    const out = build(f);
-    assert.equal(f.layout, 'vertical');
-    assert.deepEqual(out.problems, []);
-    assert.deepEqual(out.created.map(n => n.propBind?.slot), ['item']);
-    assert.deepEqual(f.cprops.map(p => [p.id, p.min, p.max, p.showEmpty, p.fillCounter]), [['item', 1, 1, true, true]]);
-    assert.deepEqual(applyTemplateToFrame(list, { frame: f, children: out.created, binding, variables, idOf: key => key }).created, []);
+test('the Items box holds List Items only, and a new List starts with one', () => {
+    const items = LIST.slots.find(s => s.id === 'items');
+    assert.equal(items.holds, 'instance');
+    assert.deepEqual(items.accepts, ['antd-list-item']);
+    assert.equal(items.onlyAccepts, true);
+    assert.equal(items.box, 'listBox');
+    assert.equal(items.seed.length, 1);
+    assert.equal(items.seed[0].template, 'antd-list-item');
+    assert.deepEqual(items.seed[0].follow, { size: 'size' });
 });
 
-test('an instance holds itemCount as a prop, 3 until it is set, and the canvas copy has the item once', () => {
-    const f = frame();
-    const created = build(f).created;
-    assert.equal(resolveProps(list, {}).itemCount, 3);
-    assert.equal(resolveProps(list, { itemCount: 5 }).itemCount, 5);
-    const copies = instanceOf(list, f, created, { itemCount: 5 }, { id: src => `i-${src}` });
-    assert.equal(copies.filter(n => n.propBind?.slot === 'item').length, 1, 'the canvas never repeats');
+test('Separator is a boolean prop that puts a Divider between the items', () => {
+    assert.deepEqual(LIST.props.separator, { source: 'literal', type: 'boolean', default: false });
+    const items = LIST.slots.find(s => s.id === 'items');
+    assert.deepEqual(items.separator, { template: 'antd-divider', prop: 'separator' });
 });
 
-test('a List with one component in its item slot has nothing to report, with none it is below its minimum, with two above its maximum', () => {
-    const f = frame();
-    const created = build(f).created;
-    const plain = { id: 'plain', name: 'Row', type: 'frame', component: true, parentId: null };
-    const docOf = (...held) => {
-        const [root, ...copies] = instanceOf(list, f, created, {}, { id: src => `i-${src}` });
-        const slot = copies.find(n => n.propBind?.slot === 'item');
-        return { variables, pages: [{ name: 'p', nodes: [f, ...created, plain, { ...root, id: 'inst', name: 'My list' }, ...copies.map(n => (n.parentId === root.id ? { ...n, parentId: 'inst' } : n)), ...held.map((of, i) => ({ id: `h${i}`, name: `Row ${i}`, type: 'frame', parentId: slot.id, isInstance: true, sourceId: of }))] }] };
-    };
-    const codes = doc => diagnoseDocument(doc).filter(x => x.code.startsWith('slot-')).map(x => x.code);
-    assert.deepEqual(codes(docOf('plain')), []);
-    assert.deepEqual(codes(docOf()), ['slot-below-min']);
-    assert.deepEqual(codes(docOf('plain', 'plain')), ['slot-above-max']);
+test('the validator refuses a Separator that names no template or no boolean prop', () => {
+    const bad = structuredClone(LIST);
+    bad.slots[0].separator = { template: 'antd-divider', prop: 'size' };
+    assert.ok(validateTemplateSchema(bad, { templateIds: new Set(TEMPLATES.keys()) }).some(p => /separator/.test(p)));
+    const unknown = structuredClone(LIST);
+    unknown.slots[0].separator = { template: 'nope', prop: 'separator' };
+    assert.ok(validateTemplateSchema(unknown, { templateIds: new Set(TEMPLATES.keys()) }).some(p => /separator/.test(p)));
 });
 
-test('on the canvas the item is drawn once whatever itemCount says, 0 included: the item is authored there, and only Play and the export repeat it', () => {
-    const f = frame();
-    const created = build(f).created;
-    for (const itemCount of [0, 1, 3, 9]) {
-        const copies = instanceOf(list, f, created, { itemCount }, { id: src => `i${itemCount}-${src}` });
-        const slots = copies.filter(n => n.propBind?.slot === 'item');
-        assert.equal(slots.length, 1, `itemCount ${itemCount}`);
-        assert.notEqual(slots[0].visible, false, 'the slot layer is as the master has it');
-    }
+test('a box that holds instances must restrict them (accepts and onlyAccepts)', () => {
+    const open = structuredClone(LIST);
+    delete open.slots[0].onlyAccepts;
+    assert.ok(validateTemplateSchema(open, { templateIds: new Set(TEMPLATES.keys()) }).some(p => /needs accepts and onlyAccepts/.test(p)));
 });

@@ -24,8 +24,8 @@ const LAYOUT = { sectionGap: 64, titleGap: 16, rowGap: 24, rowRoom: 8, titleSize
 export function templateDependencies(template, all) {
     const known = new Set(all.map(t => t.id));
     const out = [];
-    // A slot's seeds are instances of other templates too: those masters come first.
-    for (const slot of template.slots ?? []) for (const id of [...(slot.accepts ?? []), ...(slot.seed ?? []).map(s => s.template)]) if (id !== template.id && known.has(id) && !out.includes(id)) out.push(id);
+    // A slot's seeds and its separator are instances of other templates too: those masters come first.
+    for (const slot of template.slots ?? []) for (const id of [...(slot.accepts ?? []), ...(slot.seed ?? []).map(s => s.template), ...(slot.separator ? [slot.separator.template] : [])]) if (id !== template.id && known.has(id) && !out.includes(id)) out.push(id);
     return out;
 }
 

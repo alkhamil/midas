@@ -105,6 +105,14 @@ function masterHtml(panel, esc, findings, code, autoFix = null, expanded = false
         + (panel.templateId.startsWith('custom-') ? customHtml(custom, esc) : '');
 }
 
+/** An addable slot: its header row (the count and Plus) and one row per instance it holds, each with a Remove. */
+function addableRows(e, esc) {
+    const items = e.items ?? [];
+    const head = row(e.name, `<div class="cmp-ctl"><span class="small-label">${items.length}</span><button class="ui-icon-button small" data-bp-action="slot-add" data-bp-slot="${esc(e.id)}" title="Add ${esc(e.name)}" aria-label="Add ${esc(e.name)}">+</button></div>`, esc, e.id);
+    const rows = items.map(item => row(item.name, `<button class="ui-icon-button small" data-bp-action="slot-remove" data-bp-slot="${esc(e.id)}" data-bp-node="${esc(item.id)}" title="Remove ${esc(item.name)}" aria-label="Remove ${esc(item.name)}">−</button>`, esc, item.id)).join('');
+    return head + rows;
+}
+
 function instanceHtml(panel, esc, findings, preview, expanded = false) {
     if (!panel.templateId) {
         // A component with no template has no props to set, but its content slots can still break their own rules: those findings show.
@@ -122,6 +130,7 @@ function instanceHtml(panel, esc, findings, preview, expanded = false) {
     // A toggle that adds a part is a Prop; the part is a slot. The Slots block is the template's slot list, in its order, the one the component's slot properties show.
     const rowFor = e => literal.find(r => r.prop === e.prop && (e.kind === 'text' || e.kind === 'image' || r.kind === 'icon' && r.label === e.name));
     const slotRow = e => e.kind === 'icon' || e.kind === 'text' || e.kind === 'image' ? (rowFor(e) ? literalRow(rowFor(e), esc) : '')
+        : e.kind === 'instance' && e.addable ? addableRows(e, esc)
         : e.kind === 'instance' ? row(e.name, `<button class="cmp-input" data-bp-action="slot-fill" data-bp-slot="${esc(e.id)}" aria-label="${esc(e.name)}">Insert instance</button>`, esc, e.id)
         : row(e.name, '<span class="small-label">Edit in the Design tab</span>', esc, e.id);
     const props = literal.filter(r => !r.slot && r.kind !== 'icon').map(r => literalRow(r, esc)).join('');

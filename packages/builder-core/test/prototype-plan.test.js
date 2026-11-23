@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addInteraction, editInteraction, removeInteraction, planNodeRemoval, planCopiedInteractions, assertCanOwnInteractions, withFlowStart, flowStartOf } from '../src/prototype/plan.js';
+import { addInteraction, editInteraction, removeInteraction, moveAction, planNodeRemoval, planCopiedInteractions, assertCanOwnInteractions, withFlowStart, flowStartOf } from '../src/prototype/plan.js';
 
 const link = (id, destinationId) => ({ id, trigger: { type: 'on-click' }, actions: [{ type: 'navigate-to', destinationId, transition: { type: 'instant', durationMs: 0 } }] });
 const proto = interactions => ({ version: 2, interactions });
@@ -23,6 +23,19 @@ test('editing an interaction replaces its trigger or action and keeps its id and
 
 test('editing an unknown interaction is refused', () => {
     assert.throws(() => editInteraction(proto([link('a', 'B')]), 'zz', { trigger: { type: 'mouse-enter' } }), /no interaction "zz"/);
+});
+
+test('moving an action puts it at the new index and keeps the others in order', () => {
+    const three = { id: 'a', trigger: { type: 'on-click' }, actions: [{ type: 'back' }, { type: 'open-link', url: 'x' }, { type: 'back', n: 3 }] };
+    assert.deepEqual(moveAction(proto([three]), 'a', 0, 2).interactions[0].actions.map(x => x.type + (x.n ?? '')), ['open-link', 'back3', 'back']);
+    assert.deepEqual(moveAction(proto([three]), 'a', 2, 0).interactions[0].actions.map(x => x.type + (x.n ?? '')), ['back3', 'back', 'open-link']);
+    assert.deepEqual(moveAction(proto([three]), 'a', 1, 1), proto([three]));
+});
+
+test('moving an action to an index outside the list, or of an unknown interaction, is refused', () => {
+    const one = { id: 'a', trigger: { type: 'on-click' }, actions: [{ type: 'back' }, { type: 'back' }] };
+    assert.throws(() => moveAction(proto([one]), 'a', 0, 2), /no action at index 2/);
+    assert.throws(() => moveAction(proto([one]), 'zz', 0, 1), /no interaction "zz"/);
 });
 
 test('removing the last interaction leaves no prototype data at all', () => {

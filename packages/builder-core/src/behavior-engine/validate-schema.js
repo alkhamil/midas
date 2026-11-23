@@ -450,7 +450,7 @@ const RESERVED_WORDS = new Set(['await', 'break', 'case', 'catch', 'class', 'con
 /** The props every generated component has besides its own: `children` is the single slot's, the rest pass through to the root. */
 const GENERATED_PROPS = ['children', 'className', 'style', 'ref', 'key'];
 /** The fields of a content slot definition. They are the names and settings of Figma's slot property, so the generator can write them into it. */
-const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'onlyAccepts', 'showEmpty', 'required', 'fillCounter', 'layout', 'repeat', 'fill', 'shownWhen', 'parent', 'seed', 'holds', 'box'];
+const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'onlyAccepts', 'showEmpty', 'required', 'fillCounter', 'layout', 'fill', 'shownWhen', 'parent', 'seed', 'holds', 'box', 'separator'];
 
 /**
  * Problems in the content slots a template declares (`slots`): a frame of the component that instances fill with their own layers. A slot's id
@@ -509,24 +509,25 @@ function slotProblems(schema, templateIds) {
         }
         // A slot the props show while they hold (a layer only then): its condition is a test over the template's props.
         if (slot.shownWhen !== undefined) out.push(...conditionProblems(slot.shownWhen, props, `${tag} shownWhen`));
-        if (slot.repeat !== undefined) {
-            const target = isName(slot.repeat) ? props[slot.repeat] : undefined;
-            if (!isName(slot.repeat)) out.push(`${tag} repeat must be the name of a number prop`);
-            else if (!target) out.push(`${tag} repeat names "${slot.repeat}", which is not a prop of the template`);
-            else if (target.source !== 'literal' || target.type !== 'number') out.push(`${tag} repeat names "${slot.repeat}", which is not a number prop`);
-        }
         // What the slot holds: only instances, or anything. A slot that is a container of the anatomy (`box`) is that frame itself, with no layer between.
         if (slot.holds !== undefined && !['instance', 'content', 'image'].includes(slot.holds)) out.push(`${tag} holds must be instance, content or image`);
         // An image slot is a container of the anatomy drawn as a picture: the image prop writes its fill.
         if (slot.holds === 'image' && slot.box === undefined) out.push(`${tag} holds an image, so it is a box of the anatomy`);
-        if (slot.holds === 'instance' && slot.accepts === undefined && slot.seed === undefined) { /* any instance */ }
+        // A separator: a Divider-like template the box puts between two of its instances, named by a boolean prop that switches it on.
+        if (slot.separator !== undefined) {
+            const sep = slot.separator;
+            if (!isPlainObject(sep) || !isName(sep.template) || !isName(sep.prop)) out.push(`${tag} separator must name a template and a prop`);
+            else if (templateIds && !templateIds.has(sep.template)) out.push(`${tag} separator names "${sep.template}", which is not a registered template`);
+            else if (!(props[sep.prop]?.source === 'literal' && props[sep.prop]?.type === 'boolean')) out.push(`${tag} separator names "${sep.prop}", which is not a boolean prop`);
+            else if (slot.box === undefined) out.push(`${tag} separator needs a box: the Dividers sit between its instances`);
+        }
         if (slot.box !== undefined) {
             for (const id of [slot.box].flat()) {
                 const box = (Array.isArray(schema.anatomy) ? schema.anatomy : []).find(s => isPlainObject(s) && s.id === id);
                 if (!box || box.kind !== 'frame') out.push(`${tag} box "${id}" is not an anatomy frame slot`);
             }
             if (slot.parent !== undefined) out.push(`${tag} is a box of the anatomy and has no parent`);
-            if (slot.holds === 'instance') out.push(`${tag} is a box and holds content, not only instances`);
+            if (slot.holds === 'instance' && !(slot.onlyAccepts === true && slot.accepts?.length)) out.push(`${tag} is a box and holds instances: it needs accepts and onlyAccepts`);
             if (slot.holds === 'image' && !Object.values(schema.props ?? {}).some(p => p?.type === 'image' && [p.node, ...(p.nodes ?? [])].some(w => [slot.box].flat().includes(w?.key) && w.field === 'imageFill'))) out.push(`${tag} holds an image, but no image prop draws a picture on "${[slot.box].flat().join('", "')}"`);
         }
         // The default content a slot starts with when its layer is made: component instances of other templates (filled in where they exist).

@@ -19,14 +19,9 @@ const layers = n => `${n} layer${n === 1 ? '' : 's'}`;
 export function diagnoseSlots(nodes) {
     /** @type {Map<string, any>} */
     const byId = new Map(nodes.map(n => [n.id, n]));
-    /** @type {Map<string, any>} */
-    const props = new Map();
     /** @type {Map<string, any[]>} */
     const children = new Map();
-    for (const n of nodes) {
-        for (const p of n.cprops ?? []) if (p.type === 'slot') props.set(p.id, p);
-        if (n.parentId) (children.get(n.parentId) ?? children.set(n.parentId, []).get(n.parentId)).push(n);
-    }
+    for (const n of nodes) if (n.parentId) (children.get(n.parentId) ?? children.set(n.parentId, []).get(n.parentId)).push(n);
     // A component, its set and its sibling variants are one preferred instance: the picker stores a set's default variant.
     const family = (/** @type {string} */ id) => {
         const set = byId.get(byId.get(id)?.parentId);
@@ -36,11 +31,12 @@ export function diagnoseSlots(nodes) {
     const out = [];
     for (const slot of nodes) {
         if (!isContentSlot(slot)) continue;
-        const prop = props.get(slot.propBind.slot);
-        if (!prop) continue;
         let owner = byId.get(slot.parentId);
         while (owner && !owner.isInstance) owner = byId.get(owner.parentId);
         if (!owner) continue;
+        // The slot property is the instance's own component's: slot ids are only unique within one template.
+        const prop = (byId.get(owner.sourceId)?.cprops ?? []).find(p => p.type === 'slot' && p.id === slot.propBind.slot);
+        if (!prop) continue;
         const held = children.get(slot.id) ?? [];
         const where = { node: owner.name, nodeId: owner.id, slot: slot.id };
         const { belowMin, aboveMax } = slotCounts(prop, held.length);
@@ -52,6 +48,8 @@ export function diagnoseSlots(nodes) {
         if (prop.holds === 'instance') for (const layer of held.filter(l => !l.isInstance)) out.push({ severity: 'warning', code: 'slot-not-instance', ...where, layer: layer.id, message: `${owner.name}: slot "${prop.name}" holds instances only, "${layer.name}" is not one.` });
         if (!slotRestricts(prop)) continue;
         for (const layer of held) {
+            // The separator the slot's prop puts between its instances belongs to the slot (its own template), not to the designer's choice.
+            if (prop.separator && layer.sourceId && templateIdsOf(nodes, layer.sourceId).includes(prop.separator.template)) continue;
             const taken = layer.isInstance && layer.sourceId && slotAccepts(prop, { ids: family(layer.sourceId), templates: templateIdsOf(nodes, layer.sourceId) });
             if (!taken) out.push({ severity: 'warning', code: 'slot-not-accepted', ...where, layer: layer.id, message: `${owner.name}: "${layer.name}" is not ${slotRefusal(prop)}.` });
         }

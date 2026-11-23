@@ -21,7 +21,6 @@ import { componentNameOf, generateComponent, loopAnimation, pulseAnimation, scal
 import { controlOf, iconDefOn, placementsOfDef, primarySlotOf, slotDefsOf, swapDefsOf } from '../behavior-engine/anatomy.js';
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf, rootClassWidth } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
-import { repeatCount } from '../behavior-engine/slot-rules.js';
 import { attrOfProp, elementTagOf, maskedOn, localAttrOf, maskUnlessOf, multilineOf, pressAttrsOf, ariaCheckedOf, canvasPartsOf, conditionHolds, fieldStyleOf, fieldWritersOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs } from '../geometry/shapes.js';
 import { strokeAreaSourceOf, svgStrokeExtra } from '../geometry/stroke-area.js';
@@ -341,18 +340,16 @@ function renderTemplate(n, template, parent, scope) {
     const labelEntry = labelEntryOf(n.id, scope.childrenOf, n, primarySlotOf(template));
     // Every layer below the instance, for the slots a container holds (an affix text can sit inside one).
     const below = id => scope.childrenOf(id).flatMap(c => [c, ...below(c.id)]);
-    // A content slot's element (class <template>-<slot>) around the layers the instance holds: `repeat` copies for a repeating slot; none unless the slot
-    // has copies or showEmpty. Its layer may sit in a container (the slot's parent), so it is found below the instance.
+    // A content slot's element (class <template>-<slot>) around the layers the instance holds; none unless the slot has layers or showEmpty. Its layer may
+    // sit in a container (the slot's parent), so it is found below the instance.
     function contentNodeOf(slot) {
         const layer = below(n.id).find(c => c.propBind?.slot === slot.id);
         if (!layer || layer.visible === false) return null;
         const held = scope.childrenOf(layer.id).some(c => c.visible !== false);
-        const fallback = slot.repeat && typeof template.props[slot.repeat].default === 'number' ? template.props[slot.repeat].default : 0;
-        const copies = !held ? 0 : slot.repeat ? repeatCount(props[slot.repeat], fallback) : 1;
         // An empty slot the template requires is not drawn; Play says what is missing, so the component is not silently without its content.
-        if (copies === 0 && slot.showEmpty !== true) return slot.required === true ? { tag: 'div', attrs: { class: 'midas-play-warning', role: 'status' }, style: {}, text: `${template.name}: fill the ${slot.name} slot`, children: [] } : null;
+        if (!held && slot.showEmpty !== true) return slot.required === true ? { tag: 'div', attrs: { class: 'midas-play-warning', role: 'status' }, style: {}, text: `${template.name}: fill the ${slot.name} slot`, children: [] } : null;
         const kids = [];
-        for (let i = 0; i < copies; i++) kids.push(...renderChildren(layer, scope));
+        if (held) kids.push(...renderChildren(layer, scope));
         // An empty hug slot keeps the canvas's floor (emptySlotFloor), as the export's :empty rule does.
         const floorH = kids.length || slotHolderLayout(template, slot) !== 'vertical' ? null : emptySlotFloor(layer, 'h', layer.layoutSizingV ?? 'hug', 0);
         const style = floorH === null ? {} : { minHeight: `${floorH}px` };
@@ -529,8 +526,8 @@ function renderTemplate(n, template, parent, scope) {
         emitContainer(slot, children);
     }
     if (!framePartsDrawn && !template.anatomy.some(s => s.kind === 'text' || s.kind === 'control')) drawFrameParts(children);
-    // The content slots, after the other layers as the export writes them: the slot element (class <template>-<slot>) around the layers the instance holds,
-    // `repeat` copies of them for a repeating slot (the canvas keeps them once). With no copies the element is there, empty, only for a slot with showEmpty.
+    // The content slots, after the other layers as the export writes them: the slot element (class <template>-<slot>) around the layers the instance holds.
+    // With no layers the element is there, empty, only for a slot with showEmpty.
     for (const slot of (template.slots ?? []).filter(s => s.parent === undefined && s.box === undefined)) {
         const node = contentNodeOf(slot);
         if (node) children.push(node);

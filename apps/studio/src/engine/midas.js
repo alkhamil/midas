@@ -1,7 +1,7 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
 import { mountFloatingWindow } from './floatingWindow.js';
-import { moveStopKeys, gradientColorAt, BLEND_MODES, contrastRatio, wcagLevels, patternStepOf, patternCellOf, gradientStops, gradientReverse, gradientAddStop, gradientRemoveStop, gradientSetStop, colorFormats, colorFromFormat, documentColors, imageAdjustFilter, imageRotationOf, isGradientFill, patternTileOf, patternPhaseOf, patternSvgUrl, patternTileId, imageSvgUrl, gradientCss, remapFillKeys, moveFillKeys, shiftStopKeys, stopBindingKey, parseStopKey, fillParamType, parseCssColor, gradientHandlePoints, gradientHandleMove, cropZoomFor, cropRotateFor, patternLayout, videoPosterOf, PLACEHOLDER_IMAGE, PLACEHOLDER_IMAGE_ID, VIDEO_PENDING, IMAGE_PENDING, newlyShownImageProps, slotListOf, slotRefusal, slotRestricts, textWriteBacks, decorationLinesOf, pinnedFrame, liftedPartFrame, markManagedContainers, rowsBounds, nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, ICONS_SECTION, defaultIconOf, roleIconsOf, iconRolesOf, iconNodes, planIcons, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, managedSlotLayer, managedPartLayer, planManagedTextBindings, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, previewStateOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, pathSegments, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, strokeAreaOf, strokeWithPaintLayer, gradientRaster, pictureExtent, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix, pathCurveBounds, pathContours, normalizeVectorGeometry } from '@midas/builder-core';
+import { moveStopKeys, gradientColorAt, BLEND_MODES, contrastRatio, wcagLevels, patternStepOf, patternCellOf, gradientStops, gradientReverse, gradientAddStop, gradientRemoveStop, gradientSetStop, colorFormats, colorFromFormat, documentColors, imageAdjustFilter, imageRotationOf, isGradientFill, patternTileOf, patternPhaseOf, patternSvgUrl, patternTileId, imageSvgUrl, gradientCss, remapFillKeys, moveFillKeys, shiftStopKeys, stopBindingKey, parseStopKey, fillParamType, parseCssColor, gradientHandlePoints, gradientHandleMove, cropZoomFor, cropRotateFor, patternLayout, videoPosterOf, PLACEHOLDER_IMAGE, PLACEHOLDER_IMAGE_ID, VIDEO_PENDING, IMAGE_PENDING, newlyShownImageProps, slotListOf, slotRefusal, slotRestricts, textWriteBacks, decorationLinesOf, pinnedFrame, liftedPartFrame, markManagedContainers, rowsBounds, nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, ICONS_SECTION, defaultIconOf, roleIconsOf, iconRolesOf, iconNodes, planIcons, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, managedSlotLayer, managedPartLayer, planManagedTextBindings, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, previewStateOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, moveAction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, pathSegments, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, strokeAreaOf, strokeWithPaintLayer, gradientRaster, pictureExtent, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix, pathCurveBounds, pathContours, normalizeVectorGeometry } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { cachedSnapshot, cacheSnapshot } from '../libraryCache.js';
 import { imageSlotRowHtml, slotRowHtml } from './slotRow.js';
@@ -9726,6 +9726,24 @@ function rolledBackForBehavior() {
     return true;
 }
 // Stops an action that would touch a managed layer on its own: says why (see managedRefusal) and returns true.
+/** A layer a box slot holds as an instance (a List Item, a Divider of its separator) goes from the Slots section of the Behavior tab, not from the canvas. */
+function refusedBoxItem(ids) {
+    for (const id of ids) {
+        const n = doc.get(id), box = doc.get(n?.parentId), owner = box ? ownerInstanceOf(box) : null;
+        const def = owner && box.propBind?.slot && templateOfInstance(owner)?.slots?.find(s => s.id === box.propBind.slot);
+        if (def?.box !== undefined && def.holds === 'instance') {
+            toast(`Remove it from the Slots section of the Behavior tab: ${owner.name} holds its ${def.name} there.`);
+            return true;
+        }
+    }
+    return false;
+}
+/** The instance a layer of a template sits in (the nearest instance above it), or null. */
+function ownerInstanceOf(n) {
+    let owner = doc.get(n.parentId);
+    while (owner && !owner.isInstance) owner = doc.get(owner.parentId);
+    return owner ?? null;
+}
 function refusedManaged(action, nodes) {
     const why = managedRefusal(action, nodes.map(n => managedOwnerOf(n) ?? n));
     if (why)
@@ -10165,6 +10183,11 @@ function behaviorTabHtml(n) {
     const modes = instanceModesOf(n, template ? binding : null);
     const panel = instancePanel(n, master, collections, modes);
     for (const r of panel.rows) if (r.kind === 'icon') r.name = componentById(r.value)?.name ?? null;
+    // An addable slot lists its instances (the ones of the one template it accepts), each row with its own remove.
+    for (const e of panel.slots ?? []) if (e.addable) {
+        const layer = slotLayerOf(n, e.id);
+        e.items = layer ? doc.children(layer.id).filter(c => componentById(c.sourceId)?.behavior?.templateId === e.accepts[0]).map((c, i) => ({ id: c.id, name: `${e.name} ${i + 1}` })) : [];
+    }
     const props = template ? resolveProps(template, n.behavior?.props ?? {}) : null;
     // A state left selected on another template (Hover on a Button) is Default here: the template may not declare it.
     const previewState = template ? previewStateOf(template, behaviorPreview) : 'default';
@@ -10225,7 +10248,7 @@ function prototypeTabHtml(n) {
         ].join('');
     };
     /** The actions of a branch (`b<i>`) or the else (`e`), each with its remove, and an add. */
-    const actionsHtml = (id, actions, list) => actions.map((a, j) => `<div class="pt-action pt-nested">${icon('arrowRight', 12)}<div class="pt-params">${actionFields(id, a, { at: list, index: j }, nestedActionTypes)}</div>${iconButton('action-remove', 'Remove action', id, { at: list, index: j })}</div>`).join('')
+    const actionsHtml = (id, actions, list) => actions.map((a, j) => `<div class="pt-action pt-nested">${icon('arrowRight', 12)}<div class="pt-params">${actionFields(id, a, { at: list, index: j }, nestedActionTypes)}</div><div class="pt-tools">${iconButton('action-remove', 'Remove action', id, { at: list, index: j })}</div></div>`).join('')
         + `<div class="pt-nested-add">${textButton('action-add', 'Add action', id, { at: list })}</div>`;
     const branchesHtml = (id, c) => c.branches.map((b, bi) => {
         const list = `b${bi}`, variable = variables.find(v => v.id === b.condition.variableId);
@@ -10247,7 +10270,7 @@ function prototypeTabHtml(n) {
         const actions = i.actions.map((a, k) => {
             rowAction = k;
             const block = `<div class="pt-action" data-pt-action-row="${k}">${icon('arrowRight', 12)}<div class="pt-params">${actionFields(i.id, a, undefined, actionTypes)}${a.type === 'conditional' ? conditionalHtml(i.id, a) : ''}</div>`
-                + `<div class="pt-tools">${iconButton('top-up', 'Move action up', i.id)}${iconButton('top-down', 'Move action down', i.id)}${iconButton('top-remove', 'Remove action', i.id)}</div></div>`;
+                + `<div class="pt-tools"><span class="pt-grip" draggable="true" aria-label="Drag to reorder" title="Drag to reorder">⠿</span>${iconButton('top-up', 'Move action up', i.id)}${iconButton('top-down', 'Move action down', i.id)}${iconButton('top-remove', 'Remove action', i.id)}</div></div>`;
             rowAction = 0;
             return block;
         }).join('');
@@ -10385,6 +10408,53 @@ document.addEventListener('click', e => {
     }
     renderInspector();
 });
+/** Drag an action by its grip to reorder the actions of one interaction (top-level actions only). One history step on drop. */
+let dragAction = null;
+const clearDropMarks = () => document.querySelectorAll('.pt-drop-before, .pt-drop-after, .pt-dragging').forEach(el => el.classList.remove('pt-drop-before', 'pt-drop-after', 'pt-dragging'));
+document.addEventListener('dragstart', e => {
+    const grip = e.target.closest?.('.pt-grip');
+    if (!grip) return;
+    const row = grip.closest('.pt-action');
+    dragAction = { id: grip.closest('[data-pt-row]').dataset.ptRow, from: Number(row.dataset.ptActionRow) };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+    e.dataTransfer.setDragImage(row, 0, 0);
+    row.classList.add('pt-dragging');
+});
+document.addEventListener('dragover', e => {
+    if (!dragAction) return;
+    const row = e.target.closest?.('.pt-action[data-pt-action-row]');
+    if (!row || row.closest('[data-pt-row]').dataset.ptRow !== dragAction.id) return;
+    e.preventDefault();
+    const box = row.getBoundingClientRect(), after = e.clientY > box.top + box.height / 2;
+    document.querySelectorAll('.pt-drop-before, .pt-drop-after').forEach(el => el.classList.remove('pt-drop-before', 'pt-drop-after'));
+    row.classList.add(after ? 'pt-drop-after' : 'pt-drop-before');
+});
+document.addEventListener('drop', e => {
+    if (!dragAction) return;
+    const row = e.target.closest?.('.pt-action[data-pt-action-row]');
+    const drag = dragAction;
+    dragAction = null;
+    clearDropMarks();
+    if (!row || row.closest('[data-pt-row]').dataset.ptRow !== drag.id) return;
+    e.preventDefault();
+    const n = activeNode();
+    const box = row.getBoundingClientRect(), slot = Number(row.dataset.ptActionRow) + (e.clientY > box.top + box.height / 2 ? 1 : 0);
+    // The list without the dragged action is where the slot counts from: a move down lands one place earlier.
+    const to = slot > drag.from ? slot - 1 : slot;
+    if (!n || to === drag.from) return renderInspector();
+    try {
+        transaction('Move action', () => { n.prototype = moveAction(n.prototype, drag.id, drag.from, to); doc.touch(n); });
+    }
+    catch (err) {
+        toast(err.message);
+    }
+    renderInspector();
+});
+document.addEventListener('dragend', () => {
+    dragAction = null;
+    clearDropMarks();
+});
 /** Play: the flow of the active page, from its selected or first top-level frame. One Play at a time. */
 // Play in the desktop app opens its own window, which reads the server copy: pending edits are saved first.
 async function flushSaves() {
@@ -10508,6 +10578,27 @@ function onBehaviorClick(e) {
         return;
     }
     // An instance slot (Extra, an action cell): the same picker the Design tab's slot row opens, with the same acceptance rule.
+    // Plus on an addable slot: one more instance of the template the box accepts, made from its seed, straight in (no picker).
+    const slotAdd = e.target.closest?.('[data-bp-action="slot-add"]');
+    if (slotAdd) {
+        const owner = activeNode(), template = owner && templateOfInstance(owner);
+        const def = template?.slots?.find(s => s.id === slotAdd.dataset.bpSlot), layer = def && slotLayerOf(owner, def.id);
+        if (layer) {
+            transaction('Add instance', () => { seedSlot(owner, layer, def); doc.touch(layer); syncSeparators(owner, template); });
+            renderInspector();
+        }
+        return;
+    }
+    // Minus on one of an addable slot's instances: it goes, and the separator's Dividers follow the rest (one step).
+    const slotRemove = e.target.closest?.('[data-bp-action="slot-remove"]');
+    if (slotRemove) {
+        const owner = activeNode(), template = owner && templateOfInstance(owner), item = doc.get(slotRemove.dataset.bpNode);
+        if (item && template) {
+            transaction('Remove instance', () => { doc.remove([item.id]); syncSeparators(owner, template); });
+            renderInspector();
+        }
+        return;
+    }
     const slotFill = e.target.closest?.('[data-bp-action="slot-fill"]');
     if (slotFill) {
         const owner = activeNode();
@@ -10826,6 +10917,51 @@ function syncParts(inst) {
  * in the mode the seed names (a variant) or follows from the owner (the owner's Size mode name), with its props and the glyph of its icon role. A template the file has no
  * master of leaves the slot empty. Must run inside a transaction.
  */
+/** The first master of a template in the document, or undefined. */
+function templateMasterOf(templateId) {
+    return doc.data.pages.flatMap(p => p.nodes).find(m => m.component && m.behavior && 'templateId' in m.behavior && m.behavior.templateId === templateId);
+}
+/** The template an instance is made from, or null. */
+function templateOfInstance(inst) {
+    const binding = componentById(inst.sourceId)?.behavior;
+    return binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) ?? null : null;
+}
+/** The layer an instance holds for a slot (its box, or the slot's own layer), below the instance. */
+function slotLayerOf(inst, slotId) {
+    return doc.descendants(inst.id).find(y => y.propBind?.slot === slotId);
+}
+/**
+ * The Dividers a box slot's separator puts between its instances: one before each instance but the first while the separator prop holds, none
+ * otherwise. They are the box's own instances of the separator's template, rebuilt here so they follow the instances. Runs inside the edit.
+ */
+function syncSeparators(inst, template) {
+    const values = resolveProps(template, inst.behavior?.props ?? {});
+    for (const def of (template.slots ?? []).filter(s => s.separator)) {
+        const layer = slotLayerOf(inst, def.id), master = templateMasterOf(def.separator.template);
+        if (!layer || !master) continue;
+        const dividers = doc.children(layer.id).filter(c => c.sourceId === master.id);
+        if (dividers.length) doc.remove(dividers.map(c => c.id));
+        if (values[def.separator.prop] !== true) continue;
+        const items = doc.children(layer.id);
+        for (let i = items.length - 1; i >= 1; i--) {
+            const before = new Set(doc.children(layer.id).map(c => c.id));
+            instantiate(master.id, null, layer, { keepSelection: true });
+            const made = doc.children(layer.id).find(c => !before.has(c.id));
+            if (!made) continue;
+            made.layoutSizingH = 'fill';
+            placeAmongChildren(layer, made, doc.children(layer.id).filter(c => c !== made).indexOf(items[i]));
+            doc.touch(made);
+        }
+    }
+}
+/** The box slots a new instance starts with (a List's first item): each gets its seeds, and its separators follow. Runs inside the edit. */
+function seedBoxes(inst, template) {
+    for (const def of (template.slots ?? []).filter(s => s.box !== undefined && s.seed?.length)) {
+        const layer = slotLayerOf(inst, def.id);
+        if (layer && !doc.children(layer.id).length) seedSlot(inst, layer, def);
+    }
+    syncSeparators(inst, template);
+}
 function seedSlot(owner, layer, def) {
     const ownerBinding = componentById(owner.sourceId)?.behavior;
     const ownerModes = ownerBinding ? instanceModeNamesOf(owner, ownerBinding) : {};
@@ -10853,6 +10989,9 @@ function seedSlot(owner, layer, def) {
         markManagedContainers(template, doc.descendants(copies[0].id));
         doc.touch(copies[0]);
         syncInstance(copies[0]);
+        // A box that stacks its instances (a List's items) gives each one the box's width: set after the sync, which takes the master's hug.
+        // An override, as the slot's own fill is: the sync from the main component keeps it.
+        if (def.box !== undefined && layer.layout === 'vertical') { copies[0].layoutSizingH = 'fill'; copies[0].overrides = { ...(copies[0].overrides || {}), layoutSizingH: 'fill' }; doc.touch(copies[0]); }
         // The instance now decides what this slot holds: a sync from the main component keeps what was put there.
         const slot = doc.get(layer.id);
         if (claimSlot(slot)) doc.touch(slot);
@@ -11248,7 +11387,7 @@ function setInstanceValueTo(inst, prop, value) {
     }
     catch (err) { toast(err.message); return false; }
     let reason = null;
-    transaction('Set behavior value', () => { inst.behavior = next; doc.touch(inst); reason = syncInstance(inst); });
+    transaction('Set behavior value', () => { inst.behavior = next; doc.touch(inst); reason = syncInstance(inst); const template = templateOfInstance(inst); if (template) syncSeparators(inst, template); });
     if (reason) toast(`Managed layers were not updated: ${reason}.`);
     return true;
 }
@@ -11710,7 +11849,7 @@ function duplicate() {
     toast(dropped.length ? prototypeCopyMessage(dropped) : 'Selection duplicated');
 }
 function removeSelection() {
-    if (!state.selection.size || refusedManaged('delete', selectedRoots()))
+    if (!state.selection.size || refusedManaged('delete', selectedRoots()) || refusedBoxItem([...state.selection]))
         return;
     const gone = new Set(state.selection);
     for (const id of state.selection)
@@ -12206,6 +12345,7 @@ function instantiate(id, at = null, parent = null, opts = {}) {
         doc.refresh(); // parent changed after the node was added: rebuild the child index so the layers panel nests it
         doc.touch(root);
         syncInstance(root);
+        if (tpl) seedBoxes(root, tpl);
         applyVariantStroke(root);
         // Created from a component and not yet filled: its slots are below their minimum, which the notice of this edit leaves out.
         for (const n of [root, ...doc.descendants(root.id)])
@@ -21353,6 +21493,7 @@ function placeDemoInstance(master, template, row) {
     doc.refresh();
     doc.touch(copies[0]);
     syncInstance(copies[0]);
+    seedBoxes(copies[0], template);
 }
 /** Builds the page's content for every template of the registry, in dependency order. The page is the open one (see generateDesignSystem). */
 function buildDesignSystemPage(counts) {

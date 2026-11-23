@@ -102,10 +102,10 @@ const icon = doc => doc.nodes.find(n => n.id === defaultIconOf([{ nodes: doc.nod
 test('the run builds a master for every registered template, in dependency order, each with its demo instance', () => {
     const doc = fresh();
     const { counts, plan } = run(doc);
-    assert.deepEqual(plan.order.map(t => t.id), ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'inputnumber', 'antd-badge', 'antd-tag', 'antd-divider', 'antd-avatar', 'antd-text', 'antd-title', 'antd-paragraph', 'antd-link', 'antd-alert', 'antd-card', 'antd-spin', 'antd-empty', 'antd-search', 'antd-statistic', 'antd-list-item', 'antd-radio-group', 'antd-pagination', 'antd-breadcrumb', 'table-toolbar']);
+    assert.deepEqual(plan.order.map(t => t.id), ['button', 'input', 'formitem', 'icon-button', 'checkbox', 'switch', 'radio', 'inputnumber', 'antd-badge', 'antd-tag', 'antd-divider', 'antd-avatar', 'antd-text', 'antd-title', 'antd-paragraph', 'antd-link', 'antd-alert', 'antd-card', 'antd-spin', 'antd-empty', 'antd-search', 'antd-statistic', 'antd-list-item', 'list', 'antd-radio-group', 'antd-pagination', 'antd-breadcrumb', 'table-toolbar']);
     assert.equal(counts.created, 28);
     const masters = doc.nodes.filter(n => n.component && n.behavior?.templateId);
-    assert.deepEqual(masters.map(m => m.behavior.templateId), ['button', 'input', 'formitem', 'list', 'icon-button', 'checkbox', 'switch', 'radio', 'inputnumber', 'antd-badge', 'antd-tag', 'antd-divider', 'antd-avatar', 'antd-text', 'antd-title', 'antd-paragraph', 'antd-link', 'antd-alert', 'antd-card', 'antd-spin', 'antd-empty', 'antd-search', 'antd-statistic', 'antd-list-item', 'antd-radio-group', 'antd-pagination', 'antd-breadcrumb', 'table-toolbar']);
+    assert.deepEqual(masters.map(m => m.behavior.templateId), ['button', 'input', 'formitem', 'icon-button', 'checkbox', 'switch', 'radio', 'inputnumber', 'antd-badge', 'antd-tag', 'antd-divider', 'antd-avatar', 'antd-text', 'antd-title', 'antd-paragraph', 'antd-link', 'antd-alert', 'antd-card', 'antd-spin', 'antd-empty', 'antd-search', 'antd-statistic', 'antd-list-item', 'list', 'antd-radio-group', 'antd-pagination', 'antd-breadcrumb', 'table-toolbar']);
     for (const template of BUILT_IN_TEMPLATES.values()) {
         const master = masters.find(m => m.behavior.templateId === template.id);
         assert.ok(doc.nodes.some(n => n.isInstance && n.sourceId === master.id), `${template.id} has a demo instance`);

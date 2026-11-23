@@ -46,6 +46,22 @@ export function editInteraction(prototype, id, patch) {
 }
 
 /**
+ * The prototype data with one of an interaction's actions moved from one index to another. The other actions keep their order.
+ * @param {{ version: number, interactions: any[], overflow?: string }} prototype
+ * @param {string} id
+ * @param {number} from
+ * @param {number} to
+ */
+export function moveAction(prototype, id, from, to) {
+    const interaction = prototype?.interactions.find(i => i.id === id);
+    if (!interaction) throw new Error(`The node has no interaction "${id}".`);
+    for (const index of [from, to]) if (!Number.isInteger(index) || index < 0 || index >= interaction.actions.length) throw new Error(`The interaction has no action at index ${index}.`);
+    const actions = [...interaction.actions];
+    actions.splice(to, 0, ...actions.splice(from, 1));
+    return editInteraction(prototype, id, { actions });
+}
+
+/**
  * The prototype data without one interaction. Undefined when no interaction and no scroll behaviour is left.
  * @param {{ version: number, interactions: any[], overflow?: string } | undefined} prototype
  * @param {string} id

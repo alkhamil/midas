@@ -111,16 +111,16 @@ const ELEMENT_TYPES = { button: ['ButtonHTMLAttributes', 'HTMLButtonElement'], i
 const slotPropsOf = template => (template.slots ?? []).map(slot => ({ prop: template.slots.length === 1 ? 'children' : slot.id, slot }));
 
 /**
- * The JSX of one content slot: its element (class <template>-<slot>) around the prop's content. A repeating slot draws its children `<id>Copies` times
- * (0 while they are empty); a slot the props show while they hold is drawn exactly while its condition holds; the rest draw while filled, or always with showEmpty.
+ * The JSX of one content slot: its element (class <template>-<slot>) around the prop's content. A slot the props show while they hold is drawn exactly while its
+ * condition holds; the rest draw while filled, or always with showEmpty.
  * @param {any} template
  * @param {string} prop
  * @param {any} slot
  * @returns {string}
  */
 function contentSlotJsx(template, prop, slot) {
-    const element = slot.repeat ? `<div className="${template.id}-${slot.id}">{Array.from({ length: ${slot.id}Copies }, (_, i) => <Fragment key={i}>{${prop}}</Fragment>)}</div>` : `<div className="${template.id}-${slot.id}">{${prop}}</div>`;
-    const guard = slot.repeat ? `${slot.id}Copies > 0` : `filled(${prop})`;
+    const element = `<div className="${template.id}-${slot.id}">{${prop}}</div>`;
+    const guard = `filled(${prop})`;
     if (slot.shownWhen !== undefined) return `{(${shownJsx(slot.shownWhen)}) && ${element}}`;
     return slot.showEmpty === true ? element : `{${guard} && ${element}}`;
 }
@@ -269,7 +269,7 @@ function propsTypeOf(template, name, elementType, attrType) {
     const omitted = [...new Set(own)].map(key => `'${key}'`).join(' | ');
     const used = ['CSSProperties', 'ReactNode', attrType, ...new Set(template.events.map(e => EVENT_TYPE[e.name]))];
     return [
-        template.slots.some(slot => slot.repeat) ? "import { Fragment, forwardRef } from 'react';" : "import { forwardRef } from 'react';",
+        "import { forwardRef } from 'react';",
         `import type { ${[...new Set(used)].sort().join(', ')} } from 'react';`,
         `import './${name}.css';`,
         '',
@@ -551,11 +551,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     if (slotted) {
         const [attrType, elementType] = ELEMENT_TYPES[fixedTag] ?? ['HTMLAttributes', `HTMLElementTagNameMap['${fixedTag}']`];
         const slotParams = [...params, ...slotPropsOf(template).map(s => s.prop), 'className', 'style', '...rest'];
-        const needsFilled = template.slots.some(slot => slot.showEmpty !== true || slot.repeat);
-        const counts = slotPropsOf(template).filter(({ slot }) => slot.repeat).map(({ prop, slot }) => {
-            const fallback = typeof template.props[slot.repeat].default === 'number' ? template.props[slot.repeat].default : 0;
-            return `  const ${slot.id}Copies = filled(${prop}) ? copies(${slot.repeat}, ${fallback}) : 0;`;
-        });
+        const needsFilled = template.slots.some(slot => slot.showEmpty !== true);
         return [
             ...propsTypeOf(template, name, elementType, attrType),
             `export const ${name} = forwardRef<${elementType}, ${name}Props>(function ${name}({ ${slotParams.join(', ')} }, ref) {`,
@@ -563,7 +559,6 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             ...derivedLines,
             ...controlLines,
             ...localLines,
-            ...counts,
             '  return (',
             `    <${tag}`,
             ...attrs.map(attr => `      ${attr}`),
@@ -574,7 +569,6 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             '});',
             ...(template.interaction?.wave ? ['', 'function waveDown(el: (HTMLElement & { disabled?: boolean }) | null) {', "  if (!el || el.disabled) return;", "  el.removeAttribute('data-wave-on');", '  void el.offsetWidth;', "  el.setAttribute('data-wave-on', '');", '}'] : []),
             ...(needsFilled ? ['', 'function filled(node: ReactNode): boolean {', `  return Array.isArray(node) ? node.some(filled) : node !== undefined && node !== null && typeof node !== 'boolean' && node !== '';`, '}'] : []),
-            ...(counts.length ? ['', 'function copies(count: number | null | undefined, fallback: number): number {', '  const n = count ?? fallback;', '  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;', '}'] : []),
             '',
             ...fillHelpers(true),
         ].join('\n');
