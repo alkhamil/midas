@@ -3812,3 +3812,33 @@ body.view-only #file-name::after { content: " · View only"; color: var(--muted)
 .desktop-app .file-breadcrumb #file-name,
 .desktop-app .file-breadcrumb .crumb-slash { display: none }
 .desktop-app .inspector-tabs>button:not(.ui-icon-button) { font-size: 13px }
+
+/* Prototype tab (Figma style): one card per interaction, "When <trigger>" on its head, "then" actions below, each action one line of
+   inline controls. Controls are named by aria-label, not by a caption beside them. */
+.pt-card { display: grid; gap: 8px; padding: 10px; margin-bottom: 10px; border: 1px solid var(--border-soft); border-radius: 8px; background: var(--panel-2) }
+.pt-card-head { display: flex; align-items: center; gap: 6px; min-width: 0 }
+.pt-when, .pt-cond-label { flex: none; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em }
+.pt-card-head .pt-select { flex: 1; min-width: 0; width: auto }
+.pt-actions { display: grid; gap: 4px }
+.pt-action { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; column-gap: 6px; align-items: start; min-width: 0; padding: 4px 0 4px 6px; border-left: 2px solid var(--border); color: var(--muted) }
+.pt-action > svg { grid-column: 1; grid-row: 1; margin-top: 7px }
+.pt-params { grid-column: 2; grid-row: 1; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0 }
+.pt-tools { grid-column: 3; grid-row: 1; display: flex; gap: 2px; opacity: 0; transition: opacity .15s }
+.pt-action:hover .pt-tools, .pt-action:focus-within .pt-tools { opacity: 1 }
+.pt-select, .pt-input { height: 30px; min-width: 0; border: 0; border-radius: 8px; background: var(--field); color: var(--text); padding: 0 8px; font-size: 13px; box-sizing: border-box }
+.pt-select { width: 100% }
+.pt-input { width: 100% }
+.pt-value { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0 }
+.pt-icon { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; flex: none; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; padding: 0 }
+.pt-icon:hover { background: var(--hover); color: var(--text) }
+.pt-add { width: 24px; height: 24px }
+.section-heading .pt-add { margin-left: auto }
+.pt-text { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent; color: var(--accent); font-size: 12px; cursor: pointer }
+.pt-text:hover { background: var(--hover) }
+.pt-card-foot { display: flex; justify-content: flex-start }
+.pt-cond { display: grid; gap: 4px; padding: 6px; border-radius: 6px; background: var(--panel-3) }
+.pt-cond-head { display: flex; align-items: center; gap: 2px }
+.pt-cond-head .pt-cond-label { flex: 1 }
+.pt-cond-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px }
+.pt-nested { margin-left: 8px }
+.pt-nested-add { display: flex; gap: 4px }

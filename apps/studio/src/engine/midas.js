@@ -10187,81 +10187,83 @@ function prototypeTabHtml(n) {
     const destinations = destinationOptions(doc.data.pages);
     const variables = conditionVariables();
     const options = (list, current) => list.map(([value, label, unavailable]) => `<option value="${esc(value)}"${value === current ? ' selected' : ''}${unavailable ? ' disabled' : ''}>${esc(label)}</option>`).join('');
-    // Where a control sits: its part of a conditional (`b<i>` a branch, `e` the else), and the index of its action in that list.
-    // The action a row is drawn for (its index in the interaction's list) is set by the row loop; every control names it.
+    // The action a row is drawn for (its index in the interaction's list) is set by the row loop; every control names it. A control inside a
+    // conditional also names its part (`b<i>` a branch, `e` the else) and the index of its action in that list.
     let rowAction = 0;
     const at = where => ` data-pt-action="${rowAction}"` + (where ? ` data-pt-at="${esc(where.at)}"${where.index === undefined ? '' : ` data-pt-index="${where.index}"`}` : '');
-    const select = (key, label, id, list, current, where) => `<div class="cmp-prop2"><label>${label}</label><div class="cmp-ctl"><select class="cmp-input" data-pt="${key}" data-pt-id="${esc(id)}"${at(where)}>${options(list, current)}</select></div></div>`;
-    const number = (key, label, id, value, where) => `<div class="cmp-prop2"><label>${label}</label><div class="cmp-ctl"><input class="cmp-input" type="number" min="0" data-pt="${key}" data-pt-id="${esc(id)}"${at(where)} value="${value}"></div></div>`;
-    const button = (name, label, id, where) => `<button class="wide-button" data-pt-op="${name}" data-pt-id="${esc(id)}"${at(where)}>${label}</button>`;
+    // Figma's style: a control is its value alone, named for assistive tech by its label (no caption beside it).
+    const select = (key, label, id, list, current, where) => `<select class="pt-select" aria-label="${esc(label)}" title="${esc(label)}" data-pt="${key}" data-pt-id="${esc(id)}"${at(where)}>${options(list, current)}</select>`;
+    const number = (key, label, id, value, where) => `<input class="pt-input" type="number" min="0" aria-label="${esc(label)}" title="${esc(label)}" data-pt="${key}" data-pt-id="${esc(id)}"${at(where)} value="${value}">`;
+    const iconButton = (name, label, id, where, attrs = '') => `<button class="pt-icon" aria-label="${esc(label)}" title="${esc(label)}" data-pt-op="${name}" data-pt-id="${esc(id)}"${at(where)}${attrs}>${/-up$/.test(name) ? '↑' : /-down$/.test(name) ? '↓' : icon(/remove/.test(name) ? 'trash' : 'plus', 14)}</button>`;
+    const textButton = (name, label, id, where) => `<button class="pt-text" data-pt-op="${name}" data-pt-id="${esc(id)}"${at(where)}>${icon('plus', 12)}<span>${esc(label)}</span></button>`;
     const triggers = [['on-click', 'On click'], ['mouse-enter', 'Mouse enter'], ['mouse-leave', 'Mouse leave'], ['mouse-down', 'Mouse down'], ['mouse-up', 'Mouse up'], ['while-hovering', 'While hovering'], ['while-pressing', 'While pressing'], ['after-delay', 'After delay']];
     const actionTypes = [['navigate-to', 'Navigate to'], ['back', 'Back'], ['open-link', 'Open link'], ['conditional', 'Conditional'], ['open-overlay', 'Open overlay'], ['close-overlay', 'Close overlay'], ['set-variable', 'Set variable'], ['swap', 'Swap overlay', true], ['scroll', 'Scroll to', true]];
     const nestedActionTypes = actionTypes.filter(([value]) => value !== 'conditional');
     const transitions = [['instant', 'Instant'], ['dissolve', 'Dissolve'], ['slide-in', 'Slide in'], ['push', 'Push']];
     const directions = [['left', 'Left'], ['right', 'Right'], ['top', 'Top'], ['bottom', 'Bottom']];
     const easings = [['linear', 'Linear'], ['ease-in', 'Ease in'], ['ease-out', 'Ease out'], ['ease-in-out', 'Ease in out']];
+    const destinationChoices = () => destinations.map(d => [d.id, destinationLabel(d, doc.page?.name)]);
     /** The fields of one action: its type, and what its type needs. Used for an interaction's action and for the actions of a branch. */
     const actionFields = (id, a, where, types) => {
         const t = a.transition, fields = transitionFieldsOf(t?.type ?? 'instant');
+        const boolean = variables.find(v => v.id === a.variableId)?.type === 'boolean';
         return [
             select('action', 'Action', id, types, a.type, where),
-            a.type === 'navigate-to' ? select('destination', 'Destination', id, destinations.map(d => [d.id, destinationLabel(d, doc.page?.name)]), a.destinationId, where) : '',
+            a.type === 'navigate-to' ? select('destination', 'Destination', id, destinationChoices(), a.destinationId, where) : '',
             a.type === 'navigate-to' ? select('transition', 'Transition', id, transitions, t?.type ?? 'instant', where) : '',
             a.type === 'navigate-to' && fields.direction ? select('direction', 'Direction', id, directions, t.direction, where) : '',
             a.type === 'navigate-to' && fields.duration ? number('duration', 'Duration (ms)', id, t.durationMs, where) : '',
             a.type === 'navigate-to' && fields.easing ? select('easing', 'Easing', id, easings, t.easing, where) : '',
-            a.type === 'open-link' ? `<div class="cmp-prop2"><label>URL</label><div class="cmp-ctl"><span class="small-label">${esc(a.url)}</span></div></div>` : '',
-            // An overlay: the frame it shows, where it sits, whether an outside click closes it, and its transition (instant or dissolve only).
-            a.type === 'open-overlay' ? select('destination', 'Frame', id, destinations.map(d => [d.id, destinationLabel(d, doc.page?.name)]), a.destinationId, where) : '',
+            a.type === 'open-link' ? `<span class="pt-value">${esc(a.url)}</span>` : '',
+            a.type === 'open-overlay' ? select('destination', 'Frame', id, destinationChoices(), a.destinationId, where) : '',
             a.type === 'open-overlay' ? select('placement', 'Placement', id, [['center', 'Center'], ['below', 'Below trigger'], ['above', 'Above trigger']], a.placement, where) : '',
-            a.type === 'open-overlay' ? select('close-outside', 'Close on outside click', id, [['true', 'Yes'], ['false', 'No']], String(a.closeOnOutside), where) : '',
+            a.type === 'open-overlay' ? select('close-outside', 'Close on outside click', id, [['true', 'Close on outside click'], ['false', 'Stay open']], String(a.closeOnOutside), where) : '',
             a.type === 'open-overlay' ? select('transition', 'Transition', id, [['instant', 'Instant'], ['dissolve', 'Dissolve']], t?.type ?? 'instant', where) : '',
-            // Set variable: the document variable it writes for the session, and the value typed by that variable (a boolean is a choice, a number or string a text).
             a.type === 'set-variable' ? select('variable', 'Variable', id, variables.map(v => [v.id, v.name]), a.variableId, where) : '',
-            a.type === 'set-variable' && variables.find(v => v.id === a.variableId)?.type === 'boolean' ? select('value', 'Value', id, [['true', 'True'], ['false', 'False']], String(a.value), where) : '',
-            a.type === 'set-variable' && variables.find(v => v.id === a.variableId)?.type !== 'boolean' ? `<div class="cmp-prop2"><label>Value</label><div class="cmp-ctl"><input class="cmp-input" type="${variables.find(v => v.id === a.variableId)?.type === 'number' ? 'number' : 'text'}" data-pt="value" data-pt-id="${esc(id)}"${where ? ` data-pt-at="${esc(where.at)}"${where.index === undefined ? '' : ` data-pt-index="${where.index}"`}` : ''} value="${esc(a.value)}"></div></div>` : '',
+            a.type === 'set-variable' && boolean ? select('value', 'Value', id, [['true', 'True'], ['false', 'False']], String(a.value), where) : '',
+            a.type === 'set-variable' && !boolean ? `<input class="pt-input" type="${variables.find(v => v.id === a.variableId)?.type === 'number' ? 'number' : 'text'}" aria-label="Value" title="Value" data-pt="value" data-pt-id="${esc(id)}"${at(where)} value="${esc(a.value)}">` : '',
         ].join('');
     };
     /** The actions of a branch (`b<i>`) or the else (`e`), each with its remove, and an add. */
-    const actionsHtml = (id, actions, list) => actions.map((a, j) => `<div class="cmp-props">${actionFields(id, a, { at: list, index: j }, nestedActionTypes)}<div class="cmp-prop2"><label></label><div class="cmp-ctl">${button('action-remove', 'Remove action', id, { at: list, index: j })}</div></div></div>`).join('')
-        + `<div class="cmp-props">${button('action-add', 'Add action', id, { at: list })}</div>`;
+    const actionsHtml = (id, actions, list) => actions.map((a, j) => `<div class="pt-action pt-nested">${icon('arrowRight', 12)}<div class="pt-params">${actionFields(id, a, { at: list, index: j }, nestedActionTypes)}</div>${iconButton('action-remove', 'Remove action', id, { at: list, index: j })}</div>`).join('')
+        + `<div class="pt-nested-add">${textButton('action-add', 'Add action', id, { at: list })}</div>`;
     const branchesHtml = (id, c) => c.branches.map((b, bi) => {
         const list = `b${bi}`, variable = variables.find(v => v.id === b.condition.variableId);
         const operators = (CONDITION_OPERATORS[variable?.type] ?? []).map(o => [o, o]);
         const value = variable?.type === 'boolean'
-            ? `<select class="cmp-input" data-pt="cond-value" data-pt-id="${esc(id)}"${at({ at: list })}>${options([['true', 'true'], ['false', 'false']], String(b.condition.value))}</select>`
-            : `<input class="cmp-input" type="${variable?.type === 'number' ? 'number' : 'text'}" data-pt="cond-value" data-pt-id="${esc(id)}"${at({ at: list })} value="${esc(b.condition.value)}">`;
-        return `<div class="cmp-props">`
-            + `<div class="cmp-prop2"><label>${bi === 0 ? 'If' : 'Else if'}</label><div class="cmp-ctl">${button('branch-up', 'Up', id, { at: list })}${button('branch-down', 'Down', id, { at: list })}${button('branch-remove', 'Remove', id, { at: list })}</div></div>`
-            + `<div class="cmp-prop2"><label>Variable</label><div class="cmp-ctl"><select class="cmp-input" data-pt="cond-variable" data-pt-id="${esc(id)}"${at({ at: list })}>${options(variables.map(v => [v.id, v.name]), b.condition.variableId)}</select></div></div>`
-            + `<div class="cmp-prop2"><label>Operator</label><div class="cmp-ctl"><select class="cmp-input" data-pt="cond-operator" data-pt-id="${esc(id)}"${at({ at: list })}>${options(operators, b.condition.operator)}</select></div></div>`
-            + `<div class="cmp-prop2"><label>Value</label><div class="cmp-ctl">${value}</div></div>`
-            + `</div>${actionsHtml(id, b.actions, list)}`;
+            ? `<select class="pt-select" aria-label="Value" title="Value" data-pt="cond-value" data-pt-id="${esc(id)}"${at({ at: list })}>${options([['true', 'true'], ['false', 'false']], String(b.condition.value))}</select>`
+            : `<input class="pt-input" type="${variable?.type === 'number' ? 'number' : 'text'}" aria-label="Value" title="Value" data-pt="cond-value" data-pt-id="${esc(id)}"${at({ at: list })} value="${esc(b.condition.value)}">`;
+        return `<div class="pt-cond">`
+            + `<div class="pt-cond-head"><span class="pt-cond-label">${bi === 0 ? 'If' : 'Else if'}</span>${iconButton('branch-up', 'Move branch up', id, { at: list })}${iconButton('branch-down', 'Move branch down', id, { at: list })}${iconButton('branch-remove', 'Remove branch', id, { at: list })}</div>`
+            + `<div class="pt-cond-row"><select class="pt-select" aria-label="Variable" title="Variable" data-pt="cond-variable" data-pt-id="${esc(id)}"${at({ at: list })}>${options(variables.map(v => [v.id, v.name]), b.condition.variableId)}</select>`
+            + `<select class="pt-select" aria-label="Operator" title="Operator" data-pt="cond-operator" data-pt-id="${esc(id)}"${at({ at: list })}>${options(operators, b.condition.operator)}</select>${value}</div>`
+            + actionsHtml(id, b.actions, list)
+            + `</div>`;
     }).join('');
-    const elseHtml = (id, c) => (c.else === undefined ? '' : `<div class="cmp-props"><div class="cmp-prop2"><label>Else</label><div class="cmp-ctl">${button('else-remove', 'Remove else', id, { at: 'e' })}</div></div></div>${actionsHtml(id, c.else, 'e')}`);
-    const conditionalHtml = (id, c) => `${branchesHtml(id, c)}${elseHtml(id, c)}<div class="cmp-props"><div class="cmp-prop2"><label></label><div class="cmp-ctl">${button('branch-add', 'Add branch', id)}${c.else === undefined ? button('else-add', 'Add else', id) : ''}</div></div></div>`;
+    const elseHtml = (id, c) => (c.else === undefined ? '' : `<div class="pt-cond"><div class="pt-cond-head"><span class="pt-cond-label">Else</span>${iconButton('else-remove', 'Remove else', id, { at: 'e' })}</div>${actionsHtml(id, c.else, 'e')}</div>`);
+    const conditionalHtml = (id, c) => `${branchesHtml(id, c)}${elseHtml(id, c)}<div class="pt-nested-add">${textButton('branch-add', 'Add branch', id)}${c.else === undefined ? textButton('else-add', 'Add else', id) : ''}</div>`;
+    // One interaction is a card: "When <trigger>" on its head, then "then <action>" for each action in order, and the add at the foot.
     const rows = (n.prototype?.interactions ?? []).map(i => {
         const actions = i.actions.map((a, k) => {
             rowAction = k;
-            const ops = `<div class="cmp-prop2"><label></label><div class="cmp-ctl">${button('top-up', 'Up', i.id)}${button('top-down', 'Down', i.id)}${button('top-remove', 'Remove action', i.id)}</div></div>`;
-            const block = `<div class="cmp-props" data-pt-action-row="${k}">${actionFields(i.id, a, undefined, actionTypes)}${a.type === 'conditional' ? conditionalHtml(i.id, a) : ''}${ops}</div>`;
+            const block = `<div class="pt-action" data-pt-action-row="${k}">${icon('arrowRight', 12)}<div class="pt-params">${actionFields(i.id, a, undefined, actionTypes)}${a.type === 'conditional' ? conditionalHtml(i.id, a) : ''}</div>`
+                + `<div class="pt-tools">${iconButton('top-up', 'Move action up', i.id)}${iconButton('top-down', 'Move action down', i.id)}${iconButton('top-remove', 'Remove action', i.id)}</div></div>`;
             rowAction = 0;
             return block;
         }).join('');
-        const parts = [
-            select('trigger', 'Trigger', i.id, triggers, i.trigger.type),
-            i.trigger.type === 'after-delay' ? number('delay', 'Delay (ms)', i.id, i.trigger.delayMs) : '',
-            actions,
-            `<div class="cmp-props">${button('action-append', 'Add action', i.id)}</div>`,
-            `<div class="cmp-prop2"><label></label><div class="cmp-ctl"><button class="wide-button" data-pt-remove="${esc(i.id)}">Remove</button></div></div>`,
-        ];
-        return `<div class="cmp-props" data-pt-row="${esc(i.id)}">${parts.join('')}</div>`;
+        return `<section class="pt-card" data-pt-row="${esc(i.id)}">`
+            + `<header class="pt-card-head"><span class="pt-when">When</span>${select('trigger', 'Trigger', i.id, triggers, i.trigger.type)}`
+            + `${i.trigger.type === 'after-delay' ? number('delay', 'Delay (ms)', i.id, i.trigger.delayMs) : ''}`
+            + `<button class="pt-icon" aria-label="Remove interaction" title="Remove interaction" data-pt-remove="${esc(i.id)}">${icon('trash', 14)}</button></header>`
+            + `<div class="pt-actions">${actions}</div>`
+            + `<div class="pt-card-foot">${textButton('action-append', 'Add action', i.id)}</div>`
+            + `</section>`;
     }).join('');
     const add = destinations.length
-        ? '<button class="wide-button" data-pt-add>Add interaction</button>'
+        ? '<button class="pt-icon pt-add" aria-label="Add interaction" title="Add interaction" data-pt-add>' + icon('plus', 14) + '</button>'
         : '<span class="small-label">Add a top-level frame to link to.</span>';
     const flow = isTopLevelFrame(n) ? flowStartHtml(n) : '';
-    return `${flow}<div class="inspector-section"><div class="section-heading">Interactions</div>${rows || '<div class="empty-state">No interactions yet.</div>'}<div class="cmp-props">${add}</div></div>${n.type === 'frame' && !n.isInstance ? scrollBehaviorHtml(n) : ''}`;
+    return `${flow}<div class="inspector-section"><div class="section-heading">Interactions ${add}</div>${rows || '<div class="empty-state">No interactions yet.</div>'}</div>${n.type === 'frame' && !n.isInstance ? scrollBehaviorHtml(n) : ''}`;
 }
 /** A top-level frame of the document (on any page): a frame with no parent, or inside a section. */
 function isTopLevelFrame(n) {
