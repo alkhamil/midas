@@ -42,7 +42,7 @@ Legenda: ✅ ada, 🟡 sebagian, ❌ belum.
 | Conditional (if / else) | 🟡 | Satu perbandingan per cabang. Tidak ada AND dan OR. Figma: ekspresi boolean |
 | Play, pause, mute, seek video | ❌ | |
 | Change to (ganti variant komponen) | ❌ | |
-| Banyak aksi per trigger, berurutan | ❌ | Midas: satu aksi per interaksi. Conditional bisa berisi daftar aksi |
+| Banyak aksi per trigger, berurutan | ✅ | Interaksi punya daftar `actions` (decision 18, versi 2). Urutan diubah dengan Up dan Down; belum drag |
 
 ## Transisi
 
@@ -74,8 +74,8 @@ Legenda: ✅ ada, 🟡 sebagian, ❌ belum.
 
 ## Urutan yang paling berguna berikutnya
 
-1. Banyak aksi per trigger, berurutan (model interaksi berubah dari satu aksi menjadi daftar).
-2. Conditional dengan AND dan OR.
-3. Scroll to, Swap overlay, dan posisi overlay yang lebih lengkap.
-4. Smart animate, Move in dan out, Slide out.
+1. Conditional dengan AND dan OR.
+2. Scroll to, Swap overlay, dan posisi overlay yang lengkap.
+3. Smart animate, Move in dan out, Slide out.
+4. Drag untuk mengurutkan aksi (Figma punya drag, Midas baru Up dan Down).
 5. Set variable mode, video, dan Change to: butuh fitur lain di luar prototype (variable mode per halaman, video fill interaktif, dan variant komponen).

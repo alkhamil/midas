@@ -80,6 +80,14 @@ Source of truth for the Prototype feature (phase 1: Figma-style interactions and
 - A condition compares stored variable values only: there is no AND or OR, and no Set variable yet. A variable's value is static per mode.
 - The mode of a variable on a frame is set from the Appearance section, which offers only the collections that the frame or its layers bind. A boolean variable that nothing binds cannot be set per frame from the panel.
 
+## Prototype panel (Figma style, 2026-11-24)
+
+- One card per interaction: "When" and the trigger on the head, the delete on the right. Each action is a block with its controls stacked, Up, Down and Remove on the right, and "Add action" at the foot (`data-pt-row`, `data-pt-action-row`).
+- Controls are bare (no caption beside them) and named by `aria-label`. The `data-pt*` attributes are the contract with the tests and the change handlers; keep them when the markup changes.
+- A conditional is a block inside its action: each branch has its own variable, operator and value, and its own actions. Its controls keep the `data-pt-at` and `data-pt-index` attributes.
+- Styles are the `.pt-*` classes at the end of `apps/studio/src/styles.css`. Visual check: the same selection next to the Design panel.
+- Not built: drag to reorder actions (Up and Down only).
+
 ## Not in phase 1
 
 - Connection handle and connector arrows: not built on purpose (see Known limitations).

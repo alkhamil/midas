@@ -78,6 +78,7 @@ Tujuan: preview DOM setia ke canvas dan prototype lengkap.
 
 Prototype (`docs/prototype-spec.md`):
 - [x] Conditional (Round 7: model, validator, Play, panel).
+- [x] Prototype: interaksi punya daftar aksi berurutan (decision 18, versi 2), dan panel bergaya Figma (kartu per interaksi, aksi sebagai blok). Belum: drag untuk mengurutkan aksi.
 - [x] Set variable (decision 17): model, validasi, Play (nilai untuk sesi, dokumen tidak ditulis), panel. `set-variable.browser.test.mjs`.
 - [x] Overlay / dropdown / popover (decision 15 dan 16): model, validasi, player, Play, panel. `overlay.browser.test.mjs`, `overlay-panel.browser.test.mjs`. Export overlay tidak direncanakan (prototype preview, bukan kode komponen).
 - [ ] Interaksi template Modal: menunggu template Dialog (Fase 1, batch C). Input dan Alert: Play dicek di browser (`alert.browser.test.mjs`, `input-live.browser.test.mjs`).
