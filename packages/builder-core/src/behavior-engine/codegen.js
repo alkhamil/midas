@@ -34,6 +34,7 @@ import { rootLayoutOf, labelLayoutOf, flexOf, flowSizing, rootClassWidth } from 
 import { labelEntryOf } from './layers.js';
 import { managedContainerLayer, managedTextLayer, orbitCentre } from './template-master.js';
 import { modeOfStyleKey } from './variant-style.js';
+import { boxLayerIdsOf } from './box-between.js';
 
 // Motion constants (antd seed): the focus ring animates in and out; the click wave expands and fades. Durations and
 // easings have no variable type, so they live here, not in Semantic.
@@ -429,6 +430,8 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     let sidedAfterPlaced = false;
     const sidedAfter = rooted.filter(part => part.side).map(part => framePartJsx(part, `${part.side} === "end"`));
     const emitSlot = (slot, out) => {
+        // A layer the box makes between its items (the separator, the ellipsis) belongs to the box's instances, not to the master.
+        if (boxLayerIdsOf(template).includes(slot.id)) return;
         if (slot.kind === 'text' || slot.kind === 'control') {
             // The counter is written after the control it counts (controlPartsJsx), which is where the anatomy puts it.
             if (slot.text?.counter) {

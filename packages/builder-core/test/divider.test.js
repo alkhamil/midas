@@ -47,7 +47,7 @@ test('Divider is registered: a non-control, no disabled state, the props it decl
     assert.equal(divider.element.disabledState, undefined);
     assert.deepEqual(Object.keys(divider.props), ['lineStyle', 'size', 'orientation', 'hasText', 'label', 'placement', 'plain', 'isVertical', 'shortBefore', 'shortAfter']);
     assert.deepEqual(divider.props.lineStyle.modes, ['solid', 'dashed', 'dotted']);
-    assert.deepEqual(divider.props.size.modes, ['small', 'middle', 'large']);
+    assert.deepEqual(divider.props.size.modes, ['xs', 'sm', 'md', 'lg', 'xl']);
     assert.deepEqual(divider.props.orientation.options, ['horizontal', 'vertical']);
     assert.deepEqual(divider.props.placement.options, ['start', 'center', 'end']);
     assert.ok(divider.anatomy.filter(s => s.kind === 'line').every(s => s.managed && s.optional), 'every line is a managed layer');
@@ -161,8 +161,8 @@ test('the text takes the text colour and the heading typography; plain swaps the
     assert.equal(typographyOf({ plain: true }), 'plainTypography');
     assert.equal(typographyOf({ plain: false }), 'labelTypography', 'plain off: back to the heading');
     const styleOf = name => { const it = model.variables.items.find(i => i.name === name); const target = item(Object.values(it.values)[0].alias); return target.name; };
-    assert.equal(styleOf('labelTypography'), 'textLgStrong');
-    assert.equal(styleOf('plainTypography'), 'textBase');
+    assert.match(styleOf('labelTypography'), /Strong$/, 'the heading is a strong text style, one per Size');
+    assert.doesNotMatch(styleOf('plainTypography'), /Strong/, 'plain is the regular text style');
     assert.equal(item(nodeOf({ hasText: true }, 'label').vars['fills.0']).name, 'labelColor');
     assert.equal(model.variables.items.some(i => i.name === 'spaceY'), false, 'no padding variable');
     assert.equal(model.frame.vars?.padV, undefined, 'the root is not padded above and below');

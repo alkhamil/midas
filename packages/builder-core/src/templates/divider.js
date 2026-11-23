@@ -1,3 +1,5 @@
+import { DEFAULT_SIZE_MODE, SIZE_MODES, roleLadder } from './size-modes.js';
+
 /** @typedef {import('./schema.js').TemplateSchema} TemplateSchema */
 
 // Divider (antd Divider): a rule that splits content. Horizontal it is a line, or a line, a text and a line (the text sits at the start, the centre or the end);
@@ -7,8 +9,6 @@
 // as long as its token, the other fills the rest of the row, so the root resizes cleanly. A vertical rule fills the root's height, never shorter than its token (a hugging root would otherwise collapse to nothing). Plain swaps the text's typography (a marker state: it is written on the layer, not
 // a state the instance is in). The root has no padding of its own. Ant Design structure only.
 
-
-const SIZE_MODES = ['small', 'middle', 'large'];
 
 /** The rules draw the colour and the width of the line, whatever its length. */
 const RULE = { stroke: 'lineColor', strokeWidth: 'lineWidth' };
@@ -35,7 +35,7 @@ export const DIVIDER = {
     rootWidth: 343,
     props: {
         lineStyle: { source: 'variable', collection: 'Style', modes: ['solid', 'dashed', 'dotted'], defaultMode: 'solid', styles: { dashed: { borderStyle: 'dashed' }, dotted: { borderStyle: 'dotted' } } },
-        size: { source: 'variable', collection: 'Size', modes: SIZE_MODES, defaultMode: 'large' },
+        size: { source: 'variable', collection: 'Size', modes: SIZE_MODES, defaultMode: DEFAULT_SIZE_MODE, standard: true },
         orientation: { source: 'literal', type: 'enum', options: ['horizontal', 'vertical'], default: 'horizontal', control: 'segmented' },
         // The text props apply to a horizontal divider only: a vertical one has none, so they hide and resolve to their defaults (the text layer goes).
         hasText: { source: 'literal', type: 'boolean', default: false, visibleIf: { prop: 'orientation', is: 'horizontal' } },
@@ -49,7 +49,7 @@ export const DIVIDER = {
     },
     tokens: {
         fromLineStyle: ['lineColor', 'lineWidth', 'textGap', 'shortLength', 'verticalLength', 'labelColor'],
-        // The Size mode holds the typography (a typography token lives in the Size collection); it sets no padding.
+        // Size (xs to xl, as every component with a Size) sets the text's typography only: the label, and the plain one; the rules have no Size of their own.
         fromSize: ['labelTypography', 'plainTypography'],
     },
     tokenKinds: {
@@ -63,8 +63,8 @@ export const DIVIDER = {
         shortLength: 'divider-short',
         verticalLength: 'divider-vertical-height',
         labelColor: 'fg',
-        labelTypography: 'text-lg-strong',
-        plainTypography: 'text-base',
+        labelTypography: roleLadder(['text-xs-strong', 'text-sm-strong', 'text-base-strong', 'text-base-strong', 'text-lg-strong']),
+        plainTypography: roleLadder(['text-xs', 'text-sm', 'text-base', 'text-base', 'text-lg']),
     },
     // A marker: plain swaps the text's typography. It says a data attribute and swaps a token; it is never the state the instance is in.
     persistentStates: { plain: { prop: 'plain', tokens: { labelTypography: 'plainTypography' }, marker: true } },

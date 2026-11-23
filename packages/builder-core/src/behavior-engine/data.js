@@ -46,7 +46,9 @@ function problemOf(node) {
     // An affix text layer carries its slot's id as `text`: a text the template shows, not the label.
     const affix = 'text' in b;
     const master = 'templateId' in b;
-    const want = managed ? ['slot'] : part ? ['part'] : group ? ['group'] : affix ? ['text'] : master ? ['templateId', 'variables'] : ['props'];
+    // A layer a box makes between its items (a separator, the ellipsis): it may be an instance (an icon), so it carries its own marker.
+    const between = 'between' in b;
+    const want = managed ? ['slot'] : part ? ['part'] : group ? ['group'] : affix ? ['text'] : master ? ['templateId', 'variables'] : between ? ['between'] : ['props'];
     const extra = Object.keys(b).filter(k => k !== 'version' && !want.includes(k));
     if (extra.length) return `unknown field ${extra.join(', ')}`;
     const missing = want.filter(k => !(k in b));
@@ -59,6 +61,7 @@ function problemOf(node) {
         if (node.isInstance) return 'a canvas part cannot be an instance';
         return typeof b.part === 'string' && b.part !== '' ? null : 'part must name a canvas part';
     }
+    if (between) return typeof b.between === 'string' && b.between !== '' ? null : 'between must name the box layer it is between its items';
     if (group) {
         if (node.isInstance) return 'a group cannot be an instance';
         return typeof b.group === 'string' && b.group !== '' ? null : 'group must name a group';

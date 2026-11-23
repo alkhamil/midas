@@ -163,7 +163,8 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
             if (slot.strokeSides !== undefined && !['left', 'top', 'right', 'bottom'].includes(slot.strokeSides)) out.push(`frame slot "${slot.id}" strokeSides must be left, top, right or bottom`);
             if (slot.managed && slot.shownWhen === undefined) out.push(`frame slot "${slot.id}" is managed but unconditional: a managed container names when it shows`);
             // A container that holds nothing is a drawn box when the display maps it (a Switch's handle).
-            const holdsContent = (Array.isArray(schema.slots) ? schema.slots : []).some(c => isPlainObject(c) && c.parent === slot.id);
+            // A box of the anatomy is a container of the slot that names it (its instances sit there).
+            const holdsContent = (Array.isArray(schema.slots) ? schema.slots : []).some(c => isPlainObject(c) && (c.parent === slot.id || [c.box].flat().includes(slot.id)));
             // A container holds slots or parts (a Spin's ring holder turns its arcs, which are parts).
             const holdsPart = (Array.isArray(schema.parts) ? schema.parts : []).some(p => isPlainObject(p) && p.parent === slot.id);
             if (!anatomy.some(c => isPlainObject(c) && c.parent === slot.id) && !holdsPart && !holdsContent && !drawnBox(schema, slot.id)) out.push(`frame slot "${slot.id}" holds no slot`);
@@ -526,10 +527,11 @@ function slotProblems(schema, templateIds) {
         // Between the items: the separator layer (a text, or the icon a prop picks, by the kind prop); the box's gap layers are made by the studio's sync.
         if (slot.between !== undefined) {
             const b = slot.between;
-            if (!isPlainObject(b) || !isName(b.kind) || !isName(b.icon) || !isName(b.layer) || typeof b.text !== 'string') out.push(`${tag} between must name a kind, an icon, a layer and a text`);
+            if (!isPlainObject(b) || !isName(b.kind) || !isName(b.icon) || !isName(b.layer) || !isName(b.text)) out.push(`${tag} between must name a kind, an icon, a layer and a text prop`);
             else {
                 if (!(props[b.kind]?.source === 'literal' && props[b.kind]?.type === 'enum' && props[b.kind].options?.includes('text') && props[b.kind].options?.includes('icon'))) out.push(`${tag} between names "${b.kind}", which is not an enum of text and icon`);
                 if (props[b.icon]?.type !== 'iconComponent') out.push(`${tag} between names "${b.icon}", which is not an icon prop`);
+                if (!(props[b.text]?.source === 'literal' && props[b.text]?.type === 'string')) out.push(`${tag} between names "${b.text}", which is not a text prop`);
                 if (!(Array.isArray(schema.anatomy) && schema.anatomy.some(s => isPlainObject(s) && s.id === b.layer && s.kind === 'text'))) out.push(`${tag} between names layer "${b.layer}", which is not an anatomy text`);
             }
             if (slot.box === undefined) out.push(`${tag} between needs a box: the separators sit between its instances`);

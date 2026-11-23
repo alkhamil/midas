@@ -13,7 +13,7 @@ const body = name => {
 
 test('managedLayersOf lists the instance\'s children and the children of its containers', () => {
     const fn = body('managedLayersOf');
-    assert.ok(fn.includes('doc.children(inst.id)') && fn.includes('behavior?.group'));
+    assert.ok(fn.includes('walk(inst.id)') && fn.includes('behavior?.group'));
     assert.ok(fn.includes("behavior?.slot") && fn.includes("kind === 'frame'"), 'a slot-marked frame container counts as a container; an icon slot does not');
 });
 

@@ -4,7 +4,7 @@ import { DEFAULT_SIZE_MODE, SIZE_MODES, roleLadder } from './size-modes.js';
 
 // List (antd List): a column of List Item instances and nothing else. The Items box holds only List Items, and a new List starts with one; the
 // Plus row of the Behavior tab adds one more. Separator puts a Divider between the items: one between each pair, none while it is off (the Divider
-// follows the items). Size is the one variable dimension: it sets the gap between the items (the Size scale, xs to xl), as every component with a Size.
+// follows the items). The items sit with no gap between them: the Divider, when on, is the only space between two items.
 
 /** @type {TemplateSchema} */
 export const LIST = {
@@ -31,19 +31,17 @@ export const LIST = {
             id: 'items', name: 'List Item', description: 'The List Item rows of the list', holds: 'instance', accepts: ['antd-list-item'], onlyAccepts: true, min: 0, showEmpty: true,
             layout: 'vertical', box: 'listBox', seed: [{ template: 'antd-list-item', props: { title: 'List item' }, follow: { size: 'size' } }],
             // The Divider the Separator prop puts between two items: one per pair, kept in step with the items.
-            separator: { template: 'antd-divider', prop: 'separator' },
+            separator: { template: 'antd-divider', prop: 'separator', follow: { size: 'size' } },
         },
     ],
-    tokens: { fromSize: ['gap'] },
-    tokenKinds: { gap: 'length' },
-    tokenRoles: {
-        gap: roleLadder(['gap-xs', 'gap-sm', 'gap', 'gap-lg', 'gap-xl']),
-    },
+    tokens: {},
+    tokenKinds: {},
+    tokenRoles: {},
     persistentStates: { disabled: { prop: 'disabled', tokens: {} } },
     previewStates: {},
     statePseudo: { disabled: ':disabled' },
     parts: [],
     playOnly: [],
-    display: { listBox: { gap: 'gap' } },
+    display: {},
     events: [],
 };

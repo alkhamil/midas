@@ -19,7 +19,7 @@ test('a Breadcrumb starts with two links and a separator, Plus adds one of each,
     const row = () => page.evaluate(id => {
         const inst = window.midas.doc.get(id);
         const box = window.midas.doc.descendants(inst.id).find(n => n.propBind?.slot === 'items');
-        const linkMaster = window.midas.doc.data.pages.flatMap(p => p.nodes).find(m => m.component && m.behavior?.templateId === 'antd-link');
+        const linkMaster = window.midas.doc.data.pages.flatMap(p => p.nodes).find(m => m.component && m.behavior?.templateId === 'antd-breadcrumb-item');
         return window.midas.doc.children(box.id).map(c => ({ link: c.sourceId === linkMaster.id, visible: c.visible !== false, text: c.text ?? null, slot: c.behavior?.slot ?? null }));
     }, id);
     const shape = r => r.map(x => (x.link ? (x.visible ? 'link' : 'hidden-link') : `${x.slot}:${x.text}`));

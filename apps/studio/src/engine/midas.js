@@ -1,7 +1,7 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
 import { mountFloatingWindow } from './floatingWindow.js';
-import { moveStopKeys, gradientColorAt, BLEND_MODES, contrastRatio, wcagLevels, patternStepOf, patternCellOf, gradientStops, gradientReverse, gradientAddStop, gradientRemoveStop, gradientSetStop, colorFormats, colorFromFormat, documentColors, imageAdjustFilter, imageRotationOf, isGradientFill, patternTileOf, patternPhaseOf, patternSvgUrl, patternTileId, imageSvgUrl, gradientCss, remapFillKeys, moveFillKeys, shiftStopKeys, stopBindingKey, parseStopKey, fillParamType, parseCssColor, gradientHandlePoints, gradientHandleMove, cropZoomFor, cropRotateFor, patternLayout, videoPosterOf, PLACEHOLDER_IMAGE, PLACEHOLDER_IMAGE_ID, VIDEO_PENDING, IMAGE_PENDING, newlyShownImageProps, slotListOf, betweenPlan, slotRefusal, slotRestricts, textWriteBacks, decorationLinesOf, pinnedFrame, liftedPartFrame, markManagedContainers, rowsBounds, nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, ICONS_SECTION, defaultIconOf, roleIconsOf, iconRolesOf, iconNodes, planIcons, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, managedSlotLayer, managedPartLayer, managedTextLayer, planManagedTextBindings, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, previewStateOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, moveAction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, pathSegments, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, strokeAreaOf, strokeWithPaintLayer, gradientRaster, pictureExtent, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix, pathCurveBounds, pathContours, normalizeVectorGeometry } from '@midas/builder-core';
+import { moveStopKeys, gradientColorAt, BLEND_MODES, contrastRatio, wcagLevels, patternStepOf, patternCellOf, gradientStops, gradientReverse, gradientAddStop, gradientRemoveStop, gradientSetStop, colorFormats, colorFromFormat, documentColors, imageAdjustFilter, imageRotationOf, isGradientFill, patternTileOf, patternPhaseOf, patternSvgUrl, patternTileId, imageSvgUrl, gradientCss, remapFillKeys, moveFillKeys, shiftStopKeys, stopBindingKey, parseStopKey, fillParamType, parseCssColor, gradientHandlePoints, gradientHandleMove, cropZoomFor, cropRotateFor, patternLayout, videoPosterOf, PLACEHOLDER_IMAGE, PLACEHOLDER_IMAGE_ID, VIDEO_PENDING, IMAGE_PENDING, newlyShownImageProps, slotListOf, betweenPlan, variableKey, slotRefusal, slotRestricts, textWriteBacks, decorationLinesOf, pinnedFrame, liftedPartFrame, markManagedContainers, rowsBounds, nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, ICONS_SECTION, defaultIconOf, roleIconsOf, iconRolesOf, iconNodes, planIcons, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, managedSlotLayer, managedPartLayer, managedTextLayer, planManagedTextBindings, BEHAVIOR_DATA_VERSION, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, previewStateOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, moveAction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, pathSegments, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, strokeAreaOf, strokeWithPaintLayer, gradientRaster, pictureExtent, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix, pathCurveBounds, pathContours, normalizeVectorGeometry } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { cachedSnapshot, cacheSnapshot } from '../libraryCache.js';
 import { imageSlotRowHtml, slotRowHtml } from './slotRow.js';
@@ -10186,7 +10186,7 @@ function behaviorTabHtml(n) {
     // An addable slot lists its instances (the ones of the one template it accepts), each row with its own remove.
     for (const e of panel.slots ?? []) if (e.addable) {
         const layer = slotLayerOf(n, e.id);
-        e.items = layer ? doc.children(layer.id).filter(c => componentById(c.sourceId)?.behavior?.templateId === e.accepts[0]).map((c, i) => ({ id: c.id, name: `${e.name} ${i + 1}` })) : [];
+        e.items = layer ? doc.children(layer.id).filter(c => componentById(c.sourceId)?.behavior?.templateId === e.accepts[0]).map((c, i) => ({ id: c.id, name: `${e.name} ${i + 1}`, ...itemTextOf(c) })) : [];
     }
     const props = template ? resolveProps(template, n.behavior?.props ?? {}) : null;
     // A state left selected on another template (Hover on a Button) is Default here: the template may not declare it.
@@ -10922,6 +10922,12 @@ function templateMasterOf(templateId) {
     return doc.data.pages.flatMap(p => p.nodes).find(m => m.component && m.behavior && 'templateId' in m.behavior && m.behavior.templateId === templateId);
 }
 /** The template an instance is made from, or null. */
+/** The text an addable slot's instance shows in its row: its label prop (the template's primary text prop) and that prop's value, or none. */
+function itemTextOf(inst) {
+    const t = templateOfInstance(inst);
+    const prop = t ? Object.keys(t.props).find(k => t.props[k].node?.key === t.primarySlot && t.props[k].node?.field === 'text') ?? null : null;
+    return prop === null ? {} : { prop, text: String(resolveProps(t, inst.behavior?.props ?? {})[prop] ?? '') };
+}
 function templateOfInstance(inst) {
     const binding = componentById(inst.sourceId)?.behavior;
     return binding && 'templateId' in binding ? BEHAVIOR_TEMPLATES.get(binding.templateId) ?? null : null;
@@ -10949,6 +10955,7 @@ function syncSeparators(inst, template) {
             const made = doc.children(layer.id).find(c => !before.has(c.id));
             if (!made) continue;
             made.layoutSizingH = 'fill';
+            setFollowedModes(inst, [made], def.separator.follow ?? {});
             placeAmongChildren(layer, made, doc.children(layer.id).filter(c => c !== made).indexOf(items[i]));
             doc.touch(made);
         }
@@ -10977,7 +10984,7 @@ function syncBetween(inst, template) {
             item.visible = plan.items[i].visible;
             item.overrides = { ...(item.overrides ?? {}), visible: item.visible };
             doc.touch(item);
-            if (i >= 1 && plan.gaps[i].visible) made.push(...separatorLayers(def, template, values, layer));
+            if (i >= 1 && plan.gaps[i].visible) made.push(...separatorLayers(inst, def, template, values, layer));
             if (plan.ellipsis && i === plan.hidden[0]) made.push(ellipsisLayer(def, template, values, layer));
             made.push(item);
         });
@@ -10987,19 +10994,28 @@ function syncBetween(inst, template) {
     applyManagedTextBindings(inst);
 }
 /** The separator a box puts before an item: a plain text layer ("/") while the kind is text, else an instance of the icon the prop picks (none until one is picked). */
-function separatorLayers(def, template, values, layer) {
+function separatorLayers(inst, def, template, values, layer) {
     if (values[def.between.kind] === 'icon') {
         const icon = values[def.between.icon];
         if (!icon) return [];
         const before = new Set(doc.children(layer.id).map(c => c.id));
         instantiate(icon, null, layer, { keepSelection: true });
         const made = doc.children(layer.id).find(c => !before.has(c.id));
-        // The icon is the box's own layer too: marked as its separator, so the sync finds it again and the diagnostics do not count it.
-        if (made) made.behavior = managedBehavior(def.between.layer);
-        return made ? [made] : [];
+        // The icon is the box's own layer too: marked as its separator, so the sync finds it again and the diagnostics do not count it. It is as wide and as tall
+        // as the item's line height, read from the Size collection of the Breadcrumb that holds it (its separatorSize token).
+        if (!made) return [];
+        made.behavior = { version: BEHAVIOR_DATA_VERSION, between: def.between.layer };
+        const collectionId = componentById(inst.sourceId)?.behavior?.variables?.size;
+        const sizeItem = (varStore().items || []).find(i => i.collectionId === collectionId && variableKey(i.name) === variableKey('separatorSize'));
+        if (sizeItem) {
+            made.layoutSizingH = 'fixed';
+            made.layoutSizingV = 'fixed';
+            for (const n of applyBindTokens([{ key: 'separator', node: made }], [{ key: 'separator', varKey: 'w', itemId: sizeItem.id }, { key: 'separator', varKey: 'h', itemId: sizeItem.id }])) doc.touch(n);
+        }
+        return [made];
     }
     const spec = managedTextLayer(template, def.between.layer, values, { id: uid(), parentId: layer.id });
-    return [doc.add({ ...spec, text: def.between.text })];
+    return [doc.add({ ...spec, text: String(values[def.between.text] ?? '') })];
 }
 /** The ellipsis a truncated box shows between its first item and the first hidden one: a text layer of the box. */
 function ellipsisLayer(def, template, values, layer) {
@@ -11450,7 +11466,8 @@ function deleteWhenLoaded(label, fn) {
 function onBehaviorChange(e) {
     const t = e.target, kind = t.dataset?.bp;
     if (!kind) return;
-    const n = activeNode();
+    // A row of an addable slot names the instance its text belongs to (its own label), else the node being edited.
+    const n = (t.dataset.bpNode ? doc.get(t.dataset.bpNode) : null) ?? activeNode();
     if (!n) return;
     if (kind === 'preview') {
         behaviorPreview = t.value;
@@ -11467,6 +11484,7 @@ function onBehaviorChange(e) {
         else if (kind === 'collection') bindCollectionTo(n, t.dataset.bpProp, t.value || null);
         else if (kind === 'value' && t.dataset.bpKind === 'variable') {
             if (!setBehaviorMode(n, t.dataset.bpProp, t.value || null)) renderInspector();
+            else followNestedModes(n, t.dataset.bpProp);
         }
         else if (kind === 'value') {
             const value = t.dataset.bpType === 'boolean' ? t.checked : t.dataset.bpType === 'number' ? (t.value.trim() === '' ? null : Number(t.value)) : t.value;
@@ -11485,6 +11503,42 @@ function setBehaviorMode(inst, prop, modeId) {
     if (!collectionId) { toast(`"${prop}" has no bound collection`); return false; }
     transaction('Set variable mode', () => { writeVarMode([inst], collectionId, modeId ?? ''); const master = componentById(inst.sourceId); if (master) bindMasterTokens(master); });
     return true;
+}
+/**
+ * The instances a box slot holds follow a variable prop of the component that holds them (the seed's `follow`, the nested Size rule): after the owner's mode
+ * changes, each of them takes the mode of the same name in its own collection.
+ */
+function followNestedModes(owner, prop) {
+    const template = templateOfInstance(owner);
+    if (!template) return;
+    for (const def of template.slots ?? []) {
+        const layer = slotLayerOf(owner, def.id);
+        if (!layer) continue;
+        // The instances a slot's seeds make, and the separator's Dividers, each take the modes the owner's prop names in their follow map.
+        const made = [...(def.seed ?? []).map(seed => ({ template: seed.template, follow: seed.follow })), ...(def.separator ? [{ template: def.separator.template, follow: def.separator.follow }] : [])];
+        for (const { template: templateId, follow: map } of made) {
+            const follow = Object.fromEntries(Object.entries(map ?? {}).filter(([, ownerProp]) => ownerProp === prop));
+            if (Object.keys(follow).length) setFollowedModes(owner, doc.children(layer.id).filter(c => componentById(c.sourceId)?.behavior?.templateId === templateId), follow);
+        }
+    }
+}
+/** Sets each instance's own variable modes from its owner's: `follow` maps the instance's prop to the owner's, and the mode of the same name is taken. Runs in a transaction. */
+function setFollowedModes(owner, items, follow) {
+    const binding = componentById(owner.sourceId)?.behavior, names = binding ? instanceModeNamesOf(owner, binding) : {};
+    transaction('Follow Size', () => {
+        for (const [childProp, ownerProp] of Object.entries(follow)) {
+            const modeName = names[ownerProp];
+            if (!modeName) continue;
+            for (const item of items) {
+                const collectionId = collectionOfProp(componentById(item.sourceId)?.behavior, childProp);
+                const mode = (varStore().collections || []).find(c => c.id === collectionId)?.modes.find(m => m.name === modeName);
+                if (!mode) continue;
+                writeVarMode([item], collectionId, mode.id);
+                const master = componentById(item.sourceId);
+                if (master) bindMasterTokens(master);
+            }
+        }
+    });
 }
 /** The Appearance modes of an instance per variable prop, read from the node (the same resolution Appearance uses). */
 function instanceModesOf(inst, binding) {

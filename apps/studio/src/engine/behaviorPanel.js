@@ -109,7 +109,8 @@ function masterHtml(panel, esc, findings, code, autoFix = null, expanded = false
 function addableRows(e, esc) {
     const items = e.items ?? [];
     const head = row(e.name, `<div class="cmp-ctl"><span class="small-label">${items.length}</span><button class="ui-icon-button small" data-bp-action="slot-add" data-bp-slot="${esc(e.id)}" title="Add ${esc(e.name)}" aria-label="Add ${esc(e.name)}">+</button></div>`, esc, e.id);
-    const rows = items.map(item => row(item.name, `<button class="ui-icon-button small" data-bp-action="slot-remove" data-bp-slot="${esc(e.id)}" data-bp-node="${esc(item.id)}" title="Remove ${esc(item.name)}" aria-label="Remove ${esc(item.name)}">−</button>`, esc, item.id)).join('');
+    // Each row edits its instance's label in place (the item's own prop, its node named by data-bp-node), then removes it.
+    const rows = items.map(item => row(item.name, `${item.prop ? `<input class="cmp-input" type="text" data-bp="value" data-bp-kind="literal" data-bp-type="string" data-bp-prop="${esc(item.prop)}" data-bp-node="${esc(item.id)}" value="${esc(item.text)}" aria-label="Text of ${esc(item.name)}">` : ''}<button class="ui-icon-button small" data-bp-action="slot-remove" data-bp-slot="${esc(e.id)}" data-bp-node="${esc(item.id)}" title="Remove ${esc(item.name)}" aria-label="Remove ${esc(item.name)}">−</button>`, esc, item.id)).join('');
     return head + rows;
 }
 
@@ -133,7 +134,7 @@ function instanceHtml(panel, esc, findings, preview, expanded = false) {
         : e.kind === 'instance' && e.addable ? addableRows(e, esc)
         : e.kind === 'instance' ? row(e.name, `<button class="cmp-input" data-bp-action="slot-fill" data-bp-slot="${esc(e.id)}" aria-label="${esc(e.name)}">Insert instance</button>`, esc, e.id)
         : row(e.name, '<span class="small-label">Edit in the Design tab</span>', esc, e.id);
-    const props = literal.filter(r => !r.slot && r.kind !== 'icon').map(r => literalRow(r, esc)).join('');
+    const props = literal.filter(r => !r.slot).map(r => literalRow(r, esc)).join('');
     const slots = (panel.slots ?? []).map(slotRow).join('');
     const state = preview ? `<select data-bp="preview" aria-label="Preview state">${PREVIEW_STATES.filter(([id]) => id === 'default' || (preview.available ?? PREVIEW_STATES.map(([s]) => s)).includes(id)).map(([id, label]) => `<option value="${id}" ${id === preview.state ? 'selected' : ''}>${label}</option>`).join('')}</select>` : '';
     return block('Collections', variable, esc)

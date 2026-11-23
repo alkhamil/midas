@@ -28,25 +28,28 @@ export const BREADCRUMB = {
         size: { source: 'variable', collection: 'Size', modes: SIZE_MODES, defaultMode: DEFAULT_SIZE_MODE, standard: true },
         truncated: { source: 'literal', type: 'boolean', default: false },
         separatorKind: { source: 'literal', type: 'enum', options: ['text', 'icon'], labels: { text: 'Text', icon: 'Icon' }, control: 'segmented', default: 'text' },
+        separatorText: { source: 'literal', type: 'string', default: '/', visibleIf: { prop: 'separatorKind', is: 'text' }, remembered: true },
         separatorIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'separatorKind', is: 'icon' }, remembered: true },
     },
     slots: [
         {
-            id: 'items', name: 'Item', description: 'The Link items of the row', holds: 'instance', accepts: ['antd-link'], onlyAccepts: true, min: 0, showEmpty: true,
-            layout: 'horizontal', box: 'itemsBox', seed: [{ template: 'antd-link', props: { label: 'Item' } }], start: 2,
+            id: 'items', name: 'Item', description: 'The Breadcrumb Item rows of the row', holds: 'instance', accepts: ['antd-breadcrumb-item'], onlyAccepts: true, min: 0, showEmpty: true,
+            layout: 'horizontal', box: 'itemsBox', seed: [{ template: 'antd-breadcrumb-item', props: { label: 'Item' }, follow: { size: 'size' } }], start: 2,
             // The separator the box puts before each item but the first; the ellipsis stands between the first and the first hidden item while truncated.
-            between: { kind: 'separatorKind', icon: 'separatorIcon', layer: 'separator', text: '/' },
+            between: { kind: 'separatorKind', icon: 'separatorIcon', layer: 'separator', text: 'separatorText' },
             overflow: { prop: 'truncated', layer: 'ellipsis', text: '…' },
         },
     ],
     tokens: {
-        fromSize: ['gap', 'textTypography', 'fg-secondary'],
+        fromSize: ['gap', 'textTypography', 'fg-secondary', 'separatorSize'],
     },
-    tokenKinds: { gap: 'length', textTypography: 'typography', 'fg-secondary': 'color' },
+    tokenKinds: { gap: 'length', textTypography: 'typography', 'fg-secondary': 'color', separatorSize: 'length' },
     tokenRoles: {
         gap: roleLadder(['gap-xs', 'gap-sm', 'gap', 'gap-lg', 'gap-xl']),
         textTypography: roleLadder(['text-xs', 'text-sm', 'text-base', 'text-base', 'text-lg']),
         'fg-secondary': 'fg-secondary',
+        // The separator icon is as tall and as wide as the item's line height, per Size (the text style's line height, the same step as textTypography).
+        separatorSize: roleLadder(['line-height-12', 'line-height-16', 'line-height-20', 'line-height-20', 'line-height-24']),
     },
     persistentStates: {},
     previewStates: {},

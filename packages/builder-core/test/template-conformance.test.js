@@ -33,6 +33,7 @@ const MODELS = {
     'antd-list-item': generated('antd-list-item'),
     'antd-radio-group': generated('antd-radio-group'),
     'antd-pagination': generated('antd-pagination'),
+    'antd-breadcrumb-item': generated('antd-breadcrumb-item'),
     'antd-breadcrumb': generated('antd-breadcrumb'),
     'table-toolbar': generated('table-toolbar'),
     'antd-avatar': generated('antd-avatar'),

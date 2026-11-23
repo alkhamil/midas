@@ -114,6 +114,8 @@ export function masterPanel(master, collections) {
  * only when the placement puts that slot on. A def with no slot is one "Icon" row.
  */
 function iconRowsOf(template, values, name) {
+    // An icon prop no icon definition draws (a Breadcrumb's separator icon) is a choice of its own: one row to pick the icon.
+    if (!iconDefsOf(template).some(d => d.component === name)) return [{ prop: name, kind: 'icon', slot: false, value: values[name] ?? null, label: template.props[name].label ?? name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^./, c => c.toUpperCase()) }];
     const rows = [];
     for (const def of iconDefsOf(template).filter(d => d.component === name)) {
         if (!iconDefOn(def, values)) continue;

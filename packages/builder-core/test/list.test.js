@@ -24,7 +24,7 @@ test('the Items box holds List Items only, and a new List starts with one', () =
 test('Separator is a boolean prop that puts a Divider between the items', () => {
     assert.deepEqual(LIST.props.separator, { source: 'literal', type: 'boolean', default: false });
     const items = LIST.slots.find(s => s.id === 'items');
-    assert.deepEqual(items.separator, { template: 'antd-divider', prop: 'separator' });
+    assert.deepEqual(items.separator, { template: 'antd-divider', prop: 'separator', follow: { size: 'size' } }, 'the Dividers follow the List Size');
 });
 
 test('the validator refuses a Separator that names no template or no boolean prop', () => {
