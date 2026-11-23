@@ -1,7 +1,7 @@
 // Midas editor engine (ported from midas.html). Runs once, after the React shell has mounted.
 import { errorBoundaryHtml, guarded } from './errorBoundary.js';
 import { mountFloatingWindow } from './floatingWindow.js';
-import { moveStopKeys, gradientColorAt, BLEND_MODES, contrastRatio, wcagLevels, patternStepOf, patternCellOf, gradientStops, gradientReverse, gradientAddStop, gradientRemoveStop, gradientSetStop, colorFormats, colorFromFormat, documentColors, imageAdjustFilter, imageRotationOf, isGradientFill, patternTileOf, patternPhaseOf, patternSvgUrl, patternTileId, imageSvgUrl, gradientCss, remapFillKeys, moveFillKeys, shiftStopKeys, stopBindingKey, parseStopKey, fillParamType, parseCssColor, gradientHandlePoints, gradientHandleMove, cropZoomFor, cropRotateFor, patternLayout, videoPosterOf, PLACEHOLDER_IMAGE, PLACEHOLDER_IMAGE_ID, VIDEO_PENDING, IMAGE_PENDING, newlyShownImageProps, slotListOf, slotRefusal, slotRestricts, textWriteBacks, decorationLinesOf, pinnedFrame, liftedPartFrame, markManagedContainers, rowsBounds, nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, ICONS_SECTION, defaultIconOf, roleIconsOf, iconRolesOf, iconNodes, planIcons, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, managedSlotLayer, managedPartLayer, planManagedTextBindings, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, previewStateOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, moveAction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, pathSegments, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, strokeAreaOf, strokeWithPaintLayer, gradientRaster, pictureExtent, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix, pathCurveBounds, pathContours, normalizeVectorGeometry } from '@midas/builder-core';
+import { moveStopKeys, gradientColorAt, BLEND_MODES, contrastRatio, wcagLevels, patternStepOf, patternCellOf, gradientStops, gradientReverse, gradientAddStop, gradientRemoveStop, gradientSetStop, colorFormats, colorFromFormat, documentColors, imageAdjustFilter, imageRotationOf, isGradientFill, patternTileOf, patternPhaseOf, patternSvgUrl, patternTileId, imageSvgUrl, gradientCss, remapFillKeys, moveFillKeys, shiftStopKeys, stopBindingKey, parseStopKey, fillParamType, parseCssColor, gradientHandlePoints, gradientHandleMove, cropZoomFor, cropRotateFor, patternLayout, videoPosterOf, PLACEHOLDER_IMAGE, PLACEHOLDER_IMAGE_ID, VIDEO_PENDING, IMAGE_PENDING, newlyShownImageProps, slotListOf, betweenPlan, slotRefusal, slotRestricts, textWriteBacks, decorationLinesOf, pinnedFrame, liftedPartFrame, markManagedContainers, rowsBounds, nodeFieldPatch, sidedPartOrder, variantStrokePatch, activateDocumentTemplates, withDocumentTemplates, applyCustomSchema, remapCprops, templateIdsOf,layoutPads, layoutGap, layoutGapCross, sizingOf, fixBoundAxes, isContentSlot, diagnoseSlots, introducedSlotProblems, slotNotice, withoutFreshMinimums, slotVisible, slotFillPatch, releaseSlot, claimSlot, slotKeepsContent, slotOwnerOf, selectableThroughSlot, emptySlotFloor, canBeSlot as isSlotCandidate, slotCounts, slotFullMessage, slotAccepts, slotPreferredWith, slotPreferredWithout, slotLimitFrom, slotOptionPatch, uniqueSlotName, newSlotProp, slotPropsWithout, slotBadgeCenter, slotBadgeAt as findSlotBadge, layoutOrder, strokeOutside, operandPolygons, combine, resultPathOf, assertBehaviorData, restoreStrokePaint, setStrokeSide, setStrokeSides, setStrokeWeight, strokeWeightOf, swatchPaint, variableValue, typographyOf, WEIGHT_NUMBER, INTER_FONT_STACK, DEFAULT_TYPOGRAPHY, applyTemplateToFrame, childOrderAfterBind, slotShown, newlyShownIconDefaults, createdIconDefaults, DESIGN_SYSTEM_PAGE, ICONS_SECTION, defaultIconOf, roleIconsOf, iconRolesOf, iconNodes, planIcons, designSystemSummary, planDesignSystem, rootSpec, sectionSpecs, iconBoundKeysOf, instanceOf, setMasterTemplate, fontFamilyCss, summaryOf, setMember, weightNamesOf, weightForFamily, unaliasMember, isAliasMember, attachedVars, detachedVars, nodeFieldsOf, withInstanceBehavior, masterPanel, instancePanel, setInstanceValue, clearsPreview, forgetCollection, planTemplateChange, planCollectionChange, applyPlan, pruneBehaviorData, resolveSelectTarget, planInstanceAnatomy, managedBehavior, managedSlotLayer, managedPartLayer, managedTextLayer, planManagedTextBindings, detachBehavior, managedRefusal, iconPickerEntries, iconEntryMatches, iconSlotBindings, isIconSlotVarKey, iconSlotTargets, variableIdNamed, missingIconVariable, behaviorProblem, isManagedLayer, isSlotIconInstance, orderChildren, TEMPLATES as BEHAVIOR_TEMPLATES, previewOf, generateComponent, componentNameOf, diagnoseDocument, planAutoMatch, assertPagesBehavior, managedPasteRefusal, planStateBindings, resolveProps, resolveMode, activeStateOf, literalFields, partWrites, canvasPartsOf, planBindTokens, ownedVarKeys, literalFieldNames, withoutOwnedVars, mergeCopiedVars, sameVars, fieldsBoundBy, isCopiedField, isLayoutOwnedField, canvasColorsOf, previewStateOf, cssVarOf, labelLayerOf, masterLayersByKey, assertPrototypeData, saveBlockedBy, validatePrototype, introducedProblems, assertCanOwnInteractions, planNodeRemoval, planCopiedInteractions, withInteractions, withFlowStart, flowStartOf, destinationLabel, planDetach, removeInteraction, moveAction, addInteraction, editInteraction, setOverflow, overflowWarnings, playStartOf, interactionPatch, nestedPatch, navigateTo, conditionalOp, defaultVariableOf, CONDITION_OPERATORS, destinationOptions,nextInteractionId, defaultNavigate, transitionFieldsOf, flowFrames, varsWithOp, varModesWith, applyBindTokens, collectionOfProp, RECT_LIKE, hasRadii, cornerRadii, roundRectD, strokeIsOn, strokeClosed, pathSegments, strokeSideWidths, strokeSidesUniform, strokeDashArray, strokeMiterLimit, svgShapeEl, svgStrokeAttrs, svgStrokeExtra, strokeAreaOf, strokeWithPaintLayer, gradientRaster, pictureExtent, arcActive, arcParams, arcPoly, pathCommands, svgPathD, getFills, replayCommands, clamp, paintOf, topColorOf, topOpacityOf, topFillOf, withTopColor, cssBackgroundOf, displayFills, colorWithAlpha, svgNumber as f, escapeAttr as e, borderStyleOf, BASE_SNAPSHOT, planFromSnapshot, applyBasePlan, planAutoFix, applyAutoFix, pathCurveBounds, pathContours, normalizeVectorGeometry } from '@midas/builder-core';
 import { behaviorPanelHtml, codeDownloads } from './behaviorPanel.js';
 import { cachedSnapshot, cacheSnapshot } from '../libraryCache.js';
 import { imageSlotRowHtml, slotRowHtml } from './slotRow.js';
@@ -10867,7 +10867,7 @@ function containerOf(inst, group) {
 }
 /** The instance's managed text, control and glyph layers, by slot id (a glyph lives inside its box container, not on the root). */
 function managedTextLayersOf(inst, template) {
-    return doc.descendants(inst.id).filter(c => c.behavior?.slot !== undefined && template.anatomy.some(s => s.id === c.behavior.slot && s.kind !== 'icon'));
+    return doc.descendants(inst.id).filter(c => c.behavior?.slot !== undefined && !c.isInstance && template.anatomy.some(s => s.id === c.behavior.slot && s.kind !== 'icon'));
 }
 /** Whether a managed slot of an instance is a text or control layer (not an icon frame). */
 function managedTextSlotOf(inst, slot) {
@@ -10953,12 +10953,64 @@ function syncSeparators(inst, template) {
             doc.touch(made);
         }
     }
+    syncBetween(inst, template);
+}
+/**
+ * The layers a box slot makes between its items (a separator before each item but the first, the ellipsis while truncated) and the items' visibility,
+ * from the template's `between` and `overflow` (box-between.js). The items are the box's instances of the template they are made from; every other layer
+ * of the box is the sync's, removed and made again. Runs inside the edit.
+ */
+function syncBetween(inst, template) {
+    const values = resolveProps(template, inst.behavior?.props ?? {});
+    for (const def of (template.slots ?? []).filter(s => s.between)) {
+        const layer = slotLayerOf(inst, def.id), itemMaster = templateMasterOf(def.seed?.[0]?.template ?? def.accepts?.[0]);
+        if (!layer || !itemMaster) continue;
+        const kids = doc.children(layer.id);
+        const items = kids.filter(c => c.sourceId === itemMaster.id);
+        const stale = kids.filter(c => c.sourceId !== itemMaster.id).map(c => c.id);
+        if (stale.length) doc.remove(stale);
+        const truncated = def.overflow !== undefined && values[def.overflow.prop] === true;
+        const plan = betweenPlan(items.length, { truncated });
+        const made = [];
+        items.forEach((item, i) => {
+            // The hidden items say so as an override, which the master's sync keeps (an instance's own visibility is an override).
+            item.visible = plan.items[i].visible;
+            item.overrides = { ...(item.overrides ?? {}), visible: item.visible };
+            doc.touch(item);
+            if (i >= 1 && plan.gaps[i].visible) made.push(...separatorLayers(def, template, values, layer));
+            if (plan.ellipsis && i === plan.hidden[0]) made.push(ellipsisLayer(def, template, values, layer));
+            made.push(item);
+        });
+        made.forEach((n, k) => placeAmongChildren(layer, n, k));
+        doc.refresh();
+    }
+    applyManagedTextBindings(inst);
+}
+/** The separator a box puts before an item: a plain text layer ("/") while the kind is text, else an instance of the icon the prop picks (none until one is picked). */
+function separatorLayers(def, template, values, layer) {
+    if (values[def.between.kind] === 'icon') {
+        const icon = values[def.between.icon];
+        if (!icon) return [];
+        const before = new Set(doc.children(layer.id).map(c => c.id));
+        instantiate(icon, null, layer, { keepSelection: true });
+        const made = doc.children(layer.id).find(c => !before.has(c.id));
+        // The icon is the box's own layer too: marked as its separator, so the sync finds it again and the diagnostics do not count it.
+        if (made) made.behavior = managedBehavior(def.between.layer);
+        return made ? [made] : [];
+    }
+    const spec = managedTextLayer(template, def.between.layer, values, { id: uid(), parentId: layer.id });
+    return [doc.add({ ...spec, text: def.between.text })];
+}
+/** The ellipsis a truncated box shows between its first item and the first hidden one: a text layer of the box. */
+function ellipsisLayer(def, template, values, layer) {
+    const spec = managedTextLayer(template, def.overflow.layer, values, { id: uid(), parentId: layer.id });
+    return doc.add({ ...spec, text: def.overflow.text });
 }
 /** The box slots a new instance starts with (a List's first item): each gets its seeds, and its separators follow. Runs inside the edit. */
 function seedBoxes(inst, template) {
     for (const def of (template.slots ?? []).filter(s => s.box !== undefined && s.seed?.length)) {
         const layer = slotLayerOf(inst, def.id);
-        if (layer && !doc.children(layer.id).length) seedSlot(inst, layer, def);
+        if (layer && !doc.children(layer.id).length) for (let k = 0; k < (def.start ?? 1); k++) seedSlot(inst, layer, def);
     }
     syncSeparators(inst, template);
 }

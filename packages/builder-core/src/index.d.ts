@@ -16,6 +16,7 @@ export * from './behavior-engine/managed-layers.js';
 export * from './behavior-engine/content-slots.js';
 export * from './behavior-engine/slot-rules.js';
 export * from './behavior-engine/slot-list.js';
+export * from './behavior-engine/box-between.js';
 export * from './behavior-engine/placeholder-image.js';
 export * from './behavior-engine/component-templates.js';
 export * from './behavior-engine/slot-diagnostics.js';

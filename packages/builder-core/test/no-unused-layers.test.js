@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { BUILT_IN_TEMPLATES } from '../src/behavior-engine/registry.js';
 import { conditionHolds } from '../src/behavior-engine/display.js';
+import { boxLayerIdsOf } from '../src/behavior-engine/box-between.js';
 import { resolveProps } from '../src/behavior-engine/instance-props.js';
 import { modelFor, instanceFor } from './helpers/box-template.js';
 
@@ -17,6 +18,8 @@ function unusedLayersOf(template, props) {
     for (const slot of template.anatomy) {
         const present = nodes.filter(n => n.behavior?.slot === slot.id).length;
         if (present > 1) problems.push(`${slot.id} has ${present} layers`);
+        // A layer the box makes between its items is made by the sync, not by the instance's plan: its condition is checked there.
+        if (boxLayerIdsOf(template).includes(slot.id)) continue;
         if (slot.shownWhen === undefined) continue;
         const wanted = conditionHolds(slot.shownWhen, resolved);
         if (present === 1 && !wanted) problems.push(`${slot.id} is a layer while its condition fails`);

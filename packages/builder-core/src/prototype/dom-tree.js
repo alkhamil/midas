@@ -118,6 +118,7 @@ function renderNode(n, parent, scope, icon = false) {
         if (slotClass && n.vars?.typography !== undefined) for (const key of ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing']) delete style[key];
         // A text a press recolours on hover (the expand control) takes its colour from the stylesheet too: an inline colour would win over the hover rule.
         if (owner && ((owner.press ?? []).some(p => p.glyph === n.behavior.slot && p.hoverFill !== undefined) || Object.values(owner.previewStates ?? {}).some(over => owner.display[n.behavior.slot]?.fill in over))) delete style.color;
+        if (owner && n.behavior?.slot !== undefined && (owner.slots ?? []).some(s => s.overflow?.layer === n.behavior.slot)) return overflowElement(n, scope, owner, style);
         const element = textElement(n, style);
         return slotClass ? { ...element, attrs: { ...element.attrs, class: slotClass } } : element;
     }
@@ -331,7 +332,7 @@ function renderTemplate(n, template, parent, scope) {
     const toggle = toggleOf(template);
     if (toggle) Object.assign(attrs, { 'data-toggle': toggle.attr, ...(toggle.clearsAttr ? { 'data-toggle-clears': toggle.clearsAttr } : {}), ...(toggle.once ? { 'data-toggle-once': true } : {}), 'aria-checked': ariaCheckedOf(template, props) });
     // A template with pressable glyphs marks its root, so a click finds the control it acts on (see press.js).
-    if (template.press?.length) attrs['data-press-root'] = '';
+    if (template.press?.length || (template.slots ?? []).some(s => s.overflow)) attrs['data-press-root'] = '';
     if (!control && template.element.disabledState !== undefined && stateOn(template, template.element.disabledState, props)) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true', tabindex: '-1' });
     // A layer that blocks its click (a loading Button) stays enabled, but its clicks fire nothing (see isDisabledTarget).
     if (template.element.blockClickProps.some(prop => props[prop] === true)) attrs['data-blocked'] = true;
@@ -950,6 +951,21 @@ function opacityOf(n) {
  * @param {Record<string, string>} style
  * @returns {Element}
  */
+/**
+ * A truncated row's ellipsis: a press that opens a dropdown of the items its box hides (their first text, as the menu's lines). The menu is hidden by the
+ * stylesheet until the root says it is open (press.js OVERFLOW_ATTR).
+ */
+function overflowElement(n, scope, owner, style) {
+    const box = scope.byId.get(n.parentId);
+    const hidden = box ? scope.childrenOf(box.id).filter(c => c.isInstance && c.visible === false) : [];
+    const menu = { tag: 'span', attrs: { class: `${owner.id}-menu` }, style: {}, children: hidden.map(c => ({ tag: 'span', attrs: { class: `${owner.id}-menu-item` }, style: {}, text: firstTextOf(c, scope) ?? '', children: [] })) };
+    return { tag: 'span', nodeId: n.id, attrs: { class: `${owner.id}-${n.behavior.slot}`, 'data-press': 'overflow' }, style: { ...style, position: 'relative', cursor: 'pointer' }, children: [{ tag: 'span', attrs: {}, style: {}, text: n.text ?? '', children: [] }, menu] };
+}
+/** The first text under a layer (the label of a Link instance), or null when it has none. */
+function firstTextOf(n, scope) {
+    for (const c of scope.childrenOf(n.id)) { if (c.type === 'text') return c.text ?? ''; const t = firstTextOf(c, scope); if (t !== null) return t; }
+    return null;
+}
 function textElement(n, style) {
     if (n.spans?.length > 1) return { tag: 'span', nodeId: n.id, attrs: {}, style, children: n.spans.map(s => spanElement(s)) };
     return { tag: 'span', nodeId: n.id, attrs: {}, style, text: n.text ?? '', children: [] };

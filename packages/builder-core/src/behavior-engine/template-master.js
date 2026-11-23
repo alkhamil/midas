@@ -8,6 +8,7 @@ import { glyphFields } from './glyphs.js';
 import { cssVarOf } from './tokens.js';
 import { slotHolds } from './slot-list.js';
 import { boxesOf } from './anatomy.js';
+import { boxLayerIdsOf } from './box-between.js';
 import { canvasPartsOf, conditionHolds, literalFields, nodeFieldPatch, partWrites } from './display.js';
 import { planBindTokens, applyBindTokens } from './bind-tokens.js';
 import { resolveProps } from './instance-props.js';
@@ -471,7 +472,9 @@ export function instanceOf(template, master, subtree, props, { id, varModes = {}
     // A managed slot the props show, that the subtree does not hold, is created on the instance (its frame is empty; the icon is content).
     const stubs = [];
     const stubBySlot = new Map();
-    for (const slot of template.anatomy.filter(s => s.kind === 'icon' || s.managed)) {
+    // A layer the box makes between its items (the separator, the ellipsis) is the sync's, never a stub the props make here.
+    const boxLayers = boxLayerIdsOf(template);
+    for (const slot of template.anatomy.filter(s => (s.kind === 'icon' || s.managed) && !boxLayers.includes(s.id))) {
         if (!slotWanted(template, slot.id, resolved) || subtree.some(n => n.behavior?.slot === slot.id || (slot.kind === 'frame' && n.behavior?.group === slot.id)))
             continue;
         const stub = { id: `slot-${slot.id}`, name: slot.id };

@@ -13,6 +13,7 @@ import { inputModel } from '../../../scripts/input-model.mjs';
 import { formItemModel } from '../../../scripts/form-item-model.mjs';
 import { iconButtonModel } from '../../../scripts/icon-button-model.mjs';
 import { modelFor } from './helpers/box-template.js';
+import { boxLayerIdsOf } from '../src/behavior-engine/box-between.js';
 
 /** The variables a template gets from the bundled base and Auto Fix, as Generate Design System makes them: the model of a template with no hand-built fixture. */
 const generated = id => () => { const m = modelFor(TEMPLATES.get(id)); return { variables: m.variables, binding: { variables: m.binding.variables } }; };
@@ -107,9 +108,11 @@ for (const template of TEMPLATES.values()) {
             return def.show && typeof def.show === 'object' ? { [def.show.prop]: def.show.is } : {};
         };
         const iconCases = template.icons.flatMap(def => def.placement ? template.props[def.placement].options.map(option => ({ ...showProps(def), [def.placement]: option })) : [showProps(def)]);
-        const texts = template.anatomy.filter(s => s.managed && s.kind !== 'icon').map(s => holding(s.shownWhen));
+        // A layer the box makes between its items is the sync's (box-between.js), not an instance layer.
+        const boxLayers = boxLayerIdsOf(template);
+        const texts = template.anatomy.filter(s => s.managed && s.kind !== 'icon' && !boxLayers.includes(s.id)).map(s => holding(s.shownWhen));
         const copies = [...texts, ...iconCases].flatMap(extra => instanceOf(template, frame, out.created, { ...extra, ...(template.control ? { [template.control.value]: 'x' } : {}) }, { id: idOf }));
-        for (const slot of template.anatomy.filter(s => s.managed || s.kind === 'icon')) assert.ok(copies.some(n => n.behavior?.slot === slot.id), `${template.id} instance has ${slot.id}`);
+        for (const slot of template.anatomy.filter(s => (s.managed || s.kind === 'icon') && !boxLayers.includes(s.id))) assert.ok(copies.some(n => n.behavior?.slot === slot.id), `${template.id} instance has ${slot.id}`);
     });
 
     test(`${template.id}: the generated master has no diagnostics errors`, () => {

@@ -1,4 +1,4 @@
-// Pagination, Breadcrumb and Table Toolbar on the canvas and in Play: each created component measured at every Size mode and each state, the same
+// Pagination and Table Toolbar (Breadcrumb has its own test, breadcrumb.browser.test.mjs) on the canvas and in Play: each created component measured at every Size mode and each state, the same
 // comparison as list-item.browser.test.mjs (every canvas node is a Play element within 0.5px, and Play draws nothing the canvas does not).
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,15 +15,6 @@ const CASES = [
             { name: 'total', props: { showTotal: true, total: 'of 10' } },
             // The total's row is hidden while Show Total is off, so its text is set first.
             { name: 'no-total', props: { total: 'of 10', showTotal: false } },
-        ],
-    },
-    {
-        templateId: 'antd-breadcrumb',
-        name: 'Breadcrumb',
-        states: [
-            { name: 'one', props: { item2: '', item3: '' } },
-            { name: 'two', props: { item2: 'Application', item3: '' } },
-            { name: 'three', props: { item2: 'Application', item3: 'Users' } },
         ],
     },
     {

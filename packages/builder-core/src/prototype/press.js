@@ -5,6 +5,8 @@
 /** The root attributes that say a stepped value has reached a limit. The stylesheet recolours the arrow with them, and the schema's persistent states use the same names. */
 export const AT_MIN_ATTR = 'data-at-min';
 export const AT_MAX_ATTR = 'data-at-max';
+/** The root attribute a truncated row's ellipsis writes while its dropdown of hidden items is open. */
+export const OVERFLOW_ATTR = 'data-overflow-open';
 
 /** The digits after the decimal point of a number, as a plain decimal. */
 const decimalsOf = n => { const s = String(n); const e = /e-(\d+)$/.exec(s); return e ? +e[1] : (s.split('.')[1] ?? '').length; };
@@ -56,6 +58,8 @@ export function applyPress(target) {
     const input = root.querySelector('input,textarea');
     if (input?.hasAttribute('disabled')) return false;
     const write = (name, on) => (on ? root.setAttribute(name, '') : root.removeAttribute(name));
+    // The ellipsis of a truncated row opens and closes the dropdown of the items it hides.
+    if (glyph.getAttribute('data-press') === 'overflow') { write(OVERFLOW_ATTR, !root.hasAttribute(OVERFLOW_ATTR)); return true; }
     if (glyph.getAttribute('data-press') === 'toggle') {
         const attr = glyph.getAttribute('data-press-attr');
         const on = !root.hasAttribute(attr);

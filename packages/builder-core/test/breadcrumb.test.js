@@ -1,29 +1,31 @@
-// Breadcrumb: up to three items; each item after the first comes with the separator before it, and is made only while its text is not empty.
+// Breadcrumb: a box of Link items (two to start, one more per Plus), a separator before each item but the first, and Truncated over the row.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TEMPLATES } from '../src/behavior-engine/registry.js';
 import { validateTemplateSchema } from '../src/behavior-engine/validate-schema.js';
-import { modelFor, instanceFor } from './helpers/box-template.js';
+import { BREADCRUMB } from '../src/templates/breadcrumb.js';
 
 const breadcrumb = TEMPLATES.get('antd-breadcrumb');
-const model = modelFor(breadcrumb);
-const slotsOf = props => instanceFor(model, props).slice(1).map(n => n.behavior?.slot ?? n.name);
+const items = BREADCRUMB.slots[0];
 
-test('Breadcrumb is registered, valid, and takes Size from the variable collection, the rest from literals', () => {
+test('Breadcrumb is registered and valid; Size comes from the variable collection, the rest from literals', () => {
     assert.ok(breadcrumb, 'Breadcrumb is in the registry');
     assert.deepEqual(validateTemplateSchema(breadcrumb, { templateIds: new Set(TEMPLATES.keys()) }), []);
-    assert.deepEqual(Object.keys(breadcrumb.props).sort(), ['item1', 'item2', 'item3', 'size']);
-    assert.equal(breadcrumb.props.size.source, 'variable');
+    assert.deepEqual(Object.keys(BREADCRUMB.props).sort(), ['separatorIcon', 'separatorKind', 'size', 'truncated']);
+    assert.equal(BREADCRUMB.props.size.source, 'variable');
 });
 
-test('the first item always shows; the second and third come with their separator while their text is not empty', () => {
-    assert.deepEqual(slotsOf({ item1: 'Home', item2: '', item3: '' }), ['item1']);
-    assert.deepEqual(slotsOf({ item1: 'Home', item2: 'App', item3: '' }), ['item1', 'separator1', 'item2']);
-    assert.deepEqual(slotsOf({ item1: 'Home', item2: 'App', item3: 'Users' }), ['item1', 'separator1', 'item2', 'separator2', 'item3']);
-    assert.deepEqual(slotsOf({ item1: 'Home', item2: '', item3: 'Users' }), ['item1', 'separator2', 'item3'], 'an empty middle item takes no separator of its own, and the last keeps the one before it');
+test('the items box holds only Link instances, two to start, and each Plus adds one', () => {
+    assert.equal(items.box, 'itemsBox');
+    assert.deepEqual(items.accepts, ['antd-link']);
+    assert.equal(items.onlyAccepts, true);
+    assert.equal(items.start, 2);
+    assert.equal(items.seed.length, 1, 'a seed is one item, so a Plus adds exactly one');
 });
 
-test('the separators are static text ("/"), made with the item they precede', () => {
-    const seps = breadcrumb.anatomy.filter(a => a.id.startsWith('separator'));
-    assert.deepEqual(seps.map(a => a.defaultText), ['/', '/']);
+test('the separator is a plain text layer or an icon, chosen by Separator; Truncated names the ellipsis', () => {
+    assert.deepEqual(BREADCRUMB.props.separatorKind.options, ['text', 'icon']);
+    assert.equal(BREADCRUMB.props.separatorIcon.type, 'iconComponent');
+    assert.deepEqual(items.between, { kind: 'separatorKind', icon: 'separatorIcon', layer: 'separator', text: '/' });
+    assert.deepEqual(items.overflow, { prop: 'truncated', layer: 'ellipsis', text: '…' });
 });

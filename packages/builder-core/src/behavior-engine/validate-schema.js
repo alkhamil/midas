@@ -450,7 +450,7 @@ const RESERVED_WORDS = new Set(['await', 'break', 'case', 'catch', 'class', 'con
 /** The props every generated component has besides its own: `children` is the single slot's, the rest pass through to the root. */
 const GENERATED_PROPS = ['children', 'className', 'style', 'ref', 'key'];
 /** The fields of a content slot definition. They are the names and settings of Figma's slot property, so the generator can write them into it. */
-const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'onlyAccepts', 'showEmpty', 'required', 'fillCounter', 'layout', 'fill', 'shownWhen', 'parent', 'seed', 'holds', 'box', 'separator'];
+const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'onlyAccepts', 'showEmpty', 'required', 'fillCounter', 'layout', 'fill', 'shownWhen', 'parent', 'seed', 'holds', 'box', 'separator', 'start', 'between', 'overflow'];
 
 /**
  * Problems in the content slots a template declares (`slots`): a frame of the component that instances fill with their own layers. A slot's id
@@ -520,6 +520,29 @@ function slotProblems(schema, templateIds) {
             else if (templateIds && !templateIds.has(sep.template)) out.push(`${tag} separator names "${sep.template}", which is not a registered template`);
             else if (!(props[sep.prop]?.source === 'literal' && props[sep.prop]?.type === 'boolean')) out.push(`${tag} separator names "${sep.prop}", which is not a boolean prop`);
             else if (slot.box === undefined) out.push(`${tag} separator needs a box: the Dividers sit between its instances`);
+        }
+        // The items a box starts with: a whole number of seeds (a seed is one item, so the box makes `start` of them).
+        if (slot.start !== undefined && !(Number.isInteger(slot.start) && slot.start >= 1)) out.push(`${tag} start must be a whole number, 1 or more`);
+        // Between the items: the separator layer (a text, or the icon a prop picks, by the kind prop); the box's gap layers are made by the studio's sync.
+        if (slot.between !== undefined) {
+            const b = slot.between;
+            if (!isPlainObject(b) || !isName(b.kind) || !isName(b.icon) || !isName(b.layer) || typeof b.text !== 'string') out.push(`${tag} between must name a kind, an icon, a layer and a text`);
+            else {
+                if (!(props[b.kind]?.source === 'literal' && props[b.kind]?.type === 'enum' && props[b.kind].options?.includes('text') && props[b.kind].options?.includes('icon'))) out.push(`${tag} between names "${b.kind}", which is not an enum of text and icon`);
+                if (props[b.icon]?.type !== 'iconComponent') out.push(`${tag} between names "${b.icon}", which is not an icon prop`);
+                if (!(Array.isArray(schema.anatomy) && schema.anatomy.some(s => isPlainObject(s) && s.id === b.layer && s.kind === 'text'))) out.push(`${tag} between names layer "${b.layer}", which is not an anatomy text`);
+            }
+            if (slot.box === undefined) out.push(`${tag} between needs a box: the separators sit between its instances`);
+        }
+        // Truncation over the box: a boolean prop hides the items between the first and the last, behind an ellipsis layer (an anatomy text).
+        if (slot.overflow !== undefined) {
+            const o = slot.overflow;
+            if (!isPlainObject(o) || !isName(o.prop) || !isName(o.layer) || typeof o.text !== 'string') out.push(`${tag} overflow must name a prop, a layer and a text`);
+            else {
+                if (!(props[o.prop]?.source === 'literal' && props[o.prop]?.type === 'boolean')) out.push(`${tag} overflow names "${o.prop}", which is not a boolean prop`);
+                if (!(Array.isArray(schema.anatomy) && schema.anatomy.some(s => isPlainObject(s) && s.id === o.layer && s.kind === 'text'))) out.push(`${tag} overflow names layer "${o.layer}", which is not an anatomy text`);
+            }
+            if (slot.box === undefined) out.push(`${tag} overflow needs a box: the ellipsis sits among its items`);
         }
         if (slot.box !== undefined) {
             for (const id of [slot.box].flat()) {

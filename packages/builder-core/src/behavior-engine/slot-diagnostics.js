@@ -37,7 +37,8 @@ export function diagnoseSlots(nodes) {
         // The slot property is the instance's own component's: slot ids are only unique within one template.
         const prop = (byId.get(owner.sourceId)?.cprops ?? []).find(p => p.type === 'slot' && p.id === slot.propBind.slot);
         if (!prop) continue;
-        const held = children.get(slot.id) ?? [];
+        // The layers the box makes between its items (separators, the ellipsis) are the sync's, not the designer's content.
+        const held = (children.get(slot.id) ?? []).filter(c => c.behavior?.slot === undefined);
         const where = { node: owner.name, nodeId: owner.id, slot: slot.id };
         const { belowMin, aboveMax } = slotCounts(prop, held.length);
         if (belowMin) out.push({ severity: 'warning', code: 'slot-below-min', ...where, message: `${owner.name}: slot "${prop.name}" holds ${layers(held.length)}, at least ${prop.min} needed.` });

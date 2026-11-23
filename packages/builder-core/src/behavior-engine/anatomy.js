@@ -6,6 +6,7 @@ import { BEHAVIOR_DATA_VERSION } from './data.js';
 import { resolveProps } from './instance-props.js';
 import { conditionHolds } from './display.js';
 import { iconRoleOf } from './icon-set.js';
+import { boxLayerIdsOf } from './box-between.js';
 
 /** @typedef {import('../templates/schema.js').TemplateSchema} TemplateSchema */
 /** @typedef {{ id: string, slot: string | null, name?: string, component?: string | null, parent?: string }} ChildLayer  an instance's child, in order; slot is its managed slot marker; name is its layer name (an anatomy slot's id for the layers the anatomy names); component is the icon component the slot shows (null for the placeholder); parent is the container group the layer hangs under, absent for a direct child */
@@ -302,7 +303,7 @@ export function planAnatomy(template, values, children, flip = false) {
     }
     // A managed text or control layer is wanted while its slot's condition holds; its text is the prop's, so it carries no component.
     for (const slot of template.anatomy) {
-        if (slot.managed && slot.kind !== 'icon' && conditionHolds(slot.shownWhen, values) && holderAllows(template, slot, values) && !wanted.some(w => w.slot === slot.id)) wanted.push({ slot: slot.id, component: null });
+        if (slot.managed && slot.kind !== 'icon' && !boxLayerIdsOf(template).includes(slot.id) && conditionHolds(slot.shownWhen, values) && holderAllows(template, slot, values) && !wanted.some(w => w.slot === slot.id)) wanted.push({ slot: slot.id, component: null });
     }
     // A content slot the props show while they hold is a layer only while its condition holds (never hidden): its content is the instance's own.
     for (const slot of template.slots ?? []) if (isConditionalSlot(template, slot) && (slot.shownWhen === undefined || conditionHolds(slot.shownWhen, values)) && holderAllows(template, slot, values) && !wanted.some(w => w.slot === slot.id)) wanted.push({ slot: slot.id, component: null });
@@ -315,7 +316,8 @@ export function planAnatomy(template, values, children, flip = false) {
     const storedIndexOf = (visual, finalLength) => (flip ? finalLength - 1 - visual : visual);
     for (const c of children) {
         const isWanted = c.slot !== null && want.has(c.slot) && !kept.some(k => k.slot === c.slot);
-        if (c.slot === null || isWanted) kept.push(c);
+        // A layer the box makes between its items is the sync's: kept as it is, never planned here.
+        if (c.slot === null || isWanted || boxLayerIdsOf(template).includes(c.slot)) kept.push(c);
         else ops.push({ op: 'remove', id: c.id });
     }
     if (!wanted.length) return ops;

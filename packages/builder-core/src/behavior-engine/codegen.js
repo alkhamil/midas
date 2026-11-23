@@ -951,6 +951,15 @@ function pressRules(template) {
  * @param {any} template
  * @returns {string[]}
  */
+/** A truncated row's ellipsis and its dropdown: the menu of hidden items is shown while the root says the dropdown is open (press.js OVERFLOW_ATTR). */
+function overflowRules(template) {
+    return (template.slots ?? []).filter(s => s.overflow).flatMap(s => [
+        `.${template.id}-${s.overflow.layer} { position: relative; cursor: pointer; }`,
+        `.${template.id}-menu { display: none; position: absolute; top: 100%; left: 0; z-index: 1; background: Canvas; color: CanvasText; white-space: nowrap; }`,
+        `.${template.id}[data-overflow-open] .${template.id}-menu { display: block; }`,
+        `.${template.id}-menu-item { display: block; padding: 4px 8px; }`,
+    ]);
+}
 function expandRules(template) {
     if (!(template.press ?? []).some(p => p.expand)) return [];
     const writer = fieldWritersOf(template).find(w => w.field === 'maxLines');
@@ -1334,7 +1343,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
         blocks.push(`@keyframes ${loopKeyframes(template.id, part.id)} {\n${part.loop.frames.map(f => `  ${f.at}% { ${Object.entries(f.props).map(([p, v]) => `${p}: ${String(v).replaceAll('$travel', travel)};`).join(' ')} }`).join('\n')}\n}\n`);
     }
     if (template.interaction?.wave) blocks.push(waveRules(template));
-    blocks.push(...expandRules(template), ...pressRules(template), ...glyphHoverRules(template), ...fieldRules(template, master, childrenOf), ...gradientPatternRules(template, master, childrenOf), ...fillOverrideRules(template), ...cursorRules(template), ...multilineRules(template), ...revealRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
+    blocks.push(...overflowRules(template), ...expandRules(template), ...pressRules(template), ...glyphHoverRules(template), ...fieldRules(template, master, childrenOf), ...gradientPatternRules(template, master, childrenOf), ...fillOverrideRules(template), ...cursorRules(template), ...multilineRules(template), ...revealRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
     if (template.interaction || template.motion) blocks.push(reducedMotion(template));
     return blocks.join('\n');
 }
