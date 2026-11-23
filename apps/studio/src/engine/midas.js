@@ -10193,7 +10193,7 @@ function prototypeTabHtml(n) {
     const number = (key, label, id, value, where) => `<div class="cmp-prop2"><label>${label}</label><div class="cmp-ctl"><input class="cmp-input" type="number" min="0" data-pt="${key}" data-pt-id="${esc(id)}"${at(where)} value="${value}"></div></div>`;
     const button = (name, label, id, where) => `<button class="wide-button" data-pt-op="${name}" data-pt-id="${esc(id)}"${at(where)}>${label}</button>`;
     const triggers = [['on-click', 'On click'], ['mouse-enter', 'Mouse enter'], ['mouse-leave', 'Mouse leave'], ['mouse-down', 'Mouse down'], ['mouse-up', 'Mouse up'], ['while-hovering', 'While hovering'], ['while-pressing', 'While pressing'], ['after-delay', 'After delay']];
-    const actionTypes = [['navigate-to', 'Navigate to'], ['back', 'Back'], ['open-link', 'Open link'], ['conditional', 'Conditional'], ['overlay', 'Open overlay', true], ['swap', 'Swap overlay', true], ['scroll', 'Scroll to', true]];
+    const actionTypes = [['navigate-to', 'Navigate to'], ['back', 'Back'], ['open-link', 'Open link'], ['conditional', 'Conditional'], ['open-overlay', 'Open overlay'], ['close-overlay', 'Close overlay'], ['swap', 'Swap overlay', true], ['scroll', 'Scroll to', true]];
     const nestedActionTypes = actionTypes.filter(([value]) => value !== 'conditional');
     const transitions = [['instant', 'Instant'], ['dissolve', 'Dissolve'], ['slide-in', 'Slide in'], ['push', 'Push']];
     const directions = [['left', 'Left'], ['right', 'Right'], ['top', 'Top'], ['bottom', 'Bottom']];
@@ -10209,6 +10209,11 @@ function prototypeTabHtml(n) {
             a.type === 'navigate-to' && fields.duration ? number('duration', 'Duration (ms)', id, t.durationMs, where) : '',
             a.type === 'navigate-to' && fields.easing ? select('easing', 'Easing', id, easings, t.easing, where) : '',
             a.type === 'open-link' ? `<div class="cmp-prop2"><label>URL</label><div class="cmp-ctl"><span class="small-label">${esc(a.url)}</span></div></div>` : '',
+            // An overlay: the frame it shows, where it sits, whether an outside click closes it, and its transition (instant or dissolve only).
+            a.type === 'open-overlay' ? select('destination', 'Frame', id, destinations.map(d => [d.id, destinationLabel(d, doc.page?.name)]), a.destinationId, where) : '',
+            a.type === 'open-overlay' ? select('placement', 'Placement', id, [['center', 'Center'], ['below', 'Below trigger'], ['above', 'Above trigger']], a.placement, where) : '',
+            a.type === 'open-overlay' ? select('close-outside', 'Close on outside click', id, [['true', 'Yes'], ['false', 'No']], String(a.closeOnOutside), where) : '',
+            a.type === 'open-overlay' ? select('transition', 'Transition', id, [['instant', 'Instant'], ['dissolve', 'Dissolve']], t?.type ?? 'instant', where) : '',
         ].join('');
     };
     /** The actions of a branch (`b<i>`) or the else (`e`), each with its remove, and an add. */

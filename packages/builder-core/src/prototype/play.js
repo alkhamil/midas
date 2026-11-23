@@ -1,6 +1,6 @@
 // Play and editing helpers (pure). The Play overlay and the Prototype panel use these: the player context read from a document, the
 // destinations a navigate-to can name, and the default interaction a new one starts from.
-import { MOVING_TRANSITIONS } from './data.js';
+import { MOVING_TRANSITIONS, OVERLAY_PLACEMENTS } from './data.js';
 import { resolveMode } from '../behavior-engine/modes.js';
 import { actionsOf, branchIndex, conditionPatch, defaultCondition, defaultVariableOf, listOf, withBranch, withList } from './conditional.js';
 
@@ -123,8 +123,8 @@ export function playStartOf(pages, activePageId, selectedId) {
 
 /** Triggers that hold while the pointer is over or down. Navigation and back cannot run on them. */
 const CONTINUOUS = ['while-hovering', 'while-pressing'];
-/** Actions that change the frame. */
-const NAVIGATING = ['navigate-to', 'back'];
+/** Actions that change the frame or the overlays on it: a continuous trigger cannot run them (decision 15). */
+const NAVIGATING = ['navigate-to', 'back', 'open-overlay', 'close-overlay'];
 
 /**
  * A whole number from an edited field, at least `min`. Anything else is refused, so an invalid value is never written.
@@ -185,6 +185,15 @@ export function interactionPatch(interaction, field, value, { firstDestination, 
             }
             if (value === 'back') return { action: { type: 'back' } };
             if (value === 'open-link') return { action: { type: 'open-link', url: 'https://example.com' } };
+            if (value === 'open-overlay') {
+                if (CONTINUOUS.includes(interaction.trigger?.type)) throw new Error('While hovering and while pressing cannot open an overlay.');
+                if (!firstDestination) throw new Error('There is no top-level frame to open.');
+                return { action: { type: 'open-overlay', destinationId: firstDestination, placement: 'center', closeOnOutside: true, transition: { type: 'instant', durationMs: 0 } } };
+            }
+            if (value === 'close-overlay') {
+                if (CONTINUOUS.includes(interaction.trigger?.type)) throw new Error('While hovering and while pressing cannot close an overlay.');
+                return { action: { type: 'close-overlay' } };
+            }
             throw new Error(`The action "${value}" is not available yet.`);
         case 'destination':
             return { action: { ...interaction.action, destinationId: value } };
@@ -201,6 +210,13 @@ export function interactionPatch(interaction, field, value, { firstDestination, 
         case 'duration':
             if (!transition) throw new Error('Choose a transition first.');
             return withTransition({ ...transition, durationMs: wholeNumber(value, 0, 'Duration') });
+        case 'placement':
+            if (interaction.action?.type !== 'open-overlay') throw new Error('Only an overlay has a placement.');
+            if (!OVERLAY_PLACEMENTS.includes(value)) throw new Error(`Placement must be one of ${OVERLAY_PLACEMENTS.join(', ')}.`);
+            return { action: { ...interaction.action, placement: value } };
+        case 'close-outside':
+            if (interaction.action?.type !== 'open-overlay') throw new Error('Only an overlay closes on outside clicks.');
+            return { action: { ...interaction.action, closeOnOutside: value === 'true' } };
         case 'direction':
             if (!transition) throw new Error('Choose a transition first.');
             return withTransition({ ...transition, direction: value });

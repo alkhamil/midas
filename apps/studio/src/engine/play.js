@@ -115,6 +115,9 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
     let baseStyles = '';
     // The frame an overlay that dissolves in is opening now (set by apply, spent by renderOverlays).
     let fadingIn = null;
+    // What the overlays on screen were drawn for (the frame and the open overlays). A layer is redrawn only when this changes: a pointer event
+    // that changes nothing must not replace the overlay under the pointer, or a click on it never lands.
+    let renderedOverlays = null;
     let flowStart = startFrameId;
     let menu = null;
     let chrome = { visible: true, pinnedHidden: false };
@@ -297,6 +300,9 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
      * holds is removed. An overlay that dissolves in fades from transparent (the effect that opened it says so: `fadingIn`).
      */
     function renderOverlays() {
+        const key = `${frameId}|${JSON.stringify(state.overlays)}`;
+        if (key === renderedOverlays) return;
+        renderedOverlays = key;
         for (const el of stage.querySelectorAll(':scope > .play-overlay-frame')) el.remove();
         const styles = [baseStyles];
         const stageRect = stage.getBoundingClientRect();
@@ -400,6 +406,8 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
             for (const t of timers.values()) clearTimeout(t);
             timers.clear();
             renderFrame(navigation.to, navigation.transition);
+            // The new frame replaced the stage's children, so the overlays are drawn again even if the state's overlays read the same.
+            renderedOverlays = null;
         }
         // Overlays are drawn after the frame, so a navigation (which replaces the frame) keeps them only when the state does.
         const opened = effects.find(e => e.type === 'open-overlay');

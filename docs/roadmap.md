@@ -79,7 +79,7 @@ Tujuan: preview DOM setia ke canvas dan prototype lengkap.
 Prototype (`docs/prototype-spec.md`):
 - [x] Conditional (Round 7: model, validator, Play, panel. Copy/paste/delete belum dicek di browser)
 - [ ] Set variable
-- [ ] Overlay / dropdown / popover (connector sengaja tidak dibangun): model, validasi, player, dan planner sudah ada (`open-overlay`, `close-overlay`, decision 15 dan 16 di `docs/prototype-spec.md`). Runtime Play sudah menggambar overlay (`overlay.browser.test.mjs`, dengan screenshot). Belum: panel dan export.
+- [ ] Overlay / dropdown / popover (connector sengaja tidak dibangun): model, validasi, player, dan planner sudah ada (`open-overlay`, `close-overlay`, decision 15 dan 16 di `docs/prototype-spec.md`). Runtime Play dan panel Prototype sudah membuat overlay (`overlay.browser.test.mjs`, `overlay-panel.browser.test.mjs`, dengan screenshot). Belum: export.
 - [ ] Interaksi template Input / Alert / Modal (Modal belum ada template)
 
 Fidelity Play:
