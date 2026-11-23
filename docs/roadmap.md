@@ -77,17 +77,16 @@ Catatan: Input (batch 1) memenuhi semua item kode di atas. Item browser tetap te
 Tujuan: preview DOM setia ke canvas dan prototype lengkap.
 
 Prototype (`docs/prototype-spec.md`):
-- [x] Conditional (Round 7: model, validator, Play, panel. Copy/paste/delete belum dicek di browser)
-- [x] Set variable: model, validasi, Play (nilai hanya untuk sesi, dokumen tidak ditulis), panel. `set-variable-play`, `set-variable.browser.test.mjs`. Decision 17.
-- [ ] Overlay / dropdown / popover (connector sengaja tidak dibangun): model, validasi, player, dan planner sudah ada (`open-overlay`, `close-overlay`, decision 15 dan 16 di `docs/prototype-spec.md`). Runtime Play dan panel Prototype sudah membuat overlay (`overlay.browser.test.mjs`, `overlay-panel.browser.test.mjs`, dengan screenshot). Belum: export.
-- [ ] Interaksi template Input / Alert / Modal (Modal belum ada template)
+- [x] Conditional (Round 7: model, validator, Play, panel).
+- [x] Set variable (decision 17): model, validasi, Play (nilai untuk sesi, dokumen tidak ditulis), panel. `set-variable.browser.test.mjs`.
+- [x] Overlay / dropdown / popover (decision 15 dan 16): model, validasi, player, Play, panel. `overlay.browser.test.mjs`, `overlay-panel.browser.test.mjs`. Export overlay tidak direncanakan (prototype preview, bukan kode komponen).
+- [ ] Interaksi template Modal: menunggu template Dialog (Fase 1, batch C). Input dan Alert: Play dicek di browser (`alert.browser.test.mjs`, `input-live.browser.test.mjs`).
 
 Fidelity Play:
-- [ ] Grid layout di Play (saat ini DOM memakai flex row)
-- [ ] Mask di auto layout (masih dilaporkan, tidak digambar)
+- [ ] Grid layout di Play. Belum dikerjakan: grid bukan tipe layout di model dokumen (hanya horizontal, vertical, dan none). Butuh keputusan desain dan perubahan canvas, engine, dan Play, bukan perbaikan Play saja.
+- [x] Mask di auto layout: mask rect dan ellipse menjadi clip-path pada layer di atasnya, dengan posisi tersimpan (`prototype-fidelity.test.js`). Mask bentuk lain atau pada layer yang dirotasi masih dilaporkan, tidak digambar.
 - [x] Motion (Play dan codegen saja, bukan canvas): sudah untuk Button, Input, Checkbox, Radio, Switch, Divider
-- [ ] Audit stroke overlay: sebagian. Inside/centre/outside dan per-side ada di core (Rust Fase 1). Sisa: bagian luar stroke per-side yang di-centre belum digambar (`docs/manual-test.md`)
-
+- [x] Audit stroke overlay: `stroke-area.browser.test.mjs` membandingkan canvas dan Play untuk setiap alignment, bentuk, paint, dash, dan per-side.
 Opsional:
 - [ ] Generator schema dari source antd (struktur saja, nilai tetap dari variable)
 
