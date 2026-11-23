@@ -154,7 +154,7 @@ function checkAction(action, where, id, add, refs, nested) {
         if (nested) return add(...where, id, 'conditional-nested', 'a conditional cannot sit inside a conditional');
         return checkConditional(action, where, id, add, refs);
     }
-    checkPlainAction(action, where, id, add, refs.topLevelFrame);
+    checkPlainAction(action, where, id, add, refs);
 }
 
 /**
@@ -213,9 +213,10 @@ const valueMatches = (type, value) => (type === 'number' ? Number.isFinite(value
  * @param {string[]} where
  * @param {string} id
  * @param {(o: string, n: string | null, i: string | null, code: string, message: string) => void} add
- * @param {(id: string) => any} topLevelFrame
+ * @param {{ topLevelFrame: (id: string) => any, variableOf: (id: string) => any }} refs
  */
-function checkPlainAction(action, where, id, add, topLevelFrame) {
+function checkPlainAction(action, where, id, add, refs) {
+    const topLevelFrame = refs.topLevelFrame;
     if (!PLAIN_ACTION_TYPES.includes(action.type)) return add(...where, id, 'action-unknown', `action must be one of ${ACTION_TYPES.join(', ')}`);
     if (action.type === 'back') {
         if (!onlyKeys(action, ['type'])) add(...where, id, 'action-shape', 'back takes no fields');
@@ -230,6 +231,7 @@ function checkPlainAction(action, where, id, add, topLevelFrame) {
         return;
     }
     if (action.type === 'open-overlay') return checkOverlay(action, where, id, add, topLevelFrame);
+    if (action.type === 'set-variable') return checkSetVariable(action, where, id, add, refs.variableOf);
     if (!onlyKeys(action, ['type', 'destinationId', 'transition']) || !isNonEmptyString(action.destinationId)) {
         return add(...where, id, 'action-shape', 'navigate-to needs a destinationId and a transition');
     }
@@ -238,6 +240,22 @@ function checkPlainAction(action, where, id, add, topLevelFrame) {
     if (target === undefined) return;
     if (target === null) add(...where, id, 'destination-missing', `destination "${action.destinationId}" does not exist`);
     else if (target === false) add(...where, id, 'destination-not-frame', 'a destination must be a top-level frame');
+}
+
+/**
+ * Set variable: a document variable of boolean, number or string, and a value of its type. Play writes it for the session only (decision 17).
+ * @param {any} action
+ * @param {string[]} where
+ * @param {string} id
+ * @param {(o: string, n: string | null, i: string | null, code: string, message: string) => void} add
+ * @param {(id: string) => any} variableOf
+ */
+function checkSetVariable(action, where, id, add, variableOf) {
+    if (!onlyKeys(action, ['type', 'variableId', 'value']) || !isNonEmptyString(action.variableId)) return add(...where, id, 'action-shape', 'set-variable needs a variableId and a value');
+    const variable = variableOf(action.variableId);
+    if (!variable) return add(...where, id, 'variable-missing', `variable "${action.variableId}" does not exist`);
+    if (!CONDITION_OPERATORS[variable.type]) return add(...where, id, 'variable-type', `variable "${variable.name}" is a ${variable.type}; Set variable writes booleans, numbers and strings`);
+    if (!valueMatches(variable.type, action.value)) add(...where, id, 'variable-value-type', `the value must be a ${variable.type}`);
 }
 
 /**

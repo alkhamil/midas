@@ -8,7 +8,7 @@ export const PROTOTYPE_VERSION = 1;
 export const TRIGGERS = ['on-click', 'mouse-enter', 'mouse-leave', 'mouse-down', 'mouse-up', 'while-hovering', 'while-pressing', 'after-delay'];
 
 /** The actions a conditional's branches can hold. A conditional cannot hold another conditional. */
-export const PLAIN_ACTION_TYPES = ['navigate-to', 'back', 'open-link', 'open-overlay', 'close-overlay'];
+export const PLAIN_ACTION_TYPES = ['navigate-to', 'back', 'open-link', 'open-overlay', 'close-overlay', 'set-variable'];
 export const ACTION_TYPES = [...PLAIN_ACTION_TYPES, 'conditional'];
 
 /** The variable types a condition can compare, and the operators each allows. Booleans have no order. */

@@ -2,11 +2,13 @@
 // returns the new state and the effects the runtime must carry out. It starts no timers and touches no DOM: after-delay interactions
 // come back as `schedule` effects, and the runtime answers with a `timer` event when the delay has passed.
 //
-// State: { current: frameId, history: frameId[], overlays: { frameId, anchorId, placement, closeOnOutside }[] }. The history holds the frames to go
-// back to, last one on top; the overlays are the open frames, last one on top. An overlay is not a history step (decision 15).
+// State: { current: frameId, history: frameId[], overlays: { frameId, anchorId, placement, closeOnOutside }[], variables: { [variableId]: value } }.
+// The history holds the frames to go back to, last one on top; the overlays are the open frames, last one on top; an overlay is not a history step
+// (decision 15). The variables are the values Set variable has written in this Play session (decision 17): they override the document's values,
+// they are kept across navigation, and restart puts them back to the document's.
 // Effects: navigate { from, to, transition } · open-link { url } · schedule { nodeId, interactionId, delayMs } · open-overlay { ...overlay, transition }
 // · close-overlay { frameId }.
-// A conditional runs the actions of its branch that holds when the trigger fires; variable values come from the context.
+// A conditional runs the actions of its branch that holds when the trigger fires; variable values come from the state, then the context.
 import { chooseBranch } from './conditional.js';
 
 /** The interaction triggers a pointer event starts. `mouse-enter` also starts while-hovering, `mouse-down` also while-pressing. */
@@ -15,17 +17,17 @@ const INSTANT = { type: 'instant', durationMs: 0 };
 
 /**
  * @typedef {{ frameId: string, anchorId: string, placement: string, closeOnOutside: boolean }} Overlay
- * @typedef {{ current: string, history: string[], overlays: Overlay[] }} PlayerState
+ * @typedef {{ current: string, history: string[], overlays: Overlay[], variables: Record<string, any> }} PlayerState
  * @typedef {{ interactionsOf: (nodeId: string) => any[], frameOf: (nodeId: string) => string | null, nodesOf: (frameId: string) => { id: string, interactions: any[] }[], valueOf: (nodeId: string, variableId: string) => any }} PlayerContext
  */
 
 /**
- * The state a player starts in: on the start frame, with nothing behind it and nothing open.
+ * The state a player starts in: on the start frame, with nothing behind it, nothing open and no variable written.
  * @param {string} startFrameId
  * @returns {PlayerState}
  */
 export function createPlayer(startFrameId) {
-    return { current: startFrameId, history: [], overlays: [] };
+    return { current: startFrameId, history: [], overlays: [], variables: {} };
 }
 
 /**
@@ -36,7 +38,7 @@ export function createPlayer(startFrameId) {
  * @returns {{ state: PlayerState, effects: any[] }}
  */
 export function respond(state, event, ctx) {
-    if (event.type === 'restart') return moveTo(state, { current: event.startFrameId, history: [], overlays: [] }, ctx, INSTANT);
+    if (event.type === 'restart') return moveTo(state, { current: event.startFrameId, history: [], overlays: [], variables: {} }, ctx, INSTANT);
     if (event.type === 'back') return backOf(state, ctx);
     if (event.type === 'navigate') {
         if (event.frameId === state.current) return { state, effects: [] };
@@ -74,7 +76,7 @@ function runAction(state, action, ctx, nodeId) {
     if (action?.type === 'conditional') {
         let next = state;
         const effects = [];
-        for (const nested of chooseBranch(action, variableId => ctx.valueOf(nodeId, variableId))) {
+        for (const nested of chooseBranch(action, variableId => valueIn(state, ctx, nodeId, variableId))) {
             const result = runAction(next, nested, ctx, nodeId);
             next = result.state;
             effects.push(...result.effects);
@@ -86,7 +88,19 @@ function runAction(state, action, ctx, nodeId) {
     if (action?.type === 'open-link') return { state, effects: [{ type: 'open-link', url: action.url }] };
     if (action?.type === 'open-overlay') return openOverlay(state, action, nodeId);
     if (action?.type === 'close-overlay') return closeTop(state);
+    if (action?.type === 'set-variable') return { state: { ...state, variables: { ...state.variables, [action.variableId]: action.value } }, effects: [] };
     return { state, effects: [] };
+}
+
+/**
+ * A variable's value at this point of the session: what Set variable wrote, else the value the document gives the node.
+ * @param {PlayerState} state
+ * @param {PlayerContext} ctx
+ * @param {string} nodeId
+ * @param {string} variableId
+ */
+function valueIn(state, ctx, nodeId, variableId) {
+    return Object.hasOwn(state.variables, variableId) ? state.variables[variableId] : ctx.valueOf(nodeId, variableId);
 }
 
 /**
@@ -128,21 +142,23 @@ function closeOutside(state, nodeId, ctx) {
 }
 
 /**
- * Moves to another state and reports the navigation, plus the after-delay interactions of the arriving frame as schedules.
+ * Moves to another state and reports the navigation, plus the after-delay interactions of the arriving frame as schedules. The variables
+ * written so far stay unless the move gives its own (restart).
  * @param {PlayerState} from the state before the move
- * @param {PlayerState} to the state after the move
+ * @param {Omit<PlayerState, 'variables'> & { variables?: Record<string, any> }} to the state after the move
  * @param {PlayerContext} ctx
  * @param {any} transition
  * @returns {{ state: PlayerState, effects: any[] }}
  */
 function moveTo(from, to, ctx, transition) {
-    const effects = [{ type: 'navigate', from: from.current, to: to.current, transition: transition ?? INSTANT }];
-    for (const node of ctx.nodesOf(to.current)) {
+    const next = { ...to, variables: to.variables ?? from.variables };
+    const effects = [{ type: 'navigate', from: from.current, to: next.current, transition: transition ?? INSTANT }];
+    for (const node of ctx.nodesOf(next.current)) {
         for (const interaction of node.interactions) {
             if (interaction.trigger?.type === 'after-delay') effects.push({ type: 'schedule', nodeId: node.id, interactionId: interaction.id, delayMs: interaction.trigger.delayMs });
         }
     }
-    return { state: to, effects };
+    return { state: next, effects };
 }
 
 /**

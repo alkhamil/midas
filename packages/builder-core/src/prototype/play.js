@@ -190,6 +190,11 @@ export function interactionPatch(interaction, field, value, { firstDestination, 
                 if (!firstDestination) throw new Error('There is no top-level frame to open.');
                 return { action: { type: 'open-overlay', destinationId: firstDestination, placement: 'center', closeOnOutside: true, transition: { type: 'instant', durationMs: 0 } } };
             }
+            if (value === 'set-variable') {
+                const variable = defaultVariableOf(variables);
+                if (!variable) throw new Error('There is no boolean, number or string variable to set.');
+                return { action: { type: 'set-variable', variableId: variable.id, value: valueOfType(variable.type, '') } };
+            }
             if (value === 'close-overlay') {
                 if (CONTINUOUS.includes(interaction.trigger?.type)) throw new Error('While hovering and while pressing cannot close an overlay.');
                 return { action: { type: 'close-overlay' } };
@@ -210,6 +215,18 @@ export function interactionPatch(interaction, field, value, { firstDestination, 
         case 'duration':
             if (!transition) throw new Error('Choose a transition first.');
             return withTransition({ ...transition, durationMs: wholeNumber(value, 0, 'Duration') });
+        case 'variable': {
+            if (interaction.action?.type !== 'set-variable') throw new Error('Only Set variable has a variable.');
+            const variable = variables.find(v => v.id === value);
+            if (!variable) throw new Error('Choose a boolean, number or string variable.');
+            return { action: { type: 'set-variable', variableId: variable.id, value: valueOfType(variable.type, '') } };
+        }
+        case 'value': {
+            if (interaction.action?.type !== 'set-variable') throw new Error('Only Set variable has a value.');
+            const variable = variables.find(v => v.id === interaction.action.variableId);
+            if (!variable) throw new Error('The variable is missing.');
+            return { action: { ...interaction.action, value: valueOfType(variable.type, value) } };
+        }
         case 'placement':
             if (interaction.action?.type !== 'open-overlay') throw new Error('Only an overlay has a placement.');
             if (!OVERLAY_PLACEMENTS.includes(value)) throw new Error(`Placement must be one of ${OVERLAY_PLACEMENTS.join(', ')}.`);
@@ -226,6 +243,23 @@ export function interactionPatch(interaction, field, value, { firstDestination, 
         default:
             throw new Error(`Unknown field "${field}".`);
     }
+}
+
+/**
+ * A value of a variable's type from the text a panel field holds: a boolean is true or false, a number a finite number, a string the text itself.
+ * An empty text is the type's starting value.
+ * @param {string} type
+ * @param {string} text
+ */
+function valueOfType(type, text) {
+    if (type === 'boolean') return text === 'true';
+    if (type === 'number') {
+        if (text === '') return 0;
+        const n = Number(text);
+        if (!Number.isFinite(n)) throw new Error('The value must be a number.');
+        return n;
+    }
+    return text;
 }
 
 /**

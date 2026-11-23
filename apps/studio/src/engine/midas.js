@@ -10193,7 +10193,7 @@ function prototypeTabHtml(n) {
     const number = (key, label, id, value, where) => `<div class="cmp-prop2"><label>${label}</label><div class="cmp-ctl"><input class="cmp-input" type="number" min="0" data-pt="${key}" data-pt-id="${esc(id)}"${at(where)} value="${value}"></div></div>`;
     const button = (name, label, id, where) => `<button class="wide-button" data-pt-op="${name}" data-pt-id="${esc(id)}"${at(where)}>${label}</button>`;
     const triggers = [['on-click', 'On click'], ['mouse-enter', 'Mouse enter'], ['mouse-leave', 'Mouse leave'], ['mouse-down', 'Mouse down'], ['mouse-up', 'Mouse up'], ['while-hovering', 'While hovering'], ['while-pressing', 'While pressing'], ['after-delay', 'After delay']];
-    const actionTypes = [['navigate-to', 'Navigate to'], ['back', 'Back'], ['open-link', 'Open link'], ['conditional', 'Conditional'], ['open-overlay', 'Open overlay'], ['close-overlay', 'Close overlay'], ['swap', 'Swap overlay', true], ['scroll', 'Scroll to', true]];
+    const actionTypes = [['navigate-to', 'Navigate to'], ['back', 'Back'], ['open-link', 'Open link'], ['conditional', 'Conditional'], ['open-overlay', 'Open overlay'], ['close-overlay', 'Close overlay'], ['set-variable', 'Set variable'], ['swap', 'Swap overlay', true], ['scroll', 'Scroll to', true]];
     const nestedActionTypes = actionTypes.filter(([value]) => value !== 'conditional');
     const transitions = [['instant', 'Instant'], ['dissolve', 'Dissolve'], ['slide-in', 'Slide in'], ['push', 'Push']];
     const directions = [['left', 'Left'], ['right', 'Right'], ['top', 'Top'], ['bottom', 'Bottom']];
@@ -10214,6 +10214,10 @@ function prototypeTabHtml(n) {
             a.type === 'open-overlay' ? select('placement', 'Placement', id, [['center', 'Center'], ['below', 'Below trigger'], ['above', 'Above trigger']], a.placement, where) : '',
             a.type === 'open-overlay' ? select('close-outside', 'Close on outside click', id, [['true', 'Yes'], ['false', 'No']], String(a.closeOnOutside), where) : '',
             a.type === 'open-overlay' ? select('transition', 'Transition', id, [['instant', 'Instant'], ['dissolve', 'Dissolve']], t?.type ?? 'instant', where) : '',
+            // Set variable: the document variable it writes for the session, and the value typed by that variable (a boolean is a choice, a number or string a text).
+            a.type === 'set-variable' ? select('variable', 'Variable', id, variables.map(v => [v.id, v.name]), a.variableId, where) : '',
+            a.type === 'set-variable' && variables.find(v => v.id === a.variableId)?.type === 'boolean' ? select('value', 'Value', id, [['true', 'True'], ['false', 'False']], String(a.value), where) : '',
+            a.type === 'set-variable' && variables.find(v => v.id === a.variableId)?.type !== 'boolean' ? `<div class="cmp-prop2"><label>Value</label><div class="cmp-ctl"><input class="cmp-input" type="${variables.find(v => v.id === a.variableId)?.type === 'number' ? 'number' : 'text'}" data-pt="value" data-pt-id="${esc(id)}"${where ? ` data-pt-at="${esc(where.at)}"${where.index === undefined ? '' : ` data-pt-index="${where.index}"`}` : ''} value="${esc(a.value)}"></div></div>` : '',
         ].join('');
     };
     /** The actions of a branch (`b<i>`) or the else (`e`), each with its remove, and an add. */
