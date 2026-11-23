@@ -49,6 +49,9 @@ export const ICON_SET = [
     { name: 'ellipsis', role: 'ellipsis', closed: true, points: dot(5, 12, 2).points, contours: [dot(12, 12, 2), dot(19, 12, 2)] },
     // The magnifier: a ring (outer radius 7, the hole 5 about the centre) and its handle, which starts clear of the ring's outer edge.
     { name: 'search', role: 'search', closed: true, fillRule: 'evenodd', points: dot(11, 11, 7).points, contours: [dot(11, 11, 5), { points: [{ x: 16.94, y: 15.24 }, { x: 21.85, y: 20.15 }, { x: 20.15, y: 21.85 }, { x: 15.24, y: 16.94 }], closed: true }] },
+    // Pagination's previous and next: a chevron of a 2 unit stroke, pointing left and right (the right one is the left one mirrored).
+    { name: 'chevron-left', role: 'chevronLeft', closed: true, points: [{ x: 15.5, y: 4.5 }, { x: 17, y: 6 }, { x: 12, y: 11 }, { x: 12, y: 13 }, { x: 17, y: 18 }, { x: 15.5, y: 19.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 11.5 }] },
+    { name: 'chevron-right', role: 'chevronRight', closed: true, points: [{ x: 8.5, y: 4.5 }, { x: 7, y: 6 }, { x: 12, y: 11 }, { x: 12, y: 13 }, { x: 7, y: 18 }, { x: 8.5, y: 19.5 }, { x: 15.5, y: 12.5 }, { x: 15.5, y: 11.5 }] },
     // The solar eye glyph (CC BY 4.0), converted losslessly: every sub-path with its handles, the even-odd fill rule.
     {
         name: 'eye', role: 'eyeOn', closed: true, fillRule: 'evenodd',

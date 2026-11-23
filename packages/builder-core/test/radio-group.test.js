@@ -1,0 +1,47 @@
+// Radio Group: a frame that lays its Radio instances out in a row or a column. Direction writes the frame's layout; Size sets the gap between the options.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { TEMPLATES } from '../src/behavior-engine/registry.js';
+import { validateTemplateSchema } from '../src/behavior-engine/validate-schema.js';
+import { generateComponent, componentNameOf } from '../src/behavior-engine/codegen.js';
+import { modelFor, instanceFor } from './helpers/box-template.js';
+
+const group = TEMPLATES.get('antd-radio-group');
+const model = modelFor(group);
+
+test('Radio Group is registered, valid, and takes Size from the variable collection, the rest from literals', () => {
+    assert.ok(group, 'Radio Group is in the registry');
+    assert.equal(group.name, 'Radio Group');
+    assert.deepEqual(validateTemplateSchema(group, { templateIds: new Set(TEMPLATES.keys()) }), []);
+    assert.deepEqual(Object.keys(group.props).sort(), ['direction', 'size']);
+    assert.equal(group.props.size.source, 'variable');
+    assert.equal(group.props.direction.source, 'literal');
+});
+
+test('the options are Radio instances only, held in the options frame; the group starts with none', () => {
+    const items = group.slots.find(s => s.id === 'items');
+    assert.equal(items.holds, 'content', 'a box slot holds content; accepts and onlyAccepts restrict it to Radios');
+    assert.deepEqual(items.accepts, ['radio']);
+    assert.equal(items.onlyAccepts, true);
+    assert.equal(items.box, 'options', 'the options frame is the slot box, so the Radios sit in it');
+    assert.equal(items.seed, undefined, 'a box slot is not seeded');
+});
+
+test('Direction writes the options frame layout; horizontal is the default, as antd', () => {
+    assert.equal(group.props.direction.default, 'horizontal');
+    assert.deepEqual(group.props.direction.node, { key: 'options', field: 'layout' });
+    const layout = props => instanceFor(model, props).find(n => n.name === 'options').layout;
+    assert.equal(layout({ direction: 'horizontal' }), 'horizontal');
+    assert.equal(layout({ direction: 'vertical' }), 'vertical');
+});
+
+test('the gap between the options is a Size token', () => {
+    assert.deepEqual(group.display.options, { gap: 'gap' });
+    assert.deepEqual(Object.keys(group.tokenRoles.gap).sort(), ['default', 'lg', 'md', 'sm', 'xl', 'xs']);
+});
+
+test('the export draws the options frame with the gap token, and takes the direction as its own prop', () => {
+    const files = generateComponent(group, model.binding, model.variables, componentNameOf(group), model.frame, () => []).files;
+    assert.match(files['RadioGroup.css'], /\.antd-radio-group-options \{\s*gap: var\(--antd-radio-group-gap\)/);
+    assert.match(files['RadioGroup.tsx'], /direction = "horizontal"/);
+});

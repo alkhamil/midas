@@ -52,7 +52,9 @@ Referensi struktur: `D:\antd-ref\components\<nama>` (read-only).
 | 4 | Spin, Empty, Search Field | ✅ Kode, test unit, dan browser lulus (2026-11-19). |
 | 5a | Statistic (Tier 0) | 🟡 Kode, template, unit test, conformance ada (2026-11-19). Browser: lebar root sudah sama (tes menunggu font); belum lulus karena crop tidak sama dan glyph ikon suffix di dalam valueBox tidak di-scale di canvas. Size xs sampai xl. |
 | 5b | Progress (Tier 0) | ⛔ Diblokir: butuh lebar dalam persen dari parent (bar), belum ada di model sizing node. Perlu keputusan. |
-| 5+ | Select, Dialog, Tabs, Table, Pagination, Radio.Group, dll. | ❌ Belum ada template. Daftar lengkap dan urutan ada di `docs/specs/web-components.md` (P1 dulu). |
+| A | Pagination, Breadcrumb, Table Toolbar | 🟡 Kode, template, unit test, conformance (2026-11-23). Browser parity lulus (`navigation-toolbar.browser.test.mjs`). Pagination menampilkan halaman sebagai teks (tanpa daftar tombol halaman). Breadcrumb tiga item tetap dengan separator statis "/". Table Toolbar: Filters menunggu Select. |
+| A (ditunda) | Radio Group | ⏸ Ditunda sampai Fase 2 (Prototype) selesai. Kode ada, tetapi belum ada state pilihan tunggal dan opsi dari data. Rencana: prop `options` (daftar) dan `value`, dengan sync instance dan single-select di Play dan export. Browser parity belum dibuat. |
+| 5+ | Select, Dialog, Tabs, Table, dll. | ❌ Belum ada template. Daftar lengkap dan urutan ada di `docs/specs/web-components.md` (P1 dulu). |
 
 Per component, selesai kalau:
 - [ ] Schema JSON (collections, persistent props, slots, features)
