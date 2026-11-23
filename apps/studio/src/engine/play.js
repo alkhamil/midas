@@ -3,7 +3,7 @@
 // through the player, so the history stays consistent. Play reads the document and never writes it: the view settings live in the
 // browser (localStorage), not in the document. The chrome (top bar, bottom controls) hides on a click that triggers nothing, and
 // Ctrl+\ pins it hidden.
-import { counterLabel, toDomTree, createPlayer, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES, showWave, flipToggle, applyPress, blurNumber, forwardFocus, startResizeDrag, strokeAreaAtSize, paintLayerOf, gradientRaster } from '@midas/builder-core';
+import { counterLabel, toDomTree, createPlayer, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES, showWave, flipToggle, applyPress, blurNumber, forwardFocus, startResizeDrag, strokeAreaAtSize, paintLayerOf, gradientRaster, overlayPlacement } from '@midas/builder-core';
 import { applyStyle } from './styleApply.js';
 
 /** Data URLs of the gradient rasters of angular and diamond strokes, by paint and size: the same paint at the same size is drawn once. */
@@ -111,6 +111,10 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
     const prefs = loadPlayPrefs();
     let state = createPlayer(startFrameId);
     let frameId = startFrameId;
+    // The styles of the frame on screen. Each open overlay adds its own frame's styles after them (see renderOverlays).
+    let baseStyles = '';
+    // The frame an overlay that dissolves in is opening now (set by apply, spent by renderOverlays).
+    let fadingIn = null;
     let flowStart = startFrameId;
     let menu = null;
     let chrome = { visible: true, pinnedHidden: false };
@@ -254,7 +258,8 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
     function renderFrame(id, transition) {
         const { root, styles, unsupported, problems } = toDomTree(data, id, { responsive: prefs.mode === 'responsive' });
         frameId = id;
-        styleEl.textContent = styles ?? '';
+        baseStyles = styles ?? '';
+        styleEl.textContent = baseStyles;
         badge.hidden = !unsupported.length && !problems.length;
         badge.textContent = problems.length
             ? `Cannot draw this frame: ${problems.map(p => p.reason ?? p.dimension ?? p.state ?? 'problem').join(', ')}`
@@ -284,6 +289,44 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
             stage.replaceChildren(next);
         }
         layout();
+    }
+
+    /**
+     * Draws the open overlays on the stage, the last one on top. Each is its frame, placed centred or against the trigger's layer (overlayPlacement),
+     * in the stage's own units; its styles follow the frame on screen. Redrawn after every change of the state, so an overlay the state no longer
+     * holds is removed. An overlay that dissolves in fades from transparent (the effect that opened it says so: `fadingIn`).
+     */
+    function renderOverlays() {
+        for (const el of stage.querySelectorAll(':scope > .play-overlay-frame')) el.remove();
+        const styles = [baseStyles];
+        const stageRect = stage.getBoundingClientRect();
+        const scale = stage.offsetWidth ? stageRect.width / stage.offsetWidth : 1;
+        const stageSize = { w: stage.offsetWidth, h: stage.offsetHeight };
+        state.overlays.forEach((open, index) => {
+            const { root, styles: own } = toDomTree(data, open.frameId, { responsive: prefs.mode === 'responsive' });
+            if (!root) return;
+            styles.push(own ?? '');
+            const el = mount(root);
+            el.classList.add('play-overlay-frame');
+            el.dataset.frame = open.frameId;
+            const size = nodeById.get(open.frameId) ?? { w: 0, h: 0 };
+            const anchorEl = open.placement === 'center' ? null : stage.querySelector(`:scope > .play-frame [data-node-id="${open.anchorId}"]`);
+            let anchor = null;
+            if (anchorEl) {
+                const r = anchorEl.getBoundingClientRect();
+                anchor = { x: (r.left - stageRect.left) / scale, y: (r.top - stageRect.top) / scale, w: r.width / scale, h: r.height / scale };
+            }
+            const at = overlayPlacement({ placement: open.placement, overlay: { w: size.w, h: size.h }, stage: stageSize, anchor });
+            Object.assign(el.style, { position: 'absolute', left: `${Math.round(at.x)}px`, top: `${Math.round(at.y)}px`, zIndex: String(10 + index) });
+            if (open.frameId === fadingIn) {
+                el.style.transition = 'opacity 200ms ease';
+                el.style.opacity = '0';
+                requestAnimationFrame(() => requestAnimationFrame(() => { el.style.opacity = ''; }));
+            }
+            stage.append(el);
+        });
+        fadingIn = null;
+        styleEl.textContent = styles.join('\n');
     }
 
     /**
@@ -358,6 +401,10 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
             timers.clear();
             renderFrame(navigation.to, navigation.transition);
         }
+        // Overlays are drawn after the frame, so a navigation (which replaces the frame) keeps them only when the state does.
+        const opened = effects.find(e => e.type === 'open-overlay');
+        fadingIn = opened?.transition?.type === 'dissolve' ? opened.frameId : null;
+        renderOverlays();
         for (const e of effects) {
             if (e.type === 'open-link') window.open(e.url, '_blank', 'noopener');
         }
@@ -555,6 +602,9 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
         if (e.detail === 0) press = null;
         // A link draws its href, but a click in Play stays in Play: the stage is not a page to leave.
         if (e.target.closest?.('.play-stage a[href]')) e.preventDefault();
+        // A click on the stage where no layer is (the frame's empty area, or the overlay's) is a click outside every layer: it closes the topmost
+        // overlay that closes on outside clicks. A click on a layer is answered by that layer's own listener.
+        if (state.overlays.length && e.target.closest?.('.play-stage') && !e.target.closest('[data-node-id]')) dispatch({ type: 'pointer', nodeId: null, trigger: 'on-click' });
         finishPress();
         const waveHost = e.target.closest?.('.play-stage [data-wave]');
         if (waveHost && !waveHost.hasAttribute('data-blocked')) showWave(waveHost);

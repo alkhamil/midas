@@ -49,6 +49,7 @@ Source of truth for the Prototype feature (phase 1: Figma-style interactions and
 - Transitions: `transitionCss` gives the duration, the easing, and the starting state of the entering frame.
 - Layers the DOM does not draw are counted in the toolbar, not dropped silently.
 - The frame is drawn at the scaling mode set in the view menu (see Play viewer). There is no zoom step.
+- Overlays (decisions 15 and 16): an open overlay is drawn on the stage after the frame, the last on top, placed by `overlayPlacement` (centred, or against the trigger's layer below or above it, 8 px apart, kept inside the stage). A click on the stage where no layer is closes the topmost overlay that closes on outside clicks. A dissolve fades the overlay in over 200 ms. `browser: overlay.browser.test.mjs`.
 - Esc exits. Alt+Enter opens Play when no other Play is open (Alt+Enter was free).
 
 ## Play viewer (Figma-style)
