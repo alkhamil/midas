@@ -10188,7 +10188,9 @@ function prototypeTabHtml(n) {
     const variables = conditionVariables();
     const options = (list, current) => list.map(([value, label, unavailable]) => `<option value="${esc(value)}"${value === current ? ' selected' : ''}${unavailable ? ' disabled' : ''}>${esc(label)}</option>`).join('');
     // Where a control sits: its part of a conditional (`b<i>` a branch, `e` the else), and the index of its action in that list.
-    const at = where => (where ? ` data-pt-at="${esc(where.at)}"${where.index === undefined ? '' : ` data-pt-index="${where.index}"`}` : '');
+    // The action a row is drawn for (its index in the interaction's list) is set by the row loop; every control names it.
+    let rowAction = 0;
+    const at = where => ` data-pt-action="${rowAction}"` + (where ? ` data-pt-at="${esc(where.at)}"${where.index === undefined ? '' : ` data-pt-index="${where.index}"`}` : '');
     const select = (key, label, id, list, current, where) => `<div class="cmp-prop2"><label>${label}</label><div class="cmp-ctl"><select class="cmp-input" data-pt="${key}" data-pt-id="${esc(id)}"${at(where)}>${options(list, current)}</select></div></div>`;
     const number = (key, label, id, value, where) => `<div class="cmp-prop2"><label>${label}</label><div class="cmp-ctl"><input class="cmp-input" type="number" min="0" data-pt="${key}" data-pt-id="${esc(id)}"${at(where)} value="${value}"></div></div>`;
     const button = (name, label, id, where) => `<button class="wide-button" data-pt-op="${name}" data-pt-id="${esc(id)}"${at(where)}>${label}</button>`;
@@ -10239,11 +10241,18 @@ function prototypeTabHtml(n) {
     const elseHtml = (id, c) => (c.else === undefined ? '' : `<div class="cmp-props"><div class="cmp-prop2"><label>Else</label><div class="cmp-ctl">${button('else-remove', 'Remove else', id, { at: 'e' })}</div></div></div>${actionsHtml(id, c.else, 'e')}`);
     const conditionalHtml = (id, c) => `${branchesHtml(id, c)}${elseHtml(id, c)}<div class="cmp-props"><div class="cmp-prop2"><label></label><div class="cmp-ctl">${button('branch-add', 'Add branch', id)}${c.else === undefined ? button('else-add', 'Add else', id) : ''}</div></div></div>`;
     const rows = (n.prototype?.interactions ?? []).map(i => {
+        const actions = i.actions.map((a, k) => {
+            rowAction = k;
+            const ops = `<div class="cmp-prop2"><label></label><div class="cmp-ctl">${button('top-up', 'Up', i.id)}${button('top-down', 'Down', i.id)}${button('top-remove', 'Remove action', i.id)}</div></div>`;
+            const block = `<div class="cmp-props" data-pt-action-row="${k}">${actionFields(i.id, a, undefined, actionTypes)}${a.type === 'conditional' ? conditionalHtml(i.id, a) : ''}${ops}</div>`;
+            rowAction = 0;
+            return block;
+        }).join('');
         const parts = [
             select('trigger', 'Trigger', i.id, triggers, i.trigger.type),
             i.trigger.type === 'after-delay' ? number('delay', 'Delay (ms)', i.id, i.trigger.delayMs) : '',
-            actionFields(i.id, i.action, undefined, actionTypes),
-            i.action.type === 'conditional' ? conditionalHtml(i.id, i.action) : '',
+            actions,
+            `<div class="cmp-props">${button('action-append', 'Add action', i.id)}</div>`,
             `<div class="cmp-prop2"><label></label><div class="cmp-ctl"><button class="wide-button" data-pt-remove="${esc(i.id)}">Remove</button></div></div>`,
         ];
         return `<div class="cmp-props" data-pt-row="${esc(i.id)}">${parts.join('')}</div>`;
@@ -10297,12 +10306,13 @@ document.addEventListener('change', e => {
     try {
         const at = el.dataset.ptAt;
         if (at === undefined) {
-            const patch = interactionPatch(i, el.dataset.pt, el.value, interactionContext());
+            const patch = interactionPatch(i, el.dataset.pt, el.value, { ...interactionContext(), index: Number(el.dataset.ptAction ?? 0) });
             transaction('Edit interaction', () => { n.prototype = editInteraction(n.prototype, i.id, patch); doc.touch(n); });
         }
         else {
-            const action = nestedPatch(i, el.dataset.pt, el.value, at, el.dataset.ptIndex, interactionContext());
-            transaction('Edit interaction', () => { n.prototype = editInteraction(n.prototype, i.id, { action }); doc.touch(n); });
+            const k = Number(el.dataset.ptAction ?? 0);
+            const cond = nestedPatch(i.actions[k], el.dataset.pt, el.value, at, el.dataset.ptIndex, interactionContext());
+            transaction('Edit interaction', () => { n.prototype = editInteraction(n.prototype, i.id, { actions: i.actions.map((a, j) => (j === k ? cond : a)) }); doc.touch(n); });
         }
     } catch (err) {
         toast(err.message);
@@ -10332,8 +10342,18 @@ document.addEventListener('click', e => {
     try {
         const { firstDestination, variables } = interactionContext();
         if (!firstDestination) throw new Error('There is no top-level frame to navigate to.');
-        const action = conditionalOp(i.action, op.dataset.ptOp, { at: op.dataset.ptAt, index: op.dataset.ptIndex, navigate: navigateTo(firstDestination), variable: defaultVariableOf(variables) });
-        transaction('Edit conditional', () => { n.prototype = editInteraction(n.prototype, i.id, { action }); doc.touch(n); });
+        const k = Number(op.dataset.ptAction ?? 0);
+        const actions = [...i.actions];
+        if (op.dataset.ptOp === 'action-append') actions.push(navigateTo(firstDestination));
+        else if (op.dataset.ptOp === 'top-up' && k > 0) [actions[k - 1], actions[k]] = [actions[k], actions[k - 1]];
+        else if (op.dataset.ptOp === 'top-down' && k < actions.length - 1) [actions[k + 1], actions[k]] = [actions[k], actions[k + 1]];
+        else if (op.dataset.ptOp === 'top-remove') {
+            if (actions.length === 1) throw new Error('An interaction needs at least one action.');
+            actions.splice(k, 1);
+        }
+        else if (op.dataset.ptAt === undefined && op.dataset.ptOp.startsWith('top-')) return;
+        else actions[k] = conditionalOp(i.actions[k], op.dataset.ptOp, { at: op.dataset.ptAt, index: op.dataset.ptIndex, navigate: navigateTo(firstDestination), variable: defaultVariableOf(variables) });
+        transaction('Edit interaction', () => { n.prototype = editInteraction(n.prototype, i.id, { actions }); doc.touch(n); });
     }
     catch (err) {
         toast(err.message);

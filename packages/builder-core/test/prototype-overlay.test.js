@@ -9,7 +9,7 @@ import { PLAIN_ACTION_TYPES, ACTION_TYPES } from '../src/prototype/data.js';
 
 const frame = (id, extra = {}) => ({ id, name: id, type: 'frame', parentId: null, ...extra });
 const layer = (id, parentId, extra = {}) => ({ id, name: id, type: 'rectangle', parentId, ...extra });
-const proto = interactions => ({ version: 1, interactions });
+const proto = interactions => ({ version: 2, interactions });
 const doc = pages => ({ pages });
 const codesOf = d => validatePrototype(d).map(p => p.code);
 const overlay = (destinationId, extra = {}) => ({ type: 'open-overlay', destinationId, placement: 'center', closeOnOutside: true, transition: { type: 'instant', durationMs: 0 }, ...extra });
@@ -18,10 +18,10 @@ const navigate = destinationId => ({ type: 'navigate-to', destinationId, transit
 // A base frame A holds a button b (navigates to B) and an on-click that opens the overlay O; O is a top-level frame; B is another frame.
 const base = () => doc([{ id: 'p', name: 'P', nodes: [
     frame('A', { prototype: proto([
-        { id: 'i-open', trigger: { type: 'on-click' }, action: overlay('O') },
-        { id: 'i-hover', trigger: { type: 'while-hovering' }, action: overlay('O') },
+        { id: 'i-open', trigger: { type: 'on-click' }, actions: [overlay('O')] },
+        { id: 'i-hover', trigger: { type: 'while-hovering' }, actions: [overlay('O')] },
     ]) }),
-    layer('b', 'A', { prototype: proto([{ id: 'i-b', trigger: { type: 'on-click' }, action: navigate('B') }]) }),
+    layer('b', 'A', { prototype: proto([{ id: 'i-b', trigger: { type: 'on-click' }, actions: [navigate('B')] }]) }),
     frame('B'),
     frame('O'),
 ] }]);
@@ -47,18 +47,18 @@ test('open-overlay and close-overlay are plain actions, so a conditional may hol
 
 test('a valid open-overlay to a top-level frame, and a close-overlay, are valid', () => {
     const d = base();
-    d.pages[0].nodes[0].prototype.interactions.push({ id: 'i-close', trigger: { type: 'on-click' }, action: { type: 'close-overlay' } });
+    d.pages[0].nodes[0].prototype.interactions.push({ id: 'i-close', trigger: { type: 'on-click' }, actions: [{ type: 'close-overlay' }] });
     d.pages[0].nodes[0].prototype.interactions = d.pages[0].nodes[0].prototype.interactions.filter(i => i.id !== 'i-hover');
     assert.deepEqual(validatePrototype(d), []);
 });
 
 test('the overlay destination must be a top-level frame, and it must exist', () => {
     const missing = base();
-    missing.pages[0].nodes[0].prototype.interactions[1].action = overlay('nope');
+    missing.pages[0].nodes[0].prototype.interactions[1].actions[0] = overlay('nope');
     missing.pages[0].nodes[0].prototype.interactions[1].trigger = { type: 'on-click' };
     assert.deepEqual(codesOf(missing), ['destination-missing']);
     const notFrame = base();
-    notFrame.pages[0].nodes[0].prototype.interactions[1].action = overlay('b');
+    notFrame.pages[0].nodes[0].prototype.interactions[1].actions[0] = overlay('b');
     notFrame.pages[0].nodes[0].prototype.interactions[1].trigger = { type: 'on-click' };
     assert.deepEqual(codesOf(notFrame), ['destination-not-frame']);
 });
@@ -70,12 +70,12 @@ test('placement is center, below or above; closeOnOutside is a boolean; the tran
         [overlay('O', { transition: { type: 'slide-in', direction: 'left', durationMs: 200 } }), 'overlay-transition'],
     ]) {
         const d = base();
-        d.pages[0].nodes[0].prototype.interactions = [{ id: 'i-open', trigger: { type: 'on-click' }, action }];
+        d.pages[0].nodes[0].prototype.interactions = [{ id: 'i-open', trigger: { type: 'on-click' }, actions: [action] }];
         assert.deepEqual(codesOf(d), [code]);
     }
     for (const placement of ['center', 'below', 'above']) {
         const d = base();
-        d.pages[0].nodes[0].prototype.interactions = [{ id: 'i-open', trigger: { type: 'on-click' }, action: overlay('O', { placement }) }];
+        d.pages[0].nodes[0].prototype.interactions = [{ id: 'i-open', trigger: { type: 'on-click' }, actions: [overlay('O', { placement })] }];
         assert.deepEqual(codesOf(d), [], placement);
     }
 });
@@ -86,7 +86,7 @@ test('an overlay cannot run on while-hovering, as a navigation cannot', () => {
 
 test('the open-overlay fields are the ones listed: an extra field is refused', () => {
     const d = base();
-    d.pages[0].nodes[0].prototype.interactions = [{ id: 'i-open', trigger: { type: 'on-click' }, action: overlay('O', { zIndex: 3 }) }];
+    d.pages[0].nodes[0].prototype.interactions = [{ id: 'i-open', trigger: { type: 'on-click' }, actions: [overlay('O', { zIndex: 3 })] }];
     assert.deepEqual(codesOf(d), ['action-shape']);
 });
 
@@ -101,7 +101,7 @@ test('open-overlay puts the frame on top with its anchor; the frame underneath s
 
 test('opening a frame that is already open changes nothing (an overlay that stays open on outside clicks)', () => {
     const d = base();
-    d.pages[0].nodes[0].prototype.interactions = [{ id: 'i-open', trigger: { type: 'on-click' }, action: overlay('O', { closeOnOutside: false }) }];
+    d.pages[0].nodes[0].prototype.interactions = [{ id: 'i-open', trigger: { type: 'on-click' }, actions: [overlay('O', { closeOnOutside: false })] }];
     const c = ctx(d);
     const once = respond(createPlayer('A'), { type: 'pointer', nodeId: 'A', trigger: 'on-click' }, c).state;
     const twice = respond(once, { type: 'pointer', nodeId: 'A', trigger: 'on-click' }, c);
@@ -130,7 +130,7 @@ test('a navigation clears the overlays and is a history step; restart clears the
 
 test('a click outside a closeOnOutside overlay closes it; a click inside it does not', () => {
     const d = base();
-    d.pages[0].nodes[0].prototype.interactions = [{ id: 'i-open', trigger: { type: 'on-click' }, action: overlay('O') }];
+    d.pages[0].nodes[0].prototype.interactions = [{ id: 'i-open', trigger: { type: 'on-click' }, actions: [overlay('O')] }];
     d.pages[0].nodes.push(layer('o1', 'O'), layer('x', 'A'));
     const c = ctx(d);
     const open = respond(createPlayer('A'), { type: 'pointer', nodeId: 'A', trigger: 'on-click' }, c).state;
@@ -144,7 +144,7 @@ test('a click outside a closeOnOutside overlay closes it; a click inside it does
 
 test('an overlay with closeOnOutside off stays open when the click lands outside it', () => {
     const d = base();
-    d.pages[0].nodes[0].prototype.interactions = [{ id: 'i-open', trigger: { type: 'on-click' }, action: overlay('O', { closeOnOutside: false }) }];
+    d.pages[0].nodes[0].prototype.interactions = [{ id: 'i-open', trigger: { type: 'on-click' }, actions: [overlay('O', { closeOnOutside: false })] }];
     d.pages[0].nodes.push(layer('x', 'A'));
     const c = ctx(d);
     const open = respond(createPlayer('A'), { type: 'pointer', nodeId: 'A', trigger: 'on-click' }, c).state;
@@ -155,7 +155,7 @@ test('an overlay with closeOnOutside off stays open when the click lands outside
 test('a conditional may open an overlay', () => {
     const d = base();
     d.variables = { collections: [], items: [{ id: 'v', name: 'flag', type: 'boolean' }] };
-    d.pages[0].nodes[0].prototype.interactions = [{ id: 'i-open', trigger: { type: 'on-click' }, action: { type: 'conditional', branches: [{ condition: { variableId: 'v', operator: '==', value: true }, actions: [overlay('O')] }], else: [navigate('B')] } }];
+    d.pages[0].nodes[0].prototype.interactions = [{ id: 'i-open', trigger: { type: 'on-click' }, actions: [{ type: 'conditional', branches: [{ condition: { variableId: 'v', operator: '==', value: true }, actions: [overlay('O')] }], else: [navigate('B')] }] }];
     const { state } = respond(createPlayer('A'), { type: 'pointer', nodeId: 'A', trigger: 'on-click' }, ctx(d, () => true));
     assert.deepEqual(state.overlays.map(o => o.frameId), ['O']);
 });

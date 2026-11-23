@@ -12,7 +12,7 @@ const navigate = destinationId => ({ type: 'navigate-to', destinationId, transit
 const doc = (interactions, extra = {}) => ({
     variables: VARIABLES,
     pages: [{ id: 'p', name: 'P', nodes: [
-        { id: 'A', name: 'A', type: 'frame', parentId: null, prototype: { version: 1, interactions } },
+        { id: 'A', name: 'A', type: 'frame', parentId: null, prototype: { version: 2, interactions } },
         { id: 'B', name: 'B', type: 'frame', parentId: null },
         ...(extra.nodes ?? []),
     ] }],
@@ -30,13 +30,13 @@ const ctxOf = (d, valueOf = () => undefined) => {
 const click = { type: 'pointer', nodeId: 'A', trigger: 'on-click' };
 
 test('a Set variable action is valid for a boolean, number or string variable of the document, and its value has the variable\'s type', () => {
-    assert.deepEqual(validatePrototype(doc([{ id: 'i', trigger: { type: 'on-click' }, action: setVar('flag', true) }])), []);
-    assert.deepEqual(validatePrototype(doc([{ id: 'i', trigger: { type: 'on-click' }, action: setVar('count', 3) }])), []);
-    assert.deepEqual(validatePrototype(doc([{ id: 'i', trigger: { type: 'on-click' }, action: setVar('name', 'Ada') }])), []);
+    assert.deepEqual(validatePrototype(doc([{ id: 'i', trigger: { type: 'on-click' }, actions: [setVar('flag', true)] }])), []);
+    assert.deepEqual(validatePrototype(doc([{ id: 'i', trigger: { type: 'on-click' }, actions: [setVar('count', 3)] }])), []);
+    assert.deepEqual(validatePrototype(doc([{ id: 'i', trigger: { type: 'on-click' }, actions: [setVar('name', 'Ada')] }])), []);
 });
 
 test('an unknown variable, a variable of another type, or a value of the wrong type is refused', () => {
-    const codes = action => validatePrototype(doc([{ id: 'i', trigger: { type: 'on-click' }, action }])).map(p => p.code);
+    const codes = action => validatePrototype(doc([{ id: 'i', trigger: { type: 'on-click' }, actions: [action] }])).map(p => p.code);
     assert.deepEqual(codes(setVar('nope', true)), ['variable-missing']);
     assert.deepEqual(codes(setVar('flag', 'yes')), ['variable-value-type']);
     assert.deepEqual(codes({ type: 'set-variable', variableId: 'flag' }), ['variable-value-type'], 'a missing value is a value of the wrong type');
@@ -45,7 +45,7 @@ test('an unknown variable, a variable of another type, or a value of the wrong t
 
 test('the player writes the value for the session: the next conditional reads it, and the document is unchanged', () => {
     const cond = { type: 'conditional', branches: [{ condition: { variableId: 'flag', operator: '==', value: true }, actions: [navigate('B')] }], else: [navigate('A')] };
-    const d = doc([{ id: 'set', trigger: { type: 'on-click' }, action: setVar('flag', true) }, { id: 'go', trigger: { type: 'on-click' }, action: cond }]);
+    const d = doc([{ id: 'set', trigger: { type: 'on-click' }, actions: [setVar('flag', true)] }, { id: 'go', trigger: { type: 'on-click' }, actions: [cond] }]);
     const before = JSON.stringify(d);
     const c = ctxOf(d, () => false);
     const after = respond(createPlayer('A'), click, c).state;
@@ -65,24 +65,24 @@ test('navigation keeps the written values; restart puts them back to the documen
 });
 
 test('the Play runtime gives a written value to a conditional on a timer as well as on a click', () => {
-    const d = doc([{ id: 'timer', trigger: { type: 'after-delay', delayMs: 100 }, action: setVar('count', 5) }]);
+    const d = doc([{ id: 'timer', trigger: { type: 'after-delay', delayMs: 100 }, actions: [setVar('count', 5)] }]);
     const state = respond(createPlayer('A'), { type: 'timer', nodeId: 'A', interactionId: 'timer' }, ctxOf(d)).state;
     assert.equal(state.variables.count, 5);
 });
 
 test('the panel: Set variable takes the first variable of the document, and its value is typed by the variable', () => {
-    const interaction = { id: 'i', trigger: { type: 'on-click' }, action: { type: 'back' } };
+    const interaction = { id: 'i', trigger: { type: 'on-click' }, actions: [{ type: 'back' }] };
     const variables = VARIABLES.items.map(v => ({ id: v.id, name: v.name, type: v.type }));
-    const { action } = interactionPatch(interaction, 'action', 'set-variable', { variables });
+    const { actions: [action] } = interactionPatch(interaction, 'action', 'set-variable', { variables });
     assert.deepEqual(action, { type: 'set-variable', variableId: 'flag', value: false });
-    const counted = interactionPatch({ ...interaction, action }, 'variable', 'count', { variables });
-    assert.deepEqual(counted.action, { type: 'set-variable', variableId: 'count', value: 0 });
-    assert.deepEqual(interactionPatch(counted, 'value', '7', { variables }).action.value, 7);
+    const counted = interactionPatch({ ...interaction, actions: [action] }, 'variable', 'count', { variables });
+    assert.deepEqual(counted.actions[0], { type: 'set-variable', variableId: 'count', value: 0 });
+    assert.deepEqual(interactionPatch(counted, 'value', '7', { variables }).actions[0].value, 7);
     assert.throws(() => interactionPatch(counted, 'value', 'lots', { variables }), /number/);
-    assert.deepEqual(interactionPatch({ ...interaction, action: setVar('flag', false) }, 'value', 'true', { variables }).action.value, true);
+    assert.deepEqual(interactionPatch({ ...interaction, actions: [setVar('flag', false)] }, 'value', 'true', { variables }).actions[0].value, true);
 });
 
 test('the panel refuses Set variable with no variable to set', () => {
-    const interaction = { id: 'i', trigger: { type: 'on-click' }, action: { type: 'back' } };
+    const interaction = { id: 'i', trigger: { type: 'on-click' }, actions: [{ type: 'back' }] };
     assert.throws(() => interactionPatch(interaction, 'action', 'set-variable', { variables: [] }), /no boolean, number or string variable/);
 });

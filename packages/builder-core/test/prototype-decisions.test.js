@@ -7,8 +7,8 @@ import { eventFromDom, transitionCss, timersFor } from '../src/prototype/events.
 const frame = (id, extra = {}) => ({ id, name: id, type: 'frame', parentId: null, ...extra });
 const child = (id, parentId, extra = {}) => ({ id, name: id, type: 'rectangle', parentId, ...extra });
 const instant = { type: 'instant', durationMs: 0 };
-const interaction = (id, trigger, action) => ({ id, trigger, action });
-const proto = interactions => ({ version: 1, interactions });
+const interaction = (id, trigger, action) => ({ id, trigger, actions: [action] });
+const proto = interactions => ({ version: 2, interactions });
 const doc = pages => ({ pages });
 const codesOf = d => validatePrototype(d).map(p => p.code);
 
@@ -48,7 +48,7 @@ test('assertPrototypeData with complete false still refuses a problem that is no
 });
 
 test('deleting a flow start removes the flow, and reports it; a dangling flow is never left', () => {
-    const pages = [{ id: 'p', name: 'Screens', nodes: [frame('B')], prototype: { version: 1, flows: [{ id: 'f', name: 'Main', startFrameId: 'B' }, { id: 'g', name: 'Other', startFrameId: 'C' }] } }, { id: 'q', name: 'More', nodes: [frame('C')] }];
+    const pages = [{ id: 'p', name: 'Screens', nodes: [frame('B')], prototype: { version: 2, flows: [{ id: 'f', name: 'Main', startFrameId: 'B' }, { id: 'g', name: 'Other', startFrameId: 'C' }] } }, { id: 'q', name: 'More', nodes: [frame('C')] }];
     const plan = planNodeRemoval(pages, new Set(['B']));
     assert.deepEqual(plan.flows, [{ pageId: 'p', page: 'Screens', flowId: 'f', flowName: 'Main' }]);
     assert.deepEqual(plan.report.filter(r => r.code === 'flow-start-removed').map(r => r.flow), ['Main']);

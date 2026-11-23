@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import { createPlayer, respond } from '../src/prototype/player.js';
 
 const instant = { type: 'instant', durationMs: 0 };
-const nav = (id, destinationId, trigger = { type: 'on-click' }, transition = instant) => ({ id, trigger, action: { type: 'navigate-to', destinationId, transition } });
-const back = (id, trigger = { type: 'on-click' }) => ({ id, trigger, action: { type: 'back' } });
-const link = (id, url, trigger = { type: 'on-click' }) => ({ id, trigger, action: { type: 'open-link', url } });
+const nav = (id, destinationId, trigger = { type: 'on-click' }, transition = instant) => ({ id, trigger, actions: [{ type: 'navigate-to', destinationId, transition }] });
+const back = (id, trigger = { type: 'on-click' }) => ({ id, trigger, actions: [{ type: 'back' }] });
+const link = (id, url, trigger = { type: 'on-click' }) => ({ id, trigger, actions: [{ type: 'open-link', url }] });
 
 // Frame A holds a button (btnA) that navigates to B on click, and a label with a hover; frame B holds btnB that goes to C after a delay.
 const nodes = {
     A: { frame: 'A', interactions: [] },
-    btnA: { frame: 'A', interactions: [nav('go-b', 'B'), { id: 'hover', trigger: { type: 'mouse-enter' }, action: { type: 'open-link', url: 'https://example.com' } }] },
+    btnA: { frame: 'A', interactions: [nav('go-b', 'B'), { id: 'hover', trigger: { type: 'mouse-enter' }, actions: [{ type: 'open-link', url: 'https://example.com' }] }] },
     B: { frame: 'B', interactions: [] },
     btnB: { frame: 'B', interactions: [nav('go-c', 'C', { type: 'after-delay', delayMs: 800 }), back('back-b')] },
     C: { frame: 'C', interactions: [] },
@@ -92,13 +92,13 @@ test('a transition with its direction and easing is passed through unchanged', (
 });
 
 test('while-hovering runs its action on mouse-enter', () => {
-    const hover = { id: 'h', trigger: { type: 'while-hovering' }, action: { type: 'open-link', url: 'https://example.com' } };
+    const hover = { id: 'h', trigger: { type: 'while-hovering' }, actions: [{ type: 'open-link', url: 'https://example.com' }] };
     const c2 = { ...ctx, interactionsOf: id => (id === 'btnA' ? [hover] : []) };
     assert.deepEqual(respond(createPlayer('A'), { type: 'pointer', nodeId: 'btnA', trigger: 'mouse-enter' }, c2).effects, [{ type: 'open-link', url: 'https://example.com' }]);
 });
 
 test('while-pressing runs its action on mouse-down', () => {
-    const press = { id: 'p', trigger: { type: 'while-pressing' }, action: { type: 'open-link', url: 'https://example.com' } };
+    const press = { id: 'p', trigger: { type: 'while-pressing' }, actions: [{ type: 'open-link', url: 'https://example.com' }] };
     const c2 = { ...ctx, interactionsOf: id => (id === 'btnA' ? [press] : []) };
     assert.deepEqual(respond(createPlayer('A'), { type: 'pointer', nodeId: 'btnA', trigger: 'mouse-down' }, c2).effects, [{ type: 'open-link', url: 'https://example.com' }]);
 });
@@ -122,7 +122,7 @@ test('a navigate event to the frame the player is already on does nothing', () =
 });
 
 test('a mouse-leave interaction runs when the pointer leaves its node', () => {
-    const leave = { id: 'out', trigger: { type: 'mouse-leave' }, action: { type: 'open-link', url: 'https://example.com' } };
+    const leave = { id: 'out', trigger: { type: 'mouse-leave' }, actions: [{ type: 'open-link', url: 'https://example.com' }] };
     const c2 = { ...ctx, interactionsOf: id => (id === 'btnA' ? [leave] : []) };
     assert.deepEqual(respond(createPlayer('A'), { type: 'pointer', nodeId: 'btnA', trigger: 'mouse-leave' }, c2).effects, [{ type: 'open-link', url: 'https://example.com' }]);
 });

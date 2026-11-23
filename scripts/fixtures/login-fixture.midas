@@ -1386,23 +1386,25 @@
             "c-size": "lg"
           },
           "prototype": {
-            "version": 1,
+            "version": 2,
             "interactions": [
               {
                 "id": "home-next-go",
                 "trigger": {
                   "type": "on-click"
                 },
-                "action": {
-                  "type": "navigate-to",
-                  "destinationId": "frame-details",
-                  "transition": {
-                    "type": "slide-in",
-                    "direction": "left",
-                    "durationMs": 300,
-                    "easing": "ease-out"
+                "actions": [
+                  {
+                    "type": "navigate-to",
+                    "destinationId": "frame-details",
+                    "transition": {
+                      "type": "slide-in",
+                      "direction": "left",
+                      "durationMs": 300,
+                      "easing": "ease-out"
+                    }
                   }
-                }
+                ]
               }
             ]
           }
@@ -1555,22 +1557,24 @@
             "c-size": "lg"
           },
           "prototype": {
-            "version": 1,
+            "version": 2,
             "interactions": [
               {
                 "id": "home-delete-go",
                 "trigger": {
                   "type": "mouse-enter"
                 },
-                "action": {
-                  "type": "navigate-to",
-                  "destinationId": "frame-confirm",
-                  "transition": {
-                    "type": "dissolve",
-                    "durationMs": 200,
-                    "easing": "linear"
+                "actions": [
+                  {
+                    "type": "navigate-to",
+                    "destinationId": "frame-confirm",
+                    "transition": {
+                      "type": "dissolve",
+                      "durationMs": 200,
+                      "easing": "linear"
+                    }
                   }
-                }
+                ]
               }
             ]
           }
@@ -1723,21 +1727,23 @@
             "c-size": "lg"
           },
           "prototype": {
-            "version": 1,
+            "version": 2,
             "interactions": [
               {
                 "id": "home-off-go",
                 "trigger": {
                   "type": "on-click"
                 },
-                "action": {
-                  "type": "navigate-to",
-                  "destinationId": "frame-details",
-                  "transition": {
-                    "type": "instant",
-                    "durationMs": 0
+                "actions": [
+                  {
+                    "type": "navigate-to",
+                    "destinationId": "frame-details",
+                    "transition": {
+                      "type": "instant",
+                      "durationMs": 0
+                    }
                   }
-                }
+                ]
               }
             ]
           }
@@ -1937,16 +1943,18 @@
             "c-size": "lg"
           },
           "prototype": {
-            "version": 1,
+            "version": 2,
             "interactions": [
               {
                 "id": "details-back-go",
                 "trigger": {
                   "type": "on-click"
                 },
-                "action": {
-                  "type": "back"
-                }
+                "actions": [
+                  {
+                    "type": "back"
+                  }
+                ]
               }
             ]
           }
@@ -2099,23 +2107,25 @@
             "c-size": "lg"
           },
           "prototype": {
-            "version": 1,
+            "version": 2,
             "interactions": [
               {
                 "id": "details-continue-go",
                 "trigger": {
                   "type": "on-click"
                 },
-                "action": {
-                  "type": "navigate-to",
-                  "destinationId": "frame-confirm",
-                  "transition": {
-                    "type": "push",
-                    "direction": "top",
-                    "durationMs": 250,
-                    "easing": "ease-in-out"
+                "actions": [
+                  {
+                    "type": "navigate-to",
+                    "destinationId": "frame-confirm",
+                    "transition": {
+                      "type": "push",
+                      "direction": "top",
+                      "durationMs": 250,
+                      "easing": "ease-in-out"
+                    }
                   }
-                }
+                ]
               }
             ]
           }
@@ -2268,21 +2278,23 @@
             "c-size": "lg"
           },
           "prototype": {
-            "version": 1,
+            "version": 2,
             "interactions": [
               {
                 "id": "details-cart-go",
                 "trigger": {
                   "type": "on-click"
                 },
-                "action": {
-                  "type": "navigate-to",
-                  "destinationId": "frame-checkout",
-                  "transition": {
-                    "type": "instant",
-                    "durationMs": 0
+                "actions": [
+                  {
+                    "type": "navigate-to",
+                    "destinationId": "frame-checkout",
+                    "transition": {
+                      "type": "instant",
+                      "durationMs": 0
+                    }
                   }
-                }
+                ]
               }
             ]
           }
@@ -2479,21 +2491,23 @@
             "c-size": "lg"
           },
           "prototype": {
-            "version": 1,
+            "version": 2,
             "interactions": [
               {
                 "id": "confirm-done-go",
                 "trigger": {
                   "type": "on-click"
                 },
-                "action": {
-                  "type": "navigate-to",
-                  "destinationId": "frame-done",
-                  "transition": {
-                    "type": "instant",
-                    "durationMs": 0
+                "actions": [
+                  {
+                    "type": "navigate-to",
+                    "destinationId": "frame-done",
+                    "transition": {
+                      "type": "instant",
+                      "durationMs": 0
+                    }
                   }
-                }
+                ]
               }
             ]
           }
@@ -2646,22 +2660,24 @@
             "c-size": "lg"
           },
           "prototype": {
-            "version": 1,
+            "version": 2,
             "interactions": [
               {
                 "id": "confirm-cancel-go",
                 "trigger": {
                   "type": "on-click"
                 },
-                "action": {
-                  "type": "navigate-to",
-                  "destinationId": "frame-home",
-                  "transition": {
-                    "type": "dissolve",
-                    "durationMs": 150,
-                    "easing": "linear"
+                "actions": [
+                  {
+                    "type": "navigate-to",
+                    "destinationId": "frame-home",
+                    "transition": {
+                      "type": "dissolve",
+                      "durationMs": 150,
+                      "easing": "linear"
+                    }
                   }
-                }
+                ]
               }
             ]
           }
@@ -2837,7 +2853,7 @@
             "c-size": "lg"
           },
           "prototype": {
-            "version": 1,
+            "version": 2,
             "interactions": [
               {
                 "id": "done-home-go",
@@ -2845,14 +2861,16 @@
                   "type": "after-delay",
                   "delayMs": 1200
                 },
-                "action": {
-                  "type": "navigate-to",
-                  "destinationId": "frame-home",
-                  "transition": {
-                    "type": "instant",
-                    "durationMs": 0
+                "actions": [
+                  {
+                    "type": "navigate-to",
+                    "destinationId": "frame-home",
+                    "transition": {
+                      "type": "instant",
+                      "durationMs": 0
+                    }
                   }
-                }
+                ]
               }
             ]
           }
@@ -2947,7 +2965,7 @@
         }
       ],
       "prototype": {
-        "version": 1,
+        "version": 2,
         "flows": [
           {
             "id": "flow-main",
@@ -3044,21 +3062,23 @@
             "c-size": "lg"
           },
           "prototype": {
-            "version": 1,
+            "version": 2,
             "interactions": [
               {
                 "id": "checkout-pay-go",
                 "trigger": {
                   "type": "on-click"
                 },
-                "action": {
-                  "type": "navigate-to",
-                  "destinationId": "frame-home",
-                  "transition": {
-                    "type": "instant",
-                    "durationMs": 0
+                "actions": [
+                  {
+                    "type": "navigate-to",
+                    "destinationId": "frame-home",
+                    "transition": {
+                      "type": "instant",
+                      "durationMs": 0
+                    }
                   }
-                }
+                ]
               }
             ]
           }

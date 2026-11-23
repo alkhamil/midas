@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { addInteraction, editInteraction, removeInteraction, planNodeRemoval, planCopiedInteractions, assertCanOwnInteractions, withFlowStart, flowStartOf } from '../src/prototype/plan.js';
 
-const link = (id, destinationId) => ({ id, trigger: { type: 'on-click' }, action: { type: 'navigate-to', destinationId, transition: { type: 'instant', durationMs: 0 } } });
-const proto = interactions => ({ version: 1, interactions });
+const link = (id, destinationId) => ({ id, trigger: { type: 'on-click' }, actions: [{ type: 'navigate-to', destinationId, transition: { type: 'instant', durationMs: 0 } }] });
+const proto = interactions => ({ version: 2, interactions });
 
 test('adding an interaction starts a versioned prototype and appends the interaction', () => {
     assert.deepEqual(addInteraction(undefined, link('a', 'B')), proto([link('a', 'B')]));
@@ -18,7 +18,7 @@ test('editing an interaction replaces its trigger or action and keeps its id and
     const edited = editInteraction(proto([link('a', 'B'), link('b', 'C')]), 'a', { trigger: { type: 'mouse-enter' } });
     assert.deepEqual(edited.interactions.map(i => i.id), ['a', 'b']);
     assert.deepEqual(edited.interactions[0].trigger, { type: 'mouse-enter' });
-    assert.deepEqual(edited.interactions[0].action, link('a', 'B').action);
+    assert.deepEqual(edited.interactions[0].actions[0], link('a', 'B').actions[0]);
 });
 
 test('editing an unknown interaction is refused', () => {
@@ -41,7 +41,7 @@ const nodes = [
     { id: 'C', name: 'C', type: 'frame', parentId: null },
     { id: 'btn', name: 'Button', type: 'frame', parentId: 'A', prototype: proto([link('btn-to-b', 'B')]) },
 ];
-const pages = [{ id: 'p', name: 'Screens', nodes, prototype: { version: 1, flows: [{ id: 'f', name: 'Main', startFrameId: 'B' }] } }];
+const pages = [{ id: 'p', name: 'Screens', nodes, prototype: { version: 2, flows: [{ id: 'f', name: 'Main', startFrameId: 'B' }] } }];
 
 test('deleting a destination removes the interactions that point at it, and reports each one', () => {
     const plan = planNodeRemoval(pages, new Set(['B']));
@@ -56,7 +56,7 @@ test('deleting a destination removes the interactions that point at it, and repo
 // nothing left goes with its interaction.
 const branch = (variableId, actions) => ({ condition: { variableId, operator: '==', value: true }, actions });
 const cond = (branches, elseActions) => ({ type: 'conditional', branches, ...(elseActions ? { else: elseActions } : {}) });
-const condInteraction = (id, action) => ({ id, trigger: { type: 'on-click' }, action });
+const condInteraction = (id, action) => ({ id, trigger: { type: 'on-click' }, actions: [action] });
 const navTo = destinationId => ({ type: 'navigate-to', destinationId, transition: { type: 'instant', durationMs: 0 } });
 const condNodes = [
     { id: 'A', name: 'A', type: 'frame', parentId: null, prototype: proto([condInteraction('c1', cond([branch('v', [navTo('B')]), branch('v', [navTo('C')])], [navTo('B'), { type: 'back' }]))]) },
@@ -116,39 +116,39 @@ test('a copied link to a node copied with it points at the copy, with a new inte
 
 test('a link to a node that was not copied keeps pointing at the original, including on another page', () => {
     const { prototypes } = planCopiedInteractions({ nodes: [{ id: 'A', name: 'A', prototype: proto([link('a1', 'X'), link('a2', 'C')]) }], copyOf, exists: id => existing.has(id) });
-    assert.deepEqual(prototypes.get('A').interactions.map(i => i.action.destinationId), ['X', 'C']);
+    assert.deepEqual(prototypes.get('A').interactions.map(i => i.actions[0].destinationId), ['X', 'C']);
 });
 
 test('a link to a node that no longer exists is dropped and reported', () => {
     const { prototypes, report } = planCopiedInteractions({ nodes: [{ id: 'A', name: 'A', prototype: proto([link('a1', 'gone'), link('a2', 'C')]) }], copyOf, exists: id => existing.has(id) });
-    assert.deepEqual(prototypes.get('A').interactions.map(i => i.action.destinationId), ['C']);
+    assert.deepEqual(prototypes.get('A').interactions.map(i => i.actions[0].destinationId), ['C']);
     assert.deepEqual(report, [{ code: 'interaction-dropped-on-copy', node: 'A', interaction: 'a1', destination: 'gone' }]);
 });
 
 test('the copy keeps the scroll behaviour, and a node left with nothing has no prototype', () => {
-    const scrolls = planCopiedInteractions({ nodes: [{ id: 'A', name: 'A', prototype: { version: 1, interactions: [], overflow: 'vertical' } }], copyOf, exists: () => true });
-    assert.deepEqual(scrolls.prototypes.get('A'), { version: 1, interactions: [], overflow: 'vertical' });
+    const scrolls = planCopiedInteractions({ nodes: [{ id: 'A', name: 'A', prototype: { version: 2, interactions: [], overflow: 'vertical' } }], copyOf, exists: () => true });
+    assert.deepEqual(scrolls.prototypes.get('A'), { version: 2, interactions: [], overflow: 'vertical' });
     const dropped = planCopiedInteractions({ nodes: [{ id: 'A', name: 'A', prototype: proto([link('a1', 'gone')]) }], copyOf, exists: () => false });
     assert.equal(dropped.prototypes.get('A'), undefined);
 });
 
 test('an open-link needs no destination and is copied as it is', () => {
-    const open = { id: 'o', trigger: { type: 'on-click' }, action: { type: 'open-link', url: 'https://example.com' } };
+    const open = { id: 'o', trigger: { type: 'on-click' }, actions: [{ type: 'open-link', url: 'https://example.com' }] };
     const { prototypes } = planCopiedInteractions({ nodes: [{ id: 'A', name: 'A', prototype: proto([open]) }], copyOf, exists: () => false });
     assert.deepEqual(prototypes.get('A').interactions, [{ ...open, id: 'i1' }]);
 });
 
 test('a page has one flow start: setting it replaces the start, and clearing it leaves no prototype data', () => {
     const first = withFlowStart(undefined, 'A', 'Flow');
-    assert.deepEqual(first, { version: 1, flows: [{ id: 'flow', name: 'Flow', startFrameId: 'A' }] });
-    assert.deepEqual(withFlowStart(first, 'B', 'Flow'), { version: 1, flows: [{ id: 'flow', name: 'Flow', startFrameId: 'B' }] });
+    assert.deepEqual(first, { version: 2, flows: [{ id: 'flow', name: 'Flow', startFrameId: 'A' }] });
+    assert.deepEqual(withFlowStart(first, 'B', 'Flow'), { version: 2, flows: [{ id: 'flow', name: 'Flow', startFrameId: 'B' }] });
     assert.equal(withFlowStart(first, null, 'Flow'), undefined);
-    const kept = { version: 1, flows: [{ id: 'flow-main', name: 'Main', startFrameId: 'A' }] };
-    assert.deepEqual(withFlowStart(kept, 'B', 'Flow'), { version: 1, flows: [{ id: 'flow-main', name: 'Main', startFrameId: 'B' }] });
+    const kept = { version: 2, flows: [{ id: 'flow-main', name: 'Main', startFrameId: 'A' }] };
+    assert.deepEqual(withFlowStart(kept, 'B', 'Flow'), { version: 2, flows: [{ id: 'flow-main', name: 'Main', startFrameId: 'B' }] });
 });
 
 test('the flow start of a page is the start of its first flow, or null', () => {
-    assert.equal(flowStartOf({ version: 1, flows: [{ id: 'f', name: 'Main', startFrameId: 'A' }] }), 'A');
+    assert.equal(flowStartOf({ version: 2, flows: [{ id: 'f', name: 'Main', startFrameId: 'A' }] }), 'A');
     assert.equal(flowStartOf(undefined), null);
 });
 

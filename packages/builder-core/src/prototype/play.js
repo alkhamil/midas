@@ -84,7 +84,7 @@ export function nextInteractionId(taken) {
  * @param {string} destinationId
  */
 export function defaultNavigate(id, destinationId) {
-    return { id, trigger: { type: 'on-click' }, action: navigateTo(destinationId) };
+    return { id, trigger: { type: 'on-click' }, actions: [navigateTo(destinationId)] };
 }
 
 /**
@@ -151,57 +151,24 @@ export function transitionFieldsOf(type) {
 export const navigateTo = destinationId => ({ type: 'navigate-to', destinationId, transition: { type: 'instant', durationMs: 0 } });
 
 /**
- * The patch an edit of one field makes to an interaction, for editInteraction. A new action or trigger starts from its defaults; a
+ * The action an edit of one field of an action makes: the action with the field changed. A new action starts from its defaults; a
  * navigate-to needs a destination (`firstDestination`), and throws when there is none. A conditional starts with one branch on the first
- * boolean, number or string variable (`variables`), and cannot sit inside another conditional (`nested`). Actions not yet supported throw.
- * @param {{ trigger: any, action: any }} interaction
- * @param {'trigger' | 'delay' | 'action' | 'destination' | 'transition' | 'duration' | 'direction' | 'easing'} field
+ * boolean, number or string variable (`variables`), and cannot sit inside another conditional (`nested`). `trigger` is the trigger of the
+ * interaction the action sits in: a continuous trigger cannot run a navigation, a back, an overlay or a close.
+ * @param {any} action
+ * @param {string} field
  * @param {string} value
- * @param {{ firstDestination?: string, variables?: { id: string, type: string }[], nested?: boolean }} context
- * @returns {{ trigger?: any, action?: any }}
+ * @param {{ trigger?: any, firstDestination?: string, variables?: { id: string, type: string }[], nested?: boolean }} context
+ * @returns {any} the new action
  */
-export function interactionPatch(interaction, field, value, { firstDestination, variables = [], nested = false }) {
-    const transition = interaction.action?.transition;
-    const withTransition = transition => ({ action: { ...interaction.action, transition } });
+export function actionPatch(action, field, value, context) {
+    const transition = action?.transition;
+    const withTransition = transition => ({ ...action, transition });
     switch (field) {
-        case 'trigger':
-            if (CONTINUOUS.includes(value) && actionsOf(interaction.action).some(a => NAVIGATING.includes(a?.type))) throw new Error('While hovering and while pressing cannot navigate or go back.');
-            return { trigger: value === 'after-delay' ? { type: 'after-delay', delayMs: 500 } : { type: value } };
-        case 'delay':
-            return { trigger: { type: 'after-delay', delayMs: wholeNumber(value, 1, 'Delay') } };
         case 'action':
-            if (value === 'navigate-to' && CONTINUOUS.includes(interaction.trigger?.type)) throw new Error('While hovering and while pressing cannot navigate or go back.');
-            if (value === 'conditional') {
-                if (nested) throw new Error('A conditional cannot sit inside a conditional.');
-                if (CONTINUOUS.includes(interaction.trigger?.type)) throw new Error('While hovering and while pressing cannot navigate or go back.');
-                if (!firstDestination) throw new Error('There is no top-level frame to navigate to.');
-                const variable = defaultVariableOf(variables);
-                if (!variable) throw new Error('There is no boolean, number or string variable to compare.');
-                return { action: { type: 'conditional', branches: [{ condition: defaultCondition(variable), actions: [navigateTo(firstDestination)] }] } };
-            }
-            if (value === 'navigate-to') {
-                if (!firstDestination) throw new Error('There is no top-level frame to navigate to.');
-                return { action: navigateTo(firstDestination) };
-            }
-            if (value === 'back') return { action: { type: 'back' } };
-            if (value === 'open-link') return { action: { type: 'open-link', url: 'https://example.com' } };
-            if (value === 'open-overlay') {
-                if (CONTINUOUS.includes(interaction.trigger?.type)) throw new Error('While hovering and while pressing cannot open an overlay.');
-                if (!firstDestination) throw new Error('There is no top-level frame to open.');
-                return { action: { type: 'open-overlay', destinationId: firstDestination, placement: 'center', closeOnOutside: true, transition: { type: 'instant', durationMs: 0 } } };
-            }
-            if (value === 'set-variable') {
-                const variable = defaultVariableOf(variables);
-                if (!variable) throw new Error('There is no boolean, number or string variable to set.');
-                return { action: { type: 'set-variable', variableId: variable.id, value: valueOfType(variable.type, '') } };
-            }
-            if (value === 'close-overlay') {
-                if (CONTINUOUS.includes(interaction.trigger?.type)) throw new Error('While hovering and while pressing cannot close an overlay.');
-                return { action: { type: 'close-overlay' } };
-            }
-            throw new Error(`The action "${value}" is not available yet.`);
+            return actionOfType(value, context);
         case 'destination':
-            return { action: { ...interaction.action, destinationId: value } };
+            return { ...action, destinationId: value };
         case 'transition': {
             if (value === 'instant') return withTransition({ type: 'instant', durationMs: 0 });
             const fields = transitionFieldsOf(value);
@@ -215,34 +182,123 @@ export function interactionPatch(interaction, field, value, { firstDestination, 
         case 'duration':
             if (!transition) throw new Error('Choose a transition first.');
             return withTransition({ ...transition, durationMs: wholeNumber(value, 0, 'Duration') });
-        case 'variable': {
-            if (interaction.action?.type !== 'set-variable') throw new Error('Only Set variable has a variable.');
-            const variable = variables.find(v => v.id === value);
-            if (!variable) throw new Error('Choose a boolean, number or string variable.');
-            return { action: { type: 'set-variable', variableId: variable.id, value: valueOfType(variable.type, '') } };
-        }
-        case 'value': {
-            if (interaction.action?.type !== 'set-variable') throw new Error('Only Set variable has a value.');
-            const variable = variables.find(v => v.id === interaction.action.variableId);
-            if (!variable) throw new Error('The variable is missing.');
-            return { action: { ...interaction.action, value: valueOfType(variable.type, value) } };
-        }
-        case 'placement':
-            if (interaction.action?.type !== 'open-overlay') throw new Error('Only an overlay has a placement.');
-            if (!OVERLAY_PLACEMENTS.includes(value)) throw new Error(`Placement must be one of ${OVERLAY_PLACEMENTS.join(', ')}.`);
-            return { action: { ...interaction.action, placement: value } };
-        case 'close-outside':
-            if (interaction.action?.type !== 'open-overlay') throw new Error('Only an overlay closes on outside clicks.');
-            return { action: { ...interaction.action, closeOnOutside: value === 'true' } };
         case 'direction':
             if (!transition) throw new Error('Choose a transition first.');
             return withTransition({ ...transition, direction: value });
         case 'easing':
             if (!transition) throw new Error('Choose a transition first.');
             return withTransition({ ...transition, easing: value });
+        case 'variable': {
+            if (action?.type !== 'set-variable') throw new Error('Only Set variable has a variable.');
+            const variable = (context.variables ?? []).find(v => v.id === value);
+            if (!variable) throw new Error('Choose a boolean, number or string variable.');
+            return { type: 'set-variable', variableId: variable.id, value: valueOfType(variable.type, '') };
+        }
+        case 'value': {
+            if (action?.type !== 'set-variable') throw new Error('Only Set variable has a value.');
+            const variable = (context.variables ?? []).find(v => v.id === action.variableId);
+            if (!variable) throw new Error('The variable is missing.');
+            return { ...action, value: valueOfType(variable.type, value) };
+        }
+        case 'placement':
+            if (action?.type !== 'open-overlay') throw new Error('Only an overlay has a placement.');
+            if (!OVERLAY_PLACEMENTS.includes(value)) throw new Error(`Placement must be one of ${OVERLAY_PLACEMENTS.join(', ')}.`);
+            return { ...action, placement: value };
+        case 'close-outside':
+            if (action?.type !== 'open-overlay') throw new Error('Only an overlay closes on outside clicks.');
+            return { ...action, closeOnOutside: value === 'true' };
         default:
             throw new Error(`Unknown field "${field}".`);
     }
+}
+
+/**
+ * The action a type choice makes, from its defaults. Throws when the type cannot run on the interaction's trigger or needs something the
+ * document does not have.
+ * @param {string} type
+ * @param {{ trigger?: any, firstDestination?: string, variables?: { id: string, type: string }[], nested?: boolean }} context
+ */
+function actionOfType(type, { trigger, firstDestination, variables = [], nested = false }) {
+    const continuous = CONTINUOUS.includes(trigger);
+    const needFrame = () => {
+        if (!firstDestination) throw new Error('There is no top-level frame to navigate to.');
+    };
+    switch (type) {
+        case 'navigate-to':
+            if (continuous) throw new Error('While hovering and while pressing cannot navigate or go back.');
+            needFrame();
+            return navigateTo(firstDestination);
+        case 'conditional': {
+            if (nested) throw new Error('A conditional cannot sit inside a conditional.');
+            if (continuous) throw new Error('While hovering and while pressing cannot navigate or go back.');
+            needFrame();
+            const variable = defaultVariableOf(variables);
+            if (!variable) throw new Error('There is no boolean, number or string variable to compare.');
+            return { type: 'conditional', branches: [{ condition: defaultCondition(variable), actions: [navigateTo(firstDestination)] }] };
+        }
+        case 'back':
+            if (continuous) throw new Error('While hovering and while pressing cannot navigate or go back.');
+            return { type: 'back' };
+        case 'open-link':
+            return { type: 'open-link', url: 'https://example.com' };
+        case 'open-overlay':
+            if (continuous) throw new Error('While hovering and while pressing cannot open an overlay.');
+            needFrame();
+            return { type: 'open-overlay', destinationId: firstDestination, placement: 'center', closeOnOutside: true, transition: { type: 'instant', durationMs: 0 } };
+        case 'set-variable': {
+            const variable = defaultVariableOf(variables);
+            if (!variable) throw new Error('There is no boolean, number or string variable to set.');
+            return { type: 'set-variable', variableId: variable.id, value: valueOfType(variable.type, '') };
+        }
+        case 'close-overlay':
+            if (continuous) throw new Error('While hovering and while pressing cannot close an overlay.');
+            return { type: 'close-overlay' };
+        default:
+            throw new Error(`The action "${type}" is not available yet.`);
+    }
+}
+
+/**
+ * The patch an edit of one field of an interaction makes, for editInteraction. `trigger` and `delay` change the interaction; any other field
+ * changes the action at `index` in its list (see actionPatch). A trigger that cannot run an action it holds is refused.
+ * @param {{ trigger: any, actions: any[] }} interaction
+ * @param {string} field
+ * @param {string} value
+ * @param {{ index?: number, firstDestination?: string, variables?: { id: string, type: string }[] }} context
+ * @returns {{ trigger?: any, actions?: any[] }}
+ */
+export function interactionPatch(interaction, field, value, context = {}) {
+    if (field === 'trigger') {
+        if (CONTINUOUS.includes(value) && interaction.actions.flatMap(a => [a, ...actionsOf(a)]).some(a => NAVIGATING.includes(a?.type))) throw new Error('While hovering and while pressing cannot navigate or go back.');
+        return { trigger: value === 'after-delay' ? { type: 'after-delay', delayMs: 500 } : { type: value } };
+    }
+    if (field === 'delay') return { trigger: { type: 'after-delay', delayMs: wholeNumber(value, 1, 'Delay') } };
+    const j = Number(context.index ?? 0);
+    if (!interaction.actions[j]) throw new Error('The action is missing.');
+    const next = actionPatch(interaction.actions[j], field, value, { ...context, trigger: interaction.trigger?.type });
+    return { actions: interaction.actions.map((a, k) => (k === j ? next : a)) };
+}
+
+/**
+ * The conditional action after one field of a part inside it changed: a condition field of the branch at `at` (`b<i>`), or a field of the
+ * action at `index` in the list at `at` (a branch, or `e` for the else). `context` is as for actionPatch, with the trigger of the interaction.
+ * @param {any} action the conditional
+ * @param {string} field
+ * @param {string} value
+ * @param {string} at
+ * @param {string | number} index
+ * @param {{ trigger?: any, firstDestination?: string, variables?: { id: string, type: string }[] }} context
+ * @returns {any} the conditional, changed
+ */
+export function nestedPatch(action, field, value, at, index, context) {
+    if (field.startsWith('cond-')) {
+        const branch = action.branches[branchIndex(at)];
+        const condition = conditionPatch(branch.condition, field, value, id => context.variables?.find(v => v.id === id));
+        return withBranch(action, at, { ...branch, condition });
+    }
+    const list = listOf(action, at), j = Number(index);
+    const patched = actionPatch(list[j], field, value, { ...context, nested: true });
+    return withList(action, at, list.map((a, k) => (k === j ? patched : a)));
 }
 
 /**
@@ -260,29 +316,6 @@ function valueOfType(type, text) {
         return n;
     }
     return text;
-}
-
-/**
- * The action of an interaction after one field of a part inside its conditional changed: a condition field of the branch at `at` (`b<i>`),
- * or a field of the action at `index` in the list at `at` (a branch, or `e` for the else). `context` is as for interactionPatch.
- * @param {{ trigger: any, action: any }} interaction
- * @param {string} field
- * @param {string} value
- * @param {string} at
- * @param {string | number} index
- * @param {{ firstDestination?: string, variables?: { id: string, type: string }[] }} context
- * @returns {any} the interaction's whole action
- */
-export function nestedPatch(interaction, field, value, at, index, context) {
-    const top = interaction.action;
-    if (field.startsWith('cond-')) {
-        const branch = top.branches[branchIndex(at)];
-        const condition = conditionPatch(branch.condition, field, value, id => context.variables?.find(v => v.id === id));
-        return withBranch(top, at, { ...branch, condition });
-    }
-    const list = listOf(top, at), j = Number(index);
-    const patched = interactionPatch({ trigger: interaction.trigger, action: list[j] }, field, value, { ...context, nested: true }).action;
-    return withList(top, at, list.map((a, k) => (k === j ? patched : a)));
 }
 
 /**

@@ -4,8 +4,8 @@ import { validatePrototype, assertPrototypeData, PrototypeDataError, introducedP
 
 const frame = (id, extra = {}) => ({ id, name: id, type: 'frame', parentId: null, ...extra });
 const child = (id, parentId, extra = {}) => ({ id, name: id, type: 'rectangle', parentId, ...extra });
-const link = (id, destinationId, trigger = { type: 'on-click' }) => ({ id: `i-${id}`, trigger, action: { type: 'navigate-to', destinationId, transition: { type: 'instant', durationMs: 0 } } });
-const proto = interactions => ({ version: 1, interactions });
+const link = (id, destinationId, trigger = { type: 'on-click' }) => ({ id: `i-${id}`, trigger, actions: [{ type: 'navigate-to', destinationId, transition: { type: 'instant', durationMs: 0 } }] });
+const proto = interactions => ({ version: 2, interactions });
 const doc = pages => ({ pages });
 const codesOf = (d, opts) => validatePrototype(d, opts).map(p => p.code);
 
@@ -29,12 +29,12 @@ test('the structured problem names the page, the node and the interaction', () =
 });
 
 test('an unknown prototype version on a node is refused', () => {
-    const d = doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: { version: 2, interactions: [] } })] }]);
+    const d = doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: { version: 1, interactions: [] } })] }]);
     assert.deepEqual(codesOf(d), ['node-prototype-version']);
 });
 
 test('an unknown field on the node prototype is refused', () => {
-    const d = doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: { version: 1, interactions: [], extra: 1 } })] }]);
+    const d = doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: { version: 2, interactions: [], extra: 1 } })] }]);
     assert.deepEqual(codesOf(d), ['node-prototype-shape']);
 });
 
@@ -51,24 +51,24 @@ test('after-delay needs a delay above zero', () => {
 });
 
 test('an unknown action is refused', () => {
-    const d = doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: proto([{ id: 'i-x', trigger: { type: 'on-click' }, action: { type: 'overlay' } }]) })] }]);
+    const d = doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: proto([{ id: 'i-x', trigger: { type: 'on-click' }, actions: [{ type: 'overlay' }] }]) })] }]);
     assert.deepEqual(codesOf(d), ['action-unknown']);
 });
 
 test('a navigate-to without a destination is refused', () => {
-    const d = doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: proto([{ id: 'i-x', trigger: { type: 'on-click' }, action: { type: 'navigate-to', transition: { type: 'instant', durationMs: 0 } } }]) })] }]);
+    const d = doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: proto([{ id: 'i-x', trigger: { type: 'on-click' }, actions: [{ type: 'navigate-to', transition: { type: 'instant', durationMs: 0 } }] }]) })] }]);
     assert.deepEqual(codesOf(d), ['action-shape']);
 });
 
 test('an unknown transition, a negative duration, or a slide without a direction is refused', () => {
-    const withTransition = t => doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: proto([{ id: 'i-x', trigger: { type: 'on-click' }, action: { type: 'navigate-to', destinationId: 'B', transition: t } }]) }), frame('B')] }]);
+    const withTransition = t => doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: proto([{ id: 'i-x', trigger: { type: 'on-click' }, actions: [{ type: 'navigate-to', destinationId: 'B', transition: t }] }]) }), frame('B')] }]);
     assert.deepEqual(codesOf(withTransition({ type: 'fade', durationMs: 100 })), ['transition-unknown']);
     assert.deepEqual(codesOf(withTransition({ type: 'dissolve', durationMs: -1 })), ['transition-duration']);
     assert.deepEqual(codesOf(withTransition({ type: 'slide-in', direction: 'diagonal', durationMs: 300, easing: 'linear' })), ['transition-direction']);
 });
 
 test('open-link accepts http and https only', () => {
-    const open = url => doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: proto([{ id: 'i-x', trigger: { type: 'on-click' }, action: { type: 'open-link', url } }]) })] }]);
+    const open = url => doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: proto([{ id: 'i-x', trigger: { type: 'on-click' }, actions: [{ type: 'open-link', url }] }]) })] }]);
     assert.deepEqual(validatePrototype(open('https://example.com')), []);
     assert.deepEqual(codesOf(open('javascript:alert(1)')), ['open-link-url']);
     assert.deepEqual(codesOf(open('not a url')), ['open-link-url']);
@@ -90,19 +90,19 @@ test('a managed layer cannot own interactions', () => {
 });
 
 test('flow start must be a top-level frame on a loaded page', () => {
-    const missing = doc([{ id: 'p', name: 'P', nodes: [frame('A')], prototype: { version: 1, flows: [{ id: 'f', name: 'Main', startFrameId: 'Z' }] } }]);
+    const missing = doc([{ id: 'p', name: 'P', nodes: [frame('A')], prototype: { version: 2, flows: [{ id: 'f', name: 'Main', startFrameId: 'Z' }] } }]);
     assert.deepEqual(codesOf(missing), ['flow-start-missing']);
-    const notFrame = doc([{ id: 'p', name: 'P', nodes: [frame('A'), child('c', 'A')], prototype: { version: 1, flows: [{ id: 'f', name: 'Main', startFrameId: 'c' }] } }]);
+    const notFrame = doc([{ id: 'p', name: 'P', nodes: [frame('A'), child('c', 'A')], prototype: { version: 2, flows: [{ id: 'f', name: 'Main', startFrameId: 'c' }] } }]);
     assert.deepEqual(codesOf(notFrame), ['flow-start-not-frame']);
 });
 
 test('a page prototype with another version or an unknown field is refused', () => {
     assert.deepEqual(codesOf(doc([{ id: 'p', name: 'P', nodes: [], prototype: { version: 3, flows: [] } }])), ['page-prototype-version']);
-    assert.deepEqual(codesOf(doc([{ id: 'p', name: 'P', nodes: [], prototype: { version: 1, flows: [], extra: 1 } }])), ['page-prototype-shape']);
+    assert.deepEqual(codesOf(doc([{ id: 'p', name: 'P', nodes: [], prototype: { version: 2, flows: [], extra: 1 } }])), ['page-prototype-shape']);
 });
 
 test('an incomplete (lazy) document defers references it cannot resolve yet', () => {
-    const d = doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: proto([link('a', 'OnPageNotLoaded')]) })], prototype: { version: 1, flows: [{ id: 'f', name: 'Main', startFrameId: 'AlsoNotLoaded' }] } }]);
+    const d = doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: proto([link('a', 'OnPageNotLoaded')]) })], prototype: { version: 2, flows: [{ id: 'f', name: 'Main', startFrameId: 'AlsoNotLoaded' }] } }]);
     assert.deepEqual(codesOf(d, { complete: false }), []);
     assert.deepEqual(codesOf(d, { complete: true }), ['flow-start-missing', 'destination-missing']);
 });
@@ -119,7 +119,7 @@ test('a trigger that takes no delay refuses a delay field', () => {
 });
 
 test('an unknown easing is refused, and an absent easing is allowed', () => {
-    const withEasing = easing => doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: proto([{ id: 'i-x', trigger: { type: 'on-click' }, action: { type: 'navigate-to', destinationId: 'B', transition: { type: 'dissolve', durationMs: 100, easing } } }]) }), frame('B')] }]);
+    const withEasing = easing => doc([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: proto([{ id: 'i-x', trigger: { type: 'on-click' }, actions: [{ type: 'navigate-to', destinationId: 'B', transition: { type: 'dissolve', durationMs: 100, easing } }] }]) }), frame('B')] }]);
     assert.deepEqual(codesOf(withEasing('bounce')), ['transition-easing']);
     assert.deepEqual(validatePrototype(withEasing(undefined)), []);
 });
@@ -153,7 +153,7 @@ const go = destinationId => ({ type: 'navigate-to', destinationId, transition: {
 const condition = (variableId, operator, value) => ({ variableId, operator, value });
 const branch = (cond, actions) => ({ condition: cond, actions });
 const conditional = (branches, elseActions) => ({ type: 'conditional', branches, ...(elseActions ? { else: elseActions } : {}) });
-const onClick = (id, action, trigger = { type: 'on-click' }) => ({ id: `i-${id}`, trigger, action });
+const onClick = (id, action, trigger = { type: 'on-click' }) => ({ id: `i-${id}`, trigger, actions: [action] });
 const flowWith = (action, trigger) => withItems([{ id: 'p', name: 'P', nodes: [frame('A', { prototype: proto([onClick('c', action, trigger)]) }), frame('B'), frame('C')] }], [variable('v-bool', 'boolean'), variable('v-num', 'number'), variable('v-str', 'string'), variable('v-col', 'color')]);
 
 test('a conditional with a boolean branch and an else is valid', () => {

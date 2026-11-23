@@ -22,8 +22,8 @@ async function buildScene(page) {
         button.x = 40;
         button.y = 40;
         button.prototype = {
-            version: 1,
-            interactions: [{ id: 'i-open', trigger: { type: 'on-click' }, action: { type: 'open-overlay', destinationId: card.id, placement: 'below', closeOnOutside: true, transition: { type: 'instant', durationMs: 0 } } }],
+            version: 2,
+            interactions: [{ id: 'i-open', trigger: { type: 'on-click' }, actions: [{ type: 'open-overlay', destinationId: card.id, placement: 'below', closeOnOutside: true, transition: { type: 'instant', durationMs: 0 } }] }],
         };
         doc.add(button);
         doc.touch(button);

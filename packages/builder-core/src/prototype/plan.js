@@ -96,6 +96,18 @@ export function rewriteAction(action, rewrite, dropped) {
     return { type: 'conditional', branches, ...(elseActions.length ? { else: elseActions } : {}) };
 }
 
+/**
+ * An interaction's list of actions with every destination passed through `rewrite`, in order. An action that is gone is left out; every dropped
+ * destination is pushed to `dropped`.
+ * @param {any[]} actions
+ * @param {(destination: string) => string | null} rewrite
+ * @param {string[]} dropped
+ * @returns {any[]}
+ */
+export function rewriteActions(actions, rewrite, dropped) {
+    return actions.map(a => rewriteAction(a, rewrite, dropped)).filter(a => a !== undefined);
+}
+
 /** @param {any[]} actions @param {(destination: string) => string | null} rewrite @param {string[]} dropped */
 const rewriteList = (actions, rewrite, dropped) => actions.map(a => rewriteAction(a, rewrite, dropped)).filter(a => a !== undefined);
 
@@ -119,17 +131,17 @@ export function planNodeRemoval(pages, removed) {
             let changed = false;
             for (const i of node.prototype.interactions) {
                 const dropped = [];
-                const action = rewriteAction(i.action, gone, dropped);
+                const actions = rewriteActions(i.actions, gone, dropped);
                 if (!dropped.length) {
                     interactions.push(i);
                     continue;
                 }
                 changed = true;
-                if (action === undefined) {
+                if (actions.length === 0) {
                     report.push({ code: 'interaction-removed', page: page.name, node: node.name, interaction: i.id, destination: dropped[0] });
                     continue;
                 }
-                interactions.push({ ...i, action });
+                interactions.push({ ...i, actions });
                 for (const destination of dropped) report.push({ code: 'action-removed', page: page.name, node: node.name, interaction: i.id, destination });
             }
             if (changed) edits.push({ pageId: page.id, page: page.name, node: node.name, nodeId: node.id, interactions });
@@ -197,10 +209,10 @@ export function planCopiedInteractions({ nodes, copyOf, exists }) {
         const target = d => (copyOf.has(d) ? copyOf.get(d) : exists(d) ? d : null);
         for (const i of p.interactions) {
             const dropped = [];
-            const action = rewriteAction(i.action, target, dropped);
+            const actions = rewriteActions(i.actions, target, dropped);
             for (const destination of dropped) report.push({ code: 'interaction-dropped-on-copy', node: node.name, interaction: i.id, destination });
-            if (action === undefined) continue;
-            interactions.push({ ...i, id: nextInteractionId(interactions.map(x => x.id)), action });
+            if (actions.length === 0) continue;
+            interactions.push({ ...i, id: nextInteractionId(interactions.map(x => x.id)), actions });
         }
         if (interactions.length || p.overflow !== undefined) prototypes.set(node.id, { ...p, interactions });
         else prototypes.set(node.id, undefined);

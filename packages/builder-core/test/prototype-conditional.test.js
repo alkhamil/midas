@@ -8,7 +8,7 @@ const instant = { type: 'instant', durationMs: 0 };
 const navTo = destinationId => ({ type: 'navigate-to', destinationId, transition: instant });
 const branch = (variableId, operator, value, actions) => ({ condition: { variableId, operator, value }, actions });
 const cond = (branches, elseActions) => ({ type: 'conditional', branches, ...(elseActions ? { else: elseActions } : {}) });
-const onClick = (id, action) => ({ id, trigger: { type: 'on-click' }, action });
+const onClick = (id, action) => ({ id, trigger: { type: 'on-click' }, actions: [action] });
 
 test('a boolean condition holds for == and != only', () => {
     assert.equal(conditionHolds({ operator: '==', value: true }, true), true);

@@ -1,8 +1,8 @@
 // Prototype validator (pure). Returns every problem in a document as { code, page, node, interaction, message }, in document order.
 // Nothing is repaired. A problem names the page and the node by name, and the interaction by id when there is one.
 // `complete` false (a lazily opened file, pages still arriving): a reference that cannot be resolved yet is deferred, not refused.
-import { PROTOTYPE_VERSION, TRIGGERS, ACTION_TYPES, PLAIN_ACTION_TYPES, CONDITION_OPERATORS, TRANSITIONS, DIRECTIONS, EASINGS, MOVING_TRANSITIONS, LINK_PROTOCOLS, OVERFLOWS, OVERLAY_PLACEMENTS, OVERLAY_TRANSITIONS } from './data.js';
 import { actionsOf } from './conditional.js';
+import { PROTOTYPE_VERSION, TRIGGERS, ACTION_TYPES, PLAIN_ACTION_TYPES, CONDITION_OPERATORS, TRANSITIONS, DIRECTIONS, EASINGS, MOVING_TRANSITIONS, LINK_PROTOCOLS, OVERFLOWS, OVERLAY_PLACEMENTS, OVERLAY_TRANSITIONS } from './data.js';
 
 export class PrototypeDataError extends Error {
     /** @param {string} message @param {Problem | null} [problem] */
@@ -117,16 +117,22 @@ function checkNode(node, page, add, refs) {
     const seen = new Set();
     for (const interaction of p.interactions) {
         const id = isObject(interaction) && isNonEmptyString(interaction.id) ? interaction.id : null;
-        if (!id || !onlyKeys(interaction, ['id', 'trigger', 'action'])) {
-            add(...where, id, 'node-prototype-shape', 'an interaction holds id, trigger and action');
+        if (!id || !onlyKeys(interaction, ['id', 'trigger', 'actions'])) {
+            add(...where, id, 'node-prototype-shape', 'an interaction holds id, trigger and actions');
             continue;
         }
         if (seen.has(id)) add(...where, id, 'interaction-duplicate-id', `interaction "${id}" appears twice on this node`);
         seen.add(id);
         checkTrigger(interaction.trigger, where, id, add);
-        checkAction(interaction.action, where, id, add, refs, false);
-        const navigating = CONTINUOUS.includes(interaction.trigger?.type) ? actionsOf(interaction.action).find(a => NAVIGATING.includes(a?.type)) : undefined;
-        if (navigating) add(...where, id, 'trigger-action-mismatch', `${interaction.trigger.type} can only run open-link, not ${navigating.type}`);
+        if (!Array.isArray(interaction.actions) || interaction.actions.length === 0) {
+            add(...where, id, 'interaction-actions', 'an interaction holds at least one action, in order');
+            continue;
+        }
+        for (const action of interaction.actions) checkAction(action, where, id, add, refs, false);
+        if (CONTINUOUS.includes(interaction.trigger?.type)) {
+            const navigating = interaction.actions.flatMap(a => [a, ...actionsOf(a)]).find(a => NAVIGATING.includes(a?.type));
+            if (navigating) add(...where, id, 'trigger-action-mismatch', `${interaction.trigger.type} can only run open-link, not ${navigating.type}`);
+        }
     }
 }
 

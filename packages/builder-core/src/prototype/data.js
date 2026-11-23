@@ -2,7 +2,8 @@
 // starting points under `page.prototype`. Both carry a version; a different version is refused, never repaired. New action types
 // (overlay, dropdown, conditional, variables) are added to ACTION_TYPES with their own fields; the structure does not change.
 
-export const PROTOTYPE_VERSION = 1;
+/** Version 2: an interaction holds an ordered list of actions (decision 18). A version 1 file is refused, never migrated. */
+export const PROTOTYPE_VERSION = 2;
 
 /** The events an interaction starts on. `after-delay` also needs a delay (`trigger.delayMs`, above zero). */
 export const TRIGGERS = ['on-click', 'mouse-enter', 'mouse-leave', 'mouse-down', 'mouse-up', 'while-hovering', 'while-pressing', 'after-delay'];

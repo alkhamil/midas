@@ -35,7 +35,7 @@ function button(id, parentId, name, props, look, interactions = []) {
         template: BUTTON, master: MAIN, props: { label: name, disabled: false, hasIcon: false, ...props }, id, parentId, name,
         varModes: { [model.ids.variant]: look.variant, [model.ids.color]: look.color, [model.ids.size]: SIZE.mode },
     });
-    if (interactions.length) copies[0] = { ...copies[0], prototype: { version: 1, interactions } };
+    if (interactions.length) copies[0] = { ...copies[0], prototype: { version: 2, interactions } };
     return copies;
 }
 
@@ -45,7 +45,7 @@ function screen(id, name, x) {
 }
 
 /** A navigate-to interaction. */
-const navigate = (id, destinationId, trigger = { type: 'on-click' }, transition = instant) => ({ id, trigger, action: { type: 'navigate-to', destinationId, transition } });
+const navigate = (id, destinationId, trigger = { type: 'on-click' }, transition = instant) => ({ id, trigger, actions: [{ type: 'navigate-to', destinationId, transition }] });
 
 /**
  * The flow document. `broken` points one destination at a frame that does not exist.
@@ -65,7 +65,7 @@ export function buildPrototypeFixture({ broken = false } = {}) {
         // A plain layer shown in the mode On and hidden in the mode Off: it binds Flag, so Home's mode for Flag can be set.
         { id: 'home-flag', name: 'Flag marker', type: 'rect', parentId: 'frame-home', x: 0, y: 0, w: 40, h: 8, layoutSizingH: 'fixed', layoutSizingV: 'fixed', fills: solid('#f59e0b'), vars: { visible: 'var-flag' }, version: 0 },
         screen('frame-details', 'Details', 480),
-        ...button('details-back', 'frame-details', 'Back', {}, DANGER, [{ id: 'details-back-go', trigger: { type: 'on-click' }, action: { type: 'back' } }]),
+        ...button('details-back', 'frame-details', 'Back', {}, DANGER, [{ id: 'details-back-go', trigger: { type: 'on-click' }, actions: [{ type: 'back' }] }]),
         ...button('details-continue', 'frame-details', 'Continue', {}, PRIMARY, [navigate('details-continue-go', broken ? 'frame-missing' : 'frame-confirm', { type: 'on-click' }, { type: 'push', direction: 'top', durationMs: 250, easing: 'ease-in-out' })]),
         // Navigate to a frame on another page (the Cart page).
         ...button('details-cart', 'frame-details', 'Checkout', {}, PRIMARY, [navigate('details-cart-go', 'frame-checkout')]),
@@ -79,7 +79,7 @@ export function buildPrototypeFixture({ broken = false } = {}) {
     ];
     doc.pages.push({
         id: 'page-flow', name: 'Flow', nodes,
-        prototype: { version: 1, flows: [{ id: 'flow-main', name: 'Main', startFrameId: 'frame-home' }] },
+        prototype: { version: 2, flows: [{ id: 'flow-main', name: 'Main', startFrameId: 'frame-home' }] },
     });
     doc.pages.push({
         id: 'page-cart', name: 'Cart',

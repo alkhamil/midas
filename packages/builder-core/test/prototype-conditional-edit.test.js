@@ -63,12 +63,12 @@ test('a new conditional starts on the first boolean variable, else the first num
 });
 
 test('a conditional default from the panel is valid, and its branch compares the first variable to its default', () => {
-    const interaction = { id: 'go', trigger: { type: 'on-click' }, action: go('A') };
-    const patch = interactionPatch(interaction, 'action', 'conditional', { firstDestination: 'B', variables });
-    assert.deepEqual(patch.action.branches[0], { condition: { variableId: 'flag', operator: '==', value: true }, actions: [go('B')] });
+    const interaction = { id: 'go', trigger: { type: 'on-click' }, actions: [go('A')] };
+    const patch = interactionPatch(interaction, 'action', 'conditional', { index: 0, firstDestination: 'B', variables });
+    assert.deepEqual(patch.actions[0].branches[0], { condition: { variableId: 'flag', operator: '==', value: true }, actions: [go('B')] });
     const d = {
         pages: [{ id: 'p', name: 'P', nodes: [
-            { id: 'A', name: 'A', type: 'frame', parentId: null, prototype: { version: 1, interactions: [{ ...interaction, ...patch }] } },
+            { id: 'A', name: 'A', type: 'frame', parentId: null, prototype: { version: 2, interactions: [{ ...interaction, ...patch }] } },
             { id: 'B', name: 'B', type: 'frame', parentId: null },
         ] }],
         variables: { collections: [], items: variables.map(v => ({ ...v, collectionId: 'c', values: {} })) },
@@ -77,23 +77,23 @@ test('a conditional default from the panel is valid, and its branch compares the
 });
 
 test('a conditional cannot be set inside a conditional, nor on a hover trigger, nor without a variable to compare', () => {
-    const interaction = { id: 'go', trigger: { type: 'on-click' }, action: go('A') };
-    assert.throws(() => interactionPatch(interaction, 'action', 'conditional', { firstDestination: 'B', variables, nested: true }), /cannot sit inside/);
+    const interaction = { id: 'go', trigger: { type: 'on-click' }, actions: [go('A')] };
+    assert.throws(() => interactionPatch(interaction, 'action', 'conditional', { index: 0, firstDestination: 'B', variables, nested: true }), /cannot sit inside/);
     const hover = { ...interaction, trigger: { type: 'while-hovering' } };
-    assert.throws(() => interactionPatch(hover, 'action', 'conditional', { firstDestination: 'B', variables }), /cannot navigate/);
-    assert.throws(() => interactionPatch(interaction, 'action', 'conditional', { firstDestination: 'B', variables: [] }), /no boolean, number or string variable/);
+    assert.throws(() => interactionPatch(hover, 'action', 'conditional', { index: 0, firstDestination: 'B', variables }), /cannot navigate/);
+    assert.throws(() => interactionPatch(interaction, 'action', 'conditional', { index: 0, firstDestination: 'B', variables: [] }), /no boolean, number or string variable/);
 });
 
 test('a trigger that would make a conditional navigate on hover is refused', () => {
-    const interaction = { id: 'go', trigger: { type: 'on-click' }, action: cond([branch('flag', '==', true, [go('A')])]) };
+    const interaction = { id: 'go', trigger: { type: 'on-click' }, actions: [cond([branch('flag', '==', true, [go('A')])])] };
     assert.throws(() => interactionPatch(interaction, 'trigger', 'while-hovering', {}), /cannot navigate/);
 });
 
 test('a field of a part inside a conditional changes that part and leaves the rest', () => {
-    const interaction = { id: 'go', trigger: { type: 'on-click' }, action: cond([branch('flag', '==', true, [go('A')]), branch('flag', '==', false, [go('B')])], [go('C')]) };
+    const interaction = { id: 'go', trigger: { type: 'on-click' }, actions: [cond([branch('flag', '==', true, [go('A')]), branch('flag', '==', false, [go('B')])], [go('C')])] };
     const context = { variables };
-    assert.deepEqual(nestedPatch(interaction, 'cond-value', 'false', 'b0', 0, context).branches[0].condition, { variableId: 'flag', operator: '==', value: false });
-    assert.deepEqual(nestedPatch(interaction, 'destination', 'D', 'e', 0, context).else, [go('D')]);
-    assert.deepEqual(nestedPatch(interaction, 'action', 'open-link', 'b1', 0, context).branches[1].actions, [{ type: 'open-link', url: 'https://example.com' }]);
-    assert.deepEqual(withBranch(interaction.action, 'b0', interaction.action.branches[0]), interaction.action);
+    assert.deepEqual(nestedPatch(interaction.actions[0], 'cond-value', 'false', 'b0', 0, context).branches[0].condition, { variableId: 'flag', operator: '==', value: false });
+    assert.deepEqual(nestedPatch(interaction.actions[0], 'destination', 'D', 'e', 0, context).else, [go('D')]);
+    assert.deepEqual(nestedPatch(interaction.actions[0], 'action', 'open-link', 'b1', 0, context).branches[1].actions, [{ type: 'open-link', url: 'https://example.com' }]);
+    assert.deepEqual(withBranch(interaction.actions[0], 'b0', interaction.actions[0].branches[0]), interaction.actions[0]);
 });

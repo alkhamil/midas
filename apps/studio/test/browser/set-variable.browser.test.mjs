@@ -57,8 +57,8 @@ test('a conditional opens an overlay only after Set variable has written the var
     await page.evaluate(ids => {
         const show = window.midas.doc.get(ids.show);
         show.prototype = {
-            version: 1,
-            interactions: [{ id: 'i-show', trigger: { type: 'on-click' }, action: { type: 'conditional', branches: [{ condition: { variableId: 'flag-var', operator: '==', value: true }, actions: [{ type: 'open-overlay', destinationId: ids.card, placement: 'center', closeOnOutside: true, transition: { type: 'instant', durationMs: 0 } }] }] } }],
+            version: 2,
+            interactions: [{ id: 'i-show', trigger: { type: 'on-click' }, actions: [{ type: 'conditional', branches: [{ condition: { variableId: 'flag-var', operator: '==', value: true }, actions: [{ type: 'open-overlay', destinationId: ids.card, placement: 'center', closeOnOutside: true, transition: { type: 'instant', durationMs: 0 } }] }] }] }],
         };
         window.midas.doc.touch(show);
     }, ids);

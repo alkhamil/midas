@@ -47,7 +47,7 @@ export function respond(state, event, ctx) {
     if (event.type === 'timer') {
         if (ctx.frameOf(event.nodeId) !== state.current) return { state, effects: [] };
         const interaction = ctx.interactionsOf(event.nodeId).find(i => i.id === event.interactionId && i.trigger?.type === 'after-delay');
-        return interaction ? runAction(state, interaction.action, ctx, event.nodeId) : { state, effects: [] };
+        return interaction ? runInteraction(state, interaction, ctx, event.nodeId) : { state, effects: [] };
     }
     // A click outside the topmost overlay closes it, when that overlay closes on outside clicks. The click then runs the node's own interactions.
     const outside = event.trigger === 'on-click' ? closeOutside(state, event.nodeId, ctx) : { state, effects: [] };
@@ -56,9 +56,29 @@ export function respond(state, event, ctx) {
     let next = outside.state;
     const effects = [...outside.effects];
     for (const interaction of starts) {
-        const result = runAction(next, interaction.action, ctx, event.nodeId);
+        const result = runInteraction(next, interaction, ctx, event.nodeId);
         next = result.state;
         effects.push(...result.effects);
+    }
+    return { state: next, effects };
+}
+
+/**
+ * Runs an interaction's actions in order, top to bottom (decision 18). A frame change ends the list: the actions after a navigation do not run.
+ * @param {PlayerState} state
+ * @param {{ actions: any[] }} interaction
+ * @param {PlayerContext} ctx
+ * @param {string} nodeId
+ * @returns {{ state: PlayerState, effects: any[] }}
+ */
+function runInteraction(state, interaction, ctx, nodeId) {
+    let next = state;
+    const effects = [];
+    for (const action of interaction.actions) {
+        const result = runAction(next, action, ctx, nodeId);
+        next = result.state;
+        effects.push(...result.effects);
+        if (result.effects.some(e => e.type === 'navigate')) break;
     }
     return { state: next, effects };
 }
