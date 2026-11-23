@@ -77,7 +77,7 @@ export function setOverflow(prototype, overflow) {
  * @returns {any}
  */
 export function rewriteAction(action, rewrite, dropped) {
-    if (action?.type === 'navigate-to') {
+    if (action?.type === 'navigate-to' || action?.type === 'open-overlay') {
         const next = rewrite(action.destinationId);
         if (next === null) {
             dropped.push(action.destinationId);

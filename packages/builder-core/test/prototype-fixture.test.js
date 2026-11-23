@@ -34,7 +34,7 @@ test('the flow walks from Home to Details, back to Home, to Confirm and Done, an
     state = step.state;
 
     step = respond(state, pointer('details-back'), ctx);
-    assert.deepEqual(step.state, { current: 'frame-home', history: [] });
+    assert.deepEqual(step.state, { current: 'frame-home', history: [], overlays: [] });
     state = step.state;
 
     step = respond(state, pointer('home-delete', 'mouse-enter'), ctx);
@@ -51,8 +51,8 @@ test('the flow walks from Home to Details, back to Home, to Confirm and Done, an
 });
 
 test('restart goes back to the start frame and empties the history', () => {
-    const start = { current: 'frame-done', history: ['frame-home', 'frame-details', 'frame-confirm'] };
-    assert.deepEqual(respond(start, { type: 'restart', startFrameId: 'frame-home' }, ctx).state, { current: 'frame-home', history: [] });
+    const start = { current: 'frame-done', history: ['frame-home', 'frame-details', 'frame-confirm'], overlays: [] };
+    assert.deepEqual(respond(start, { type: 'restart', startFrameId: 'frame-home' }, ctx).state, { current: 'frame-home', history: [], overlays: [] });
 });
 
 test('the disabled Button draws disabled, and its layers are disabled targets for Play', () => {

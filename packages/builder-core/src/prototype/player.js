@@ -2,8 +2,10 @@
 // returns the new state and the effects the runtime must carry out. It starts no timers and touches no DOM: after-delay interactions
 // come back as `schedule` effects, and the runtime answers with a `timer` event when the delay has passed.
 //
-// State: { current: frameId, history: frameId[] } (the frames to go back to, last one on top).
-// Effects: navigate { from, to, transition } · open-link { url } · schedule { nodeId, interactionId, delayMs }.
+// State: { current: frameId, history: frameId[], overlays: { frameId, anchorId, placement, closeOnOutside }[] }. The history holds the frames to go
+// back to, last one on top; the overlays are the open frames, last one on top. An overlay is not a history step (decision 15).
+// Effects: navigate { from, to, transition } · open-link { url } · schedule { nodeId, interactionId, delayMs } · open-overlay { ...overlay, transition }
+// · close-overlay { frameId }.
 // A conditional runs the actions of its branch that holds when the trigger fires; variable values come from the context.
 import { chooseBranch } from './conditional.js';
 
@@ -12,17 +14,18 @@ const STARTS = { 'on-click': ['on-click'], 'mouse-enter': ['mouse-enter', 'while
 const INSTANT = { type: 'instant', durationMs: 0 };
 
 /**
- * @typedef {{ current: string, history: string[] }} PlayerState
+ * @typedef {{ frameId: string, anchorId: string, placement: string, closeOnOutside: boolean }} Overlay
+ * @typedef {{ current: string, history: string[], overlays: Overlay[] }} PlayerState
  * @typedef {{ interactionsOf: (nodeId: string) => any[], frameOf: (nodeId: string) => string | null, nodesOf: (frameId: string) => { id: string, interactions: any[] }[], valueOf: (nodeId: string, variableId: string) => any }} PlayerContext
  */
 
 /**
- * The state a player starts in: on the start frame, with nothing behind it.
+ * The state a player starts in: on the start frame, with nothing behind it and nothing open.
  * @param {string} startFrameId
  * @returns {PlayerState}
  */
 export function createPlayer(startFrameId) {
-    return { current: startFrameId, history: [] };
+    return { current: startFrameId, history: [], overlays: [] };
 }
 
 /**
@@ -33,21 +36,23 @@ export function createPlayer(startFrameId) {
  * @returns {{ state: PlayerState, effects: any[] }}
  */
 export function respond(state, event, ctx) {
-    if (event.type === 'restart') return moveTo(state, { current: event.startFrameId, history: [] }, ctx, INSTANT);
-    if (event.type === 'back') return goBack(state, ctx);
+    if (event.type === 'restart') return moveTo(state, { current: event.startFrameId, history: [], overlays: [] }, ctx, INSTANT);
+    if (event.type === 'back') return backOf(state, ctx);
     if (event.type === 'navigate') {
         if (event.frameId === state.current) return { state, effects: [] };
-        return moveTo(state, { current: event.frameId, history: [...state.history, state.current] }, ctx, INSTANT);
+        return moveTo(state, { current: event.frameId, history: [...state.history, state.current], overlays: [] }, ctx, INSTANT);
     }
     if (event.type === 'timer') {
         if (ctx.frameOf(event.nodeId) !== state.current) return { state, effects: [] };
         const interaction = ctx.interactionsOf(event.nodeId).find(i => i.id === event.interactionId && i.trigger?.type === 'after-delay');
         return interaction ? runAction(state, interaction.action, ctx, event.nodeId) : { state, effects: [] };
     }
+    // A click outside the topmost overlay closes it, when that overlay closes on outside clicks. The click then runs the node's own interactions.
+    const outside = event.trigger === 'on-click' ? closeOutside(state, event.nodeId, ctx) : { state, effects: [] };
     const interactions = ctx.interactionsOf(event.nodeId);
     const starts = interactions.filter(i => (STARTS[event.trigger] ?? []).includes(i.trigger?.type));
-    let next = state;
-    const effects = [];
+    let next = outside.state;
+    const effects = [...outside.effects];
     for (const interaction of starts) {
         const result = runAction(next, interaction.action, ctx, event.nodeId);
         next = result.state;
@@ -76,10 +81,50 @@ function runAction(state, action, ctx, nodeId) {
         }
         return { state: next, effects };
     }
-    if (action?.type === 'navigate-to') return moveTo(state, { current: action.destinationId, history: [...state.history, state.current] }, ctx, action.transition);
-    if (action?.type === 'back') return goBack(state, ctx);
+    if (action?.type === 'navigate-to') return moveTo(state, { current: action.destinationId, history: [...state.history, state.current], overlays: [] }, ctx, action.transition);
+    if (action?.type === 'back') return backOf(state, ctx);
     if (action?.type === 'open-link') return { state, effects: [{ type: 'open-link', url: action.url }] };
+    if (action?.type === 'open-overlay') return openOverlay(state, action, nodeId);
+    if (action?.type === 'close-overlay') return closeTop(state);
     return { state, effects: [] };
+}
+
+/**
+ * Opens an overlay on top of the others, anchored to the node that holds the interaction. A frame already open changes nothing.
+ * @param {PlayerState} state
+ * @param {any} action
+ * @param {string} nodeId
+ * @returns {{ state: PlayerState, effects: any[] }}
+ */
+function openOverlay(state, action, nodeId) {
+    if (state.overlays.some(o => o.frameId === action.destinationId)) return { state, effects: [] };
+    /** @type {Overlay} */
+    const overlay = { frameId: action.destinationId, anchorId: nodeId, placement: action.placement, closeOnOutside: action.closeOnOutside };
+    return { state: { ...state, overlays: [...state.overlays, overlay] }, effects: [{ type: 'open-overlay', ...overlay, transition: action.transition ?? INSTANT }] };
+}
+
+/**
+ * Closes the topmost overlay. Nothing when none is open.
+ * @param {PlayerState} state
+ * @returns {{ state: PlayerState, effects: any[] }}
+ */
+function closeTop(state) {
+    const top = state.overlays[state.overlays.length - 1];
+    if (!top) return { state, effects: [] };
+    return { state: { ...state, overlays: state.overlays.slice(0, -1) }, effects: [{ type: 'close-overlay', frameId: top.frameId }] };
+}
+
+/**
+ * A click on a layer that is not in the topmost overlay closes it, when it closes on outside clicks (one overlay per click).
+ * @param {PlayerState} state
+ * @param {string} nodeId
+ * @param {PlayerContext} ctx
+ * @returns {{ state: PlayerState, effects: any[] }}
+ */
+function closeOutside(state, nodeId, ctx) {
+    const top = state.overlays[state.overlays.length - 1];
+    if (!top || !top.closeOnOutside || ctx.frameOf(nodeId) === top.frameId) return { state, effects: [] };
+    return closeTop(state);
 }
 
 /**
@@ -101,13 +146,14 @@ function moveTo(from, to, ctx, transition) {
 }
 
 /**
- * Back: the frame on top of the history stack, or nothing when the stack is empty.
+ * Back: the topmost overlay closes first (decision 15); otherwise the frame on top of the history stack, or nothing when the stack is empty.
  * @param {PlayerState} state
  * @param {PlayerContext} ctx
  * @returns {{ state: PlayerState, effects: any[] }}
  */
-function goBack(state, ctx) {
+function backOf(state, ctx) {
+    if (state.overlays.length) return closeTop(state);
     if (!state.history.length) return { state, effects: [] };
     const previous = state.history[state.history.length - 1];
-    return moveTo(state, { current: previous, history: state.history.slice(0, -1) }, ctx, INSTANT);
+    return moveTo(state, { current: previous, history: state.history.slice(0, -1), overlays: [] }, ctx, INSTANT);
 }

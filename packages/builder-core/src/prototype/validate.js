@@ -1,7 +1,7 @@
 // Prototype validator (pure). Returns every problem in a document as { code, page, node, interaction, message }, in document order.
 // Nothing is repaired. A problem names the page and the node by name, and the interaction by id when there is one.
 // `complete` false (a lazily opened file, pages still arriving): a reference that cannot be resolved yet is deferred, not refused.
-import { PROTOTYPE_VERSION, TRIGGERS, ACTION_TYPES, PLAIN_ACTION_TYPES, CONDITION_OPERATORS, TRANSITIONS, DIRECTIONS, EASINGS, MOVING_TRANSITIONS, LINK_PROTOCOLS, OVERFLOWS } from './data.js';
+import { PROTOTYPE_VERSION, TRIGGERS, ACTION_TYPES, PLAIN_ACTION_TYPES, CONDITION_OPERATORS, TRANSITIONS, DIRECTIONS, EASINGS, MOVING_TRANSITIONS, LINK_PROTOCOLS, OVERFLOWS, OVERLAY_PLACEMENTS, OVERLAY_TRANSITIONS } from './data.js';
 import { actionsOf } from './conditional.js';
 
 export class PrototypeDataError extends Error {
@@ -20,7 +20,7 @@ export class PrototypeDataError extends Error {
 /** Triggers that hold while the pointer is over or down. Navigation and back cannot run on them (open-link can). */
 const CONTINUOUS = ['while-hovering', 'while-pressing'];
 /** Actions that change the frame. */
-const NAVIGATING = ['navigate-to', 'back'];
+const NAVIGATING = ['navigate-to', 'back', 'open-overlay', 'close-overlay'];
 
 /** @param {unknown} v */
 const isObject = v => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -225,10 +225,37 @@ function checkPlainAction(action, where, id, add, topLevelFrame) {
         if (!onlyKeys(action, ['type', 'url']) || !isNonEmptyString(action.url) || !isLinkUrl(action.url)) add(...where, id, 'open-link-url', 'open-link needs an http or https URL');
         return;
     }
+    if (action.type === 'close-overlay') {
+        if (!onlyKeys(action, ['type'])) add(...where, id, 'action-shape', 'close-overlay takes no fields');
+        return;
+    }
+    if (action.type === 'open-overlay') return checkOverlay(action, where, id, add, topLevelFrame);
     if (!onlyKeys(action, ['type', 'destinationId', 'transition']) || !isNonEmptyString(action.destinationId)) {
         return add(...where, id, 'action-shape', 'navigate-to needs a destinationId and a transition');
     }
     checkTransition(action.transition, where, id, add);
+    const target = topLevelFrame(action.destinationId);
+    if (target === undefined) return;
+    if (target === null) add(...where, id, 'destination-missing', `destination "${action.destinationId}" does not exist`);
+    else if (target === false) add(...where, id, 'destination-not-frame', 'a destination must be a top-level frame');
+}
+
+/**
+ * An overlay: a top-level frame, a placement, whether an outside click closes it, and an instant or dissolve transition.
+ * @param {any} action
+ * @param {string[]} where
+ * @param {string} id
+ * @param {(o: string, n: string | null, i: string | null, code: string, message: string) => void} add
+ * @param {(id: string) => any} topLevelFrame
+ */
+function checkOverlay(action, where, id, add, topLevelFrame) {
+    if (!onlyKeys(action, ['type', 'destinationId', 'placement', 'closeOnOutside', 'transition']) || !isNonEmptyString(action.destinationId)) {
+        return add(...where, id, 'action-shape', 'open-overlay needs a destinationId, placement, closeOnOutside and transition');
+    }
+    if (!OVERLAY_PLACEMENTS.includes(action.placement)) add(...where, id, 'overlay-placement', `placement must be one of ${OVERLAY_PLACEMENTS.join(', ')}`);
+    if (typeof action.closeOnOutside !== 'boolean') add(...where, id, 'overlay-close-outside', 'closeOnOutside must be true or false');
+    checkTransition(action.transition, where, id, add);
+    if (isObject(action.transition) && !OVERLAY_TRANSITIONS.includes(action.transition.type)) add(...where, id, 'overlay-transition', `an overlay transitions with ${OVERLAY_TRANSITIONS.join(' or ')}`);
     const target = topLevelFrame(action.destinationId);
     if (target === undefined) return;
     if (target === null) add(...where, id, 'destination-missing', `destination "${action.destinationId}" does not exist`);

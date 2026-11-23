@@ -22,42 +22,42 @@ const ctx = {
 };
 
 test('a fresh player is on its start frame with no history', () => {
-    assert.deepEqual(createPlayer('A'), { current: 'A', history: [] });
+    assert.deepEqual(createPlayer('A'), { current: 'A', history: [], overlays: [] });
 });
 
 test('an on-click navigate-to moves to the destination, pushes the previous frame, and reports the transition', () => {
     const { state, effects } = respond(createPlayer('A'), { type: 'pointer', nodeId: 'btnA', trigger: 'on-click' }, ctx);
-    assert.deepEqual(state, { current: 'B', history: ['A'] });
+    assert.deepEqual(state, { current: 'B', history: ['A'], overlays: [] });
     assert.deepEqual(effects.filter(e => e.type === 'navigate'), [{ type: 'navigate', from: 'A', to: 'B', transition: instant }]);
 });
 
 test('back returns to the previous frame and pops the history', () => {
-    const start = { current: 'B', history: ['A'] };
+    const start = { current: 'B', history: ['A'], overlays: [] };
     const { state, effects } = respond(start, { type: 'pointer', nodeId: 'btnB', trigger: 'on-click' }, ctx);
-    assert.deepEqual(state, { current: 'A', history: [] });
+    assert.deepEqual(state, { current: 'A', history: [], overlays: [] });
     assert.deepEqual(effects, [{ type: 'navigate', from: 'B', to: 'A', transition: { type: 'instant', durationMs: 0 } }]);
 });
 
 test('a back with an empty history does nothing', () => {
-    const { state, effects } = respond({ current: 'A', history: [] }, { type: 'back' }, ctx);
-    assert.deepEqual(state, { current: 'A', history: [] });
+    const { state, effects } = respond({ current: 'A', history: [], overlays: [] }, { type: 'back' }, ctx);
+    assert.deepEqual(state, { current: 'A', history: [], overlays: [] });
     assert.deepEqual(effects, []);
 });
 
 test('a back interaction behaves like the back command', () => {
-    const { state } = respond({ current: 'B', history: ['A'] }, { type: 'pointer', nodeId: 'btnB', trigger: 'on-click' }, { ...ctx, interactionsOf: id => (id === 'btnB' ? [back('back-b')] : []) });
-    assert.deepEqual(state, { current: 'A', history: [] });
+    const { state } = respond({ current: 'B', history: ['A'], overlays: [] }, { type: 'pointer', nodeId: 'btnB', trigger: 'on-click' }, { ...ctx, interactionsOf: id => (id === 'btnB' ? [back('back-b')] : []) });
+    assert.deepEqual(state, { current: 'A', history: [], overlays: [] });
 });
 
 test('restart goes back to the start frame and clears the history', () => {
-    const { state, effects } = respond({ current: 'C', history: ['A', 'B'] }, { type: 'restart', startFrameId: 'A' }, ctx);
-    assert.deepEqual(state, { current: 'A', history: [] });
+    const { state, effects } = respond({ current: 'C', history: ['A', 'B'], overlays: [] }, { type: 'restart', startFrameId: 'A' }, ctx);
+    assert.deepEqual(state, { current: 'A', history: [], overlays: [] });
     assert.deepEqual(effects, [{ type: 'navigate', from: 'C', to: 'A', transition: { type: 'instant', durationMs: 0 } }]);
 });
 
 test('a pointer event only runs the interactions with that trigger', () => {
     const { state, effects } = respond(createPlayer('A'), { type: 'pointer', nodeId: 'btnA', trigger: 'mouse-enter' }, ctx);
-    assert.deepEqual(state, { current: 'A', history: [] });
+    assert.deepEqual(state, { current: 'A', history: [], overlays: [] });
     assert.deepEqual(effects, [{ type: 'open-link', url: 'https://example.com' }]);
 });
 
@@ -73,15 +73,15 @@ test('after-delay is reported as a schedule when the frame is entered, not run',
 });
 
 test('a timer fires the after-delay interaction on the frame it belongs to', () => {
-    const start = { current: 'B', history: ['A'] };
+    const start = { current: 'B', history: ['A'], overlays: [] };
     const { state, effects } = respond(start, { type: 'timer', nodeId: 'btnB', interactionId: 'go-c' }, ctx);
-    assert.deepEqual(state, { current: 'C', history: ['A', 'B'] });
+    assert.deepEqual(state, { current: 'C', history: ['A', 'B'], overlays: [] });
     assert.deepEqual(effects[0], { type: 'navigate', from: 'B', to: 'C', transition: instant });
 });
 
 test('a timer that belongs to a frame the player has left is ignored', () => {
-    const { state, effects } = respond({ current: 'A', history: [] }, { type: 'timer', nodeId: 'btnB', interactionId: 'go-c' }, ctx);
-    assert.deepEqual(state, { current: 'A', history: [] });
+    const { state, effects } = respond({ current: 'A', history: [], overlays: [] }, { type: 'timer', nodeId: 'btnB', interactionId: 'go-c' }, ctx);
+    assert.deepEqual(state, { current: 'A', history: [], overlays: [] });
     assert.deepEqual(effects, []);
 });
 
@@ -104,21 +104,21 @@ test('while-pressing runs its action on mouse-down', () => {
 });
 
 test('the player never mutates the state it is given', () => {
-    const start = { current: 'A', history: [] };
+    const start = { current: 'A', history: [], overlays: [] };
     respond(start, { type: 'pointer', nodeId: 'btnA', trigger: 'on-click' }, ctx);
-    assert.deepEqual(start, { current: 'A', history: [] });
+    assert.deepEqual(start, { current: 'A', history: [], overlays: [] });
 });
 
 test('a navigate event moves to a frame through the history, like a navigate-to, and back returns', () => {
-    const moved = respond({ current: 'A', history: [] }, { type: 'navigate', frameId: 'B' }, ctx);
-    assert.deepEqual(moved.state, { current: 'B', history: ['A'] });
+    const moved = respond({ current: 'A', history: [], overlays: [] }, { type: 'navigate', frameId: 'B' }, ctx);
+    assert.deepEqual(moved.state, { current: 'B', history: ['A'], overlays: [] });
     assert.equal(moved.effects.find(e => e.type === 'navigate').to, 'B');
-    assert.deepEqual(respond(moved.state, { type: 'back' }, ctx).state, { current: 'A', history: [] });
+    assert.deepEqual(respond(moved.state, { type: 'back' }, ctx).state, { current: 'A', history: [], overlays: [] });
 });
 
 test('a navigate event to the frame the player is already on does nothing', () => {
-    const same = respond({ current: 'A', history: [] }, { type: 'navigate', frameId: 'A' }, ctx);
-    assert.deepEqual(same, { state: { current: 'A', history: [] }, effects: [] });
+    const same = respond({ current: 'A', history: [], overlays: [] }, { type: 'navigate', frameId: 'A' }, ctx);
+    assert.deepEqual(same, { state: { current: 'A', history: [], overlays: [] }, effects: [] });
 });
 
 test('a mouse-leave interaction runs when the pointer leaves its node', () => {

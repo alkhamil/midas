@@ -67,16 +67,16 @@ const setButton = interaction => { nodes.btn.interactions = [interaction]; };
 test('a conditional on a click runs its branch when the condition holds, and the else when it does not', () => {
     setButton(onClick('go', cond([branch('flag', '==', true, [navTo('B')])], [navTo('C')])));
     const yes = respond(createPlayer('A'), pointer, withValues({ flag: true }));
-    assert.deepEqual(yes.state, { current: 'B', history: ['A'] });
+    assert.deepEqual(yes.state, { current: 'B', history: ['A'], overlays: [] });
     assert.equal(yes.effects[0].to, 'B');
     const no = respond(createPlayer('A'), pointer, withValues({ flag: false }));
-    assert.deepEqual(no.state, { current: 'C', history: ['A'] });
+    assert.deepEqual(no.state, { current: 'C', history: ['A'], overlays: [] });
 });
 
 test('a conditional with no else does nothing when no branch holds', () => {
     setButton(onClick('go', cond([branch('flag', '==', true, [navTo('B')])])));
     const { state, effects } = respond(createPlayer('A'), pointer, withValues({ flag: false }));
-    assert.deepEqual(state, { current: 'A', history: [] });
+    assert.deepEqual(state, { current: 'A', history: [], overlays: [] });
     assert.deepEqual(effects, []);
 });
 

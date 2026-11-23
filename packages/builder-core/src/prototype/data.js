@@ -8,7 +8,7 @@ export const PROTOTYPE_VERSION = 1;
 export const TRIGGERS = ['on-click', 'mouse-enter', 'mouse-leave', 'mouse-down', 'mouse-up', 'while-hovering', 'while-pressing', 'after-delay'];
 
 /** The actions a conditional's branches can hold. A conditional cannot hold another conditional. */
-export const PLAIN_ACTION_TYPES = ['navigate-to', 'back', 'open-link'];
+export const PLAIN_ACTION_TYPES = ['navigate-to', 'back', 'open-link', 'open-overlay', 'close-overlay'];
 export const ACTION_TYPES = [...PLAIN_ACTION_TYPES, 'conditional'];
 
 /** The variable types a condition can compare, and the operators each allows. Booleans have no order. */
@@ -27,6 +27,10 @@ export const EASINGS = ['linear', 'ease-in', 'ease-out', 'ease-in-out'];
 export const MOVING_TRANSITIONS = ['slide-in', 'push'];
 
 export const LINK_PROTOCOLS = ['http:', 'https:'];
+
+/** An overlay's place: centred in the window, or beside the trigger's layer (below or above it). An overlay's transition is instant or dissolve. */
+export const OVERLAY_PLACEMENTS = ['center', 'below', 'above'];
+export const OVERLAY_TRANSITIONS = ['instant', 'dissolve'];
 
 /** A frame's Scroll behavior: the axes its content may scroll on. `none` clips on both axes and is the default (not stored). */
 export const OVERFLOWS = ['none', 'horizontal', 'vertical', 'both'];

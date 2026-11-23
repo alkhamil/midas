@@ -45,4 +45,4 @@ Dicatat 2026-11-23, setelah batch A di-commit (`b194e93`). Acuan: `docs/specs/we
 
 1. Fase 2 (Prototype): overlay, lalu Select, Dialog, Toast.
 2. Pola daftar data (`options`, item, nilai): dipakai Radio Group, Pagination, Breadcrumb, Tabs, Table.
-3. Keputusan user: nama variant Button dan Card, nama TextField, dan Typography yang belum dibuat.
+3. Nama variant Button dan Card, dan TextField, sudah disetujui user (2026-11-23): nama yang sekarang dipakai tetap.
