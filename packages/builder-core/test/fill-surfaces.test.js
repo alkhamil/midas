@@ -53,7 +53,7 @@ test('a layer that gets a picture keeps its other fills as they are and gains ex
     const none = nodeFieldPatch('imageFill', 'a', 'frame', { fills: [] }).fills;
     assert.deepEqual(none.map(f => [f.type, f.visible]), [['image', true]], 'a layer with no fill has one row, the picture');
     const coloured = nodeFieldPatch('imageFill', 'a', 'frame', { fills: [{ type: 'solid', color: '#ff0000', visible: true }] }).fills;
-    assert.deepEqual(coloured.map(f => [f.type, f.visible]), [['solid', true], ['image', true]], 'the colour fill the designer made stays as it is');
+    assert.deepEqual(coloured.map(f => [f.type, f.visible]), [['image', true], ['solid', true]], 'the picture is the top fill, the colour the designer made stays under it');
     assert.deepEqual(nodeFieldPatch('imageFill', null, 'frame', { fills: coloured }).fills.map(f => f.type), ['solid'], 'no picture removes the image fill and nothing else');
 });
 

@@ -513,7 +513,7 @@ function withoutNaturalSize({ iw, ih, ...rest }) {
 }
 
 /**
- * The fills of a node that holds a picture: its other fills stay as they are (none is hidden or added) and the picture is one image fill after them, covering the box. A picture
+ * The fills of a node that holds a picture: its other fills stay as they are (none is hidden or added) and the picture is the top fill (the list is stored top first), covering the box. A picture
  * the node already has keeps everything but its asset (hidden, mode, scale, opacity are the designer's, set in the Fill panel); only the asset is the prop's. No asset removes the
  * picture. The result is the whole `fills` list.
  * @param {unknown} asset the asset id, or nothing
@@ -527,8 +527,8 @@ function imageFillPatch(asset, node, assets) {
     // The mode and the tile scale stay the designer's across a new source; the old picture's natural size goes with it.
     if (asset == null) return { fills: colours };
     // A template picture prop holds an asset id; a video asset is a video source, so the prop binds video sources and modes like image ones. A kept video keeps its poster.
-    if (own) return { fills: [...colours, { ...((video ? own.video === asset : own.image === asset) ? own : withoutNaturalSize(own)), [key]: asset }] };
-    return { fills: [...colours, video ? { type: 'video', video: asset, mode: 'fill', scale: 1, opacity: 1, visible: true } : { type: 'image', image: asset, mode: 'fill', scale: 1, opacity: 1, visible: true }] };
+    if (own) return { fills: [{ ...((video ? own.video === asset : own.image === asset) ? own : withoutNaturalSize(own)), [key]: asset }, ...colours] };
+    return { fills: [video ? { type: 'video', video: asset, mode: 'fill', scale: 1, opacity: 1, visible: true } : { type: 'image', image: asset, mode: 'fill', scale: 1, opacity: 1, visible: true }, ...colours] };
 }
 
 /**

@@ -21,9 +21,10 @@ export function rootClassWidth(master) {
  * A text layer takes its natural size on a fixed or hug axis; only a fill axis changes it.
  * @param {any} n
  * @param {any} parent an auto layout frame
+ * @param {number} [shares] the equal fill shares of the row (see fillShareCount); 1 grows from zero
  * @returns {Record<string, string>}
  */
-export function flowSizing(n, parent) {
+export function flowSizing(n, parent, shares = 1) {
     const vertical = parent.layout === 'vertical';
     const mainAxis = vertical ? { sizing: ownSizingOf(n, 'v'), size: 'height', length: n.h, min: 'minHeight' } : { sizing: ownSizingOf(n, 'h'), size: 'width', length: n.w, min: 'minWidth' };
     const crossAxis = vertical ? { sizing: ownSizingOf(n, 'h'), size: 'width', length: n.w } : { sizing: ownSizingOf(n, 'v'), size: 'height', length: n.h };
@@ -32,7 +33,7 @@ export function flowSizing(n, parent) {
     if (mainAxis.sizing === 'fill') {
         // In a parent that hugs its content a filling child keeps its own width and grows only into what is left (as the canvas does);
         // in a fixed parent it takes the row from zero.
-        style.flex = ownSizingOf(parent, vertical ? 'v' : 'h') === 'hug' ? '1 1 auto' : '1 1 0';
+        style.flex = ownSizingOf(parent, vertical ? 'v' : 'h') === 'hug' ? '1 1 auto' : shares > 1 ? `1 1 calc(100% / ${shares})` : '1 1 0';
         style[mainAxis.min] = '0px';
     }
     else {
@@ -49,6 +50,20 @@ export function flowSizing(n, parent) {
     const outside = strokeOutside(n, parent);
     if (outside) style.margin = `${outside}px`;
     return style;
+}
+
+/**
+ * The equal fill shares of a row: when a fixed auto layout frame's flow children all fill its main axis, each takes 1/N of the row
+ * (flowSizing), else 1. A hugging parent never shares.
+ * @param {any} parent
+ * @param {any[]} children the parent's children (a hidden layer still counts: the codegen passes the anatomy's slots, which hide by condition)
+ * @returns {number}
+ */
+export function fillShareCount(parent, children) {
+    const axis = parent.layout === 'vertical' ? 'v' : 'h';
+    const flow = children.filter(c => c.isMask !== true && c.layoutPositioning !== 'absolute');
+    if (flow.length < 2 || ownSizingOf(parent, axis) === 'hug') return 1;
+    return flow.every(c => ownSizingOf(c, axis) === 'fill') ? flow.length : 1;
 }
 /**
  * The flex container style of an auto layout frame: the spacing and alignment the canvas layout engine uses (`layoutPads`, the gaps,

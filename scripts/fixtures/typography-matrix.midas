@@ -66,41 +66,6 @@
      "x": 0,
      "y": 0,
      "rotation": 0,
-     "stroke": "#18181b",
-     "strokeWidth": 1.5,
-     "radius": 0,
-     "opacity": 1,
-     "visible": false,
-     "locked": false,
-     "clip": false,
-     "version": 0,
-     "id": "btn-spinner",
-     "name": "spinner",
-     "type": "ellipse",
-     "parentId": "btn",
-     "w": 14,
-     "h": 14,
-     "arcStart": -90,
-     "arcSweep": 25,
-     "arcRatio": 75,
-     "fills": [],
-     "strokeAlign": "inside",
-     "layoutSizingH": "fixed",
-     "layoutSizingV": "fixed",
-     "behavior": {
-      "version": 2,
-      "part": "spinner"
-     },
-     "vars": {
-      "stroke": "v-fg",
-      "w": "s-iconSize",
-      "h": "s-iconSize"
-     }
-    },
-    {
-     "x": 0,
-     "y": 0,
-     "rotation": 0,
      "stroke": "#000000",
      "strokeWidth": 0,
      "radius": 0,
@@ -174,7 +139,7 @@
      "padding": 12,
      "strokeAlign": "inside",
      "layoutSizingH": "fixed",
-     "layoutSizingV": "fixed",
+     "layoutSizingV": "hug",
      "behavior": {
       "version": 2,
       "templateId": "input",
@@ -189,7 +154,7 @@
       "stroke": "in-v-border",
       "strokeWidth": "in-s-borderWidth",
       "radius": "in-s-radius",
-      "h": "in-s-height",
+      "minH": "in-s-height",
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
       "gap": "in-s-gap"
@@ -203,7 +168,7 @@
      "strokeWidth": 0,
      "radius": 0,
      "opacity": 1,
-     "visible": false,
+     "visible": true,
      "locked": false,
      "clip": false,
      "version": 0,
@@ -211,7 +176,7 @@
      "name": "placeholder",
      "type": "text",
      "parentId": "inp",
-     "text": "",
+     "text": "Input placeholder",
      "fontFamily": "Inter",
      "fontSize": 14,
      "fontWeight": 400,
@@ -343,45 +308,6 @@
      "x": 0,
      "y": 0,
      "rotation": 0,
-     "stroke": "#18181b",
-     "strokeWidth": 1.5,
-     "radius": 0,
-     "opacity": 1,
-     "visible": false,
-     "locked": false,
-     "clip": false,
-     "version": 0,
-     "id": "b-xs-spinner",
-     "name": "spinner",
-     "type": "ellipse",
-     "parentId": "b-xs",
-     "w": 14,
-     "h": 14,
-     "arcStart": -90,
-     "arcSweep": 25,
-     "arcRatio": 75,
-     "fills": [],
-     "strokeAlign": "inside",
-     "layoutSizingH": "fixed",
-     "layoutSizingV": "fixed",
-     "behavior": {
-      "version": 2,
-      "part": "spinner"
-     },
-     "vars": {
-      "stroke": "v-fg",
-      "w": "s-iconSize",
-      "h": "s-iconSize"
-     },
-     "sourceId": "btn-spinner",
-     "component": false,
-     "isInstance": false,
-     "overrides": {}
-    },
-    {
-     "x": 0,
-     "y": 0,
-     "rotation": 0,
      "stroke": "#000000",
      "strokeWidth": 0,
      "radius": 0,
@@ -488,45 +414,6 @@
       "c-color": "primary",
       "c-size": "sm"
      }
-    },
-    {
-     "x": 0,
-     "y": 0,
-     "rotation": 0,
-     "stroke": "#18181b",
-     "strokeWidth": 1.5,
-     "radius": 0,
-     "opacity": 1,
-     "visible": false,
-     "locked": false,
-     "clip": false,
-     "version": 0,
-     "id": "b-sm-spinner",
-     "name": "spinner",
-     "type": "ellipse",
-     "parentId": "b-sm",
-     "w": 14,
-     "h": 14,
-     "arcStart": -90,
-     "arcSweep": 25,
-     "arcRatio": 75,
-     "fills": [],
-     "strokeAlign": "inside",
-     "layoutSizingH": "fixed",
-     "layoutSizingV": "fixed",
-     "behavior": {
-      "version": 2,
-      "part": "spinner"
-     },
-     "vars": {
-      "stroke": "v-fg",
-      "w": "s-iconSize",
-      "h": "s-iconSize"
-     },
-     "sourceId": "btn-spinner",
-     "component": false,
-     "isInstance": false,
-     "overrides": {}
     },
     {
      "x": 0,
@@ -643,45 +530,6 @@
      "x": 0,
      "y": 0,
      "rotation": 0,
-     "stroke": "#18181b",
-     "strokeWidth": 1.5,
-     "radius": 0,
-     "opacity": 1,
-     "visible": false,
-     "locked": false,
-     "clip": false,
-     "version": 0,
-     "id": "b-md-spinner",
-     "name": "spinner",
-     "type": "ellipse",
-     "parentId": "b-md",
-     "w": 14,
-     "h": 14,
-     "arcStart": -90,
-     "arcSweep": 25,
-     "arcRatio": 75,
-     "fills": [],
-     "strokeAlign": "inside",
-     "layoutSizingH": "fixed",
-     "layoutSizingV": "fixed",
-     "behavior": {
-      "version": 2,
-      "part": "spinner"
-     },
-     "vars": {
-      "stroke": "v-fg",
-      "w": "s-iconSize",
-      "h": "s-iconSize"
-     },
-     "sourceId": "btn-spinner",
-     "component": false,
-     "isInstance": false,
-     "overrides": {}
-    },
-    {
-     "x": 0,
-     "y": 0,
-     "rotation": 0,
      "stroke": "#000000",
      "strokeWidth": 0,
      "radius": 0,
@@ -788,45 +636,6 @@
       "c-color": "primary",
       "c-size": "lg"
      }
-    },
-    {
-     "x": 0,
-     "y": 0,
-     "rotation": 0,
-     "stroke": "#18181b",
-     "strokeWidth": 1.5,
-     "radius": 0,
-     "opacity": 1,
-     "visible": false,
-     "locked": false,
-     "clip": false,
-     "version": 0,
-     "id": "b-lg-spinner",
-     "name": "spinner",
-     "type": "ellipse",
-     "parentId": "b-lg",
-     "w": 14,
-     "h": 14,
-     "arcStart": -90,
-     "arcSweep": 25,
-     "arcRatio": 75,
-     "fills": [],
-     "strokeAlign": "inside",
-     "layoutSizingH": "fixed",
-     "layoutSizingV": "fixed",
-     "behavior": {
-      "version": 2,
-      "part": "spinner"
-     },
-     "vars": {
-      "stroke": "v-fg",
-      "w": "s-iconSize",
-      "h": "s-iconSize"
-     },
-     "sourceId": "btn-spinner",
-     "component": false,
-     "isInstance": false,
-     "overrides": {}
     },
     {
      "x": 0,
@@ -943,45 +752,6 @@
      "x": 0,
      "y": 0,
      "rotation": 0,
-     "stroke": "#18181b",
-     "strokeWidth": 1.5,
-     "radius": 0,
-     "opacity": 1,
-     "visible": false,
-     "locked": false,
-     "clip": false,
-     "version": 0,
-     "id": "b-xl-spinner",
-     "name": "spinner",
-     "type": "ellipse",
-     "parentId": "b-xl",
-     "w": 14,
-     "h": 14,
-     "arcStart": -90,
-     "arcSweep": 25,
-     "arcRatio": 75,
-     "fills": [],
-     "strokeAlign": "inside",
-     "layoutSizingH": "fixed",
-     "layoutSizingV": "fixed",
-     "behavior": {
-      "version": 2,
-      "part": "spinner"
-     },
-     "vars": {
-      "stroke": "v-fg",
-      "w": "s-iconSize",
-      "h": "s-iconSize"
-     },
-     "sourceId": "btn-spinner",
-     "component": false,
-     "isInstance": false,
-     "overrides": {}
-    },
-    {
-     "x": 0,
-     "y": 0,
-     "rotation": 0,
      "stroke": "#000000",
      "strokeWidth": 0,
      "radius": 0,
@@ -1059,7 +829,7 @@
      "padding": 12,
      "strokeAlign": "inside",
      "layoutSizingH": "fixed",
-     "layoutSizingV": "fixed",
+     "layoutSizingV": "hug",
      "behavior": {
       "version": 2,
       "props": {
@@ -1072,7 +842,7 @@
       "stroke": "in-v-border",
       "strokeWidth": "in-s-borderWidth",
       "radius": "in-s-radius",
-      "h": "in-s-height",
+      "minH": "in-s-height",
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
       "gap": "in-s-gap"
@@ -1094,64 +864,11 @@
      "strokeWidth": 0,
      "radius": 0,
      "opacity": 1,
-     "visible": false,
-     "locked": false,
-     "clip": false,
-     "version": 0,
-     "id": "i-xs-placeholder",
-     "name": "placeholder",
-     "type": "text",
-     "parentId": "i-xs",
-     "text": "",
-     "fontFamily": "Inter",
-     "fontSize": 14,
-     "fontWeight": 400,
-     "fontStyle": "normal",
-     "lineHeight": 1.4,
-     "letterSpacing": 0,
-     "textAlign": "left",
-     "textDecoration": "none",
-     "textCase": "none",
-     "direction": "auto",
-     "w": 0,
-     "h": 0,
-     "autoW": true,
-     "layoutSizingH": "fill",
-     "layoutSizingV": "hug",
-     "fills": [
-      {
-       "type": "solid",
-       "color": "#18181b",
-       "opacity": 1,
-       "visible": true
-      }
-     ],
-     "behavior": {
-      "version": 2,
-      "part": "placeholder"
-     },
-     "vars": {
-      "fills.0": "in-v-placeholder",
-      "typography": "in-s-placeholderTypography"
-     },
-     "sourceId": "inp-placeholder",
-     "component": false,
-     "isInstance": false,
-     "overrides": {}
-    },
-    {
-     "x": 0,
-     "y": 0,
-     "rotation": 0,
-     "stroke": "#000000",
-     "strokeWidth": 0,
-     "radius": 0,
-     "opacity": 1,
      "visible": true,
      "locked": false,
      "clip": false,
      "version": 0,
-     "id": "i-xs-value",
+     "id": "i-xs--value",
      "name": "value",
      "type": "text",
      "parentId": "i-xs",
@@ -1219,7 +936,7 @@
      "padding": 12,
      "strokeAlign": "inside",
      "layoutSizingH": "fixed",
-     "layoutSizingV": "fixed",
+     "layoutSizingV": "hug",
      "behavior": {
       "version": 2,
       "props": {
@@ -1232,7 +949,7 @@
       "stroke": "in-v-border",
       "strokeWidth": "in-s-borderWidth",
       "radius": "in-s-radius",
-      "h": "in-s-height",
+      "minH": "in-s-height",
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
       "gap": "in-s-gap"
@@ -1254,64 +971,11 @@
      "strokeWidth": 0,
      "radius": 0,
      "opacity": 1,
-     "visible": false,
-     "locked": false,
-     "clip": false,
-     "version": 0,
-     "id": "i-sm-placeholder",
-     "name": "placeholder",
-     "type": "text",
-     "parentId": "i-sm",
-     "text": "",
-     "fontFamily": "Inter",
-     "fontSize": 14,
-     "fontWeight": 400,
-     "fontStyle": "normal",
-     "lineHeight": 1.4,
-     "letterSpacing": 0,
-     "textAlign": "left",
-     "textDecoration": "none",
-     "textCase": "none",
-     "direction": "auto",
-     "w": 0,
-     "h": 0,
-     "autoW": true,
-     "layoutSizingH": "fill",
-     "layoutSizingV": "hug",
-     "fills": [
-      {
-       "type": "solid",
-       "color": "#18181b",
-       "opacity": 1,
-       "visible": true
-      }
-     ],
-     "behavior": {
-      "version": 2,
-      "part": "placeholder"
-     },
-     "vars": {
-      "fills.0": "in-v-placeholder",
-      "typography": "in-s-placeholderTypography"
-     },
-     "sourceId": "inp-placeholder",
-     "component": false,
-     "isInstance": false,
-     "overrides": {}
-    },
-    {
-     "x": 0,
-     "y": 0,
-     "rotation": 0,
-     "stroke": "#000000",
-     "strokeWidth": 0,
-     "radius": 0,
-     "opacity": 1,
      "visible": true,
      "locked": false,
      "clip": false,
      "version": 0,
-     "id": "i-sm-value",
+     "id": "i-sm--value",
      "name": "value",
      "type": "text",
      "parentId": "i-sm",
@@ -1379,7 +1043,7 @@
      "padding": 12,
      "strokeAlign": "inside",
      "layoutSizingH": "fixed",
-     "layoutSizingV": "fixed",
+     "layoutSizingV": "hug",
      "behavior": {
       "version": 2,
       "props": {
@@ -1392,7 +1056,7 @@
       "stroke": "in-v-border",
       "strokeWidth": "in-s-borderWidth",
       "radius": "in-s-radius",
-      "h": "in-s-height",
+      "minH": "in-s-height",
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
       "gap": "in-s-gap"
@@ -1414,64 +1078,11 @@
      "strokeWidth": 0,
      "radius": 0,
      "opacity": 1,
-     "visible": false,
-     "locked": false,
-     "clip": false,
-     "version": 0,
-     "id": "i-md-placeholder",
-     "name": "placeholder",
-     "type": "text",
-     "parentId": "i-md",
-     "text": "",
-     "fontFamily": "Inter",
-     "fontSize": 14,
-     "fontWeight": 400,
-     "fontStyle": "normal",
-     "lineHeight": 1.4,
-     "letterSpacing": 0,
-     "textAlign": "left",
-     "textDecoration": "none",
-     "textCase": "none",
-     "direction": "auto",
-     "w": 0,
-     "h": 0,
-     "autoW": true,
-     "layoutSizingH": "fill",
-     "layoutSizingV": "hug",
-     "fills": [
-      {
-       "type": "solid",
-       "color": "#18181b",
-       "opacity": 1,
-       "visible": true
-      }
-     ],
-     "behavior": {
-      "version": 2,
-      "part": "placeholder"
-     },
-     "vars": {
-      "fills.0": "in-v-placeholder",
-      "typography": "in-s-placeholderTypography"
-     },
-     "sourceId": "inp-placeholder",
-     "component": false,
-     "isInstance": false,
-     "overrides": {}
-    },
-    {
-     "x": 0,
-     "y": 0,
-     "rotation": 0,
-     "stroke": "#000000",
-     "strokeWidth": 0,
-     "radius": 0,
-     "opacity": 1,
      "visible": true,
      "locked": false,
      "clip": false,
      "version": 0,
-     "id": "i-md-value",
+     "id": "i-md--value",
      "name": "value",
      "type": "text",
      "parentId": "i-md",
@@ -1539,7 +1150,7 @@
      "padding": 12,
      "strokeAlign": "inside",
      "layoutSizingH": "fixed",
-     "layoutSizingV": "fixed",
+     "layoutSizingV": "hug",
      "behavior": {
       "version": 2,
       "props": {
@@ -1552,7 +1163,7 @@
       "stroke": "in-v-border",
       "strokeWidth": "in-s-borderWidth",
       "radius": "in-s-radius",
-      "h": "in-s-height",
+      "minH": "in-s-height",
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
       "gap": "in-s-gap"
@@ -1574,64 +1185,11 @@
      "strokeWidth": 0,
      "radius": 0,
      "opacity": 1,
-     "visible": false,
-     "locked": false,
-     "clip": false,
-     "version": 0,
-     "id": "i-lg-placeholder",
-     "name": "placeholder",
-     "type": "text",
-     "parentId": "i-lg",
-     "text": "",
-     "fontFamily": "Inter",
-     "fontSize": 14,
-     "fontWeight": 400,
-     "fontStyle": "normal",
-     "lineHeight": 1.4,
-     "letterSpacing": 0,
-     "textAlign": "left",
-     "textDecoration": "none",
-     "textCase": "none",
-     "direction": "auto",
-     "w": 0,
-     "h": 0,
-     "autoW": true,
-     "layoutSizingH": "fill",
-     "layoutSizingV": "hug",
-     "fills": [
-      {
-       "type": "solid",
-       "color": "#18181b",
-       "opacity": 1,
-       "visible": true
-      }
-     ],
-     "behavior": {
-      "version": 2,
-      "part": "placeholder"
-     },
-     "vars": {
-      "fills.0": "in-v-placeholder",
-      "typography": "in-s-placeholderTypography"
-     },
-     "sourceId": "inp-placeholder",
-     "component": false,
-     "isInstance": false,
-     "overrides": {}
-    },
-    {
-     "x": 0,
-     "y": 0,
-     "rotation": 0,
-     "stroke": "#000000",
-     "strokeWidth": 0,
-     "radius": 0,
-     "opacity": 1,
      "visible": true,
      "locked": false,
      "clip": false,
      "version": 0,
-     "id": "i-lg-value",
+     "id": "i-lg--value",
      "name": "value",
      "type": "text",
      "parentId": "i-lg",
@@ -1699,7 +1257,7 @@
      "padding": 12,
      "strokeAlign": "inside",
      "layoutSizingH": "fixed",
-     "layoutSizingV": "fixed",
+     "layoutSizingV": "hug",
      "behavior": {
       "version": 2,
       "props": {
@@ -1712,7 +1270,7 @@
       "stroke": "in-v-border",
       "strokeWidth": "in-s-borderWidth",
       "radius": "in-s-radius",
-      "h": "in-s-height",
+      "minH": "in-s-height",
       "padH": "in-s-paddingX",
       "padV": "in-s-paddingY",
       "gap": "in-s-gap"
@@ -1734,64 +1292,11 @@
      "strokeWidth": 0,
      "radius": 0,
      "opacity": 1,
-     "visible": false,
-     "locked": false,
-     "clip": false,
-     "version": 0,
-     "id": "i-xl-placeholder",
-     "name": "placeholder",
-     "type": "text",
-     "parentId": "i-xl",
-     "text": "",
-     "fontFamily": "Inter",
-     "fontSize": 14,
-     "fontWeight": 400,
-     "fontStyle": "normal",
-     "lineHeight": 1.4,
-     "letterSpacing": 0,
-     "textAlign": "left",
-     "textDecoration": "none",
-     "textCase": "none",
-     "direction": "auto",
-     "w": 0,
-     "h": 0,
-     "autoW": true,
-     "layoutSizingH": "fill",
-     "layoutSizingV": "hug",
-     "fills": [
-      {
-       "type": "solid",
-       "color": "#18181b",
-       "opacity": 1,
-       "visible": true
-      }
-     ],
-     "behavior": {
-      "version": 2,
-      "part": "placeholder"
-     },
-     "vars": {
-      "fills.0": "in-v-placeholder",
-      "typography": "in-s-placeholderTypography"
-     },
-     "sourceId": "inp-placeholder",
-     "component": false,
-     "isInstance": false,
-     "overrides": {}
-    },
-    {
-     "x": 0,
-     "y": 0,
-     "rotation": 0,
-     "stroke": "#000000",
-     "strokeWidth": 0,
-     "radius": 0,
-     "opacity": 1,
      "visible": true,
      "locked": false,
      "clip": false,
      "version": 0,
-     "id": "i-xl-value",
+     "id": "i-xl--value",
      "name": "value",
      "type": "text",
      "parentId": "i-xl",
@@ -2862,7 +2367,7 @@
    },
    {
     "id": "p-ha1a1aa",
-    "name": "color/literal-30",
+    "name": "color/literal-29",
     "type": "color",
     "collectionId": "c-primitives",
     "values": {
@@ -2871,7 +2376,7 @@
    },
    {
     "id": "sem-ha1a1aa",
-    "name": "color/literal-30",
+    "name": "color/literal-29",
     "type": "color",
     "collectionId": "c-semantic",
     "values": {
@@ -4377,7 +3882,7 @@
    },
    {
     "id": "p-heeeeee",
-    "name": "color/literal-29",
+    "name": "color/literal-30",
     "type": "color",
     "collectionId": "c-primitives",
     "values": {
@@ -4386,7 +3891,7 @@
    },
    {
     "id": "sem-heeeeee",
-    "name": "color/literal-29",
+    "name": "color/literal-30",
     "type": "color",
     "collectionId": "c-semantic",
     "values": {
@@ -4671,6 +4176,29 @@
     }
    },
    {
+    "id": "in-s-glyphInset",
+    "name": "glyphInset",
+    "type": "number",
+    "collectionId": "c-input-size",
+    "values": {
+     "xs": {
+      "alias": "sem-n2"
+     },
+     "sm": {
+      "alias": "sem-n2"
+     },
+     "md": {
+      "alias": "sem-n2"
+     },
+     "lg": {
+      "alias": "sem-n2"
+     },
+     "xl": {
+      "alias": "sem-n2"
+     }
+    }
+   },
+   {
     "id": "in-s-valueTypography",
     "name": "valueTypography",
     "type": "typography",
@@ -4867,6 +4395,57 @@
      },
      "borderless": {
       "alias": "sem-h595959"
+     }
+    }
+   },
+   {
+    "id": "in-v-glyph-fg",
+    "name": "glyph-fg",
+    "type": "color",
+    "collectionId": "c-input-variant",
+    "values": {
+     "outlined": {
+      "alias": "sem-hbfbfbf"
+     },
+     "filled": {
+      "alias": "sem-hbfbfbf"
+     },
+     "borderless": {
+      "alias": "sem-hbfbfbf"
+     }
+    }
+   },
+   {
+    "id": "in-v-glyph-fg-hover",
+    "name": "glyph-fg-hover",
+    "type": "color",
+    "collectionId": "c-input-variant",
+    "values": {
+     "outlined": {
+      "alias": "sem-h18181b"
+     },
+     "filled": {
+      "alias": "sem-h18181b"
+     },
+     "borderless": {
+      "alias": "sem-h18181b"
+     }
+    }
+   },
+   {
+    "id": "in-v-glyph-fg-disabled",
+    "name": "glyph-fg-disabled",
+    "type": "color",
+    "collectionId": "c-input-variant",
+    "values": {
+     "outlined": {
+      "alias": "sem-ha1a1aa"
+     },
+     "filled": {
+      "alias": "sem-ha1a1aa"
+     },
+     "borderless": {
+      "alias": "sem-ha1a1aa"
      }
     }
    },

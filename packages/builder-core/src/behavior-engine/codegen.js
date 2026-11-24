@@ -30,7 +30,7 @@ function alignExprOf(writer) {
 
 /** A camelCase name as kebab-case (the custom properties and data attributes a prop is written as). */
 const kebabCase = name => name.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`);
-import { rootLayoutOf, labelLayoutOf, flexOf, flowSizing, rootClassWidth } from './layout.js';
+import { rootLayoutOf, labelLayoutOf, flexOf, flowSizing, fillShareCount, rootClassWidth } from './layout.js';
 import { labelEntryOf } from './layers.js';
 import { managedContainerLayer, managedTextLayer, orbitCentre } from './template-master.js';
 import { modeOfStyleKey } from './variant-style.js';
@@ -726,8 +726,8 @@ function displayRules(template, master, childrenOf, geometry) {
             const box = under.find(({ node: c }) => c.behavior?.group === key)?.node ?? managedBox(key) ?? master;
             const w = rootBorderWidthOf(box);
             const side = box.strokeSides;
-            // A box with a stroke on one side only (the handler column's inline-start and the divider above the down half) draws that side's border from the width token.
-            if (['left', 'top', 'right', 'bottom'].includes(side)) decls.push('  box-sizing: border-box;\n', '  border-style: solid;\n', '  border-width: 0;\n', `  border-${side === 'left' ? 'inline-start' : side === 'right' ? 'inline-end' : side}-width: var(${cssVarOf(template.id, props.strokeWidth)});\n`, `  background-clip: border-box;\n`);
+            // A box with a stroke on one side only (the handler column's inline-start and the divider above the down half) draws that side as an inset shadow of the width token. The canvas draws it without taking room, so a child is laid out on the full box.
+            if (['left', 'top', 'right', 'bottom'].includes(side)) decls.push('  box-sizing: border-box;\n', `  box-shadow: ${sideShadowOf(side, `var(${cssVarOf(template.id, props.strokeWidth)})`, `var(${cssVarOf(template.id, props.stroke)})`)};\n`);
             else decls.push('  box-sizing: border-box;\n', `  border-width: ${w}px;\n`, `  border-style: ${w === 0 ? 'none' : lineStyleOf(box)};\n`, `  background-clip: border-box;\n`);
         }
         // A control slot draws as a native input: it owns text only, so the reset comes first and the
@@ -756,13 +756,6 @@ function displayRules(template, master, childrenOf, geometry) {
             if (!css || !tokens.includes(source)) continue;
             if (perMember) { for (const name of css) decls.push(`  ${name}: var(${cssVarOf(template.id, source)}-${name});\n`); continue; }
             for (const name of [css].flat()) { if (key === 'root' && (prop === 'paddingX' || prop === 'paddingY' || prop === 'paddingStart' || prop === 'paddingEnd')) { const bw = rootBorderWidthOf(master); if (stateSwaps(template, 'root', 'strokeWidth')) { decls.push(`  ${name}: max(0px, calc(var(${cssVarOf(template.id, source)}) - var(${cssVarOf(template.id, template.display.root.strokeWidth)})));\n`); continue; } if (bw > 0) { decls.push(`  ${name}: max(0px, calc(var(${cssVarOf(template.id, source)}) - ${bw}px));\n`); continue; } } decls.push(`  ${name}: var(${cssVarOf(template.id, source)});\n`); }
-        }
-        // A container with a border on one side: the canvas stroke takes no room, so its padding on that side already includes the border; Play's border adds to the box, so it comes off the padding.
-        const sided = key === 'root' ? undefined : template.anatomy.find(s => s.id === key)?.strokeSides;
-        if (sided && props.strokeWidth && tokens.includes(props.strokeWidth)) {
-            const [prop, side] = { top: ['paddingY', 'block-start'], bottom: ['paddingY', 'block-end'], left: ['paddingX', 'inline-start'], right: ['paddingX', 'inline-end'] }[sided];
-            if (props[prop] && tokens.includes(props[prop])) decls.push(`  padding-${side}: max(0px, calc(var(${cssVarOf(template.id, props[prop])}) - var(${cssVarOf(template.id, props.strokeWidth)})));
-`);
         }
         if (kind === 'line') decls.push(...lineDecls(template, key, props, tokens));
         if (!decls.length) return '';
@@ -1136,6 +1129,11 @@ function fieldRules(template, master, childrenOf) {
     });
 }
 
+/** The inset shadow that draws a stroke on one side of a box: the line the canvas paints inside the box, which takes no room in the layout. */
+function sideShadowOf(side, width, colour) {
+    const offset = { left: [width, '0'], right: [`calc(-1 * ${width})`, '0'], top: ['0', width], bottom: ['0', `calc(-1 * ${width})`] }[side];
+    return `inset ${offset[0]} ${offset[1]} 0 ${colour}`;
+}
 /**
  * The rule of each container of the anatomy: the box frame's own auto layout and flow sizing, as the canvas lays it out (a missing frame is laid out as its
  * schema says). Its children are styled by their own rules.
@@ -1154,7 +1152,12 @@ function groupRules(template, master, childrenOf) {
         const node = layerOf(slot);
         const holder = slot.parent === undefined ? master : layerOf(template.anatomy.find(x => x.id === slot.parent));
         // An axis bound to a variable is the token's value (the display rule writes it): the node's own number is not a second source, and written after the token it would win.
-        const sizing = flowSizing(node, holder);
+        // The frames of one holder that fill its row share it equally when all of them fill (see fillShareCount): the browser's flex rounding is uneven from zero.
+        // The siblings of one holder share it when they all show under the same condition (a Card's action cells show with the actions bar).
+        const frames = template.anatomy.filter(s => s.kind === 'frame' && s.parent === slot.parent);
+        const sameCondition = frames.every(s => JSON.stringify(s.shownWhen) === JSON.stringify(slot.shownWhen));
+        const shares = slot.parent === undefined || !sameCondition ? 1 : fillShareCount(holder, frames.map(s => layerOf(s)));
+        const sizing = flowSizing(node, holder, shares);
         if (node.vars?.w !== undefined) delete sizing.width;
         if (node.vars?.h !== undefined) delete sizing.height;
         // Padding and gap a display token maps are the token's: the layer's own fallback numbers would be written after it and win.

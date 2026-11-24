@@ -110,7 +110,7 @@ test('a video asset through a picture prop is a video source, kept with its mode
     const videoAssets = { ...assets, v: 'data:video/mp4;base64,AAAA' };
     assert.deepEqual(nodeFieldPatch('imageFill', 'v', 'frame', { fills: [] }, videoAssets), { fills: [{ type: 'video', video: 'v', mode: 'fill', scale: 1, opacity: 1, visible: true }] });
     const own = { type: 'video', video: 'v', mode: 'fit', scale: 1, poster: 'a', opacity: 1, visible: true };
-    assert.deepEqual(nodeFieldPatch('imageFill', 'v', 'frame', { fills: [{ type: 'solid', color: '#ccc', visible: true }, own] }, videoAssets).fills, [{ type: 'solid', color: '#ccc', visible: true }, own], 'the same source keeps everything');
+    assert.deepEqual(nodeFieldPatch('imageFill', 'v', 'frame', { fills: [{ type: 'solid', color: '#ccc', visible: true }, own] }, videoAssets).fills, [own, { type: 'solid', color: '#ccc', visible: true }], 'the same source keeps everything');
     const swapped = nodeFieldPatch('imageFill', 'a', 'frame', { fills: [own] }, videoAssets).fills;
     assert.equal(swapped[0].type, 'image', 'an image asset back on a video fill is an image fill');
     assert.deepEqual(nodeFieldPatch('imageFill', null, 'frame', { fills: [own] }, videoAssets), { fills: [] }, 'no asset removes the picture');

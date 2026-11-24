@@ -126,7 +126,7 @@ test('a bound Input shows its value on the canvas and in Play, and its placehold
     await setProp(page, 'placeholder', 'Search');
     await setProp(page, 'value', 'tesssssss');
     await page.mouse.move(2, 2);
-    const label = await page.evaluate(i => window.midas.doc.children(i).find(c => c.name === 'Test')?.text ?? null, id);
+    const label = await page.evaluate(i => window.midas.doc.children(i).find(c => c.name === 'value' && c.visible)?.text ?? null, id);
     assert.equal(label, 'tesssssss', 'the canvas label shows the value');
     const { dump } = await playOf(page, id);
     const input = dump.kids.find(k => k.tag === 'INPUT');

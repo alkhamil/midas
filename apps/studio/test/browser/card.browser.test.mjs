@@ -1,3 +1,4 @@
+// The outline is the root box's, compared from the boxes (outlineFromBox): a light border over a picture placeholder has no pixel edge to find.
 // Card on the canvas and in Play: a created Card measured at all five Size modes and each layer state (the header alone, a cover above the header, an extra
 // link in the header, actions, and no header), the same comparison as strict-parity: every visible canvas node is a Play
 // element whose box matches within 0.5px, and Play draws nothing the canvas does not. Writes .artifacts/card-parity.json and one canvas/Play pair per Size and state.
@@ -40,7 +41,7 @@ test('a created Card measures the same on the canvas and in Play at every Size a
             for (const [name, value] of Object.entries(state.props)) await setProp(page, name, value);
             const label = `antd-card ${mode.name} ${state.name}`;
             const pair = `pair-antd-card-${mode.name.toLowerCase()}-${state.name}`;
-            const m = await measurePair(page, browser, id, label, pair, { outline: true });
+            const m = await measurePair(page, browser, id, label, pair, { outline: true, outlineFromBox: true });
             failures.push(...m.failures);
             if (m.rows) report.push({ label, rows: m.rows, unmapped: m.unmapped, diff: m.diff, edges: m.edges });
         }

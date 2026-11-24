@@ -14,14 +14,21 @@ import { layoutOrder } from '../geometry/autolayout.js';
  * @returns {{ node: any, parent: any } | null}
  */
 export function labelEntryOf(id, childrenOf, parent = null, primary = null) {
+    // The template's primary managed layer wins over a plain text layer: an instance can hold a hidden copy of the master's label first.
+    return (primary !== null ? findLabel(id, childrenOf, parent, primary, true) : null) ?? findLabel(id, childrenOf, parent, primary, false);
+}
+
+/** @returns {{ node: any, parent: any } | null} */
+function findLabel(id, childrenOf, parent, primary, primaryOnly) {
     const kids = parent && parent.id === id ? layoutOrder(parent, childrenOf(id)) : childrenOf(id);
     for (const c of kids) {
         // A canvas part is a text layer too (placeholder, count, clear), but the label is the value layer only.
         if (c.type === 'text') {
-            if (!c.behavior?.part && !c.behavior?.text && (c.behavior?.slot === undefined || c.behavior.slot === primary)) return { node: c, parent };
+            const managed = primaryOnly ? c.behavior?.slot === primary : c.behavior?.slot === undefined || c.behavior.slot === primary;
+            if (!c.behavior?.part && !c.behavior?.text && managed) return { node: c, parent };
             continue;
         }
-        const found = labelEntryOf(c.id, childrenOf, c, primary);
+        const found = findLabel(c.id, childrenOf, c, primary, primaryOnly);
         if (found) return found;
     }
     return null;

@@ -101,11 +101,11 @@ test('the dividers are the border token on the column\'s inline-start side and o
     const { at, styles } = playOf('inputnumber', {}, 'md');
     const column = computed(styles, at('stepper').chain), up = computed(styles, at('stepUpBox').chain), down = computed(styles, at('stepDownBox').chain);
     const border = varsAt('inputnumber', 'md')[cssVarOf('inputnumber', 'borderWidth')];
-    assert.equal(column['border-inline-start-width'], border, 'the inline-start divider of the column is the border token');
-    assert.equal(column['border-color'], varsAt('inputnumber', 'md')[cssVarOf('inputnumber', 'step-border')], 'in the divider colour token');
-    assert.equal(down['border-top-width'], border, 'the divider between the halves is a border thick');
-    assert.equal(up['border-top-width'], undefined, 'nothing above the upper half');
-    assert.equal(up['border-inline-start-width'], undefined);
+    // A one-sided divider is an inset shadow of the border token: the canvas draws it without taking room in the column.
+    const width = border, colour = varsAt('inputnumber', 'md')[cssVarOf('inputnumber', 'step-border')];
+    assert.equal(column['box-shadow'], `inset ${width} 0 0 ${colour}`, 'the inline-start divider of the column is the border token, in the divider colour');
+    assert.equal(down['box-shadow'], `inset 0 ${width} 0 ${colour}`, 'the divider between the halves is a border thick, on top of the lower half');
+    assert.equal(up['box-shadow'], undefined, 'nothing above the upper half');
     assert.equal(column['border-top-right-radius'], column['border-bottom-right-radius']);
     assert.equal(column['border-top-right-radius'], varsAt('inputnumber', 'md')[cssVarOf('inputnumber', 'radius')], 'the root radius');
     assert.equal(column['border-top-left-radius'], undefined, 'the inner corners are square');

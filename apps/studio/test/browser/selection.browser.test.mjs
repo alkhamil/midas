@@ -31,7 +31,7 @@ test('a click selects an instance root, and a click inside it selects the same r
     const after = await canvasInk(page, browser, 'selection-after');
     assert.ok(after > before, `the selection outline is drawn (${before} ink before, ${after} after)`);
     // A click inside an instance selects the instance as a whole; the inner layers are reached by double-click or the layers panel.
-    assert.deepEqual(await selectByClick(page, 'i-value-label'), ['i-value'], 'a click on an inner layer selects its instance root');
+    assert.deepEqual(await selectByClick(page, 'i-value--value'), ['i-value'], 'a click on an inner layer selects its instance root');
 });
 
 test('the Behavior panel opens for an instance root selected by a click', async t => {

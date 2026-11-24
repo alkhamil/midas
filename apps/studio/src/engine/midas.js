@@ -15742,6 +15742,10 @@ function syncInstanceStructure(activeOnly = true) {
                 c.sourceId = s.id;
                 c.component = false;
                 c.isInstance = !!s.isInstance; // a nested instance stays an instance when its container is synced
+                // A copied part takes the visibility its props say now (a value hides the placeholder): the master's copy is visible.
+                const partKey = s.behavior?.part;
+                const partShown = template && partKey !== undefined ? partWrites(template, resolved).find(w => w.key === partKey && w.field === 'visible') : undefined;
+                if (partShown) c.visible = partShown.value;
                 delete c.swapOf;
                 c.overrides = {};
                 c.version = 0;
