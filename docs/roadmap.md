@@ -50,7 +50,7 @@ Referensi struktur: `D:\antd-ref\components\<nama>` (read-only).
 | 3 | Tag, Alert | ✅ Kode dan template ada. Alert punya slot icon, close, action, dan Banner. |
 | 2a (tambahan) | Badge, Card, Divider, Avatar, Text, Title, Paragraph, Link, Icon Button, FormItem, List, InputNumber | ✅ Kode ada (registry dan template). Badge corner count belum dibuat. |
 | 4 | Spin, Empty, Search Field | ✅ Kode, test unit, dan browser lulus (2026-11-19). |
-| 5a | Statistic (Tier 0) | 🟡 Kode, template, unit test, conformance ada (2026-11-19). Browser: lebar root sudah sama (tes menunggu font); belum lulus karena crop tidak sama dan glyph ikon suffix di dalam valueBox tidak di-scale di canvas. Size xs sampai xl. |
+| 5a | Statistic (Tier 0) | ✅ Kode, template, unit test, conformance. Browser lulus (`spin-empty-search.browser.test.mjs`, 2026-11-24). Size xs sampai xl. |
 | 5b | Progress (Tier 0) | ⛔ Diblokir: butuh lebar dalam persen dari parent (bar), belum ada di model sizing node. Perlu keputusan. |
 | A | Pagination, Breadcrumb, Table Toolbar | 🟡 Kode, template, unit test, conformance (2026-11-23). Browser parity lulus (`navigation-toolbar.browser.test.mjs`). Pagination menampilkan halaman sebagai teks (tanpa daftar tombol halaman). Breadcrumb tiga item tetap dengan separator statis "/". Table Toolbar: Filters menunggu Select. |
 | A (ditunda) | Radio Group | ⏸ Ditunda sampai Fase 2 (Prototype) selesai. Kode ada, tetapi belum ada state pilihan tunggal dan opsi dari data. Rencana: prop `options` (daftar) dan `value`, dengan sync instance dan single-select di Play dan export. Browser parity belum dibuat. |

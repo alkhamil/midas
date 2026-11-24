@@ -10,8 +10,7 @@ import { resolve } from 'node:path';
 import { ARTIFACTS, edgeCheck, ensureDevServers, openImportedFile, pixelDiff, shotNode, launchBrowser } from './harness.mjs';
 import { FIXTURE, PAD, createFromPanel, isolatedStage, measurePair, setProp } from './parity-helpers.mjs';
 
-// Loosened from 0.5px on 2026-11-18: the strict gate failed on this machine at the baseline commit too (1.13px at xs), so the cause is not yet known.
-const LOOSE_PX = 1.2;
+const LOOSE_PX = 0.5;
 
 
 /** The states each template is measured in, after its Size modes: the props that state sets. */
