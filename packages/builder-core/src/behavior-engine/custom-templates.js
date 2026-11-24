@@ -35,7 +35,7 @@ export function customSchemaProblems(schema, { builtIns, others }) {
     if (typeof id !== 'string' || !CUSTOM_ID.test(id)) out.push(`id "${id}" must be custom- and a lower case slug (letters, digits, single hyphens)`);
     else if (builtIns.has(id)) out.push(`id "${id}" is a built-in template`);
     else if (others.has(id)) out.push(`id "${id}" is already a Custom template`);
-    out.push(...validateTemplateSchema(schema, { templateIds: new Set([...builtIns, ...others, ...(typeof id === 'string' ? [id] : [])]) }));
+    out.push(...validateTemplateSchema(schema, { templateIds: new Set([...builtIns, ...others, ...(typeof id === 'string' ? [id] : [])]), schemas: TEMPLATES }));
     return out;
 }
 

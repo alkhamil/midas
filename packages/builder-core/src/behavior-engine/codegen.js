@@ -430,8 +430,9 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     let sidedAfterPlaced = false;
     const sidedAfter = rooted.filter(part => part.side).map(part => framePartJsx(part, `${part.side} === "end"`));
     const emitSlot = (slot, out) => {
-        // A layer the box makes between its items (the separator, the ellipsis) belongs to the box's instances, not to the master.
-        if (boxLayerIdsOf(template).includes(slot.id)) return;
+        // A layer the box makes between its items (the separator, the ellipsis) is made per instance by the studio, and the export has no code that
+        // interleaves them with the items the consumer passes (truncation hides items too). Reported, not dropped: the export stops with the reason.
+        if (boxLayerIdsOf(template).includes(slot.id)) { problems.push({ slot: slot.id, reason: 'box-between-not-exported' }); return; }
         if (slot.kind === 'text' || slot.kind === 'control') {
             // The counter is written after the control it counts (controlPartsJsx), which is where the anatomy puts it.
             if (slot.text?.counter) {

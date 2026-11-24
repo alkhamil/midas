@@ -38,8 +38,9 @@ import { TABLE_TOOLBAR } from '../templates/table-toolbar.js';
 export function createTemplateRegistry(schemas) {
     const byId = new Map();
     const templateIds = new Set(schemas.map(s => s?.id));
+    const schemaById = new Map(schemas.map(s => [s?.id, s]));
     for (const schema of schemas) {
-        const problems = validateTemplateSchema(schema, { templateIds });
+        const problems = validateTemplateSchema(schema, { templateIds, schemas: schemaById });
         if (problems.length) throw new Error(`Invalid template "${schema?.id ?? '?'}": ${problems.join('; ')}`);
         if (byId.has(schema.id)) throw new Error(`Duplicate template id "${schema.id}"`);
         byId.set(schema.id, schema);

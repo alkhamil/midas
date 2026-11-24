@@ -26,7 +26,7 @@ test('the items box holds only Link instances, two to start, and each Plus adds 
 test('the separator is a plain text layer or an icon, chosen by Separator; Truncated names the ellipsis', () => {
     assert.deepEqual(BREADCRUMB.props.separatorKind.options, ['text', 'icon']);
     assert.equal(BREADCRUMB.props.separatorIcon.type, 'iconComponent');
-    assert.deepEqual(items.between, { kind: 'separatorKind', icon: 'separatorIcon', layer: 'separator', text: 'separatorText' });
+    assert.deepEqual(items.between, { kind: 'separatorKind', icon: 'separatorIcon', layer: 'separator', text: 'separatorText', size: 'separatorSize' });
     assert.equal(BREADCRUMB.props.separatorText.default, '/');
     assert.deepEqual(items.overflow, { prop: 'truncated', layer: 'ellipsis', text: '…' });
 });

@@ -36,6 +36,20 @@ test('the validator refuses a Separator that names no template or no boolean pro
     assert.ok(validateTemplateSchema(unknown, { templateIds: new Set(TEMPLATES.keys()) }).some(p => /separator/.test(p)));
 });
 
+test('the validator checks a Separator follow map: each key a variable prop of the Divider, each value of the List, with the same Size modes', () => {
+    const ids = new Set(TEMPLATES.keys()), schemas = TEMPLATES;
+    const with_follow = follow => {
+        const bad = structuredClone(LIST);
+        bad.slots[0].separator = { template: 'antd-divider', prop: 'separator', follow };
+        return validateTemplateSchema(bad, { templateIds: ids, schemas });
+    };
+    assert.deepEqual(with_follow({ size: 'size' }), [], 'the real map is valid');
+    assert.ok(with_follow({ flollow: 'size' }).some(p => /"flollow"/.test(p)), 'a typo in the Divider prop is reported');
+    assert.ok(with_follow({ size: 'nope' }).some(p => /"nope"/.test(p)), 'a List prop that does not exist is reported');
+    assert.ok(with_follow({ size: 'separator' }).some(p => /"separator"/.test(p)), 'a List prop that is not a variable is reported');
+    assert.ok(with_follow('size').some(p => /follow must be an object/.test(p)));
+});
+
 test('a box that holds instances must restrict them (accepts and onlyAccepts)', () => {
     const open = structuredClone(LIST);
     delete open.slots[0].onlyAccepts;

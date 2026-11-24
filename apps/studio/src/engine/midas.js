@@ -10974,48 +10974,62 @@ function syncBetween(inst, template) {
         if (!layer || !itemMaster) continue;
         const kids = doc.children(layer.id);
         const items = kids.filter(c => c.sourceId === itemMaster.id);
-        const stale = kids.filter(c => c.sourceId !== itemMaster.id).map(c => c.id);
-        if (stale.length) doc.remove(stale);
         const truncated = def.overflow !== undefined && values[def.overflow.prop] === true;
         const plan = betweenPlan(items.length, { truncated });
-        const made = [];
+        // The layers the box makes (separators, ellipsis) are reused wherever the plan still wants one, so their ids and selection stay as props change.
+        const spare = kids.filter(c => c.sourceId !== itemMaster.id);
+        const takeSpare = (key, fits) => {
+            const k = spare.findIndex(c => boxLayerKeyOf(c) === key && fits(c));
+            return k < 0 ? null : spare.splice(k, 1)[0];
+        };
+        const iconKind = values[def.between.kind] === 'icon', icon = iconKind ? values[def.between.icon] : null;
+        const wanted = [];
         items.forEach((item, i) => {
-            // The hidden items say so as an override, which the master's sync keeps (an instance's own visibility is an override).
-            item.visible = plan.items[i].visible;
-            item.overrides = { ...(item.overrides ?? {}), visible: item.visible };
-            doc.touch(item);
-            if (i >= 1 && plan.gaps[i].visible) made.push(...separatorLayers(inst, def, template, values, layer));
-            if (plan.ellipsis && i === plan.hidden[0]) made.push(ellipsisLayer(def, template, values, layer));
-            made.push(item);
+            // An item that already shows as the plan says keeps its overrides untouched.
+            const visible = plan.items[i].visible;
+            if ((item.visible ?? true) !== visible) {
+                item.visible = visible;
+                item.overrides = { ...(item.overrides ?? {}), visible };
+                doc.touch(item);
+            }
+            if (i >= 1 && plan.gaps[i].visible && (!iconKind || icon)) {
+                const text = String(values[def.between.text] ?? '');
+                const reused = takeSpare(def.between.layer, c => iconKind ? c.sourceId === icon : !c.sourceId);
+                if (reused && !iconKind && reused.text !== text) { reused.text = text; doc.touch(reused); }
+                wanted.push(reused ?? makeSeparator(inst, def, template, values, layer));
+            }
+            if (plan.ellipsis && i === plan.hidden[0]) wanted.push(takeSpare(def.overflow.layer, () => true) ?? ellipsisLayer(def, template, values, layer));
+            wanted.push(item);
         });
-        made.forEach((n, k) => placeAmongChildren(layer, n, k));
+        // The layers the plan no longer wants go; the rest are placed in the plan's order.
+        if (spare.length) doc.remove(spare.map(c => c.id));
+        wanted.forEach((n, k) => placeAmongChildren(layer, n, k));
         doc.refresh();
     }
     applyManagedTextBindings(inst);
 }
-/** The separator a box puts before an item: a plain text layer ("/") while the kind is text, else an instance of the icon the prop picks (none until one is picked). */
-function separatorLayers(inst, def, template, values, layer) {
-    if (values[def.between.kind] === 'icon') {
-        const icon = values[def.between.icon];
-        if (!icon) return [];
-        const before = new Set(doc.children(layer.id).map(c => c.id));
-        instantiate(icon, null, layer, { keepSelection: true });
-        const made = doc.children(layer.id).find(c => !before.has(c.id));
-        // The icon is the box's own layer too: marked as its separator, so the sync finds it again and the diagnostics do not count it. It is as wide and as tall
-        // as the item's line height, read from the Size collection of the Breadcrumb that holds it (its separatorSize token).
-        if (!made) return [];
-        made.behavior = { version: BEHAVIOR_DATA_VERSION, between: def.between.layer };
-        const collectionId = componentById(inst.sourceId)?.behavior?.variables?.size;
-        const sizeItem = (varStore().items || []).find(i => i.collectionId === collectionId && variableKey(i.name) === variableKey('separatorSize'));
-        if (sizeItem) {
-            made.layoutSizingH = 'fixed';
-            made.layoutSizingV = 'fixed';
-            for (const n of applyBindTokens([{ key: 'separator', node: made }], [{ key: 'separator', varKey: 'w', itemId: sizeItem.id }, { key: 'separator', varKey: 'h', itemId: sizeItem.id }])) doc.touch(n);
-        }
-        return [made];
-    }
-    const spec = managedTextLayer(template, def.between.layer, values, { id: uid(), parentId: layer.id });
-    return [doc.add({ ...spec, text: String(values[def.between.text] ?? '') })];
+/** The key of a layer the box makes between its items: a managed text layer's slot, or an icon separator's layer (its `between`). */
+function boxLayerKeyOf(node) {
+    return node.behavior?.slot ?? node.behavior?.between;
+}
+/** A new separator the box puts before an item: a plain text layer while the kind is text, else an instance of the icon the prop picks. */
+function makeSeparator(inst, def, template, values, layer) {
+    if (values[def.between.kind] !== 'icon') return doc.add({ ...managedTextLayer(template, def.between.layer, values, { id: uid(), parentId: layer.id }), text: String(values[def.between.text] ?? '') });
+    const before = new Set(doc.children(layer.id).map(c => c.id));
+    instantiate(values[def.between.icon], null, layer, { keepSelection: true });
+    const made = doc.children(layer.id).find(c => !before.has(c.id));
+    if (!made) throw new Error(`${template.name}: the separator icon did not make a layer`);
+    // The icon is the box's own layer too: marked as its separator, so the sync finds it again and the diagnostics do not count it.
+    made.behavior = { version: BEHAVIOR_DATA_VERSION, between: def.between.layer };
+    // The icon is as wide and as tall as the item's line height: the separator size token of the Size collection the Breadcrumb holds.
+    const collectionId = componentById(inst.sourceId)?.behavior?.variables?.size;
+    const sizeName = variableKey(def.between.size);
+    const sizeItem = (varStore().items || []).find(i => i.collectionId === collectionId && variableKey(i.name) === sizeName);
+    if (!sizeItem) throw new Error(`${template.name}: the Size collection has no "${def.between.size}" variable for the separator icon`);
+    made.layoutSizingH = 'fixed';
+    made.layoutSizingV = 'fixed';
+    for (const n of applyBindTokens([{ key: 'separator', node: made }], [{ key: 'separator', varKey: 'w', itemId: sizeItem.id }, { key: 'separator', varKey: 'h', itemId: sizeItem.id }])) doc.touch(n);
+    return made;
 }
 /** The ellipsis a truncated box shows between its first item and the first hidden one: a text layer of the box. */
 function ellipsisLayer(def, template, values, layer) {
@@ -11466,8 +11480,8 @@ function deleteWhenLoaded(label, fn) {
 function onBehaviorChange(e) {
     const t = e.target, kind = t.dataset?.bp;
     if (!kind) return;
-    // A row of an addable slot names the instance its text belongs to (its own label), else the node being edited.
-    const n = (t.dataset.bpNode ? doc.get(t.dataset.bpNode) : null) ?? activeNode();
+    // A row of an addable slot names the instance its text belongs to (its own label), else the node being edited. A named node that is gone is no node.
+    const n = t.dataset.bpNode ? doc.get(t.dataset.bpNode) : activeNode();
     if (!n) return;
     if (kind === 'preview') {
         behaviorPreview = t.value;

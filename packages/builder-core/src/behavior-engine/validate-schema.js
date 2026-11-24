@@ -141,7 +141,7 @@ export function dimensionOfGroup(group, props) {
  *   Without it (a schema checked on its own) the ids are not checked.
  * @returns {string[]}
  */
-export function validateTemplateSchema(schema, { templateIds } = {}) {
+export function validateTemplateSchema(schema, { templateIds, schemas } = {}) {
     if (!isPlainObject(schema)) return ['schema must be an object'];
     const out = [];
     if (!isName(schema.id)) out.push('schema has no id');
@@ -239,7 +239,7 @@ export function validateTemplateSchema(schema, { templateIds } = {}) {
     out.push(...iconProblems(schema, allTokens));
     out.push(...partTokenProblems(schema, allTokens));
     out.push(...partParentProblems(schema));
-    out.push(...slotProblems(schema, templateIds));
+    out.push(...slotProblems(schema, templateIds, schemas));
     out.push(...controlProblems(schema));
     out.push(...primarySlotProblems(schema));
     out.push(...shownWhenProblems(schema, props || {}));
@@ -461,7 +461,29 @@ const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'only
  * @param {Set<string>} [templateIds] the templates a slot may accept, when they are known
  * @returns {string[]}
  */
-function slotProblems(schema, templateIds) {
+/**
+ * The problems of a separator's `follow` map: each key is a variable prop of the separator template and each value a variable prop of this template, and
+ * the two name the same Size modes (matched by name). A key is checked only when the separator's schema is known (`schemas`).
+ */
+function separatorFollowProblems(slot, props, schemas, tag) {
+    const follow = slot.separator.follow;
+    if (follow === undefined) return [];
+    if (!isPlainObject(follow)) return [`${tag} separator follow must be an object`];
+    const modeNames = modes => (modes ?? []).map(m => String(typeof m === 'string' ? m : m?.name ?? '').trim().toLowerCase()).sort().join(',');
+    const child = schemas?.get(slot.separator.template);
+    const out = [];
+    for (const [childProp, ownerProp] of Object.entries(follow)) {
+        const owner = props?.[ownerProp];
+        if (owner?.source !== 'variable') { out.push(`${tag} separator follows "${ownerProp}", which is not a variable prop of this template`); continue; }
+        if (!child) continue;
+        const mine = child.props?.[childProp];
+        if (mine?.source !== 'variable') out.push(`${tag} separator follow names "${childProp}", which is not a variable prop of "${slot.separator.template}"`);
+        else if (modeNames(mine.modes) !== modeNames(owner.modes)) out.push(`${tag} separator follow pairs "${childProp}" with "${ownerProp}", which have different modes`);
+    }
+    return out;
+}
+
+function slotProblems(schema, templateIds, schemas) {
     if (schema.slots === undefined) return [];
     if (!Array.isArray(schema.slots)) return ['slots must be a list'];
     const out = [];
@@ -521,13 +543,15 @@ function slotProblems(schema, templateIds) {
             else if (templateIds && !templateIds.has(sep.template)) out.push(`${tag} separator names "${sep.template}", which is not a registered template`);
             else if (!(props[sep.prop]?.source === 'literal' && props[sep.prop]?.type === 'boolean')) out.push(`${tag} separator names "${sep.prop}", which is not a boolean prop`);
             else if (slot.box === undefined) out.push(`${tag} separator needs a box: the Dividers sit between its instances`);
+            out.push(...separatorFollowProblems(slot, props, schemas, tag));
         }
         // The items a box starts with: a whole number of seeds (a seed is one item, so the box makes `start` of them).
         if (slot.start !== undefined && !(Number.isInteger(slot.start) && slot.start >= 1)) out.push(`${tag} start must be a whole number, 1 or more`);
         // Between the items: the separator layer (a text, or the icon a prop picks, by the kind prop); the box's gap layers are made by the studio's sync.
         if (slot.between !== undefined) {
             const b = slot.between;
-            if (!isPlainObject(b) || !isName(b.kind) || !isName(b.icon) || !isName(b.layer) || !isName(b.text)) out.push(`${tag} between must name a kind, an icon, a layer and a text prop`);
+            if (!isPlainObject(b) || !isName(b.kind) || !isName(b.icon) || !isName(b.layer) || !isName(b.text) || !isName(b.size)) out.push(`${tag} between must name a kind, an icon, a layer, a text prop and a size token`);
+            else if (schema.tokenKinds?.[b.size] !== 'length') out.push(`${tag} between names size token "${b.size}", which is not a length token`);
             else {
                 if (!(props[b.kind]?.source === 'literal' && props[b.kind]?.type === 'enum' && props[b.kind].options?.includes('text') && props[b.kind].options?.includes('icon'))) out.push(`${tag} between names "${b.kind}", which is not an enum of text and icon`);
                 if (props[b.icon]?.type !== 'iconComponent') out.push(`${tag} between names "${b.icon}", which is not an icon prop`);
