@@ -298,6 +298,8 @@ export function planAnatomy(template, values, children, flip = false) {
         for (const slot of slots) {
             if (replaced.has(slot) || wanted.some(w => w.slot === slot)) continue;
             if (!template.anatomy.some(s => s.id === slot && s.managed)) throw new Error(`${template.id} has no managed slot "${slot}"`);
+            // An icon whose holder is conditional is planned only while the holder is (its layer would otherwise fall to the root).
+            if (!holderAllows(template, template.anatomy.find(s => s.id === slot), values)) continue;
             wanted.push({ slot, component: typeof values[def.component] === 'string' ? values[def.component] : null });
         }
     }

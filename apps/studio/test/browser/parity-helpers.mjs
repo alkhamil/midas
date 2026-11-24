@@ -73,6 +73,10 @@ export async function setProp(page, name, value) {
         await page.keyboard.press('Delete');
         await page.keyboard.press('Enter');
     }
+    else if (await field.evaluate(el => el.getAttribute('data-bp-action') === 'segment')) {
+        // An enum prop shown as segments: press the segment with the value.
+        await page.locator(`[data-bp-prop="${name}"][data-bp-value="${value}"]`).first().click();
+    }
     else if (await field.evaluate(el => el.tagName === 'SELECT')) {
         // An enum prop shown as a dropdown is a select: choose the option.
         await field.selectOption(String(value));
@@ -231,7 +235,7 @@ export async function measurePair(page, browser, id, label, pair, { outline = tr
     else if (diff.changed / diff.pixels > DIFF_LIMIT) failures.push(label + ': ' + (100 * diff.changed / diff.pixels).toFixed(1) + '% of pixels differ');
     for (const row of rows) {
         if (row.missing) failures.push(label + ': ' + row.name + ' is on the canvas but not in Play');
-        else if (row.delta > tolerance) failures.push(label + ': ' + row.name + ' differs by ' + row.delta + 'px');
+        else if (row.delta > tolerance) failures.push(label + ': ' + row.name + ' differs by ' + row.delta + 'px (canvas ' + JSON.stringify(row.canvas) + ', Play ' + JSON.stringify(row.play) + ')');
     }
     for (const u of unmapped) failures.push(label + ': Play draws ' + u + ' with no node');
     return { rows, unmapped, diff, edges, failures };

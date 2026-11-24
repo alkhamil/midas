@@ -35,8 +35,8 @@ test('the box is one element of the template with its own fill, border, radius a
     const rule = css.match(/\.boxy-box \{[^}]*\}/g).join('\n');
     assert.match(rule, /background-color: var\(--boxy-box-bg\)/);
     assert.match(rule, /border-color: var\(--boxy-box-border\)/);
-    assert.match(rule, /border-width: 1px/);
-    assert.match(rule, /border-style: solid/);
+    // A solid box stroke is an inset shadow, so the box takes no room for it (the canvas's stroke takes none either).
+    assert.match(rule, /box-shadow: inset 0 0 0 var\(--boxy-[a-z-]+\) var\(--boxy-box-border\)/);
     assert.match(rule, /border-radius: var\(--boxy-box-radius\)/);
     assert.match(rule, /width: var\(--boxy-box-size\)/);
     assert.match(rule, /height: var\(--boxy-box-size\)/);

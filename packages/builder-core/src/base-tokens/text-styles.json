@@ -256,6 +256,86 @@
       }
     },
     {
+      "collection": "Primitives",
+      "name": "text/xs-medium",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 10,
+            "fontWeight": "Medium",
+            "lineHeight": 12,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "text/sm-medium",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 12,
+            "fontWeight": "Medium",
+            "lineHeight": 16,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "text/base-medium",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 14,
+            "fontWeight": "Medium",
+            "lineHeight": 20,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "text/lg-medium",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 16,
+            "fontWeight": "Medium",
+            "lineHeight": 24,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
+      "collection": "Primitives",
+      "name": "text/xl-medium",
+      "type": "typography",
+      "values": {
+        "Base": {
+          "literal": {
+            "fontFamily": "Inter",
+            "fontSize": 20,
+            "fontWeight": "Medium",
+            "lineHeight": 28,
+            "letterSpacing": 0
+          }
+        }
+      }
+    },
+    {
       "collection": "Semantic",
       "name": "textXs",
       "type": "typography",
@@ -536,6 +616,101 @@
           "alias": {
             "collection": "Primitives",
             "name": "text/xl-strong"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "textXsMedium",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/xs-medium"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/xs-medium"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "textSmMedium",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/sm-medium"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/sm-medium"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "textBaseMedium",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/base-medium"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/base-medium"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "textLgMedium",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/lg-medium"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/lg-medium"
+          }
+        }
+      }
+    },
+    {
+      "collection": "Semantic",
+      "name": "textXlMedium",
+      "type": "typography",
+      "values": {
+        "Light": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/xl-medium"
+          }
+        },
+        "Dark": {
+          "alias": {
+            "collection": "Primitives",
+            "name": "text/xl-medium"
           }
         }
       }

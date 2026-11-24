@@ -756,7 +756,9 @@ function pressProblems(schema) {
         if (entry.glyph !== undefined && !(Array.isArray(schema.anatomy) && schema.anatomy.some(s => isPlainObject(s) && s.id === entry.glyph && s.parent === entry.slot))) out.push(`press glyph "${entry.glyph}" is not a slot inside "${entry.slot}"`);
         if (entry.blockedBy !== undefined && !stateAttributesOf(schema).some(a => a.prop === entry.blockedBy)) out.push(`press blockedBy "${entry.blockedBy}" is not a state with an attribute`);
         const actions = ['toggle', 'toggleState', 'step', 'resize', 'dismiss', 'copy'].filter(k => entry[k] !== undefined);
-        if (actions.length !== 1) { out.push(`press on "${entry.slot}" needs exactly one of toggle, toggleState, step, resize, dismiss or copy`); continue; }
+        // A press with no action is a hover (or active) fill only: the rule draws it, and a click does nothing.
+        const hoverOnly = actions.length === 0 && (entry.hoverFill !== undefined || entry.activeFill !== undefined);
+        if (actions.length > 1 || (actions.length === 0 && !hoverOnly)) { out.push(`press on "${entry.slot}" needs exactly one of toggle, toggleState, step, resize, dismiss or copy, or a hover or active fill`); continue; }
         // copy: the text slot whose text the click puts on the clipboard (it is a text prop of the template).
         if (entry.copy !== undefined && !((Array.isArray(schema.anatomy) ? schema.anatomy : []).some(s => isPlainObject(s) && s.id === entry.copy && s.kind === 'text') && props[entry.copy]?.source === 'literal' && props[entry.copy]?.type === 'string')) out.push(`press copy "${entry.copy}" on "${entry.slot}" is not a text slot with a text prop`);
         // expand: the toggleState `expanded` also lifts the line clamp of the text a prop clamps (maxLines).

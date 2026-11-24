@@ -27,9 +27,11 @@ const LADDER = [
     ['heading1', 38, 'SemiBold'], ['heading2', 30, 'SemiBold'], ['heading3', 24, 'SemiBold'], ['heading4', 20, 'SemiBold'], ['heading5', 16, 'SemiBold'],
 ];
 const STRONG = ['textXs', 'textSm', 'textBase', 'textLg', 'textXl'];
+// The Medium weight (Figma's page numbers, Inter Medium): the same sizes, weight 500.
+const MEDIUM = STRONG;
 const primName = name => {
-    const text = /^text([A-Z][a-z]*)(Strong)?$/.exec(name);
-    if (text) return `text/${text[1].toLowerCase()}${text[2] ? '-strong' : ''}`;
+    const text = /^text([A-Z][a-z]*)(Strong|Medium)?$/.exec(name);
+    if (text) return `text/${text[1].toLowerCase()}${text[2] ? `-${text[2].toLowerCase()}` : ''}`;
     return name.replace(/^heading(\d)$/, 'heading/$1');
 };
 const primitives = [], semantic = [], derived = [];
@@ -41,6 +43,7 @@ const add = (name, size, weight) => {
 };
 for (const [name, size, weight] of LADDER) add(name, size, weight);
 for (const name of STRONG) add(`${name}Strong`, LADDER.find(([n]) => n === name)[1], 'SemiBold');
+for (const name of MEDIUM) add(`${name}Medium`, LADDER.find(([n]) => n === name)[1], 'Medium');
 
 writeFileSync(resolve(root, 'packages/builder-core/src/base-tokens/text-styles.json'), JSON.stringify({ collections: [{ name: 'Primitives', modes: ['Base'] }, { name: 'Semantic', modes: ['Light', 'Dark'] }], items: [...primitives, ...semantic], report: { derived } }, null, 2) + '\n');
 console.log(`Wrote ${primitives.length} typography primitives and ${semantic.length} Semantic styles`);

@@ -748,6 +748,8 @@ function displayRules(template, master, childrenOf, geometry) {
             const side = box.strokeSides;
             // A box with a stroke on one side only (the handler column's inline-start and the divider above the down half) draws that side as an inset shadow of the width token. The canvas draws it without taking room, so a child is laid out on the full box.
             if (['left', 'top', 'right', 'bottom'].includes(side)) decls.push('  box-sizing: border-box;\n', `  box-shadow: ${sideShadowOf(side, `var(${cssVarOf(template.id, props.strokeWidth)})`, `var(${cssVarOf(template.id, props.stroke)})`)};\n`);
+            // A solid box stroke is drawn inside as an inset shadow: a border would add its width to a hugging box, which the canvas does not (its stroke takes no room).
+            else if (w > 0 && lineStyleOf(box) === 'solid' && !('shadow' in props)) decls.push('  box-sizing: border-box;\n', `  box-shadow: inset 0 0 0 var(${cssVarOf(template.id, props.strokeWidth)}) var(${cssVarOf(template.id, props.stroke)});\n`, `  background-clip: border-box;\n`);
             else decls.push('  box-sizing: border-box;\n', `  border-width: ${w}px;\n`, `  border-style: ${w === 0 ? 'none' : lineStyleOf(box)};\n`, `  background-clip: border-box;\n`);
         }
         // A control slot draws as a native input: it owns text only, so the reset comes first and the
@@ -966,8 +968,11 @@ function pressRules(template) {
         const box = `.${id}-${entry.slot}`;
         const free = entry.blockedBy ? `:not([${stateAttributesOf(template).find(a => a.prop === entry.blockedBy).attr}])` : '';
         out.push(`${box} {\n  cursor: pointer;\n}\n`, `.${id}:has(:disabled) ${box} {\n  cursor: not-allowed;\n}\n`);
-        if (entry.hoverFill) out.push(`.${id}${free}${dead} ${box}:hover .${id}-${entry.glyph} {\n  color: var(${cssVarOf(id, entry.hoverFill)});\n}\n`);
-        if (entry.activeFill) out.push(`.${id}${free}${dead} ${box}:active .${id}-${entry.glyph} {\n  color: var(${cssVarOf(id, entry.activeFill)});\n}\n`);
+        // A frame with no glyph is hovered as a box: its background takes the fill (the Pagination cells and arrows).
+        const inner = entry.glyph === undefined ? '' : ` .${id}-${entry.glyph}`;
+        const prop = entry.glyph === undefined ? 'background-color' : 'color';
+        if (entry.hoverFill) out.push(`.${id}${free}${dead} ${box}:hover${inner} {\n  ${prop}: var(${cssVarOf(id, entry.hoverFill)});\n}\n`);
+        if (entry.activeFill) out.push(`.${id}${free}${dead} ${box}:active${inner} {\n  ${prop}: var(${cssVarOf(id, entry.activeFill)});\n}\n`);
         if (entry.blockedBy) out.push(`.${id}[${stateAttributesOf(template).find(a => a.prop === entry.blockedBy).attr}] ${box} {\n  cursor: not-allowed;\n  pointer-events: none;\n}\n`);
     }
     return out;

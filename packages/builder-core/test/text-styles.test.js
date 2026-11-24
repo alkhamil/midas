@@ -8,11 +8,11 @@ import { typographyOf } from '../src/behavior-engine/typography.js';
 const plan = planFromSnapshot(BASE_SNAPSHOT);
 const typographyItems = plan.items.filter(i => i.type === 'typography');
 
-test('the text styles are 15 typography Primitives and 15 Semantic aliases of them', () => {
+test('the text styles are 20 typography Primitives and 20 Semantic aliases of them', () => {
     const prims = typographyItems.filter(i => i.collection === 'Primitives');
     const sem = typographyItems.filter(i => i.collection === 'Semantic');
-    assert.equal(prims.length, 15);
-    assert.equal(sem.length, 15);
+    assert.equal(prims.length, 20);
+    assert.equal(sem.length, 20);
     for (const s of sem) {
         for (const mode of ['Light', 'Dark']) assert.equal(s.values[mode].alias.collection, 'Primitives', `${s.name} ${mode}`);
     }
@@ -22,7 +22,7 @@ test('every text Primitive is literal px, with a named weight and no ratio line 
     for (const p of typographyItems.filter(i => i.collection === 'Primitives')) {
         const v = p.values.Base.literal;
         assert.equal(v.fontFamily, 'Inter', p.name);
-        assert.ok(['Regular', 'SemiBold'].includes(v.fontWeight), `${p.name} weight ${v.fontWeight}`);
+        assert.ok(['Regular', 'Medium', 'SemiBold'].includes(v.fontWeight), `${p.name} weight ${v.fontWeight}`);
         assert.ok(v.lineHeight >= 4, `${p.name} line height ${v.lineHeight} is a ratio`);
     }
 });

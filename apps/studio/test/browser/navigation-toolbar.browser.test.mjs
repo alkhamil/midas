@@ -12,9 +12,11 @@ const CASES = [
         name: 'Pagination',
         // Every state names all of its props: a set prop stays on for the next state.
         states: [
-            { name: 'total', props: { showTotal: true, total: 'of 10' } },
-            // The total's row is hidden while Show Total is off, so its text is set first.
-            { name: 'no-total', props: { total: 'of 10', showTotal: false } },
+            { name: 'start', props: { position: 'start', showRowsPerPage: true, rowsText: 'Showing 1-10 of 100 results' } },
+            { name: 'mid', props: { position: 'mid', showRowsPerPage: true, rowsText: 'Showing 41-50 of 100 results' } },
+            { name: 'end', props: { position: 'end', showRowsPerPage: true, rowsText: 'Showing 91-100 of 100 results' } },
+            // The Selection item is no layer while Show rows per page is off (its rows text is not in the panel then).
+            { name: 'no-rows', props: { position: 'mid', showRowsPerPage: false } },
         ],
     },
     {

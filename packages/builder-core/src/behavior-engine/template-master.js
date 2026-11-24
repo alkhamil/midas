@@ -22,6 +22,8 @@ export function slotWanted(template, slotId, resolved) {
     const anatomy = template.anatomy.find(s => s.id === slotId);
     if (anatomy?.managed && anatomy.kind !== 'icon') return conditionHolds(anatomy.shownWhen, resolved) && holderAllows(template, anatomy, resolved);
     if (replacedSlotsOf(template, resolved).includes(slotId)) return false;
+    // An icon in a container the props hide is not wanted (the container's layers go with it).
+    if (anatomy !== undefined && !holderAllows(template, anatomy, resolved)) return false;
     return slotDefsOf(template, slotId).some(def => iconDefOn(def, resolved) && (!def.placement || placementsOfDef(template, def, slotId).includes(String(resolved[def.placement]))));
 }
 
