@@ -118,3 +118,35 @@ test('stored pages leave out default layer fields and keep the ones the generato
     // Non-default values stay.
     assert.equal(compactNode({ ...full, rotation: 15, opacity: 0.5 }).rotation, 15);
 });
+
+test('a failed import leaves no half-made file, so the same import can be retried', async () => {
+    const id = `imp-retry-${Date.now()}`;
+    const png = `data:image/png;base64,${Buffer.from('89504e470d0a1a0a', 'hex').toString('base64')}`;
+    const doc = (assetId: string) => ({ id, data: { name: 'Retry', pages: [{ id: 'p1', name: 'Page 1' }], assets: { [assetId]: png } } });
+    // An asset id the database refuses (a NUL character): the asset row fails after the file row would have been written.
+    const failed = await call('POST', '/api/files/import', doc('bad\u0000id'));
+    assert.notEqual(failed.status, 200);
+    const retry = await call('POST', '/api/files/import', doc('a1'));
+    assert.equal(retry.status, 200, JSON.stringify(retry.body));
+    assert.equal(retry.body.id, id);
+});
+
+test('asset responses are sandboxed; only raster images, fonts and video are shown inline', async () => {
+    const svgFile = `svg-file-${Date.now()}`;
+    await call('PUT', `/api/files/${svgFile}`, { name: svgFile, meta: { name: svgFile, pageMeta: [] }, baseVersion: null });
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+    const up = await call('PUT', `/api/files/${svgFile}/assets/svg1`, svg, { 'content-type': 'image/svg+xml' });
+    assert.equal(up.status, 200, JSON.stringify(up.body));
+    const get = await call('GET', up.body.url);
+    assert.equal(get.status, 200);
+    assert.equal(get.raw.headers['content-disposition'], 'attachment');
+    assert.equal(get.raw.headers['x-content-type-options'], 'nosniff');
+    assert.equal(get.raw.headers['content-security-policy'], "default-src 'none'; sandbox");
+    const png = Buffer.from('89504e470d0a1a0a', 'hex');
+    await call('PUT', `/api/files/${svgFile}/assets/a1`, png, { 'content-type': 'image/png' });
+    const shown = await call('GET', `/api/files/${svgFile}/assets/a1`);
+    assert.equal(shown.raw.headers['content-type'], 'image/png');
+    assert.equal(shown.raw.headers['content-disposition'], undefined);
+    assert.equal(shown.raw.headers['x-content-type-options'], 'nosniff');
+    assert.equal(shown.raw.headers['content-security-policy'], "default-src 'none'; sandbox");
+});

@@ -9,7 +9,7 @@ import { createUser, dropUsers, login, PASSWORD } from './helpers.js';
 
 let app: FastifyInstance;
 const stamp = Date.now();
-const adminEmail = `admin-${stamp}@midas.local`, editorEmail = `editor-${stamp}@midas.local`, viewerEmail = `viewer-${stamp}@midas.local`, scopedEmail = `scoped-${stamp}@midas.local`;
+const adminEmail = `admin-${stamp}@midas.local`, editorEmail = `editor-${stamp}@midas.local`, viewerEmail = `viewer-${stamp}@midas.local`, scopedEmail = `scoped-${stamp}@midas.local`, foldersEmail = `folders-${stamp}@midas.local`;
 let admin: { id: string; workspaceId: string; cookie: string };
 const as = (cookie: string) => async (method: string, url: string, payload?: unknown) => {
     const res = await app.inject({ method: method as 'GET', url, payload: payload as string, headers: { cookie } });
@@ -25,7 +25,7 @@ before(async () => {
     a = as(admin.cookie);
 });
 after(async () => {
-    await dropUsers([adminEmail, editorEmail, viewerEmail, scopedEmail]);
+    await dropUsers([adminEmail, editorEmail, viewerEmail, scopedEmail, foldersEmail]);
     await sql`delete from users where email = ${`seed-${stamp}@midas.local`}`;
     await app.close();
     await sql.end();
@@ -127,4 +127,25 @@ test('changing your own password needs the current one and ends your other sessi
     assert.equal((await as(second)('GET', '/api/auth/me')).status, 401);
     assert.equal((await me('GET', '/api/auth/me')).status, 200);
     assert.ok(await login(app, adminEmail, 'new-password-1'));
+});
+
+test('a restricted editor cannot delete or move folders, or files into folders, outside their grants', async () => {
+    const open = `fo-open-${stamp}`, shut = `fo-shut-${stamp}`, inOpen = `f-in-open-${stamp}`;
+    await a('POST', '/api/folders', { id: open, name: 'Open' });
+    await a('POST', '/api/folders', { id: shut, name: 'Shut' });
+    await a('PUT', `/api/files/${inOpen}`, { name: inOpen, meta: { name: inOpen, pageMeta: [] }, baseVersion: null });
+    await a('PATCH', `/api/files/${inOpen}`, { folder: open });
+    const made = await a('POST', '/api/users', {
+        email: foldersEmail, name: 'Folders', password: PASSWORD, role: 'editor', accessMode: 'selected',
+        access: [{ kind: 'folder', id: open }],
+    });
+    assert.equal(made.status, 200, JSON.stringify(made.body));
+    const s = as(await login(app, foldersEmail));
+    assert.equal((await s('DELETE', `/api/folders/${shut}`)).status, 404);
+    assert.equal((await s('PATCH', `/api/folders/${shut}`, { parent: null })).status, 404);
+    assert.equal((await s('PATCH', `/api/folders/${open}`, { parent: shut })).status, 404);
+    assert.equal((await s('PATCH', `/api/files/${inOpen}`, { folder: shut })).status, 404);
+    // Inside the grant it still works.
+    assert.equal((await s('PATCH', `/api/folders/${open}`, { name: 'Renamed' })).status, 200);
+    assert.equal((await s('PATCH', `/api/files/${inOpen}`, { folder: null })).status, 200);
 });

@@ -24,10 +24,11 @@ async function sourceFile(req: FastifyRequest, id: string) {
     return f && canSeeFile(req.user!, f) ? f : null;
 }
 
+/** A library the account can read: its source file must be one it can open. */
 export async function libraryOf(req: FastifyRequest, id: string) {
     const [l] = await db.select().from(libraries)
         .where(and(eq(libraries.id, id), eq(libraries.workspaceId, req.user!.workspaceId))).limit(1);
-    return l ?? null;
+    return l && await sourceFile(req, l.id) ? l : null;
 }
 
 export async function latestVersion(libraryId: string): Promise<VersionRow | null> {
@@ -72,27 +73,30 @@ function summary(l: typeof libraries.$inferSelect, v: VersionRow) {
     return { id: l.id, name: l.name, version: v.seq, updated: v.publishedAt.getTime(), components: v.componentsCount, variables: v.variablesCount };
 }
 
-/** Simpan satu versi baru (snapshot ke object storage + baris versi). */
+/** Simpan satu versi baru (snapshot ke object storage + baris versi). `seq` default: versi berikutnya. */
 async function storeVersion(opts: {
     libraryId: string; workspaceId: string; userId: string; name: string; isNew: boolean;
-    seq: number; releaseNotes?: string | null; snapshot: LibrarySnapshot; components: number;
+    seq?: number; releaseNotes?: string | null; snapshot: LibrarySnapshot; components: number;
 }) {
-    const published = Date.now();
-    const snap = { id: opts.libraryId, name: opts.name, version: opts.seq, updated: published, components: opts.snapshot.components, variables: opts.snapshot.variables, assets: opts.snapshot.assets ?? {} };
-    const key = snapshotKey(opts.libraryId, opts.seq);
-    await putObject(key, Buffer.from(JSON.stringify(snap)), 'application/json');
-    await db.transaction(async tx => {
+    return db.transaction(async tx => {
+        // The update takes the library row's lock: a concurrent publish waits here, so its number is read after this one commits.
         if (opts.isNew)
             await tx.insert(libraries).values({ id: opts.libraryId, workspaceId: opts.workspaceId, name: opts.name, createdBy: opts.userId });
         else
             await tx.update(libraries).set({ name: opts.name }).where(eq(libraries.id, opts.libraryId));
+        const [latest] = await tx.select({ seq: libraryVersions.seq }).from(libraryVersions).where(eq(libraryVersions.libraryId, opts.libraryId)).orderBy(desc(libraryVersions.seq)).limit(1);
+        const seq = opts.seq ?? (latest?.seq ?? 0) + 1;
+        const published = Date.now();
+        const snap = { id: opts.libraryId, name: opts.name, version: seq, updated: published, components: opts.snapshot.components, variables: opts.snapshot.variables, assets: opts.snapshot.assets ?? {} };
+        const key = snapshotKey(opts.libraryId, seq);
+        await putObject(key, Buffer.from(JSON.stringify(snap)), 'application/json');
         await tx.insert(libraryVersions).values({
-            libraryId: opts.libraryId, seq: opts.seq, releaseNotes: opts.releaseNotes ?? null, snapshotKey: key,
+            libraryId: opts.libraryId, seq, releaseNotes: opts.releaseNotes ?? null, snapshotKey: key,
             componentsCount: opts.components, variablesCount: opts.snapshot.variables?.items?.length ?? 0,
             publishedBy: opts.userId, publishedAt: new Date(published),
         });
+        return snap;
     });
-    return snap;
 }
 
 export async function libraryRoutes(app: FastifyInstance) {
@@ -100,14 +104,14 @@ export async function libraryRoutes(app: FastifyInstance) {
 
     // A library lives as long as its source file: files in the trash or deleted take their library away with them.
     app.get('/api/libraries', async req => {
-        const libs = await db.select({ l: libraries, thumbnail: designFiles.thumbnail, fileName: designFiles.name })
+        const libs = await db.select({ l: libraries, file: designFiles })
             .from(libraries).innerJoin(designFiles, eq(designFiles.id, libraries.id))
             .where(and(eq(libraries.workspaceId, req.user!.workspaceId), isNull(designFiles.deletedAt), isNull(designFiles.trashedAt)));
         const out = [];
-        for (const { l, thumbnail, fileName } of libs) {
-            const v = await latestVersion(l.id);
+        for (const { l, file } of libs) {
+            const v = canSeeFile(req.user!, file) && await latestVersion(l.id);
             if (v)
-                out.push({ ...summary(l, v), fileId: l.id, fileName, thumbnail });
+                out.push({ ...summary(l, v), fileId: l.id, fileName: file.name, thumbnail: file.thumbnail });
         }
         return { libraries: out };
     });
@@ -115,7 +119,7 @@ export async function libraryRoutes(app: FastifyInstance) {
     // Unpublish: the library (all versions, snapshots) is removed; the design file stays as an ordinary file.
     app.delete<{ Params: { id: string } }>('/api/libraries/:id', async (req, reply) => {
         const l = await libraryOf(req, req.params.id);
-        if (!l || !(await sourceFile(req, l.id)))
+        if (!l)
             return reply.code(404).send({ error: 'not_found' });
         await db.delete(libraries).where(eq(libraries.id, l.id));
         await deletePrefix(`libraries/${l.id}/`).catch(() => { });
@@ -245,10 +249,9 @@ export async function libraryRoutes(app: FastifyInstance) {
                 errors.push(`Component ${k} is not in the snapshot`);
         if (errors.length)
             return reply.code(400).send({ error: 'invalid', message: errors[0], errors });
-        const latest = l ? await latestVersion(l.id) : null;
         const snap = await storeVersion({
             libraryId: f.id, workspaceId: req.user!.workspaceId, userId: req.user!.id, name: b.name, isNew: !l,
-            seq: (latest?.seq ?? 0) + 1, releaseNotes: b.releaseNotes, snapshot: b.snapshot as LibrarySnapshot, components: b.componentKeys.length,
+            releaseNotes: b.releaseNotes, snapshot: b.snapshot as LibrarySnapshot, components: b.componentKeys.length,
         });
         return { library: { id: f.id, name: b.name, version: snap.version, updated: snap.updated, components: b.componentKeys.length, variables: b.snapshot.variables.items?.length ?? 0 } };
     });

@@ -6,7 +6,7 @@ import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import { sql } from '../src/db/index.js';
 import { ensureBucket } from '../src/lib/s3.js';
-import { createUser, dropUsers } from './helpers.js';
+import { createUser, dropUsers, login, PASSWORD } from './helpers.js';
 
 let app: FastifyInstance;
 let cookie = '';
@@ -14,6 +14,7 @@ const stamp = Date.now();
 const email = `lib-${stamp}@midas.local`;
 const dsFile = `ds-${stamp}`;
 const appFile = `app-${stamp}`;
+const restrictedEmail = `lib-restricted-${stamp}@midas.local`;
 
 async function call(method: string, url: string, payload?: unknown) {
     const res = await app.inject({ method: method as 'GET', url, payload: payload as string, headers: { cookie } });
@@ -39,7 +40,7 @@ before(async () => {
         await call('PUT', `/api/files/${id}`, { name: id, meta: { name: id, pageMeta: [] }, baseVersion: null });
 });
 after(async () => {
-    await dropUsers([email]);
+    await dropUsers([email, restrictedEmail]);
     await app.close();
     await sql.end();
 });
@@ -280,4 +281,35 @@ test('unpublish removes the library but not the file', async () => {
     assert.equal((await call('DELETE', `/api/libraries/${dsFile}`)).status, 200);
     assert.equal((await call('GET', `/api/libraries/${dsFile}`)).status, 404);
     assert.equal((await call('GET', `/api/files/${dsFile}`)).status, 200);
+});
+
+test('a restricted user cannot read a library built from a file they cannot open', async () => {
+    const made = await call('POST', '/api/users', { email: restrictedEmail, name: 'Restricted', password: PASSWORD, role: 'editor', accessMode: 'selected', access: [] });
+    assert.equal(made.status, 200, JSON.stringify(made.body));
+    const published = await call('POST', `/api/libraries/${dsFile}/versions`, { name: 'Test DS', snapshot: snapshot(), componentKeys: ['btn'] });
+    assert.equal(published.status, 200, JSON.stringify(published.body));
+    const cookieOf = await login(app, restrictedEmail);
+    for (const url of [`/api/libraries/${dsFile}`, `/api/libraries/${dsFile}/snapshot`, `/api/libraries/${dsFile}/variables.json`, `/api/libraries/${dsFile}/package`, `/api/libraries/${dsFile}/package/build`, `/api/libraries/${dsFile}/package.tgz`]) {
+        const res = await app.inject({ method: 'GET', url, headers: { cookie: cookieOf } });
+        assert.equal(res.statusCode, 404, url);
+    }
+    const list = await app.inject({ method: 'GET', url: '/api/libraries', headers: { cookie: cookieOf } });
+    assert.ok(!list.json().libraries.some((l: { id: string }) => l.id === dsFile));
+});
+
+test('concurrent publishes each get their own version and keep their own snapshot', async () => {
+    const first = await call('POST', `/api/libraries/${dsFile}/versions`, { name: 'Test DS', snapshot: snapshot(), componentKeys: ['btn'] });
+    assert.equal(first.status, 200, JSON.stringify(first.body));
+    // Four writers with snapshots of 2, 3, 4 and 5 nodes, sent at once.
+    const sets = [['Primary'], ['Primary', 'Secondary'], ['Primary', 'Secondary', 'Ghost'], ['Primary', 'Secondary', 'Ghost', 'Ink']];
+    const results = await Promise.all(sets.map(types => call('POST', `/api/libraries/${dsFile}/versions`, { name: 'Test DS', snapshot: snapshot(types), componentKeys: ['btn'] })));
+    for (const r of results)
+        assert.equal(r.status, 200, JSON.stringify(r.body));
+    const latest = first.body.library.version;
+    const seqs = results.map(r => r.body.library.version).sort((p, q) => p - q);
+    assert.deepEqual(seqs, [latest + 1, latest + 2, latest + 3, latest + 4]);
+    for (const r of results) {
+        const nodes = (await call('GET', `/api/libraries/${dsFile}/snapshot?seq=${r.body.library.version}`)).body.components[0].nodes.length;
+        assert.equal(nodes, sets[results.indexOf(r)].length + 1);
+    }
 });

@@ -4,12 +4,13 @@ import { z } from 'zod';
 import { db } from '../db/index.js';
 import { compactPage } from '../lib/compact.js';
 import { assets, designFilePages, designFiles, designFolders, libraries } from '../db/schema.js';
-import { canSeeFile, requireUser } from '../lib/auth.js';
+import { canSeeFile, requireUser, visibleFolders } from '../lib/auth.js';
 import { assetKey, deletePrefix, getObject, putObject } from '../lib/s3.js';
 
 type FileRow = typeof designFiles.$inferSelect;
 
 const ms = (d: Date | null) => (d ? d.getTime() : null);
+const INLINE_MIME = /^(image\/(png|jpe?g|gif|webp|avif|bmp)|font\/|video\/)/;
 const assetUrl = (fileId: string, assetId: string) => `/api/files/${encodeURIComponent(fileId)}/assets/${encodeURIComponent(assetId)}`;
 
 /** Ringkasan file untuk halaman Home — bentuknya sama dengan entri `lib.index` di Studio. */
@@ -34,6 +35,12 @@ async function findFile(req: FastifyRequest, id: string): Promise<FileRow | null
         .where(and(eq(designFiles.id, id), eq(designFiles.workspaceId, req.user!.workspaceId), isNull(designFiles.deletedAt)))
         .limit(1);
     return f && canSeeFile(req.user!, f) ? f : null;
+}
+
+/** A folder of this workspace the account can open (the same rule as `GET /api/folders`). */
+async function folderOf(req: FastifyRequest, id: string) {
+    const all = await db.select().from(designFolders).where(eq(designFolders.workspaceId, req.user!.workspaceId));
+    return visibleFolders(req.user!, all).find(f => f.id === id) ?? null;
 }
 
 async function fileOr404(req: FastifyRequest, reply: FastifyReply, id: string): Promise<FileRow | null> {
@@ -169,12 +176,8 @@ export async function fileRoutes(app: FastifyInstance) {
         if (b.trashed !== undefined)
             set.trashedAt = b.trashed ? new Date(b.trashed) : null;
         if (b.folder !== undefined) {
-            if (b.folder) {
-                const [fo] = await db.select({ id: designFolders.id }).from(designFolders)
-                    .where(and(eq(designFolders.id, b.folder), eq(designFolders.workspaceId, req.user!.workspaceId))).limit(1);
-                if (!fo)
-                    return reply.code(404).send({ error: 'not_found', message: 'Folder not found' });
-            }
+            if (b.folder && !(await folderOf(req, b.folder)))
+                return reply.code(404).send({ error: 'not_found', message: 'Folder not found' });
             set.folderId = b.folder || null;
         }
         if (b.starred !== undefined)
@@ -187,13 +190,9 @@ export async function fileRoutes(app: FastifyInstance) {
     });
 
     // ----- Folder di Home -----
-    const folderOf = async (req: FastifyRequest, id: string) => (await db.select().from(designFolders)
-        .where(and(eq(designFolders.id, id), eq(designFolders.workspaceId, req.user!.workspaceId))).limit(1))[0] ?? null;
-
     app.get('/api/folders', async req => {
         const all = await db.select().from(designFolders).where(eq(designFolders.workspaceId, req.user!.workspaceId));
-        const u = req.user!, rows = u.role === 'admin' || u.accessMode === 'all' ? all : all.filter(f => u.grants.folders.has(f.id));
-        return { folders: rows.map(f => ({ id: f.id, name: f.name, parent: f.parentId ?? null, created: ms(f.createdAt) })) };
+        return { folders: visibleFolders(req.user!, all).map(f => ({ id: f.id, name: f.name, parent: f.parentId ?? null, created: ms(f.createdAt) })) };
     });
 
     app.post('/api/folders', async (req, reply) => {
@@ -225,7 +224,7 @@ export async function fileRoutes(app: FastifyInstance) {
             for (let cur = body.data.parent ? byId.get(body.data.parent) : undefined, i = 0; cur && i < 100; cur = cur.parentId ? byId.get(cur.parentId) : undefined, i++)
                 if (cur.id === f.id)
                     return reply.code(400).send({ error: 'invalid', message: 'A folder cannot be moved into itself' });
-            if (body.data.parent && !byId.has(body.data.parent))
+            if (body.data.parent && !(await folderOf(req, body.data.parent)))
                 return reply.code(404).send({ error: 'not_found', message: 'Parent folder not found' });
             set.parentId = body.data.parent || null;
         }
@@ -344,7 +343,14 @@ export async function fileRoutes(app: FastifyInstance) {
         if (!a)
             return reply.code(404).send({ error: 'not_found' });
         const buf = await getObject(a.storageKey);
-        return reply.header('content-type', a.mime).header('cache-control', 'private, max-age=31536000, immutable').send(buf);
+        // Only raster images, fonts and video show inline; anything else (SVG included) downloads and cannot run script in the app's origin.
+        const headers: Record<string, string> = {
+            'content-type': a.mime, 'cache-control': 'private, max-age=31536000, immutable',
+            'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; sandbox",
+        };
+        if (!INLINE_MIME.test(a.mime))
+            headers['content-disposition'] = 'attachment';
+        return reply.headers(headers).send(buf);
     });
 
     // Dokumen lengkap dalam format `.midas` (aset di-embed sebagai data URL).
@@ -385,6 +391,9 @@ export async function fileRoutes(app: FastifyInstance) {
         }
         if (Object.keys(assetUrls).length)
             meta.assetUrls = assetUrls;
+        // Upload the images first: if an upload fails no file row exists, so the same import can be retried.
+        for (const [assetId, { mime, buf }] of binary)
+            await putObject(assetKey(id, assetId), buf, mime);
         const pageVersions: Record<string, number> = {};
         await db.transaction(async tx => {
             await tx.insert(designFiles).values({
@@ -395,9 +404,9 @@ export async function fileRoutes(app: FastifyInstance) {
                 await tx.insert(designFilePages).values({ fileId: id, pageId: p.id, name: p.name, parentId: p.parentId ?? null, data: compactPage(p), updatedBy: req.user!.id });
                 pageVersions[p.id] = 1;
             }
+            for (const [assetId, { mime, buf }] of binary)
+                await tx.insert(assets).values({ fileId: id, assetId, storageKey: assetKey(id, assetId), mime, size: buf.length });
         });
-        for (const [assetId, { mime, buf }] of binary)
-            await storeAsset(id, assetId, mime, buf);
         return { id, version: 1, pageVersions };
     });
 }

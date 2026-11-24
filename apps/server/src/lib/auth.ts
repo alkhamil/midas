@@ -125,3 +125,8 @@ export function canSeeFile(user: AuthUser, f: { id: string; createdBy: string | 
         return true;
     return f.createdBy === user.id || user.grants.files.has(f.id) || (!!f.folderId && user.grants.folders.has(f.folderId));
 }
+
+/** The folders this account can open: all of them for an administrator or `all` mode, else the granted ones (subfolders included). */
+export function visibleFolders<T extends { id: string }>(user: AuthUser, all: T[]): T[] {
+    return user.role === 'admin' || user.accessMode === 'all' ? all : all.filter(f => user.grants.folders.has(f.id));
+}

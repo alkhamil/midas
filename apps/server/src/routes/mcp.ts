@@ -5,7 +5,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { db } from '../db/index.js';
 import { designFilePages, designFiles, designFolders } from '../db/schema.js';
-import { canSeeFile, userFromToken, type AuthUser } from '../lib/auth.js';
+import { canSeeFile, userFromToken, visibleFolders, type AuthUser } from '../lib/auth.js';
 
 type Json = Record<string, unknown>;
 type Node = Json & { id: string; name: string; type: string; parentId?: string | null; text?: string };
@@ -88,8 +88,7 @@ const TOOLS: Tool[] = [
         inputSchema: { type: 'object', properties: {} },
         async run(user) {
             const all = await db.select().from(designFolders).where(eq(designFolders.workspaceId, user.workspaceId));
-            const rows = user.role === 'admin' || user.accessMode === 'all' ? all : all.filter(f => user.grants.folders.has(f.id));
-            return { folders: rows.map(f => ({ id: f.id, name: f.name, parentId: f.parentId })) };
+            return { folders: visibleFolders(user, all).map(f => ({ id: f.id, name: f.name, parentId: f.parentId })) };
         },
     },
     {
