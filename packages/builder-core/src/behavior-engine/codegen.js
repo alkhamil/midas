@@ -110,6 +110,8 @@ const ELEMENT_TYPES = { button: ['ButtonHTMLAttributes', 'HTMLButtonElement'], i
  * @returns {{ prop: string, slot: any }[]}
  */
 const slotPropsOf = template => (template.slots ?? []).map(slot => ({ prop: template.slots.length === 1 ? 'children' : slot.id, slot }));
+/** A box whose items get separators between them (a Breadcrumb's) is a list: its container is an `ol` and each item an `li`. */
+const betweenBoxOf = template => slotPropsOf(template).some(p => p.slot.between);
 
 /**
  * The JSX of one content slot: its element (class <template>-<slot>) around the prop's content. A slot the props show while they hold is drawn exactly while its
@@ -430,9 +432,8 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     let sidedAfterPlaced = false;
     const sidedAfter = rooted.filter(part => part.side).map(part => framePartJsx(part, `${part.side} === "end"`));
     const emitSlot = (slot, out) => {
-        // A layer the box makes between its items (the separator, the ellipsis) is made per instance by the studio, and the export has no code that
-        // interleaves them with the items the consumer passes (truncation hides items too). Reported, not dropped: the export stops with the reason.
-        if (boxLayerIdsOf(template).includes(slot.id)) { problems.push({ slot: slot.id, reason: 'box-between-not-exported' }); return; }
+        // A layer the box makes between its items (the separator, the ellipsis) is written by the box itself (betweenJsx), not here.
+        if (boxLayerIdsOf(template).includes(slot.id)) return;
         if (slot.kind === 'text' || slot.kind === 'control') {
             // The counter is written after the control it counts (controlPartsJsx), which is where the anatomy puts it.
             if (slot.text?.counter) {
@@ -480,6 +481,24 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         else problems.push({ slot: slot.id, reason: 'unsupported-slot' });
     };
     // A conditional container draws only while its condition holds, like its text does.
+    // The items of a box with separators between them (a Breadcrumb's): the separator before each item but the first, and while the overflow prop holds the
+    // ellipsis after the first separator with the middle items hidden. The rule is betweenPlan's (box-between.js), written here as the component's own code.
+    function betweenJsx({ prop, slot }) {
+        const { between, overflow } = slot;
+        const separator = `${between.kind} === "icon" ? ${between.icon} : <span className="${template.id}-${between.layer}">{${between.text}}</span>`;
+        return [
+            '{(() => {',
+            `  const list = [${prop}].flat().filter(c => c !== null && c !== undefined && c !== false);`,
+            `  const n = list.length, cut = ${overflow ? `${overflow.prop} && n >= 3` : 'false'}, out = [];`,
+            '  list.forEach((item, i) => {',
+            `    if (i > 0 && (!cut || i === 1 || i === n - 1)) out.push(<li key={"sep" + i}>{${separator}}</li>);`,
+            ...(overflow ? [`    if (cut && i === 1) out.push(<li key="ellipsis"><span className="${template.id}-${overflow.layer}">{${JSON.stringify(overflow.text)}}</span></li>);`] : []),
+            '    if (!(cut && i > 0 && i < n - 1)) out.push(<li key={i}>{item}</li>);',
+            '  });',
+            '  return out;',
+            '})()}',
+        ];
+    }
     // A container is one element of the template's class around the slots that name it, in anatomy order; its layout is the box frame's own (see boxRules).
     function emitContainer(slot, out) {
         const inner = [];
@@ -496,9 +515,10 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         // A container that is a content slot holds what its prop is given; with nothing given it draws its starting layers.
         for (const w of fieldWritersOf(template).filter(w => w.field === 'imageFill' && w.key === slot.id)) inner.unshift(`{${w.prop}Video && ${videoJsx(w.prop)}}`);
         const boxSlot = slotPropsOf(template).find(p => boxesOf(p.slot).includes(slot.id));
-        const body = boxSlot ? [`{${boxSlot.prop} ?? (<>`, ...inner, '</>)}'] : inner;
+        const body = boxSlot?.slot.between ? betweenJsx(boxSlot) : boxSlot ? [`{${boxSlot.prop} ?? (<>`, ...inner, '</>)}'] : inner;
         const indented = body.map(line => line.split('\n').map(l => '  ' + l).join('\n')).join('\n');
-        const div = `<div className="${template.id}-${slot.id}"${pressHandlerJsx(template, slot)}>\n${indented}\n</div>`;
+        const tagName = boxSlot?.slot.between ? 'ol' : 'div';
+        const div = `<${tagName} className="${template.id}-${slot.id}"${pressHandlerJsx(template, slot)}>\n${indented}\n</${tagName}>`;
         out.push(slot.shownWhen ? `{(${shownJsx(slot.shownWhen)}) && ${div}}` : div);
     }
     for (const slot of template.anatomy.filter(s => !s.parent)) {
@@ -519,7 +539,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         slotted ? `className={['${template.id}', className].filter(Boolean).join(' ')}` : `className="${template.id}"`,
         ...(slotted ? ['ref={ref}', varsExpr ? `style={{ ...${varsExpr}, ...style } as CSSProperties}` : 'style={style}'] : varsExpr ? [`style={${varsExpr}}`] : []),
         // A link has no href while it is disabled.
-        ...(template.element.hrefProp ? [`href={${disabledProp ? `${disabledProp} ? undefined : ` : ''}${template.element.hrefProp} || undefined}`] : []),
+        ...(template.element.hrefProp ? [`href={${disabledProp ? `${disabledProp} ? undefined : ` : ''}${template.element.hrefUnless ? `${template.element.hrefUnless} ? undefined : ` : ''}${template.element.hrefProp} || undefined}`] : []),
         ...(template.interaction?.wave ? ['data-wave'] : []),
         ...(template.interaction?.wave && !template.events.some(event => event.name === 'onClick') ? ['onClick={(e) => { if (blocked) return; waveDown(e.currentTarget); }}'] : []),
         ...(template.interaction?.wave ? [`onAnimationEnd={(e) => { if (e.animationName === '${WAVE_KEYFRAMES}') e.currentTarget.removeAttribute('data-wave-on'); }}`] : []),
@@ -879,12 +899,23 @@ function waveRules(template) {
  * @returns {string[]}
  */
 /**
- * The cursor a root takes while a boolean prop holds (`cursor: [{ when, value }]`, Card's Hoverable: a pointer). The prop is an attribute state of the root.
+ * The cursor a root takes: `cursor: [{ when, value }]` while a boolean prop holds (Card's Hoverable: a pointer), `[{ unless, value }]` while it does not
+ * (a Breadcrumb's inactive item), each with the prop an attribute state of the root; with neither, while the root is hovered.
  * @param {any} template
  */
+function listResetRules(template) {
+    return (template.slots ?? []).filter(s => s.between && s.box !== undefined).map(s => `.${template.id}-${s.box} {\n  list-style: none;\n  margin: 0;\n  padding: 0;\n}\n`);
+}
+
 function cursorRules(template) {
-    return (template.cursor ?? []).flatMap(({ when, value }) => {
-        const attr = stateAttributesOf(template).find(a => a.prop === when)?.attr;
+    const attrOf = prop => stateAttributesOf(template).find(a => a.prop === prop)?.attr;
+    return (template.cursor ?? []).flatMap(({ when, unless, value }) => {
+        if (unless !== undefined) {
+            const attr = attrOf(unless);
+            return attr ? [`.${template.id}:hover:not([${attr}]) {\n  cursor: ${value};\n}\n`] : [];
+        }
+        if (when === undefined) return [`.${template.id}:hover {\n  cursor: ${value};\n}\n`];
+        const attr = attrOf(when);
         return attr ? [`.${template.id}[${attr}] {
   cursor: ${value};
 }
@@ -1350,7 +1381,7 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
         blocks.push(`@keyframes ${loopKeyframes(template.id, part.id)} {\n${part.loop.frames.map(f => `  ${f.at}% { ${Object.entries(f.props).map(([p, v]) => `${p}: ${String(v).replaceAll('$travel', travel)};`).join(' ')} }`).join('\n')}\n}\n`);
     }
     if (template.interaction?.wave) blocks.push(waveRules(template));
-    blocks.push(...overflowRules(template), ...expandRules(template), ...pressRules(template), ...glyphHoverRules(template), ...fieldRules(template, master, childrenOf), ...gradientPatternRules(template, master, childrenOf), ...fillOverrideRules(template), ...cursorRules(template), ...multilineRules(template), ...revealRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
+    blocks.push(...overflowRules(template), ...expandRules(template), ...pressRules(template), ...glyphHoverRules(template), ...fieldRules(template, master, childrenOf), ...gradientPatternRules(template, master, childrenOf), ...fillOverrideRules(template), ...cursorRules(template), ...listResetRules(template), ...multilineRules(template), ...revealRules(template), ...motionRules(template), ...groupRules(template, master, childrenOf), ...glyphRules(template), ...slotRules(template, master, childrenOf));
     if (template.interaction || template.motion) blocks.push(reducedMotion(template));
     return blocks.join('\n');
 }

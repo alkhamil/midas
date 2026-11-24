@@ -225,3 +225,31 @@ test('the Input master and its demo instance show the sample placeholder', () =>
         assert.equal(placeholder.visible, true);
     }
 });
+
+test('a Breadcrumb exports its separators and its truncation into the items box, with no problem', () => {
+    const doc = fresh();
+    run(doc);
+    const template = BUILT_IN_TEMPLATES.get('antd-breadcrumb');
+    const master = doc.nodes.find(n => n.behavior?.templateId === 'antd-breadcrumb');
+    const out = generateComponent(template, master.behavior, doc.variables, template.name, master, parent => doc.nodes.filter(n => n.parentId === parent));
+    assert.deepEqual(out.problems, []);
+    const source = Object.values(out.files).join('\n');
+    assert.match(source, /list\.forEach\(\(item, i\)/);
+    assert.match(source, /cut = truncated && n >= 3/);
+    assert.match(source, /separatorKind === "icon" \? separatorIcon : <span className="antd-breadcrumb-separator">/);
+    assert.match(source, /className="antd-breadcrumb-ellipsis"/);
+    assert.match(source, /<ol className="antd-breadcrumb-itemsBox"/);
+    assert.match(source, /<li key=\{i\}>\{item\}<\/li>/);
+});
+
+test('a Breadcrumb item is an anchor whose href is written only while it is not active', () => {
+    const doc = fresh();
+    run(doc);
+    const template = BUILT_IN_TEMPLATES.get('antd-breadcrumb-item');
+    const master = doc.nodes.find(n => n.behavior?.templateId === 'antd-breadcrumb-item');
+    const out = generateComponent(template, master.behavior, doc.variables, 'BreadcrumbItem', master, parent => doc.nodes.filter(n => n.parentId === parent));
+    assert.deepEqual(out.problems, []);
+    const source = Object.values(out.files).join('\n');
+    assert.match(source, /<a\b/);
+    assert.match(source, /href=\{disabled \? undefined : active \? undefined : href \|\| undefined\}/);
+});

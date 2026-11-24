@@ -35,6 +35,8 @@ export const BREADCRUMB = {
         {
             id: 'items', name: 'Item', description: 'The Breadcrumb Item rows of the row', holds: 'instance', accepts: ['antd-breadcrumb-item'], onlyAccepts: true, min: 0, showEmpty: true,
             layout: 'horizontal', box: 'itemsBox', seed: [{ template: 'antd-breadcrumb-item', props: { label: 'Item' }, follow: { size: 'size' } }], start: 2,
+            // The last item is the current one: its `active` prop is on, and the others' are off (the box keeps it as items are added and removed).
+            current: 'active',
             // The separator the box puts before each item but the first; the ellipsis stands between the first and the first hidden item while truncated.
             between: { kind: 'separatorKind', icon: 'separatorIcon', layer: 'separator', text: 'separatorText', size: 'separatorSize' },
             overflow: { prop: 'truncated', layer: 'ellipsis', text: '…' },

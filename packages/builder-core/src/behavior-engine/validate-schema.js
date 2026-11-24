@@ -296,10 +296,15 @@ function stateProblems(schema, allTokens, props) {
     const preview = isPlainObject(schema.previewStates) ? schema.previewStates : null;
     if (!persistent) out.push('persistentStates must be an object');
     if (!preview) out.push('previewStates must be an object');
-    // A cursor rule names a boolean prop that is an attribute state of the root.
+    // A cursor rule names a boolean prop that is an attribute state of the root (`when`, or `unless` for while it is off), or has neither: then it holds while the root is hovered.
     for (const entry of Array.isArray(schema.cursor) ? schema.cursor : []) {
-        const owner = Object.entries(persistent || {}).find(([, def]) => isPlainObject(def) && def.prop === entry?.when);
-        if (!owner || !STATE_ATTRIBUTE.test(String(schema.statePseudo?.[owner[0]] ?? '')) || !isName(entry.value)) out.push(`cursor rule "${entry?.when}" needs an attribute state of that prop and a cursor value`);
+        if (entry?.when === undefined && entry?.unless === undefined) {
+            if (!isName(entry?.value)) out.push('cursor rule needs a cursor value');
+            continue;
+        }
+        const prop = entry.unless ?? entry.when;
+        const owner = Object.entries(persistent || {}).find(([, def]) => isPlainObject(def) && def.prop === prop);
+        if (!owner || !STATE_ATTRIBUTE.test(String(schema.statePseudo?.[owner[0]] ?? '')) || !isName(entry.value)) out.push(`cursor rule "${prop}" needs an attribute state of that prop and a cursor value`);
     }
     // A gated preview state names a state of the template and a boolean prop that is an attribute state of the root.
     for (const [state, gate] of Object.entries(isPlainObject(schema.previewRequires) ? schema.previewRequires : {})) {
@@ -376,6 +381,8 @@ function elementProblems(schema) {
     }
     // A link: the element's href is a text prop (Play and the export write it, the canvas has none).
     if (el.hrefProp !== undefined && !(props[el.hrefProp]?.source === 'literal' && props[el.hrefProp]?.type === 'string')) out.push(`element hrefProp "${el.hrefProp}" is not a text prop`);
+    // The href is written only while the boolean prop hrefUnless is off (a Breadcrumb's current item is not a link).
+    if (el.hrefUnless !== undefined && !(el.hrefProp !== undefined && props[el.hrefUnless]?.source === 'literal' && props[el.hrefUnless]?.type === 'boolean')) out.push(`element hrefUnless "${el.hrefUnless}" needs an hrefProp and a boolean prop`);
     return out;
 }
 
@@ -451,7 +458,7 @@ const RESERVED_WORDS = new Set(['await', 'break', 'case', 'catch', 'class', 'con
 /** The props every generated component has besides its own: `children` is the single slot's, the rest pass through to the root. */
 const GENERATED_PROPS = ['children', 'className', 'style', 'ref', 'key'];
 /** The fields of a content slot definition. They are the names and settings of Figma's slot property, so the generator can write them into it. */
-const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'onlyAccepts', 'showEmpty', 'required', 'fillCounter', 'layout', 'fill', 'shownWhen', 'parent', 'seed', 'holds', 'box', 'separator', 'start', 'between', 'overflow'];
+const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'onlyAccepts', 'showEmpty', 'required', 'fillCounter', 'layout', 'fill', 'shownWhen', 'parent', 'seed', 'holds', 'box', 'separator', 'start', 'between', 'overflow', 'current'];
 
 /**
  * Problems in the content slots a template declares (`slots`): a frame of the component that instances fill with their own layers. A slot's id
@@ -561,6 +568,7 @@ function slotProblems(schema, templateIds, schemas) {
             if (slot.box === undefined) out.push(`${tag} between needs a box: the separators sit between its instances`);
         }
         // Truncation over the box: a boolean prop hides the items between the first and the last, behind an ellipsis layer (an anatomy text).
+        if (slot.current !== undefined && !isName(slot.current)) out.push(`${tag} current must name a boolean prop of its items`);
         if (slot.overflow !== undefined) {
             const o = slot.overflow;
             if (!isPlainObject(o) || !isName(o.prop) || !isName(o.layer) || typeof o.text !== 'string') out.push(`${tag} overflow must name a prop, a layer and a text`);

@@ -5831,7 +5831,7 @@ function closeFillPicker() {
     state.pickSource = null;
 }
 /** The paint object the open picker edits on a layer: its fill at the picker's index, or (Stroke) its stroke paint, a fill-shaped object. */
-function pickerFillOf(n) { return n ? (FP.target === 'stroke' ? n.strokeFill : pickerFillOf(n)) : undefined; }
+function pickerFillOf(n) { return n ? (FP.target === 'stroke' ? n.strokeFill : n.fills?.[FP.i]) : undefined; }
 /** The list the picker's edits run over: the fills, or (Stroke) a list of the one stroke paint. */
 function fillsOfPicker(n) { return FP.open && FP.target === 'stroke' ? (n.strokeFill ? [n.strokeFill] : []) : n.fills; }
 /** The key the open fill's colour variable binds to. */
@@ -10974,6 +10974,15 @@ function syncBetween(inst, template) {
         if (!layer || !itemMaster) continue;
         const kids = doc.children(layer.id);
         const items = kids.filter(c => c.sourceId === itemMaster.id);
+        // The current item is the last one: its boolean prop (def.current) is on, and the others' are off.
+        if (def.current !== undefined) items.forEach((item, i) => {
+            const on = i === items.length - 1;
+            if ((item.behavior?.props?.[def.current] === true) !== on) {
+                item.behavior = setInstanceValue(item, componentById(item.sourceId), def.current, on);
+                doc.touch(item);
+                syncInstance(item);
+            }
+        });
         const truncated = def.overflow !== undefined && values[def.overflow.prop] === true;
         const plan = betweenPlan(items.length, { truncated });
         // The layers the box makes (separators, ellipsis) are reused wherever the plan still wants one, so their ids and selection stay as props change.

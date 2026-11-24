@@ -488,6 +488,9 @@ function renderTemplate(n, template, parent, scope) {
         }
         // A container that is a content slot draws the layers the instance holds in it, whatever they are (its starting layers are among them).
         if (group && (template.slots ?? []).some(s => [s.box ?? []].flat().includes(slot.id))) inner.splice(0, inner.length, ...renderChildren(group, scope));
+        // A box of separators is a list (as the export writes it): each item, separator and ellipsis is an li.
+        const listBox = (template.slots ?? []).some(s => s.between && [s.box ?? []].flat().includes(slot.id));
+        if (listBox) inner.splice(0, inner.length, ...inner.map(child => ({ tag: 'li', attrs: {}, style: {}, children: [child] })));
         // A swap icon has no canvas layer: draw the component's own vectors in the slot colour (currentColor, like a bound nested icon).
         for (const def of swapDefsOf(template, slot.id)) {
             if (!iconDefOn(def, props)) continue;
@@ -510,7 +513,7 @@ function renderTemplate(n, template, parent, scope) {
             const { background } = cssBackgroundOf(displayFills(group), scope.assets, id => scope.byId.get(id), picBox);
             if (background) pic.background = background;
         }
-        const el = { tag: 'div', nodeId: group?.id, attrs: { class: `${template.id}-${slot.id}`, ...pressAttrsOf(template, slot.id) }, style: pic, children: inner };
+        const el = { tag: listBox ? 'ol' : 'div', nodeId: group?.id, attrs: { class: `${template.id}-${slot.id}`, ...pressAttrsOf(template, slot.id) }, style: pic, children: inner };
         // A container that turns (the Spin's dot holder) turns as a whole in Play: its own spin, so its dots keep their place.
         if (slot.spin) el.style.animation = spinAnimation(slot.spin);
         const clip = group && videoElement(group, scope, {});
@@ -559,7 +562,7 @@ function renderTemplate(n, template, parent, scope) {
         Object.assign(style, useSvg ? { borderWidth: '0px', borderStyle: 'none', ...(template.display.root.paddingX ? { paddingInline: `var(${cssVarOf(template.id, template.display.root.paddingX)})` } : {}), ...(template.display.root.paddingY ? { paddingBlock: `var(${cssVarOf(template.id, template.display.root.paddingY)})` } : {}) } : (() => { if (!useSvg && lineStyle === 'solid' && strokeSidesUniform(shape) && shape.strokeSides === undefined && 'stroke' in (template.display.root ?? {}) && !('shadow' in template.display.root) && !('paddingX' in template.display.root) && !('paddingY' in template.display.root) && bw > 0) { const width = `var(${cssVarOf(template.id, template.display.root.strokeWidth)})`; return { borderWidth: '0px', borderStyle: 'none', outline: `${width} solid ${bound ? `var(${cssVarOf(template.id, template.display.root.stroke)})` : colorWithAlpha(shape.stroke, shape.strokeOpacity)}`, outlineOffset: `calc(-1 * ${width})`, backgroundClip: 'border-box' }; } const uniform = strokeSidesUniform(shape); if (!uniform) { const s = strokeSideWidths(shape); const per = {}; for (const [k, v] of [['Top', s.t], ['Right', s.r], ['Bottom', s.b], ['Left', s.l]]) { per[`border${k}Width`] = `${v}px`; per[`border${k}Style`] = v > 0 ? lineStyle : 'none'; if (!bound && v > 0) per[`border${k}Color`] = colorWithAlpha(shape.stroke, shape.strokeOpacity); } per.backgroundClip = 'border-box'; return per; } return bw > 0 ? { borderWidth: `${bw}px`, borderStyle: lineStyle, ...(bound ? {} : { borderColor: colorWithAlpha(shape.stroke, shape.strokeOpacity) }), backgroundClip: 'border-box' } : { borderWidth: '0px', borderStyle: 'none' }; })()); if (hasStroke && !style.position) style.position = 'relative';
     }
     // A link's href is its text prop; Play draws it (and keeps a click from leaving the stage, see play.js), the canvas has none.
-    if (template.element.hrefProp && String(props[template.element.hrefProp] ?? '') !== '' && !(template.element.disabledState !== undefined && stateOn(template, template.element.disabledState, props))) attrs.href = String(props[template.element.hrefProp]);
+    if (template.element.hrefProp && String(props[template.element.hrefProp] ?? '') !== '' && !(template.element.disabledState !== undefined && stateOn(template, template.element.disabledState, props)) && !(template.element.hrefUnless !== undefined && props[template.element.hrefUnless] === true)) attrs.href = String(props[template.element.hrefProp]);
     // What the designer set on the instance's own layers that the template's tokens do not give: bound to a variable it resolves, unbound it is the raw value (see node-overrides.js).
     const modes = Object.fromEntries(variableProps(template).map(([dim]) => [dim, attrs[`data-${dim}`] || null]));
     const tokenVars = previewOf(template, binding, modes, scope.variables, props).vars;

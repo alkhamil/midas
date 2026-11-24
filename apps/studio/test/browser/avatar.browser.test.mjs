@@ -40,10 +40,11 @@ test('Avatar picture: the canvas and Play draw the chosen image in the box', asy
     await chooser.setFiles({ name: 'red.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
     await page.waitForFunction(id => !!window.midas.doc.get(id)?.fills?.some(f => f.type === 'image'), id, { timeout: 10000 });
     await page.waitForTimeout(500);
-    // The instance holds the picture as an image fill over a hidden colour fill, with no text or icon layer.
+    // The instance holds the picture as its top image fill, with the colour fill under it.
     const fills = await page.evaluate(id => window.midas.doc.get(id).fills.map(f => ({ type: f.type, visible: f.visible })), id);
-    assert.deepEqual(fills.map(f => f.type), ['solid', 'image']);
-    assert.equal(fills[0].visible, false, 'the colour does not show under the picture');
+    // No fill is hidden for a picture: the colour stays under it, and the picture is the top fill (the list is stored top first).
+    assert.deepEqual(fills.map(f => f.type), ['image', 'solid']);
+    assert.notEqual(fills[0].visible, false, 'the picture shows');
     await page.locator('#inspector').screenshot({ path: `${ARTIFACTS}/avatar-image-panel.png` });
     await page.evaluate(() => window.midas.select([]));
     const canvas = await shotNode(page, id, 'avatar-image-canvas', PAD, 1);
@@ -55,7 +56,7 @@ test('Avatar picture: the canvas and Play draw the chosen image in the box', asy
     const blue = await page.evaluate(() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#0000ff'; g.fillRect(0, 0, 64, 64); return c.toDataURL('image/png').split(',')[1]; });
     await page.evaluate(id => window.midas.select([id]), id);
     await page.locator('[data-inspector-tab="design"]').click();
-    await page.locator('.fr-sw.img[data-fill-open="1"]').click();
+    await page.locator('.fr-sw.img[data-fill-open="0"]').click();
     const [fillChooser] = await Promise.all([page.waitForEvent('filechooser'), page.locator('[data-fill-image-pick]').first().click()]);
     await fillChooser.setFiles({ name: 'blue.png', mimeType: 'image/png', buffer: Buffer.from(blue, 'base64') });
     await page.waitForTimeout(600);
@@ -74,18 +75,18 @@ test('Avatar picture: the canvas and Play draw the chosen image in the box', asy
     const shown = () => page.evaluate(id => window.midas.doc.get(id).fills.find(f => f.type === 'image').visible !== false, id);
     await page.evaluate(id => window.midas.select([id]), id);
     await page.locator('[data-inspector-tab="design"]').click();
-    await page.locator('[data-fill-toggle="1"]').click();
+    await page.locator('[data-fill-toggle="0"]').click();
     await page.locator('#inspector-tab-behavior').click();
     await page.locator('[data-bp-prop="size"]').first().selectOption({ label: 'md' });
     await page.waitForTimeout(500);
     assert.equal(await shown(), false, 'the hidden picture stays hidden after a sync');
     await page.locator('[data-inspector-tab="design"]').click();
-    await page.locator('[data-fill-toggle="1"]').click();
+    await page.locator('[data-fill-toggle="0"]').click();
     assert.equal(await shown(), true);
     // Remove from the Design tab (the minus on the picture's fill): the prop clears, the picture goes and the colour shows again, and a sync keeps it that way.
     await page.evaluate(id => window.midas.select([id]), id);
     await page.locator('[data-inspector-tab="design"]').click();
-    await page.locator('[data-fill-remove="1"]').click();
+    await page.locator('[data-fill-remove="0"]').click();
     await page.waitForTimeout(600);
     const removed = () => page.evaluate(id => { const n = window.midas.doc.get(id); return { prop: n.behavior.props.src ?? null, fills: n.fills.map(f => [f.type, f.visible !== false]) }; }, id);
     assert.deepEqual(await removed(), { prop: null, fills: [['solid', true]] });

@@ -12,7 +12,8 @@ export const BREADCRUMB_ITEM = {
     name: 'Breadcrumb Item',
     primarySlot: 'label',
     sampleProps: { label: 'Item' },
-    element: { tag: 'span', attrs: {}, disabledState: 'disabled', blockClickProps: [] },
+    // An item is an anchor to its href, and the current one (active) has none, as antd's last item is a plain span.
+    element: { tag: 'a', attrs: {}, hrefProp: 'href', hrefUnless: 'active', disabledState: 'disabled', blockClickProps: [] },
     anatomy: [
         { id: 'label', kind: 'text', optional: true, managed: true, typography: 'text', shownWhen: { prop: 'label', empty: false } },
     ],
@@ -23,6 +24,7 @@ export const BREADCRUMB_ITEM = {
     props: {
         size: { source: 'variable', collection: 'Size', modes: SIZE_MODES, defaultMode: DEFAULT_SIZE_MODE, standard: true },
         label: { source: 'literal', type: 'string', default: 'Item', node: { key: 'label', field: 'text' } },
+        href: { source: 'literal', type: 'string', default: '' },
         active: { source: 'literal', type: 'boolean', default: false },
         disabled: { source: 'literal', type: 'boolean', default: false },
     },
@@ -51,6 +53,8 @@ export const BREADCRUMB_ITEM = {
         hover: { fg: 'fg-hover', bg: 'bg-hover' },
     },
     statePseudo: { active: '[data-active]', disabled: ':disabled', hover: ':hover' },
+    // An inactive item is a link to its place, so it takes the pointer on hover; the active one is the current place and keeps the arrow.
+    cursor: [{ unless: 'active', value: 'pointer' }],
     parts: [],
     playOnly: [
         { id: 'hover', reason: 'pointer state; the canvas shows the rest state and the Preview panel shows hover' },
