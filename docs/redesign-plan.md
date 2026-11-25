@@ -101,6 +101,8 @@ Tes: `apps/studio`, 362 tes, 355 lulus, 7 gagal. Ketujuh kegagalan sama dengan s
 
 ## Rencana berikutnya (belum dikerjakan)
 
+Status: redesign **ditutup sementara** (keputusan pengguna). Butir 3 dan 4 tetap terbuka; dilanjutkan bila redesign dibuka lagi.
+
 1. [x] Konsolidasi `.cmp-props` dan `.cmp-prop2` menjadi satu definisi, dan lebar label dibuat cukup untuk teks terpanjang.
 2. [x] Tab panel kanan: tinggi 40px, teks 12px, indikator bawah seperti tab Figma.
 3. [ ] Panel Design: belum diubah strukturnya, menunggu tinjauan.: kelompokkan section (Position, Layout, Appearance) dengan jarak yang sama.

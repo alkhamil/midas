@@ -27,6 +27,8 @@ export const DIALOG = {
         { id: 'description', kind: 'text', parent: 'body', optional: true, fill: true, managed: true, typography: 'body', shownWhen: { prop: 'descriptionText', empty: false } },
         // The footer aligns its buttons to the end, the way antd's Modal does.
         { id: 'footer', kind: 'frame', layout: 'horizontal', primaryAlign: 'end', counterAlign: 'center', fill: true, managed: true, shownWhen: { prop: 'footer', is: true } },
+        // The Footer slot: the box its buttons sit in, hugging them, so the gap between them is its own (Size).
+        { id: 'footerBox', kind: 'frame', parent: 'footer', layout: 'horizontal', primaryAlign: 'end', counterAlign: 'center' },
     ],
     icons: [
         { show: 'closable', slot: 'close', component: 'closeIcon', role: 'close', tokens: CLOSE_TOKENS },
@@ -41,12 +43,14 @@ export const DIALOG = {
         title: { source: 'literal', type: 'string', default: 'Dialog title', node: { key: 'title', field: 'text' } },
         closable: { source: 'literal', type: 'boolean', default: true },
         closeIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'closable', is: true }, remembered: true },
+        // Escape takes the dialog out (Play: the first open dialog; the export: a key listener). The overlay's own outside click is the Prototype's.
+        closeOnEsc: { source: 'literal', type: 'boolean', default: true },
         description: { source: 'literal', type: 'boolean', default: true },
         descriptionText: { source: 'literal', type: 'string', default: 'Dialog content goes here.', node: { key: 'description', field: 'text' }, visibleIf: { prop: 'description', is: true }, remembered: true },
         footer: { source: 'literal', type: 'boolean', default: true },
     },
     // The footer's buttons: a Button instance in the footer, seeded with one OK button at the dialog's size.
-    slots: [{ id: 'footerContent', name: 'Footer', description: 'Buttons at the end of the footer', holds: 'instance', min: 0, max: 2, accepts: ['button'], onlyAccepts: true, showEmpty: true, layout: 'horizontal', parent: 'footer', seed: [{ template: 'button', props: { label: 'OK' }, follow: { size: 'size' } }] }],
+    slots: [{ id: 'footerContent', name: 'Footer', description: 'Buttons at the end of the footer', holds: 'instance', min: 0, max: 2, accepts: ['button'], onlyAccepts: true, showEmpty: true, layout: 'horizontal', box: 'footerBox', seed: [{ template: 'button', props: { label: 'OK' }, follow: { size: 'size' } }] }],
     tokens: {
         fromSize: ['bg', 'fg', 'fgSecondary', 'shadow', 'padding', 'gap', 'radius', 'iconSize', 'closeSize', 'titleTypography', 'bodyTypography'],
     },
@@ -74,9 +78,12 @@ export const DIALOG = {
     parts: [],
     playOnly: [],
     press: [{ slot: 'closer', dismiss: true }],
+    dismissKey: { key: 'Escape', prop: 'closeOnEsc' },
     display: {
         root: { fill: 'bg', radius: 'radius', shadow: 'shadow', paddingX: 'padding', paddingY: 'padding', gap: 'gap' },
         header: { gap: 'gap' },
+        // The gap between the footer's buttons is the Size step, as the header's is.
+        footerBox: { gap: 'gap' },
         title: { fill: 'fg', typography: 'titleTypography' },
         description: { fill: 'fgSecondary', typography: 'bodyTypography' },
         close: { size: 'closeSize' },

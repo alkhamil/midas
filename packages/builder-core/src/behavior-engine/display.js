@@ -112,6 +112,16 @@ export function stateAttributesOf(template) {
 }
 
 /**
+ * A template's dismiss key: the key that takes the root out while the boolean prop holds (Play reads the root attribute, the export listens for the key).
+ * Null when the template declares none.
+ * @param {any} template
+ * @returns {{ key: string, prop: string, attr: string } | null}
+ */
+export function dismissKeyOf(template) {
+    return template.dismissKey ? { key: template.dismissKey.key, prop: template.dismissKey.prop, attr: 'data-dismiss-key' } : null;
+}
+
+/**
  * A template's click toggle: the root attribute of the state prop a click turns on (and off), the attribute of the state it clears, and whether the click
  * only turns it on. Null when the template declares none. Play reads it from data attributes on the root.
  * @param {any} template

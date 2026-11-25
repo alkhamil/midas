@@ -14,7 +14,7 @@ const names = props => instanceFor(model, props).slice(1).map(n => n.behavior?.s
 
 test('the schema is valid and declares the Size and the props of a dialog', () => {
     assert.deepEqual(validateTemplateSchema(dialog), []);
-    assert.deepEqual(Object.keys(dialog.props).sort(), ['closable', 'closeIcon', 'description', 'descriptionText', 'footer', 'size', 'title']);
+    assert.deepEqual(Object.keys(dialog.props).sort(), ['closable', 'closeIcon', 'closeOnEsc', 'description', 'descriptionText', 'footer', 'size', 'title']);
     assert.deepEqual(dialog.props.size.modes, ['xs', 'sm', 'md', 'lg', 'xl']);
     assert.deepEqual(dialog.slots.map(s => s.id), ['footerContent']);
 });
@@ -22,9 +22,9 @@ test('the schema is valid and declares the Size and the props of a dialog', () =
 test('the title is always there; the close, the description and the footer are layers only while their props are on', () => {
     const off = names({ closable: false, description: false, footer: false });
     assert.ok(off.includes('header') && off.includes('title'), 'the header with its title is on by default');
-    for (const hidden of ['closer', 'close', 'description', 'footer', 'footerContent']) assert.ok(!off.includes(hidden), `${hidden} is not there while its prop is off`);
+    for (const hidden of ['closer', 'close', 'description', 'footer', 'footerBox', 'footerContent']) assert.ok(!off.includes(hidden), `${hidden} is not there while its prop is off`);
     const on = names({ closable: true, description: true, footer: true });
-    for (const shown of ['closer', 'close', 'description', 'footer', 'footerContent']) assert.ok(on.includes(shown), shown);
+    for (const shown of ['closer', 'close', 'description', 'footer']) assert.ok(on.includes(shown), shown);
 });
 
 test('the layers run header, body, footer', () => {
@@ -52,4 +52,15 @@ test('the export is a dialog element with the role and no hover rule', () => {
     const jsx = out.files['Dialog.jsx'] ?? out.files['Dialog.tsx'];
     assert.match(jsx, /role="dialog"/);
     assert.doesNotMatch(out.files['Dialog.css'], /\.antd-dialog(:hover|\[data-hoverable\]:hover)/, 'the box has no hover; only the close darkens');
+});
+
+test('Escape dismisses the dialog while closeOnEsc is on: the export listens for it, and the prop is a dialog prop', () => {
+    assert.deepEqual(dialog.dismissKey, { key: 'Escape', prop: 'closeOnEsc' });
+    assert.equal(dialog.props.closeOnEsc.type, 'boolean');
+    const out = generateComponent(dialog, model.binding, model.variables, 'Dialog', model.frame, id => model.created.filter(n => n.parentId === id));
+    const jsx = out.files['Dialog.jsx'] ?? out.files['Dialog.tsx'];
+    assert.match(jsx, /import \{ forwardRef, useState, useEffect \} from 'react';/);
+    assert.match(jsx, /const \[dismissed, setDismissed\] = useState\(false\);/, 'the typed export declares the state its closer and key use');
+    assert.match(jsx, /document\.addEventListener\('keydown', onKey\)/);
+    assert.match(jsx, /if \(e\.key === 'Escape' && closeOnEsc && !dismissed\) \{ setDismissed\(true\); onClose\?\.\(\); \}/);
 });

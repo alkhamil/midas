@@ -37,6 +37,8 @@ html[data-theme="light"] {
   --panel-3: #f1f0f4;
   --field: #f2f1f5;
   --hover: #efedf5;
+  /* The dark value (#f17982) is 2.6:1 on white; this one reads 5:1+ for text and the Delete button. */
+  --danger: #c42b36;
   --border: #e4e2e8;
   --border-soft: #eeedf1;
   --text: #26232e;
@@ -2797,9 +2799,13 @@ select.vw-text { cursor: pointer }
 .hf-check { position: absolute; z-index: 2; top: 9px; left: 9px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; background: var(--panel); border: 1px solid var(--border); opacity: 0; transition: opacity .1s; cursor: pointer }
 .hf:hover .hf-check, .hf-check.on, .home-grid:has(.hf-check.on) .hf-check { opacity: 1 }
 .hf-check input, .home-bulk input { accent-color: var(--accent); margin: 0; width: 14px; height: 14px; cursor: pointer }
-.home-bulk { display: flex; align-items: center; gap: 14px; height: 32px; margin: -4px 0 12px; font-size: 12.5px; color: var(--text-secondary) }
+.home-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; min-height: 32px; margin: -4px 0 12px; font-size: 12.5px; color: var(--text-secondary) }
 .home-bulk label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer }
-.home-tools { order: 1; margin-left: auto; display: flex; align-items: center; gap: 8px }
+.home-bulk-sel { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; min-width: 0 }
+.home-link.danger { color: var(--danger) }
+.home-bulk-del { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent); border-radius: 7px; background: transparent; color: var(--danger); font-size: 12px; font-weight: 600; cursor: pointer }
+.home-bulk-del:hover { background: color-mix(in srgb, var(--danger) 12%, transparent) }
+.home-tools { margin-left: auto; display: flex; align-items: center; gap: 8px }
 .home-seg { display: inline-flex; padding: 2px; gap: 2px; border-radius: 7px; background: var(--field) }
 .home-seg-btn { width: 26px; height: 24px; display: grid; place-items: center; border-radius: 5px; color: var(--muted) }
 .home-seg-btn:hover { color: var(--text) }
@@ -2811,7 +2817,6 @@ select.vw-text { cursor: pointer }
 .hf.row .hf-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600 }
 .hf.row .hf-sub { color: var(--muted); font-size: 12px; white-space: nowrap }
 .home-bulk .home-sort { height: 28px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel); color: var(--text); padding: 0 8px; font-size: 12px }
-.home-link.danger { color: var(--danger) }
 
 .lib-box { display: grid; gap: 8px; padding: 0 0 12px; margin-bottom: 8px; border-bottom: 1px solid var(--border-soft, var(--border)) }
 .lib-head { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 4px }

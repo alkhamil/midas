@@ -4,9 +4,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateTemplateSchema } from '../src/behavior-engine/validate-schema.js';
-import { pressAttrsOf } from '../src/behavior-engine/display.js';
+import { dismissKeyOf, pressAttrsOf } from '../src/behavior-engine/display.js';
 import { generateComponent } from '../src/behavior-engine/codegen.js';
-import { applyPress } from '../src/prototype/press.js';
+import { applyPress, dismissByKey } from '../src/prototype/press.js';
 import { modelFor, instanceFor, BOXY } from './helpers/box-template.js';
 
 /** BOXY whose box dismisses the element on a click, and has an exit motion. */
@@ -64,4 +64,22 @@ test('Play: a click dismisses the root (the exit starts) unless it is disabled, 
     const model = modelFor(DISMISSY);
     const nodes = instanceFor(model, {});
     assert.ok(nodes.every(n => !('dismissed' in n)), 'the canvas holds no dismiss');
+});
+
+test('a dismiss key names its key and the prop that turns it on; a template without one has none', () => {
+    assert.equal(dismissKeyOf(DISMISSY), null);
+    const keyed = { ...DISMISSY, dismissKey: { key: 'Escape', prop: 'closable' } };
+    assert.deepEqual(dismissKeyOf(keyed), { key: 'Escape', prop: 'closable', attr: 'data-dismiss-key' });
+});
+
+test('Play: a dismiss key dismisses the first open root that holds it, once, and never a disabled one', () => {
+    const root = (attrs = {}) => ({ attrs, hasAttribute(n) { return n in this.attrs; }, setAttribute(n, v) { this.attrs[n] = v; }, removeAttribute(n) { delete this.attrs[n]; } });
+    const scopeOf = (...roots) => ({ querySelectorAll: sel => roots.filter(r => r.attrs['data-dismiss-key'] !== undefined && sel === `[data-dismiss-key="${r.attrs['data-dismiss-key']}"]`) });
+    const open = root({ 'data-dismiss-key': 'Escape' });
+    assert.equal(dismissByKey(scopeOf(open), 'Escape'), true);
+    assert.ok('data-dismissed' in open.attrs, 'the root is dismissed');
+    assert.equal(dismissByKey(scopeOf(open), 'Escape'), false, 'a dismissed root is not dismissed twice');
+    assert.equal(dismissByKey(scopeOf(root({ 'data-dismiss-key': 'Escape', 'aria-disabled': 'true' })), 'Escape'), false, 'a disabled root stays');
+    assert.equal(dismissByKey(scopeOf(root({})), 'Escape'), false, 'nothing holds the key');
+    assert.equal(dismissByKey(scopeOf(root({ 'data-dismiss-key': 'Enter' })), 'Escape'), false, 'another key');
 });

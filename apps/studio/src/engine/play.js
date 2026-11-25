@@ -3,7 +3,7 @@
 // through the player, so the history stays consistent. Play reads the document and never writes it: the view settings live in the
 // browser (localStorage), not in the document. The chrome (top bar, bottom controls) hides on a click that triggers nothing, and
 // Ctrl+\ pins it hidden.
-import { counterLabel, toDomTree, createPlayer, arrivalEffects, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES, showWave, flipToggle, applyPress, blurNumber, forwardFocus, startResizeDrag, strokeAreaAtSize, paintLayerOf, gradientRaster, overlayPlacement } from '@midas/builder-core';
+import { counterLabel, toDomTree, createPlayer, arrivalEffects, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES, showWave, flipToggle, applyPress, dismissByKey, blurNumber, forwardFocus, startResizeDrag, strokeAreaAtSize, paintLayerOf, gradientRaster, overlayPlacement } from '@midas/builder-core';
 import { applyStyle } from './styleApply.js';
 
 /** Data URLs of the gradient rasters of angular and diamond strokes, by paint and size: the same paint at the same size is drawn once. */
@@ -583,8 +583,9 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
         e.stopPropagation();
         if (e.key === 'Shift') overlay.classList.add('hotspots-held');
         if (e.key === 'Escape') {
+            // An open dialog that takes Escape closes first; Play closes only when nothing was dismissed.
             if (menu !== null) openMenu(null);
-            else close();
+            else if (!dismissByKey(overlay, 'Escape')) close();
             return;
         }
         if (e.ctrlKey && e.key === '\\') {

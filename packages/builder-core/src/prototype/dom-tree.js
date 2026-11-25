@@ -21,7 +21,7 @@ import { componentNameOf, generateComponent, loopAnimation, pulseAnimation, scal
 import { controlOf, iconDefOn, placementsOfDef, primarySlotOf, slotDefsOf, swapDefsOf } from '../behavior-engine/anatomy.js';
 import { flexOf, flowSizing, rootLayoutOf, instanceLayoutOf, labelLayoutOf, rootClassWidth } from '../behavior-engine/layout.js';
 import { labelEntryOf } from '../behavior-engine/layers.js';
-import { attrOfProp, elementTagOf, maskedOn, localAttrOf, maskUnlessOf, multilineOf, pressAttrsOf, ariaCheckedOf, canvasPartsOf, conditionHolds, fieldStyleOf, fieldWritersOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
+import { attrOfProp, dismissKeyOf, elementTagOf, maskedOn, localAttrOf, maskUnlessOf, multilineOf, pressAttrsOf, ariaCheckedOf, canvasPartsOf, conditionHolds, fieldStyleOf, fieldWritersOf, placeholderPartOf, stateAttributesOf, stateOn, toggleOf } from '../behavior-engine/display.js';
 import { arcActive, cornerRadii, hasRadii, strokeDashArray, strokeIsOn, strokeMiterLimit, strokeSideWidths, strokeSidesUniform, svgShapeEl, svgStrokeAttrs } from '../geometry/shapes.js';
 import { strokeAreaSourceOf, svgStrokeExtra } from '../geometry/stroke-area.js';
 import { cssBackgroundOf, displayFills, getFills, hasVideoFill, imageFillCss, imageFillStyleOf, imageSvgLayer, isGradientFill, patternLonghands, topColorOf, topOpacityOf, videoObjectFit, videoObjectPosition, videoPosterOf } from '../geometry/fills.js';
@@ -333,6 +333,9 @@ function renderTemplate(n, template, parent, scope) {
     if (toggle) Object.assign(attrs, { 'data-toggle': toggle.attr, ...(toggle.clearsAttr ? { 'data-toggle-clears': toggle.clearsAttr } : {}), ...(toggle.once ? { 'data-toggle-once': true } : {}), 'aria-checked': ariaCheckedOf(template, props) });
     // A template with pressable glyphs marks its root, so a click finds the control it acts on (see press.js).
     if (template.press?.length || (template.slots ?? []).some(s => s.overflow)) attrs['data-press-root'] = '';
+    // A dismiss key the prop turns on: Play dismisses this root on that key (see dismissByKey).
+    const dismissKey = dismissKeyOf(template);
+    if (dismissKey && props[dismissKey.prop] === true) attrs[dismissKey.attr] = dismissKey.key;
     if (!control && template.element.disabledState !== undefined && stateOn(template, template.element.disabledState, props)) Object.assign(attrs, { disabled: true, 'aria-disabled': 'true', tabindex: '-1' });
     // A layer that blocks its click (a loading Button) stays enabled, but its clicks fire nothing (see isDisabledTarget).
     if (template.element.blockClickProps.some(prop => props[prop] === true)) attrs['data-blocked'] = true;

@@ -6,7 +6,7 @@ import { getFills, gradientCss, imageAdjustFilter, imageFillLayout, imageRotatio
 import { variableProps } from './registry.js';
 import { emptySlotFloor, slotHolderLayout } from './content-slots.js';
 import { resolveProps } from './instance-props.js';
-import { NODE_FIELDS, NODE_PROPERTIES, LOADING_OPACITY, elementTagOf, textDecorationOf, alignValuesOf, enumAttrOf, canvasPartsOf, fieldWritersOf, localAttrOf, maskUnlessOf, placeholderPartOf, stateAttributesOf, targetKindOf, toggleStatesOf } from './display.js';
+import { NODE_FIELDS, NODE_PROPERTIES, LOADING_OPACITY, dismissKeyOf, elementTagOf, textDecorationOf, alignValuesOf, enumAttrOf, canvasPartsOf, fieldWritersOf, localAttrOf, maskUnlessOf, placeholderPartOf, stateAttributesOf, targetKindOf, toggleStatesOf } from './display.js';
 import { pathCommands, svgPathD } from '../geometry/shapes.js';
 import { boxesOf, controlOf, iconDefsOf, placementsOfDef, slotDefsOf, swapDefsOf } from './anatomy.js';
 import { cssVarOf, splitColor, tokenValueOf } from './tokens.js';
@@ -253,6 +253,14 @@ const typeOfProp = def => def.source === 'variable' ? 'string' : def.type === 'e
     : def.type === 'number' ? (def.default === null ? 'number | null' : 'number') : def.type === 'iconComponent' ? 'ReactNode' : def.type === 'image' ? 'string' : def.type;
 
 /** The props type and the imports of a slotted component (the conventions of play-from-tsx.md 2.1). */
+/** The React hooks an export calls: a local state (a dismiss press, a toggle state) and a key listener (a dismiss key). Order as the import lists them. */
+function reactHooksOf(template) {
+    const hooks = [];
+    if ((template.press ?? []).some(p => p.dismiss || p.toggleState) || dismissKeyOf(template)) hooks.push('useState');
+    if (dismissKeyOf(template)) hooks.push('useEffect');
+    return hooks;
+}
+
 function propsTypeOf(template, name, elementType, attrType) {
     const lines = [];
     for (const [prop, def] of Object.entries(template.props)) lines.push(`  ${prop}?: ${typeOfProp(def)};`);
@@ -272,7 +280,7 @@ function propsTypeOf(template, name, elementType, attrType) {
     const omitted = [...new Set(own)].map(key => `'${key}'`).join(' | ');
     const used = ['CSSProperties', 'ReactNode', attrType, ...new Set(template.events.map(e => EVENT_TYPE[e.name]))];
     return [
-        "import { forwardRef } from 'react';",
+        `import { ${['forwardRef', ...reactHooksOf(template)].join(', ')} } from 'react';`,
         `import type { ${[...new Set(used)].sort().join(', ')} } from 'react';`,
         `import './${name}.css';`,
         '',
@@ -357,12 +365,18 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
     // A pressable glyph reports its press: a toggle the next value of its prop, a step its direction.
     if (controlOf(template)?.number) params.push('onCommit');
     for (const entry of (template.press ?? []).filter(p => !p.resize && p.toggleState === undefined)) { const name = entry.toggle !== undefined ? toggleCallback(entry.toggle) : entry.dismiss ? 'onClose' : entry.copy !== undefined ? 'onCopy' : 'onStep'; if (!params.includes(name)) params.push(name); }
+    if (dismissKeyOf(template) && !params.includes('onClose')) params.push('onClose');
     // A derived boolean (the value has reached a limit) is read from the others in the component, never passed in.
     // A `when` rule holds as its condition does; a limit rule reads its value against the limit.
     const derivedLines = Object.entries(template.props).filter(([, def]) => def.derived !== undefined).map(([prop, { derived }]) => derived.when !== undefined ? `  const ${prop} = ${shownJsx(derived.when)};` : `  const ${prop} = ${derived.limit} != null && Number(${derived.value}) ${derived.cmp === 'gte' ? '>=' : '<='} ${derived.limit} && String(${derived.value} ?? "") !== "";`);
     // A control that is a textarea for one kind and an input for the others is one element chosen by the props.
     // A dismiss press keeps the element in local state: it is drawn until the click, then not at all (the export has no exit motion).
-    const dismissLines = (template.press ?? []).some(p => p.dismiss) ? ['  const [dismissed, setDismissed] = useState(false);', '  if (dismissed) return null;'] : [];
+    const dismisses = (template.press ?? []).some(p => p.dismiss) || dismissKeyOf(template) !== null;
+    const dismissLines = dismisses ? ['  const [dismissed, setDismissed] = useState(false);'] : [];
+    // The early return follows every hook: a hook after it would break the rules of hooks.
+    const dismissExitLines = dismisses ? ['  if (dismissed) return null;'] : [];
+    // A dismiss key holds a listener while the element is shown: the key takes it out and calls onClose, as its press does.
+    const keyLines = dismissKeyOf(template) ? [`  useEffect(() => {`, `    const onKey = (e) => { if (e.key === '${dismissKeyOf(template).key}' && ${dismissKeyOf(template).prop} && !dismissed) { setDismissed(true); onClose?.(); } };`, `    document.addEventListener('keydown', onKey);`, `    return () => document.removeEventListener('keydown', onKey);`, `  }, [dismissed, ${dismissKeyOf(template).prop}, onClose]);`] : [];
     // A toggleState press keeps its interaction state local too: false until the click, flipped by it, with no prop and no callback.
     const toggleStates = toggleStatesOf(template);
     const localLines = toggleStates.map(s => `  const [${s}, set${s[0].toUpperCase()}${s.slice(1)}] = useState(false);`);
@@ -582,7 +596,10 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
             `  const blocked = ${blockClickProps.join(' || ') || 'false'};`,
             ...derivedLines,
             ...controlLines,
+            ...dismissLines,
+            ...keyLines,
             ...localLines,
+            ...dismissExitLines,
             '  return (',
             `    <${tag}`,
             ...attrs.map(attr => `      ${attr}`),
@@ -598,7 +615,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         ].join('\n');
     }
     return [
-        ...((template.press ?? []).some(p => p.dismiss || p.toggleState) ? ["import { useState } from 'react';", ''] : []),
+        ...(reactHooksOf(template).length ? [`import { ${reactHooksOf(template).join(', ')} } from 'react';`, ''] : []),
         ...(tagMap ? [`const TAGS = ${JSON.stringify(tagMap)};`, ''] : []),
         `export function ${name}({ ${params.join(', ')} }) {`,
         `  const blocked = ${blockClickProps.join(' || ') || 'false'};`,
@@ -606,7 +623,9 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         ...derivedLines,
         ...controlLines,
         ...dismissLines,
+        ...keyLines,
         ...localLines,
+        ...dismissExitLines,
         '  return (',
         `    <${tag}`,
         ...attrs.map(attr => `      ${attr}`),

@@ -31,6 +31,26 @@ export function stepValue(current, direction, { min, max, step, precision }) {
 
 const numberOf = text => (text === null || text === '' ? null : Number.isFinite(Number(text)) ? Number(text) : null);
 
+/** Takes a root out: its exit runs, then it is hidden. A disabled root does not dismiss. */
+function dismissRoot(root) {
+    if (root.hasAttribute('aria-disabled') || root.hasAttribute('disabled')) return false;
+    root.setAttribute('data-dismissed', '');
+    root.addEventListener?.('transitionend', e => { if (e.target === root) root.style.display = 'none'; });
+    return true;
+}
+
+/**
+ * A key in Play: dismisses the first open root that holds the key (its `data-dismiss-key`, see dismissKeyOf). Returns whether one was dismissed, so the
+ * key does not also act on Play (Escape closes Play only when nothing was dismissed).
+ * @param {{ querySelectorAll(sel: string): any[] }} scope
+ * @param {string} key
+ * @returns {boolean}
+ */
+export function dismissByKey(scope, key) {
+    const root = [...scope.querySelectorAll(`[data-dismiss-key="${key}"]`)].find(r => !r.hasAttribute('data-dismissed'));
+    return root ? dismissRoot(root) : false;
+}
+
 /**
  * A click in Play. Finds the pressable glyph under the target and runs its action on the root it sits in; nothing happens while the control is disabled.
  * @param {{ closest(sel: string): any }} target
@@ -41,12 +61,7 @@ export function applyPress(target) {
     const root = glyph?.closest('[data-press-root]');
     if (!glyph || !root) return false;
     // A dismiss takes the root out: a disabled element does not dismiss; the exit runs, then the root is hidden (at once under reduced motion, see the stylesheet).
-    if (glyph.getAttribute('data-press') === 'dismiss') {
-        if (root.hasAttribute('aria-disabled') || root.hasAttribute('disabled')) return false;
-        root.setAttribute('data-dismissed', '');
-        root.addEventListener?.('transitionend', e => { if (e.target === root) root.style.display = 'none'; });
-        return true;
-    }
+    if (glyph.getAttribute('data-press') === 'dismiss') return dismissRoot(root);
     // A disabled element does not copy, expand or toggle.
     if (root.hasAttribute('aria-disabled')) return false;
     // A copy puts the text of the slot it names on the clipboard.
