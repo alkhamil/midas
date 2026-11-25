@@ -25,6 +25,7 @@ const MODELS = {
     'antd-tag': generated('antd-tag'),
     'antd-alert': generated('antd-alert'),
     'antd-card': generated('antd-card'),
+    'antd-dialog': generated('antd-dialog'),
     'antd-divider': generated('antd-divider'),
     'antd-spin': generated('antd-spin'),
     'antd-empty': generated('antd-empty'),
