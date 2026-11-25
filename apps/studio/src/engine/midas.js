@@ -3944,14 +3944,19 @@ function templateData(id) {
 }
 async function makeThumb() {
     try {
-        let first = doc.data.thumbnailId ? allNodes().find(n => n.id === doc.data.thumbnailId && n.type === 'frame' && !n.parentId) : null;
-        if (!first) {
-            const roots = doc.nodes.filter(n => !n.parentId && n.visible !== false);
-            if (!roots.length)
-                return null;
-            first = roots.find(n => n.type === 'frame') || roots[0];
-        }
-        const src = await renderNodeAnyPage(first.id, Math.max(.05, Math.min(1, 520 / Math.max(first.w, 1))));
+        // The marked frame, else the canvas of the first page: every visible top-level layer of it, drawn together.
+        const marked = doc.data.thumbnailId ? allNodes().find(n => n.id === doc.data.thumbnailId && n.type === 'frame' && !n.parentId) : null;
+        // A page the file has not loaded yet is a stub without layers: load the first page before it is drawn.
+        const first = doc.data.pages?.[0];
+        if (!marked && first && lazyPages.has(first.id))
+            await fillPage(lib.fileId, first.id);
+        const roots = marked ? [marked] : (first?.nodes || []).filter(n => !n.parentId && n.visible !== false);
+        if (!roots.length)
+            return null;
+        const left = Math.min(...roots.map(n => n.x)), right = Math.max(...roots.map(n => n.x + n.w));
+        const top = Math.min(...roots.map(n => n.y)), bottom = Math.max(...roots.map(n => n.y + n.h));
+        const fit = Math.min(440 / Math.max(right - left, 1), 260 / Math.max(bottom - top, 1), 1.5);
+        const src = await renderNodeAnyPage(roots.map(n => n.id), Math.max(.05, fit));
         const out = document.createElement('canvas');
         out.width = 480;
         out.height = 300;
@@ -18888,9 +18893,10 @@ let thumbJobs = Promise.resolve();
 // page tujuan dihitung ulang (layout + variabel seluruh page: 14–200 ms). Permintaan yang datang bersamaan dikumpulkan
 // dan dikelompokkan per page supaya satu kali pindah page melayani semuanya.
 const thumbQueue = [];
-function renderNodeAnyPage(id, scale) {
+function renderNodeAnyPage(ids, scale) {
     return new Promise((resolve, reject) => {
-        thumbQueue.push({ id, scale, resolve, reject });
+        const list = Array.isArray(ids) ? ids : [ids];
+        thumbQueue.push({ id: list[0], ids: list, scale, resolve, reject });
         if (thumbQueue.length === 1)
             thumbJobs = thumbJobs.then(() => new Promise(r => setTimeout(r, 0))).then(runThumbQueue).catch(() => { });
     });
@@ -18908,7 +18914,7 @@ async function runThumbQueue() {
     const run = async list => {
         for (const j of list) {
             try {
-                j.resolve(await renderer.exportCanvas([j.id], j.scale));
+                j.resolve(await renderer.exportCanvas(j.ids, j.scale));
             }
             catch (e) {
                 j.reject(e);

@@ -55,6 +55,13 @@ Struktur editor sudah benar dan sejalan dengan Figma: rail kiri 48px, panel kiri
 | 2026-11-25 | Behavior: lebar label `.cmp-prop2` 104px ke 84px dan label boleh turun baris. Nama collection ("Button Variant") tampil penuh | `styles.css` | Sebelumnya "Button V..." ambigu: dua collection berbeda terlihat sama |
 | 2026-11-25 | `.small-label` 9px ke 11px | `styles.css` | Teks terlalu kecil |
 | 2026-11-25 | Fill (Design): padding input hex 8px ke 4px, lebar field opacity 56px ke 46px | `styles.css` (`.fr-hex-in`, `.fr-op-in`) | Nilai hex terpotong di panel sempit. Belum dilihat dengan picker terbuka |
+## Thumbnail file (2026-11-25)
+
+- Thumbnail yang ditandai (`thumbnailId`) dipakai jika ada. Jika tidak, thumbnail adalah canvas halaman pertama file: semua layer top-level yang terlihat digambar bersama, dan diskalakan agar muat di kotak 440 x 260.
+- Halaman pertama yang belum dimuat (stub) dimuat dulu.
+- Thumbnail dibuat saat keluar dari editor (`showHome`). File yang belum pernah dibuka dari editor tetap tanpa thumbnail sampai dibuka.
+- Verifikasi: file "Testing" menampilkan komponen dari halaman Components setelah keluar dari editor.
+
 ## Cek panel Prototype (2026-11-25)
 
 Dicek di browser pane dengan file uji "Testing" (dua frame, `Stage` dan `Stage copy`, satu interaksi On click ke Stage copy, satu After delay 500 ms). Tes otomatis Prototype juga dijalankan.
