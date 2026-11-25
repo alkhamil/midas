@@ -549,9 +549,9 @@ document.addEventListener('click', e => {
         openLayoutSettings(b);
 });
 const TX_ICONS = {
-    'auto-w': '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v10M6.5 8h6.5M10.8 5.8 13 8l-2.2 2.2"/></svg>',
-    'auto-h': '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v10M13 3v10M6.5 6h3M6.5 8.5h3M6.5 11h3"/></svg>',
-    'fixed': '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M5.5 6h5M5.5 8.5h5M5.5 11h3"/></svg>'
+    'auto-w': icon('autoW', 14),
+    'auto-h': icon('autoH', 14),
+    'fixed': icon('fixedBox', 14)
 };
 const TX_TITLES = { 'auto-w': 'Auto width', 'auto-h': 'Auto height', 'fixed': 'Fixed size' };
 function textModeOf(n) {
@@ -594,14 +594,14 @@ function setTextMode(mode) {
     });
 }
 const LY_ICONS = {
-    freeform: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="5.5" r="2"/><rect x="8.5" y="8.5" width="4.5" height="4.5" rx="1"/></svg>',
-    vertical: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5v11M2.8 11.3 5 13.5l2.2-2.2"/><path d="M10 3.5h3M10 7h3M10 10.5h3" /></svg>',
-    horizontal: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5h11M11.3 2.8 13.5 5l-2.2 2.2"/><path d="M3.5 10v3M7 10v3M10.5 10v3"/></svg>',
-    grid: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"><rect x="2.5" y="2.5" width="4.2" height="4.2" rx="1"/><rect x="9.3" y="2.5" width="4.2" height="4.2" rx="1"/><rect x="2.5" y="9.3" width="4.2" height="4.2" rx="1"/><rect x="9.3" y="9.3" width="4.2" height="4.2" rx="1"/></svg>',
-    wrap: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4.5h9a2.5 2.5 0 0 1 0 5H4"/><path d="m6 7.2-2.5 2.3L6 11.8"/><path d="M2.5 13h4" opacity=".0"/></svg>',
-    autoLayout: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/><path d="M6 6v4M10 6v4"/></svg>',
-    lock: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5.2a2.5 2.5 0 0 1 5 0V7"/></svg>',
-    unlock: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5.2a2.5 2.5 0 0 1 4.8-.9"/></svg>'
+    freeform: icon('move', 14),
+    vertical: icon('stackV', 14),
+    horizontal: icon('stackH', 14),
+    grid: icon('viewGrid', 14),
+    wrap: icon('wrapText', 14),
+    autoLayout: icon('panel', 14),
+    lock: icon('lock', 14),
+    unlock: icon('unlock', 14)
 };
 function layoutModeOf(n) { return isAutoLayout(n) ? n.layout : 'freeform'; }
 function layoutSectionHtml(n) {
@@ -1065,7 +1065,7 @@ const varTargets = () => { const o = varOwnerNode(); return o ? [o] : selected()
 function withVarOwner(id, fn) { const prev = varOwnerId; varOwnerId = id || null; try { return fn(); } finally { varOwnerId = prev; } }
 function boundVarId(prop) { return varIdOf(varOwnerNode() || activeNode(), prop); }
 function boundVar(prop) { const id = boundVarId(prop); return id ? varItem(id) : null; }
-const VAR_ICON = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="5" cy="5" r="2.6"/><circle cx="11" cy="5" r="2.6"/><circle cx="5" cy="11" r="2.6"/><circle cx="11" cy="11" r="2.6"/></svg>';
+const VAR_ICON = icon('variable', 14);
 function varBindButton(prop, owner = null) { return withVarOwner(owner, () => bindType(prop)) ? `<button class="var-btn" data-var-bind="${prop}"${owner ? ` data-var-owner="${owner}"` : ''} title="Apply variable" aria-label="Apply variable to ${prop}">${VAR_ICON}</button>` : ''; }
 function varChip(prop, v, owner = null) {
     const val = varDisplayValue(v, (owner && allNodes().find(n => n.id === owner)) || activeNode());
@@ -1384,12 +1384,12 @@ document.addEventListener('change', e => {
 });
 // ===== appearance: independent corners =====
 const CORNER_ICON = {
-    tl: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 13V8a5 5 0 0 1 5-5h5"/></svg>',
-    tr: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 3h5a5 5 0 0 1 5 5v5"/></svg>',
-    bl: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 3v5a5 5 0 0 0 5 5h5"/></svg>',
-    br: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M13 3v5a5 5 0 0 1-5 5H3"/></svg>'
+    tl: icon('cornerTL', 12),
+    tr: icon('cornerTR', 12),
+    bl: icon('cornerBL', 12),
+    br: icon('cornerBR', 12)
 };
-const CORNER_TOGGLE_ICON = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M2.5 6V4.5a2 2 0 0 1 2-2H6M10 2.5h1.5a2 2 0 0 1 2 2V6M13.5 10v1.5a2 2 0 0 1-2 2H10M6 13.5H4.5a2 2 0 0 1-2-2V10"/></svg>';
+const CORNER_TOGGLE_ICON = icon('squareRoundCorner', 14);
 function appearanceTopHtml(n) {
     const rl = RECT_LIKE.includes(n.type), indep = hasRadii(n), r = indep ? n.radii : null;
     const op = field(icon('opacity', 12), 'opacity', n.opacity * 100, { unit: '%', min: 0, max: 100 });
@@ -1434,10 +1434,10 @@ document.addEventListener('click', e => {
 // ===== stroke section (laid out like Fill) =====
 const STROKE_SIDES = [['all', 'All'], ['top', 'Top'], ['bottom', 'Bottom'], ['left', 'Left'], ['right', 'Right'], ['custom', 'Custom']];
 const STROKE_ICON = {
-    sides: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/><rect x="5.5" y="5.5" width="5" height="5" rx=".6" opacity=".55"/></svg>',
-    miter: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="butt"><path d="M4 14V4h10"/></svg>',
-    bevel: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M4 14V6l2-2h8"/></svg>',
-    round: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M4 14V8a4 4 0 0 1 4-4h6"/></svg>'
+    sides: icon('squareDashed', 14),
+    miter: icon('miter', 14),
+    bevel: icon('bevel', 14),
+    round: icon('roundJoin', 14)
 };
 function strokeSectionHtml(n) {
     const on = n.strokeWidth > 0, rl = RECT_LIKE.includes(n.type), closed = strokeClosed(n);
@@ -1599,9 +1599,9 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && strokePop)
 
 // ----- text settings popover: case, direction, decoration, lists, truncation, max lines -----
 const TX_VALIGN_ICONS = {
-    top: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M2.5 2.5h11"/><rect x="5" y="5" width="6" height="8" rx="1"/></svg>',
-    center: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M2.5 8h2M11.5 8h2"/><rect x="5" y="3.5" width="6" height="9" rx="1"/></svg>',
-    bottom: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M2.5 13.5h11"/><rect x="5" y="3" width="6" height="8" rx="1"/></svg>'
+    top: icon('alignTop', 14),
+    center: icon('alignMiddle', 14),
+    bottom: icon('alignBottom', 14)
 };
 function textSettingsActive(n) { return (n.textCase && n.textCase !== 'none') || (n.direction && n.direction !== 'auto') || n.textTruncate || (n.textWrap && n.textWrap !== 'default') || n.textList === 'bullet' || n.textList === 'number' || n.textDecoration === 'line-through'; }
 let textPop = null;
@@ -1693,7 +1693,7 @@ document.addEventListener('click', e => {
 });
 
 // ===== W/H sizing dropdown, min/max, gap dropdown =====
-const CHEV_SVG = '<svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m4 6 4 4 4-4"/></svg>';
+const CHEV_SVG = icon('chevronDown', 10);
 function clampMM(n, dim, v) {
     let lo = dim === 'w' ? n.minW : n.minH;
     const hi = dim === 'w' ? n.maxW : n.maxH;
@@ -1749,8 +1749,8 @@ function sizeFieldHtml(n, axis) {
     return `<div class="field sz-field ${mode !== 'fixed' ? 'auto' : ''} ${bound ? 'var-bound-num' : ''} ${mm.cls}" data-var-field="${dim}">${lab}<input type="number" data-prop="${dim}" value="${fmt(n[dim])}" min=".1" step="1" aria-label="${word}">${mm.html}${modeBtn}${szChevron(axis, word)}</div>`;
 }
 const MM_ICON = {
-    min: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v11M2.5 8h3.5M4.3 6.2 6 8l-1.7 1.8M13.5 8H10M11.7 6.2 10 8l1.7 1.8"/></svg>',
-    max: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 2.5v11M13.5 2.5v11M5.5 8h5M7.3 6.2 5.5 8l1.8 1.8M8.7 6.2 10.5 8l-1.8 1.8"/></svg>'
+    min: icon('minimize2', 14),
+    max: icon('maximize2', 14)
 };
 function mmCell(n, k) {
     if (n[k] == null)
@@ -2190,12 +2190,12 @@ function renderVarsWindowBody(win) {
         body = `<div class="vw-empty">${vw.search ? 'No variables match your search.' : 'No variables yet. Use “Create variable” to add a color, number, string or boolean.'}</div>`;
     const allGroups = vwGroupsOf(coll), inGroupCount = g => store.items.filter(i => i.collectionId === coll.id && (!g || i.name.startsWith(g + '/'))).length;
     const groupSide = `<div class="vw-coll ${!vw.group ? 'on' : ''}" data-vw-gsel=""><span class="vw-coll-name">All</span><span class="vw-coll-count">${inGroupCount('')}</span></div>` + allGroups.map(g => `<div class="vw-coll vw-gitem ${vw.group === g ? 'on' : ''} ${vw.selGroups?.has(g) ? 'multi' : ''}" data-vw-gsel="${esc(g)}" title="${esc(g)}" style="--gdepth:${g.split('/').length}"><span class="vw-coll-name">${esc(g.split('/').pop())}</span><span class="vw-coll-count">${inGroupCount(g)}</span><button class="vw-mini" data-vw-del-group="${esc(g)}" title="Ungroup" aria-label="Ungroup">${icon('close', 12)}</button></div>`).join('');
-    const fullIcon = vw.full ? '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2.5v4h4M6.5 13.5v-4h-4M9.5 6.5l4-4M6.5 9.5l-4 4"/></svg>' : '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5h3.5V6M6 13.5H2.5V10M13.5 2.5 9.5 6.5M2.5 13.5l4-4"/></svg>';
+    const fullIcon = icon(vw.full ? 'minimize2' : 'maximize2', 14);
     // Re-rendering replaces the lists; keep where the user had scrolled them (e.g. after Create variable).
     const scrolls = ['.vw-colls:not(.vw-groups)', '.vw-groups', '.vw-table'].map(s => [s, win.querySelector(s)?.scrollTop || 0]);
     win.innerHTML = `<div class="vw-title" data-vw-drag><span>${VAR_ICON} Variables</span><span class="vw-title-actions"><button class="vw-text-btn" data-vw-export title="Export variables as JSON">Export</button><button class="vw-text-btn" data-vw-import title="Import variables from JSON">Import</button><button class="vw-text-btn" data-vw-generate-base title="Generate base variables from a token JSON">Generate base</button><button class="vw-mini" data-vw-full title="${vw.full ? 'Minimize window' : 'Full window'}" aria-label="Toggle full window">${fullIcon}</button><button class="vw-mini" data-vw-close title="Close" aria-label="Close variables">${icon('close', 12)}</button></span></div>
-<div class="vw-body"><aside class="vw-side" style="width:${vw.sideW || 188}px"><div class="vw-sidew" data-vw-sidew></div><div class="vw-side-head"><span>Collections</span><span class="vw-side-actions"><button class="vw-mini" data-vw-sort-colls title="Sort A-Z (names starting with _ or . first)" aria-label="Sort collections A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><button class="vw-mini add" data-vw-add-coll title="Create collection" aria-label="Create collection">+</button></span></div><div class="vw-colls" style="height:${vw.collsH || 130}px">${side}</div><div class="vw-split" data-vw-split title="Drag to resize"></div><div class="vw-side-head vw-g-head"><span>Groups</span><span class="vw-side-actions"><button class="vw-mini" data-vw-sort-groups title="Sort A-Z (names starting with _ or . first)" aria-label="Sort groups A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><button class="vw-mini add" data-vw-add-group title="Create group" aria-label="Create group">+</button></span></div><div class="vw-colls vw-groups">${groupSide}</div></aside>
-<div class="vw-main"><div class="vw-tools"><input class="vw-search" placeholder="Search variables" value="${esc(vw.search)}" data-vw-search spellcheck="false" aria-label="Search variables"><button class="vw-mini vw-filter ${vw.type ? 'on' : ''}" data-vw-filter title="Filter by type" aria-label="Filter by type"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.5h12M4.5 8h7M7 12.5h2"/></svg></button><button class="vw-mini" data-vw-sort title="Sort A-Z (names starting with _ or . first)" aria-label="Sort A to Z"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l2-4 2 4M3.6 4.6h2.8M3 14h4l-4 0M3 10h4l-4 4M11 3v10M9 11l2 2 2-2"/></svg></button><div class="vw-create"><button class="vw-btn" data-vw-create-toggle>+ Create variable ▾</button>${vw.menu ? `<div class="vw-menu">${VAR_TYPES.map(([t, l]) => `<button data-vw-create="${t}"><i class="vc-glyph">${varGlyph(t)}</i>${l}</button>`).join('')}</div>` : ''}</div></div><div class="vw-table">${head}${body}</div></div></div>`;
+<div class="vw-body"><aside class="vw-side" style="width:${vw.sideW || 188}px"><div class="vw-sidew" data-vw-sidew></div><div class="vw-side-head"><span>Collections</span><span class="vw-side-actions"><button class="vw-mini" data-vw-sort-colls title="Sort A-Z (names starting with _ or . first)" aria-label="Sort collections A to Z">${icon('arrowDownAZ', 14)}</button><button class="vw-mini add" data-vw-add-coll title="Create collection" aria-label="Create collection">+</button></span></div><div class="vw-colls" style="height:${vw.collsH || 130}px">${side}</div><div class="vw-split" data-vw-split title="Drag to resize"></div><div class="vw-side-head vw-g-head"><span>Groups</span><span class="vw-side-actions"><button class="vw-mini" data-vw-sort-groups title="Sort A-Z (names starting with _ or . first)" aria-label="Sort groups A to Z">${icon('arrowDownAZ', 14)}</button><button class="vw-mini add" data-vw-add-group title="Create group" aria-label="Create group">+</button></span></div><div class="vw-colls vw-groups">${groupSide}</div></aside>
+<div class="vw-main"><div class="vw-tools"><input class="vw-search" placeholder="Search variables" value="${esc(vw.search)}" data-vw-search spellcheck="false" aria-label="Search variables"><button class="vw-mini vw-filter ${vw.type ? 'on' : ''}" data-vw-filter title="Filter by type" aria-label="Filter by type">${icon('listFilter', 14)}</button><button class="vw-mini" data-vw-sort title="Sort A-Z (names starting with _ or . first)" aria-label="Sort A to Z">${icon('arrowDownAZ', 14)}</button><div class="vw-create"><button class="vw-btn" data-vw-create-toggle>+ Create variable ▾</button>${vw.menu ? `<div class="vw-menu">${VAR_TYPES.map(([t, l]) => `<button data-vw-create="${t}"><i class="vc-glyph">${varGlyph(t)}</i>${l}</button>`).join('')}</div>` : ''}</div></div><div class="vw-table">${head}${body}</div></div></div>`;
     for (const [s, top] of scrolls) {
         const el = win.querySelector(s);
         if (el)
@@ -5918,25 +5918,24 @@ function openFillPicker(i, anchor, target = 'fill') {
 }
 /** What in the picker does not start a drag of the window: the colour area, the sliders, the gradient bar, the swatches and the type, tile and alignment buttons. */
 const PK_NO_DRAG = '[data-pk-sv], [data-pk-hue], [data-pk-alpha], [data-pk-gbar], .pk-swatch, .pk-types, .pk-tabs, .pk-seg, .pk-align3, .pk-blend-menu, .pk-stop-row, .pk-slide';
-const pkIcon = d => `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const PK_TYPES = [
-    ['solid', 'Solid', pkIcon('<rect x="2.5" y="2.5" width="11" height="11" rx="2" fill="currentColor" stroke="none"/>')],
-    ['linear', 'Gradient', pkIcon('<defs><linearGradient id="pkg" x1="0" x2="1"><stop stop-color="currentColor"/><stop offset="1" stop-color="currentColor" stop-opacity=".15"/></linearGradient></defs><rect x="2.5" y="2.5" width="11" height="11" rx="2" fill="url(#pkg)" stroke="none"/>')],
-    ['pattern', 'Pattern', pkIcon('<rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M2.5 8h11M8 2.5v11"/>')],
-    ['image', 'Image', pkIcon('<rect x="2.5" y="2.5" width="11" height="11" rx="2"/><circle cx="6" cy="6" r="1.1"/><path d="M3 12l3.5-3.5 2.5 2.5 1.5-1.5L13 12"/>')],
-    ['video', 'Video', pkIcon('<rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M6.7 5.8v4.4L10.4 8z" fill="currentColor"/>')],
+    ['solid', 'Solid', icon('fillSwatch', 14)],
+    ['linear', 'Gradient', icon('fillGradient', 14)],
+    ['pattern', 'Pattern', icon('grid', 14)],
+    ['image', 'Image', icon('image', 14)],
+    ['video', 'Video', icon('play', 14)],
 ];
-const PK_BLEND_ICON = pkIcon('<path d="M8 2.5c2.2 2.7 4 4.7 4 7a4 4 0 0 1-8 0c0-2.3 1.8-4.3 4-7z"/>');
+const PK_BLEND_ICON = icon('blend', 14);
 const PK_BLEND_GROUPS = [['normal', 'darken', 'multiply', 'plus-darker', 'color-burn'], ['lighten', 'screen', 'plus-lighter', 'color-dodge'], ['overlay', 'soft-light', 'hard-light'], ['difference', 'exclusion'], ['hue', 'saturation', 'color', 'luminosity']];
 /** Blend modes with no equivalent on the canvas and in CSS backgrounds: listed (as Figma lists them) but not selectable. */
 const PK_BLEND_UNSUPPORTED = new Set(['plus-darker', 'plus-lighter']);
 const PK_FORMATS = [['hex', 'Hex'], ['rgb', 'RGB'], ['css', 'CSS'], ['hsl', 'HSL'], ['hsb', 'HSB']];
-const PK_ROTATE_ICON = pkIcon('<path d="M12.5 8a4.5 4.5 0 1 1-1.3-3.2"/><path d="M12.5 2.8v2.4h-2.4"/>');
-const PK_REVERSE_ICON = pkIcon('<path d="M3 5.5h9M9.5 3l2.5 2.5L9.5 8M13 10.5H4M6.5 8L4 10.5 6.5 13"/>');
+const PK_ROTATE_ICON = icon('rotate', 14);
+const PK_REVERSE_ICON = icon('arrowLeftRight', 14);
 const PK_TILE_TYPES = [
-    ['RECTANGULAR', 'Rectangular', pkIcon('<path d="M4 4h.01M8 4h.01M12 4h.01M4 8h.01M8 8h.01M12 8h.01M4 12h.01M8 12h.01M12 12h.01" stroke-width="2"/>')],
-    ['HORIZONTAL_HEXAGONAL', 'Horizontal hexagonal', pkIcon('<path d="M4 4h.01M8 4h.01M12 4h.01M6 8h.01M10 8h.01M4 12h.01M8 12h.01M12 12h.01" stroke-width="2"/>')],
-    ['VERTICAL_HEXAGONAL', 'Vertical hexagonal', pkIcon('<path d="M4 4h.01M4 8h.01M4 12h.01M8 6h.01M8 10h.01M12 4h.01M12 8h.01M12 12h.01" stroke-width="2"/>')],
+    ['RECTANGULAR', 'Rectangular', icon('dotsGrid', 14)],
+    ['HORIZONTAL_HEXAGONAL', 'Horizontal hexagonal', icon('dotsHex', 14)],
+    ['VERTICAL_HEXAGONAL', 'Vertical hexagonal', icon('dotsHexV', 14)],
 ];
 const GRADIENT_KINDS = [['linear', 'Linear'], ['radial', 'Radial'], ['angular', 'Angular'], ['diamond', 'Diamond']];
 /** The picker's header: tabs, the new-variable plus and the close. */
@@ -5988,7 +5987,7 @@ function pickerPatternBody(f) {
     const aligns = ['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'];
     const field = (label, key, value, min, max, off = false) => `<span class="pk-fld ${off ? 'off' : ''}">${label ? `<b>${label}</b>` : ''}<input type="number" min="${min}" max="${max}" value="${fmt(value)}" data-fill-idx="${FP.i}" ${FP.target === 'stroke' ? 'data-fill-target="stroke"' : ''} data-fill-key="${key}" aria-label="${label || key}" ${off ? 'disabled' : ''}><i class="unit">%</i></span>`;
     const head = src
-        ? `<div class="pk-preview pk-srcprev" data-pk-src-preview="${esc(src.id)}"></div><div class="pk-srcrow"><span class="pk-srcname" title="${esc(src.name)}">${esc(src.name)}</span><button class="pk-ibtn" data-pk-goto="${esc(src.id)}" title="Go to source" aria-label="Go to source">${pkIcon('<circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.6"/>')}</button></div><button class="pk-replace" data-pk-pattern-source>Select source...</button>`
+        ? `<div class="pk-preview pk-srcprev" data-pk-src-preview="${esc(src.id)}"></div><div class="pk-srcrow"><span class="pk-srcname" title="${esc(src.name)}">${esc(src.name)}</span><button class="pk-ibtn" data-pk-goto="${esc(src.id)}" title="Go to source" aria-label="Go to source">${icon('target', 14)}</button></div><button class="pk-replace" data-pk-pattern-source>Select source...</button>`
         : `<div class="pk-preview pk-srcprev empty"><button class="pk-upload" data-pk-pattern-source>Select source...</button></div>`;
     return `<div class="pk-pad">${head}<div class="pk-prow"><span>Tile type</span><span class="pk-seg">${PK_TILE_TYPES.map(([t, l, svg]) => `<button class="${(f.tileType || 'RECTANGULAR') === t ? 'on' : ''}" data-pk-tile="${t}" title="${l}" aria-label="${l}">${svg}</button>`).join('')}</span></div>`
         + `<label class="pk-prow"><span>Scale</span>${field('', 'scale', (f.scale || 1) * 100, 5, 1000)}</label>`
@@ -6068,7 +6067,7 @@ function renderFillPicker() {
     else if (isGradientFill(f))
         body = pickerGradientBody(f);
     else {
-        const eye = 'EyeDropper' in window ? `<button class="pk-eye" data-pk-eye title="Pick a color from the screen" aria-label="Eyedropper"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6M4 20l1-4 9-9 3 3-9 9z"/></svg></button>` : '<span class="pk-eye" title="Eyedropper needs a Chromium browser" aria-label="Eyedropper unavailable">N/A</span>';
+        const eye = 'EyeDropper' in window ? `<button class="pk-eye" data-pk-eye title="Pick a color from the screen" aria-label="Eyedropper">${icon('pipette', 16)}</button>` :'<span class="pk-eye" title="Eyedropper needs a Chromium browser" aria-label="Eyedropper unavailable">N/A</span>';
         body = `<div class="pk-sv" data-pk-sv style="--h:${Math.round(h)}"><i class="pk-sv-h" style="left:${s * 100}%;top:${(1 - v) * 100}%"></i></div><div class="pk-sliders">${eye}<div class="pk-bars"><div class="pk-hue" data-pk-hue><i style="left:${h / 360 * 100}%"></i></div><div class="pk-alpha" data-pk-alpha style="--c:${esc(hex)}"><i style="left:${a * 100}%"></i></div></div></div><div class="pk-hexrow"><label class="pk-fmtsel"><select data-pk-format aria-label="Color format">${PK_FORMATS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label>${(() => {
             const cf = colorFormats(hex);
             if (FP.format === 'rgb') return `${['r', 'g', 'b'].map(ch => `<input class="pk-num" type="number" min="0" max="255" step="1" value="${cf.rgb[ch]}" data-pk-rgb="${ch}" aria-label="Colour ${ch}">`).join('')}`;
@@ -6575,11 +6574,11 @@ document.addEventListener('click', e => {
 // ===== effects: pick a type first, then edit it in a floating window =====
 const FXW = { open: false, i: 0 };
 const FX_ICON = {
-    inner: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M4.5 9.5V6a1.5 1.5 0 0 1 1.5-1.5h4" opacity=".6"/></svg>',
-    drop: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="2.5" y="2.5" width="9" height="9" rx="2"/><path d="M13.5 6v5a2.5 2.5 0 0 1-2.5 2.5H6" opacity=".6"/></svg>',
-    layerBlur: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="4" r="1"/><circle cx="8" cy="4" r="1" opacity=".7"/><circle cx="12" cy="4" r="1" opacity=".4"/><circle cx="4" cy="8" r="1"/><circle cx="8" cy="8" r="1" opacity=".7"/><circle cx="12" cy="8" r="1" opacity=".4"/><circle cx="4" cy="12" r="1"/><circle cx="8" cy="12" r="1" opacity=".7"/><circle cx="12" cy="12" r="1" opacity=".4"/></svg>',
-    bgBlur: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/><path d="M2.5 6.2h11M2.5 9.8h11M6.2 2.5v11M9.8 2.5v11" opacity=".55"/></svg>',
-    glass: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="8" cy="8" r="5.5"/><path d="M4.8 6.2A4 4 0 0 1 8 4.4" opacity=".7"/></svg>'
+    inner: icon('innerShadow', 14),
+    drop: icon('dropShadow', 14),
+    layerBlur: icon('droplet', 14),
+    bgBlur: icon('bgBlur', 14),
+    glass: icon('glasses', 14)
 };
 function effectRow(n, e, i) {
     const hidden = e.visible === false, label = FX_TYPES.find(t => t[0] === e.type)?.[1] || e.type;
@@ -6710,9 +6709,9 @@ function constraintWidget(n, h, v) {
 }
 const cnSelect = (prop, value, opts, ico) => `<div class="cn-select"><span class="cn-ico">${ico}</span>${selectField(prop, value, opts)}</div>`;
 const POS_ICONS = {
-    rot90: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 8A4.5 4.5 0 1 1 8 3.5h3"/><path d="M9.5 1.5l2 2-2 2"/></svg>',
-    flipH: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"><path d="M8 2v12" stroke-dasharray="1.6 1.6"/><path d="M6.5 4.5L2.5 12h4zM9.5 4.5l4 7.5h-4z"/></svg>',
-    flipV: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"><path d="M2 8h12" stroke-dasharray="1.6 1.6"/><path d="M4.5 6.5L12 2.5v4zM4.5 9.5l7.5 4v-4z"/></svg>'
+    rot90: icon('rotate', 14),
+    flipH: icon('flipH', 14),
+    flipV: icon('flipV', 14)
 };
 // ===== Selection colors: every solid colour used by the selection (and what is inside it), grouped; edit or bind them all at once =====
 function selColorGroups() {
@@ -6753,8 +6752,8 @@ function selColorGroups() {
     const all = [...groups.values()];
     return [...all.filter(g => g.varId), ...all.filter(g => !g.varId)];
 }
-const SC_TARGET_ICON = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg>';
-const SC_UNLINK_ICON = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M6.5 9.5 9.5 6.5M7 4.5l.8-.8a2.5 2.5 0 0 1 3.5 3.5l-.8.8M9 11.5l-.8.8a2.5 2.5 0 0 1-3.5-3.5l.8-.8M2.5 2.5l11 11"/></svg>';
+const SC_TARGET_ICON = icon('target', 14);
+const SC_UNLINK_ICON = icon('unlink', 14);
 function selectionColorsHtml() {
     const groups = selColorGroups();
     if (!groups.length)
@@ -6947,11 +6946,10 @@ function drawLayoutGrids(c) {
     }
 }
 // ----- Layout guide: inspector section, editor popup and saved styles (Figma's "Layout guide" / "Layout guide styles") -----
-const svgI = d => '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>';
 const LG_ICONS = {
-    grid: svgI('<path d="M2.5 2.5h11v11h-11zM6.2 2.5v11M9.8 2.5v11M2.5 6.2h11M2.5 9.8h11"/>'),
-    columns: svgI('<path d="M2.5 2.5h11v11h-11zM6.2 2.5v11M9.8 2.5v11"/>'),
-    rows: svgI('<path d="M2.5 2.5h11v11h-11zM2.5 6.2h11M2.5 9.8h11"/>')
+    grid: icon('viewGrid', 14),
+    columns: icon('panel', 14),
+    rows: icon('section', 14)
 };
 function lgSummary(g) {
     if (g.type === 'grid')
@@ -7061,7 +7059,7 @@ function lgRenderStyles() {
     if (!p)
         return;
     const q = (p.q || '').toLowerCase(), list = lgStyles().filter(x => !q || x.name.toLowerCase().includes(q));
-    const rows = list.map(st => '<div class="lgs-row" data-lgs-id="' + st.id + '"><button class="lgs-name" data-lgs-apply>' + LG_ICONS[st.grids?.[0]?.type || 'columns'] + '<span>' + esc(st.name) + '</span></button><button class="ui-icon-button small lgs-edit" data-lgs-edit title="Edit style" aria-label="Edit style">' + svgI('<path d="M3 5h10M3 11h10M6 3v4M10 9v4"/>') + '</button></div>').join('');
+    const rows = list.map(st => '<div class="lgs-row" data-lgs-id="' + st.id + '"><button class="lgs-name" data-lgs-apply>' + LG_ICONS[st.grids?.[0]?.type || 'columns'] + '<span>' + esc(st.name) + '</span></button><button class="ui-icon-button small lgs-edit" data-lgs-edit title="Edit style" aria-label="Edit style">' + icon('sliders', 14) + '</button></div>').join('');
     const keep = p.el.querySelector('[data-lgs-q]');
     const focused = keep && document.activeElement === keep;
     p.el.innerHTML = '<div class="pp-head"><span>Layout guide styles</span><span class="lgs-actions"><button class="ui-icon-button small" data-lgs-new title="Create style" aria-label="Create style">' + icon('plus', 14) + '</button><button class="ui-icon-button small" data-lgp-close aria-label="Close">' + icon('close', 14) + '</button></span></div><label class="lgs-search">' + icon('search', 13) + '<input data-lgs-q placeholder="Search" value="' + esc(p.q || '') + '" spellcheck="false" autocomplete="off" aria-label="Search styles"></label><div class="lgs-list">' + (rows || '<div class="pp-note">' + (lgStyles().length ? 'No match.' : 'No layout guide styles yet. Add guides to a frame, then press + to save them as a style.') + '</div>') + '</div>';
@@ -10230,7 +10228,7 @@ function prototypeTabHtml(n) {
     const iconButton = (name, label, id, where, attrs = '') => `<button class="pt-icon" aria-label="${esc(label)}" title="${esc(label)}" data-pt-op="${name}" data-pt-id="${esc(id)}"${at(where)}${attrs}>${/-up$/.test(name) ? '↑' : /-down$/.test(name) ? '↓' : icon(/remove/.test(name) ? 'trash' : 'plus', 14)}</button>`;
     const textButton = (name, label, id, where) => `<button class="pt-text" data-pt-op="${name}" data-pt-id="${esc(id)}"${at(where)}>${icon('plus', 12)}<span>${esc(label)}</span></button>`;
     const triggers = [['on-click', 'On click'], ['mouse-enter', 'Mouse enter'], ['mouse-leave', 'Mouse leave'], ['mouse-down', 'Mouse down'], ['mouse-up', 'Mouse up'], ['while-hovering', 'While hovering'], ['while-pressing', 'While pressing'], ['after-delay', 'After delay']];
-    const actionTypes = [['navigate-to', 'Navigate to'], ['back', 'Back'], ['open-link', 'Open link'], ['conditional', 'Conditional'], ['open-overlay', 'Open overlay'], ['close-overlay', 'Close overlay'], ['set-variable', 'Set variable'], ['swap', 'Swap overlay', true], ['scroll', 'Scroll to', true]];
+    const actionTypes = [['navigate-to', 'Navigate to'], ['back', 'Back'], ['open-link', 'Open link'], ['conditional', 'Conditional'], ['open-overlay', 'Open overlay'], ['close-overlay', 'Close overlay'], ['set-variable', 'Set variable'], ['swap', 'Swap overlay (not yet)', true], ['scroll', 'Scroll to (not yet)', true]];
     const nestedActionTypes = actionTypes.filter(([value]) => value !== 'conditional');
     const transitions = [['instant', 'Instant'], ['dissolve', 'Dissolve'], ['slide-in', 'Slide in'], ['push', 'Push']];
     const directions = [['left', 'Left'], ['right', 'Right'], ['top', 'Top'], ['bottom', 'Bottom']];
@@ -10286,7 +10284,7 @@ function prototypeTabHtml(n) {
         }).join('');
         return `<section class="pt-card" data-pt-row="${esc(i.id)}">`
             + `<header class="pt-card-head"><span class="pt-when">When</span>${select('trigger', 'Trigger', i.id, triggers, i.trigger.type)}`
-            + `${i.trigger.type === 'after-delay' ? number('delay', 'Delay (ms)', i.id, i.trigger.delayMs) : ''}`
+            + `${i.trigger.type === 'after-delay' ? `<span class="pt-delay">${number('delay', 'Delay (ms)', i.id, i.trigger.delayMs)}<span class="pt-unit">ms</span></span>` : ''}`
             + `<button class="pt-icon" aria-label="Remove interaction" title="Remove interaction" data-pt-remove="${esc(i.id)}">${icon('trash', 14)}</button></header>`
             + `<div class="pt-actions">${actions}</div>`
             + `<div class="pt-card-foot">${textButton('action-append', 'Add action', i.id)}</div>`
@@ -17405,7 +17403,7 @@ function resetSlot(slotId) {
 // An instance placed in a slot of another instance.
 function inSlot(n) { const p = n && doc.get(n.parentId); return isContentSlot(p) ? p : null; }
 // A frame inside a main component can become a slot: instances drop their own layers into it.
-const SLOT_ICON = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M8 5.5v5M5.5 8h5"/></svg>';
+const SLOT_ICON = icon('squarePlus', 14);
 function canBeSlot(n) {
     return !!n && n.type === 'frame' && isSlotCandidate(n, { insideInstance: insideInstance(n), hasHolder: !!holderForLayer(n) });
 }
@@ -17921,14 +17919,13 @@ function setVariantValue(comp, prop, value) {
 const CPROP_LABEL = { variant: 'Variant', text: 'Text', boolean: 'Boolean', instance: 'Instance swap', slot: 'Slot' };
 const CPROP_FIELD = { text: 'text', boolean: 'visible', instance: 'swap', slot: 'slot' };
 const CPROP_ICON = (() => {
-    const s = body => `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
-    return {
-        variant: s('<path d="M8 2.2 13.8 8 8 13.8 2.2 8Z"/>'),
-        text: s('<rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M5.5 5.5h5M8 5.5v5"/>'),
-        boolean: s('<rect x="1.5" y="4.5" width="13" height="7" rx="3.5"/><circle cx="5" cy="8" r="1.6" fill="currentColor"/>'),
-        instance: s('<path d="M8 2.2 13.8 8 8 13.8 2.2 8Z"/><path d="M8 5.6 10.4 8 8 10.4 5.6 8Z" fill="currentColor" stroke="none"/>'),
-        slot: s('<rect x="2.5" y="2.5" width="11" height="11" rx="2" stroke-dasharray="2.2 1.8"/><path d="M8 5.5v5M5.5 8h5"/>'),
-        nested: s('<path d="M8 13.5V5M4.8 8.2 8 5l3.2 3.2M3 2.5h10"/>'),
+        return {
+        variant: icon('variant', 14),
+        text: icon('text', 14),
+        boolean: icon('toggleLeft', 14),
+        instance: icon('instance', 14),
+        slot: icon('squarePlus', 14),
+        nested: icon('cornerRightUp', 14),
     };
 })();
 // nodeIndex is cached above
@@ -20845,7 +20842,7 @@ function fontWeightFieldHtml(n) {
 }
 /** The font family button of the Design panel and of the typography editor: its name in its own face, and the chevron. */
 function fontFamilyButtonHtml(fam, attr) {
-    return `<button class="font-field" ${attr} title="Font family" aria-label="Font family: ${esc(fam)}" aria-haspopup="listbox"><span class="ff-name" style="font-family:${fontCssFamily(fam)}">${esc(fam)}</span><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m4 6 4 4 4-4"/></svg></button>`;
+    return `<button class="font-field" ${attr} title="Font family" aria-label="Font family: ${esc(fam)}" aria-haspopup="listbox"><span class="ff-name" style="font-family:${fontCssFamily(fam)}">${esc(fam)}</span>${icon('chevronDown', 10)}</button>`;
 }
 function fontFieldHtml(n) {
     const fam = n.fontFamily || 'Inter', v = boundVar('fontFamily'), label = '<div class="field-label"><span>Font family</span></div>';

@@ -198,6 +198,7 @@
 ## Maintenance
 
 - Before finishing any change, if it introduced or confirmed a rule, a file location, or a known issue, update this file with 1 to 3 lines. Replace outdated lines instead of appending. Do not log the bug itself.
+- Editor chrome icons: every glyph is `icon(name, size)` from `apps/studio/src/engine/uiIcons.js` (Lucide, 24 units, stroke 1.75). No inline 16-unit SVG in `midas.js`; the filled boolean-op glyphs (`MENU_ICONS`) are the one exception.
 
 ## UI conventions
 

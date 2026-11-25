@@ -55,6 +55,19 @@ Struktur editor sudah benar dan sejalan dengan Figma: rail kiri 48px, panel kiri
 | 2026-11-25 | Behavior: lebar label `.cmp-prop2` 104px ke 84px dan label boleh turun baris. Nama collection ("Button Variant") tampil penuh | `styles.css` | Sebelumnya "Button V..." ambigu: dua collection berbeda terlihat sama |
 | 2026-11-25 | `.small-label` 9px ke 11px | `styles.css` | Teks terlalu kecil |
 | 2026-11-25 | Fill (Design): padding input hex 8px ke 4px, lebar field opacity 56px ke 46px | `styles.css` (`.fr-hex-in`, `.fr-op-in`) | Nilai hex terpotong di panel sempit. Belum dilihat dengan picker terbuka |
+## Pass visual Prototype dan Play (2026-11-25)
+
+Fokus tampilan saja, tanpa tes fungsi. Diperiksa di browser pane.
+
+| Perubahan | File | Alasan |
+|---|---|---|
+| Delay pada trigger After delay punya satuan "ms" di sebelah kanan kolom angka, dalam satu baris (`.pt-delay`) | `midas.js` (kartu interaksi), `styles.css` | Angka 500 tanpa satuan ambigu |
+| Aksi Swap overlay dan Scroll to diberi label "(not yet)" | `midas.js` (`actionTypes`) | Opsi nonaktif terlihat seperti fitur yang belum jadi, sekarang jelas |
+| Menu flow di Play menandai flow yang aktif dengan tanda centang | `play.js` (menu flow) | Pengguna tidak tahu flow mana yang sedang dipakai |
+| Kotak warna "Viewport background" di Play diberi garis tepi | `styles.css` (`.play-menu-row input[type=color]`) | Kotak hampir tidak terlihat di latar gelap |
+
+Belum dikerjakan secara visual: panel Design dan Behavior (sudah diperiksa sebelumnya, tanpa perubahan baru), dan kartu Home yang thumbnail-nya masih tipis untuk halaman dengan komponen kecil.
+
 ## Thumbnail file (2026-11-25)
 
 - Thumbnail yang ditandai (`thumbnailId`) dipakai jika ada. Jika tidak, thumbnail adalah canvas halaman pertama file: semua layer top-level yang terlihat digambar bersama, dan diskalakan agar muat di kotak 440 x 260.

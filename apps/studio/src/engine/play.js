@@ -532,7 +532,7 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
 
     function renderFlowMenu() {
         const choices = flows.length ? flows : [{ id: 'start', name: nodeById.get(flowStart)?.name ?? 'Start', startFrameId: flowStart }];
-        flowMenu.innerHTML = choices.map(f => `<button type="button" role="menuitemradio" aria-checked="${f.startFrameId === flowStart}" data-flow="${f.startFrameId}">${escapeText(f.name)}</button>`).join('');
+        flowMenu.innerHTML = choices.map(f => `<button type="button" role="menuitemradio" aria-checked="${f.startFrameId === flowStart}" data-flow="${f.startFrameId}"><span class="play-check">${f.startFrameId === flowStart ? '✓' : ''}</span>${escapeText(f.name)}</button>`).join('');
     }
 
     /**
