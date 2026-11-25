@@ -370,7 +370,7 @@ function renderTemplate(n, template, parent, scope) {
             if (part.spin) el.style.animation = SPIN_ANIMATION;
             if (part.pulse) el.style.animation = pulseAnimation(part.pulse.delayMs);
             if (part.scale) el.style.animation = scaleAnimation(part.scale.delayMs);
-            if (part.loop) el.style.animation = loopAnimation(template.id, part.id, part.loop);
+            if (part.loop && (part.loop.when === undefined || conditionHolds(part.loop.when, props))) el.style.animation = loopAnimation(template.id, part.id, part.loop);
             out.push(el);
         }
     };
@@ -481,7 +481,7 @@ function renderTemplate(n, template, parent, scope) {
             if (part.spin) el.style.animation = SPIN_ANIMATION;
             if (part.pulse) el.style.animation = pulseAnimation(part.pulse.delayMs);
             if (part.scale) el.style.animation = scaleAnimation(part.scale.delayMs);
-            if (part.loop) el.style.animation = loopAnimation(template.id, part.id, part.loop);
+            if (part.loop && (part.loop.when === undefined || conditionHolds(part.loop.when, props))) el.style.animation = loopAnimation(template.id, part.id, part.loop);
             inner.push(el);
         }
         // A content slot the container holds is drawn in it, after its anatomy layers.
@@ -519,6 +519,7 @@ function renderTemplate(n, template, parent, scope) {
         const el = { tag: listBox ? 'ol' : 'div', nodeId: group?.id, attrs: { class: `${template.id}-${slot.id}`, ...pressAttrsOf(template, slot.id) }, style: pic, children: inner };
         // A container that turns (the Spin's dot holder) turns as a whole in Play: its own spin, so its dots keep their place.
         if (slot.spin) el.style.animation = spinAnimation(slot.spin);
+        if (slot.loop && (slot.loop.when === undefined || conditionHolds(slot.loop.when, props))) el.style.animation = loopAnimation(template.id, slot.id, slot.loop);
         const clip = group && videoElement(group, scope, {});
         if (clip) {
             clip.style = { position: 'absolute', inset: '0', objectFit: clip.style.objectFit, objectPosition: clip.style.objectPosition, width: '100%', height: '100%', borderRadius: pic.borderRadius || 'inherit' };

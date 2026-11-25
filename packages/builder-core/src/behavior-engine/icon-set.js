@@ -48,6 +48,10 @@ export const ICON_SET = [
     { name: 'edit', role: 'edit', closed: true, points: [{ x: 3, y: 21 }, { x: 3, y: 16.2 }, { x: 15.6, y: 3.6 }, { x: 20.4, y: 8.4 }, { x: 7.8, y: 21 }] },
     { name: 'ellipsis', role: 'ellipsis', closed: true, points: dot(5, 12, 2).points, contours: [dot(12, 12, 2), dot(19, 12, 2)] },
     // The magnifier: a ring (outer radius 7, the hole 5 about the centre) and its handle, which starts clear of the ring's outer edge.
+    // The picture glyph of an Image placeholder: a frame with a mountain in it (the mountain fills the hole, so the even-odd count holds).
+    { name: 'image', role: 'skeletonImage', closed: true, fillRule: 'evenodd', points: rect(3, 4, 21, 20).points, contours: [rect(5, 6, 19, 18), { points: [{ x: 6, y: 17 }, { x: 10, y: 12 }, { x: 13, y: 15 }, { x: 15, y: 13 }, { x: 18, y: 17 }], closed: true }] },
+    // The node glyph of a Node placeholder: three dots, the nodes of a small graph.
+    { name: 'node', role: 'skeletonNode', closed: true, fillRule: 'evenodd', points: dot(7, 7, 2.5).points, contours: [dot(17, 7, 2.5), dot(12, 17, 2.5)] },
     { name: 'search', role: 'search', closed: true, fillRule: 'evenodd', points: dot(11, 11, 7).points, contours: [dot(11, 11, 5), { points: [{ x: 16.94, y: 15.24 }, { x: 21.85, y: 20.15 }, { x: 20.15, y: 21.85 }, { x: 15.24, y: 16.94 }], closed: true }] },
     // Pagination: the Solar Alt Arrow (previous, next), the Double Alt Arrow (first, last) and the chevron down, from the Figma design (CC BY 4.0, Solar).
     { name: 'chevron-down', role: 'chevronDown', closed: true, fillRule: 'evenodd', points: [{ x: 4.4306, y: 8.5119, in: { x: 4.161, y: 8.8264 }, out: { x: 4.7001, y: 8.1974 } }, { x: 5.4881, y: 8.4306, in: { x: 5.1736, y: 8.161 } }, { x: 12, y: 14.0122 }, { x: 18.5119, y: 8.4306, out: { x: 18.8264, y: 8.161 } }, { x: 19.5695, y: 8.5119, in: { x: 19.2998, y: 8.1974 }, out: { x: 19.839, y: 8.8264 } }, { x: 19.4881, y: 9.5694, in: { x: 19.8026, y: 9.2999 } }, { x: 12.488, y: 15.5694, out: { x: 12.2072, y: 15.8102 } }, { x: 11.5119, y: 15.5694, in: { x: 11.7928, y: 15.8102 } }, { x: 4.5119, y: 9.5694, out: { x: 4.1974, y: 9.2999 } }] },

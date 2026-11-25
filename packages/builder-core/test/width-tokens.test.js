@@ -52,6 +52,6 @@ test('the snapshot holds the Semantic items the templates read: 127', () => {
     const plan = planFromSnapshot(BASE_SNAPSHOT);
     const per = {};
     for (const i of plan.items) per[i.collection] = (per[i.collection] || 0) + 1;
-    assert.deepEqual(per, { Primitives: 218, Typography: 31, Semantic: 127 });
-    assert.equal(plan.items.length, 376);
+    assert.deepEqual(per, { Primitives: 219, Typography: 31, Semantic: 127 });
+    assert.equal(plan.items.length, 377);
 });

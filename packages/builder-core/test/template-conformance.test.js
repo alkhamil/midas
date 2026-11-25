@@ -29,6 +29,7 @@ const MODELS = {
     'antd-divider': generated('antd-divider'),
     'antd-spin': generated('antd-spin'),
     'antd-empty': generated('antd-empty'),
+    'antd-skeleton': generated('antd-skeleton'),
     'antd-search': generated('antd-search'),
     'antd-statistic': generated('antd-statistic'),
     'antd-list-item': generated('antd-list-item'),

@@ -21,6 +21,7 @@ import { CARD } from '../templates/card.js';
 import { DIALOG } from '../templates/dialog.js';
 import { SPIN } from '../templates/spin.js';
 import { EMPTY } from '../templates/empty.js';
+import { SKELETON } from '../templates/skeleton.js';
 import { SEARCH } from '../templates/search.js';
 import { STATISTIC } from '../templates/statistic.js';
 import { LIST_ITEM } from '../templates/list-item.js';
@@ -50,7 +51,7 @@ export function createTemplateRegistry(schemas) {
 }
 
 /** The templates the engine ships. */
-export const BUILT_IN_TEMPLATES = createTemplateRegistry([BUTTON, INPUT, FORM_ITEM, LIST, ICON_BUTTON, CHECKBOX, SWITCH, RADIO, INPUTNUMBER, BADGE, TAG, DIVIDER, AVATAR, TEXT, TITLE, PARAGRAPH, LINK, ALERT, CARD, DIALOG, SPIN, EMPTY, SEARCH, STATISTIC, LIST_ITEM, RADIO_GROUP, PAGINATION, BREADCRUMB_ITEM, BREADCRUMB, TABLE_TOOLBAR]);
+export const BUILT_IN_TEMPLATES = createTemplateRegistry([BUTTON, INPUT, FORM_ITEM, LIST, ICON_BUTTON, CHECKBOX, SWITCH, RADIO, INPUTNUMBER, BADGE, TAG, DIVIDER, AVATAR, TEXT, TITLE, PARAGRAPH, LINK, ALERT, CARD, DIALOG, SPIN, EMPTY, SEARCH, STATISTIC, LIST_ITEM, RADIO_GROUP, PAGINATION, BREADCRUMB_ITEM, BREADCRUMB, TABLE_TOOLBAR, SKELETON]);
 
 /**
  * The registry every engine call reads: the built-in templates and the Custom templates of the open document (see custom-templates.js, which fills it).

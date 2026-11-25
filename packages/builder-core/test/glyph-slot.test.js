@@ -40,8 +40,8 @@ test('Checkbox and Radio have glyph slots in the box, no icons and no icon props
             assert.deepEqual(t.anatomy.find(s => s.id === slot), { id: slot, kind: 'glyph', glyph, parent: 'box', optional: true, managed: true, shownWhen: { prop, is: true } }, `${id}.${slot}`);
         }
     }
-    assert.deepEqual(ICON_SET.map(e => e.name), ['circle', 'alert-success', 'alert-info', 'alert-warning', 'alert-error', 'close', 'copy', 'setting', 'edit', 'ellipsis', 'search', 'chevron-down', 'chevron-left', 'chevron-right', 'chevrons-left', 'chevrons-right', 'eye', 'eyeOff'], 'the icon set holds the circle, the Alert type glyphs, the close, the search, the chevrons and the eye glyphs; no other glyph');
-    assert.deepEqual(iconRolesOf([...TEMPLATES.values()]), ['default', 'eyeOn', 'eyeOff', 'close', 'copy', 'alertSuccess', 'alertInfo', 'alertWarning', 'alertError', 'setting', 'edit', 'ellipsis', 'search', 'chevronDown', 'chevronsLeft', 'chevronLeft', 'chevronRight', 'chevronsRight']);
+    assert.deepEqual(ICON_SET.map(e => e.name), ['circle', 'alert-success', 'alert-info', 'alert-warning', 'alert-error', 'close', 'copy', 'setting', 'edit', 'ellipsis', 'image', 'node', 'search', 'chevron-down', 'chevron-left', 'chevron-right', 'chevrons-left', 'chevrons-right', 'eye', 'eyeOff'], 'the icon set holds the circle, the Alert type glyphs, the close, the search, the chevrons, the eye glyphs and the Skeleton picture and node glyphs; no other glyph');
+    assert.deepEqual(iconRolesOf([...TEMPLATES.values()]), ['default', 'eyeOn', 'eyeOff', 'close', 'copy', 'alertSuccess', 'alertInfo', 'alertWarning', 'alertError', 'setting', 'edit', 'ellipsis', 'search', 'chevronDown', 'chevronsLeft', 'chevronLeft', 'chevronRight', 'chevronsRight', 'skeletonImage', 'skeletonNode']);
 });
 
 test('the schema refuses a glyph slot that names no glyph, has no condition, or follows a prop that is not a state with an attribute', () => {

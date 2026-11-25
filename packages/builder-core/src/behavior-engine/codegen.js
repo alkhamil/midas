@@ -1400,7 +1400,8 @@ function stylesheet(template, binding, variables, problems, master, childrenOf) 
     if (template.parts?.some(part => part.scale)) blocks.push(`@keyframes ${SCALE_KEYFRAMES} {\n  0% { transform: scale(0); opacity: 0; }\n  50% { opacity: 1; }\n  100% { transform: scale(1); opacity: 0; }\n}\n`);
     if (template.parts?.some(part => part.pulse)) blocks.push(`@keyframes ${PULSE_KEYFRAMES} {\n  from { opacity: 0.3; transform: scale(0.75); }\n  to { opacity: 1; transform: scale(0.75); }\n}\n`);
     // A frame value may name `$travel`: the loop's travel token (a Size-keyed role), so a travel keeps its proportion at every Size.
-    for (const part of template.parts ?? []) if (part.loop) {
+    // A part or a container may loop (a container is the whole block: its glyph pulses with it).
+    for (const part of [...(template.parts ?? []), ...(template.anatomy ?? [])]) if (part.loop) {
         const travel = part.loop.travel ? `var(${cssVarOf(template.id, part.loop.travel)})` : '';
         blocks.push(`@keyframes ${loopKeyframes(template.id, part.id)} {\n${part.loop.frames.map(f => `  ${f.at}% { ${Object.entries(f.props).map(([p, v]) => `${p}: ${String(v).replaceAll('$travel', travel)};`).join(' ')} }`).join('\n')}\n}\n`);
     }

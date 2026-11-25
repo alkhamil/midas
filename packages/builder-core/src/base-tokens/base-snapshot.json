@@ -3997,6 +3997,16 @@
       }
     },
     {
+      "collection": "Primitives",
+      "name": "size/200",
+      "type": "number",
+      "values": {
+        "Base": {
+          "literal": 200
+        }
+      }
+    },
+    {
       "collection": "Semantic",
       "name": "switchTrackHeight",
       "type": "number",
@@ -4772,6 +4782,7 @@
       "Primitives/size/22",
       "Primitives/size/64",
       "Primitives/size/72",
+      "Primitives/size/200",
       "Semantic/switchTrackHeight",
       "Semantic/switchTrackHeightSM",
       "Semantic/switchTrackMinWidth",

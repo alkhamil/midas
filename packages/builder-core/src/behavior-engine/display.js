@@ -81,7 +81,7 @@ export const NODE_PROPERTIES = {
 export const LOADING_OPACITY = 0.65;
 
 export const NODE_FIELDS = {
-    frame: { visible: { kind: 'boolean' }, primaryAlign: { kind: 'boolean', values: { true: 'end', false: 'start' } }, counterAlign: { kind: 'boolean', values: { true: 'start', false: 'center' } }, layout: { kind: 'enum', options: ['horizontal', 'vertical'] }, gap: { kind: 'number' }, width: { kind: 'number' }, widthSizing: { kind: 'enum', options: ['hug', 'fill'] }, opacity: { kind: 'boolean', values: { true: LOADING_OPACITY } }, imageFill: { kind: 'image' } },
+    frame: { visible: { kind: 'boolean' }, primaryAlign: { kind: 'boolean', values: { true: 'end', false: 'start' } }, counterAlign: { kind: 'boolean', values: { true: 'start', false: 'center' } }, layout: { kind: 'enum', options: ['horizontal', 'vertical'] }, gap: { kind: 'number' }, width: { kind: 'number' }, widthSizing: { kind: 'enum', options: ['hug', 'fill', 'fixed'] }, opacity: { kind: 'boolean', values: { true: LOADING_OPACITY } }, imageFill: { kind: 'image' } },
     // fontStyle: a boolean writes italic or normal. textDecoration: flags, each boolean prop that names one adds it to the one value (underline and line-through compose
     // as `underline line-through`, none is `none`).
     text: {

@@ -209,6 +209,8 @@
   "space-56": { "base": "Semantic/space56", "derive": { "from": "Primitives/size/56" } },
   "space-64": { "base": "Semantic/space64", "derive": { "from": "Primitives/size/64" } },
   "space-72": { "base": "Semantic/space72", "derive": { "from": "Primitives/size/72" } },
+  "space-96": { "base": "Semantic/space96", "derive": { "from": "Primitives/size/96" } },
+  "space-200": { "base": "Semantic/space200", "derive": { "from": "Primitives/size/200" } },
   "shadow-card-borderless": { "base": "Semantic/boxShadowCardBorderless" },
   "line-height-12": { "base": "Semantic/lineHeightXS" },
   "line-height-16": { "base": "Semantic/lineHeightSM" },
