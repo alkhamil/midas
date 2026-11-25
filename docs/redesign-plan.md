@@ -55,6 +55,25 @@ Struktur editor sudah benar dan sejalan dengan Figma: rail kiri 48px, panel kiri
 | 2026-11-25 | Behavior: lebar label `.cmp-prop2` 104px ke 84px dan label boleh turun baris. Nama collection ("Button Variant") tampil penuh | `styles.css` | Sebelumnya "Button V..." ambigu: dua collection berbeda terlihat sama |
 | 2026-11-25 | `.small-label` 9px ke 11px | `styles.css` | Teks terlalu kecil |
 | 2026-11-25 | Fill (Design): padding input hex 8px ke 4px, lebar field opacity 56px ke 46px | `styles.css` (`.fr-hex-in`, `.fr-op-in`) | Nilai hex terpotong di panel sempit. Belum dilihat dengan picker terbuka |
+## Cek panel Prototype (2026-11-25)
+
+Dicek di browser pane dengan file uji "Testing" (dua frame, `Stage` dan `Stage copy`, satu interaksi On click ke Stage copy, satu After delay 500 ms). Tes otomatis Prototype juga dijalankan.
+
+| Fitur | Hasil |
+|---|---|
+| Navigate to (On click, Instant) | Berjalan di Play |
+| Play: frame sebelum dan sesudah, penghitung "n / total" | Berjalan |
+| After delay (500 ms) pada frame awal | **Rusak, diperbaiki**: tidak pernah berjalan. Penyebab: frame awal tidak dianggap kedatangan, dan timer frame teratas dibandingkan dengan `frameOf` yang null. Perbaikan: `arrivalEffects` di `prototype/player.js` dipakai untuk kedatangan dan start Play, frame sendiri dihitung sebagai node. Uji: `prototype-arrival.test.js` |
+| Baris trigger "After delay" | **Rusak, diperbaiki**: select trigger menyusut ke 32px. Sekarang baris bisa turun ke bawah, dan select minimal 110px |
+| Tes otomatis: overlay (dua tes), overlay list, drag aksi, conditional dengan Set variable | Lulus |
+| Tes otomatis: "a click on a loading Button fires nothing..." (play-behaviour) | **Gagal, belum diperbaiki**: kontrol (Button tidak loading) tidak memulai wave dalam 150 ms. Belum dicari penyebabnya |
+| Play: menu tampilan (Scaling, Viewport background, Reset on restart) | Terbuka dan berisi pilihan yang benar. Kotak "Viewport background" hampir tidak terlihat di latar gelap |
+| Play: menu flow ("Testing" > Stage) | Tidak ada tanda flow yang sedang aktif |
+| Daftar jenis aksi: Swap overlay dan Scroll to | Tampil tapi nonaktif. Sebaiknya disembunyikan atau diberi label "Segera" |
+| Delay (ms) | Tidak ada satuan terlihat, hanya angka |
+
+Belum diperiksa tangan: Back, Open link, Mouse enter/leave/down/up, While hovering/pressing, transisi Slide in dan Push, scroll overflow, fullscreen, mode Responsive dan Fit. Overlay, conditional, dan Set variable hanya lewat tes otomatis.
+
 Panel Design: struktur sudah dikelompokkan (Properties, Position, Auto layout, Appearance) dengan judul section yang sama. Belum ada perubahan struktur. Perlu tinjauan Anda sebelum diubah.
 Light mode: diperiksa di Behavior, Design, dan Home. Tidak ada elemen yang hilang atau tidak terbaca.
 

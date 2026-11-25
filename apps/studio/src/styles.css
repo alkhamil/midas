@@ -3829,9 +3829,10 @@ body.view-only #file-name::after { content: " · View only"; color: var(--muted)
 /* Prototype tab (Figma style): one card per interaction, "When <trigger>" on its head, "then" actions below, each action one line of
    inline controls. Controls are named by aria-label, not by a caption beside them. */
 .pt-card { display: grid; gap: 8px; padding: 10px; margin-bottom: 10px; border: 1px solid var(--border-soft); border-radius: 8px; background: var(--panel-2) }
-.pt-card-head { display: flex; align-items: center; gap: 6px; min-width: 0 }
+.pt-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0 }
 .pt-when, .pt-cond-label { flex: none; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em }
-.pt-card-head .pt-select { flex: 1; min-width: 0; width: auto }
+.pt-card-head .pt-select { flex: 1; min-width: 110px; width: auto }
+.pt-card-head .pt-input { flex: 0 0 96px; width: 96px }
 .pt-actions { display: grid; gap: 4px }
 .pt-action { position: relative; display: grid; grid-template-columns: 12px minmax(0, 1fr); column-gap: 6px; align-items: start; min-width: 0; padding: 4px 0 4px 6px; border-left: 2px solid var(--border); color: var(--muted) }
 .pt-action > svg { grid-column: 1; grid-row: 1; margin-top: 7px }

@@ -45,7 +45,8 @@ export function respond(state, event, ctx) {
         return moveTo(state, { current: event.frameId, history: [...state.history, state.current], overlays: [] }, ctx, INSTANT);
     }
     if (event.type === 'timer') {
-        if (ctx.frameOf(event.nodeId) !== state.current) return { state, effects: [] };
+        // A top-level frame is its own frame (frameOf is null for it): its timer runs while it is the current frame.
+        if ((ctx.frameOf(event.nodeId) ?? event.nodeId) !== state.current) return { state, effects: [] };
         const interaction = ctx.interactionsOf(event.nodeId).find(i => i.id === event.interactionId && i.trigger?.type === 'after-delay');
         return interaction ? runInteraction(state, interaction, ctx, event.nodeId) : { state, effects: [] };
     }
@@ -172,13 +173,25 @@ function closeOutside(state, nodeId, ctx) {
  */
 function moveTo(from, to, ctx, transition) {
     const next = { ...to, variables: to.variables ?? from.variables };
-    const effects = [{ type: 'navigate', from: from.current, to: next.current, transition: transition ?? INSTANT }];
-    for (const node of ctx.nodesOf(next.current)) {
+    const effects = [{ type: 'navigate', from: from.current, to: next.current, transition: transition ?? INSTANT }, ...arrivalEffects(next.current, ctx)];
+    return { state: next, effects };
+}
+
+/**
+ * The schedules of a frame's after-delay interactions: a player starts them when it arrives on the frame, the start of Play included.
+ * @param {string} frameId
+ * @param {PlayerContext} ctx
+ * @returns {any[]}
+ */
+export function arrivalEffects(frameId, ctx) {
+    const effects = [];
+    // The frame itself is a node too: nodesOf lists only its layers.
+    for (const node of [{ id: frameId, interactions: ctx.interactionsOf(frameId) }, ...ctx.nodesOf(frameId)]) {
         for (const interaction of node.interactions) {
             if (interaction.trigger?.type === 'after-delay') effects.push({ type: 'schedule', nodeId: node.id, interactionId: interaction.id, delayMs: interaction.trigger.delayMs });
         }
     }
-    return { state: next, effects };
+    return effects;
 }
 
 /**

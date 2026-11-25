@@ -3,7 +3,7 @@
 // through the player, so the history stays consistent. Play reads the document and never writes it: the view settings live in the
 // browser (localStorage), not in the document. The chrome (top bar, bottom controls) hides on a click that triggers nothing, and
 // Ctrl+\ pins it hidden.
-import { counterLabel, toDomTree, createPlayer, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES, showWave, flipToggle, applyPress, blurNumber, forwardFocus, startResizeDrag, strokeAreaAtSize, paintLayerOf, gradientRaster, overlayPlacement } from '@midas/builder-core';
+import { counterLabel, toDomTree, createPlayer, arrivalEffects, respond, playContext, eventFromDom, isDisabledTarget, transitionCss, timersFor, viewportLayout, chromeVisibility, stepFrame, counterText, resolveScalingMode, nextScalingMode, SCALING_MODES, showWave, flipToggle, applyPress, blurNumber, forwardFocus, startResizeDrag, strokeAreaAtSize, paintLayerOf, gradientRaster, overlayPlacement } from '@midas/builder-core';
 import { applyStyle } from './styleApply.js';
 
 /** Data URLs of the gradient rasters of angular and diamond strokes, by paint and size: the same paint at the same size is drawn once. */
@@ -701,5 +701,7 @@ export function openPlay({ data, startFrameId, name = 'Prototype', flows = [], p
     }
 
     renderFrame(startFrameId, null);
+    // The start frame is an arrival too: its after-delay interactions run from the start (apply schedules them).
+    apply({ state, effects: arrivalEffects(startFrameId, ctx) });
     return close;
 }
