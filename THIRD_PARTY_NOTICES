@@ -72,3 +72,6 @@ Each keeps its own licence (read from `cargo metadata`; the licence texts ship w
   unicode-ident            (MIT OR Apache-2.0) AND Unicode-3.0
   wasm-bindgen, wasm-bindgen-macro, wasm-bindgen-macro-support, wasm-bindgen-shared, bumpalo, cfg-if, proc-macro2, quote, syn, rustversion
                            MIT OR Apache-2.0
+
+Lucide icons (apps/studio/src/engine/uiIcons.js, copied from lucide-static 1.79.0)
+  Copyright (c) Lucide Icons and Contributors. ISC licence: https://github.com/lucide-icons/lucide/blob/main/LICENSE

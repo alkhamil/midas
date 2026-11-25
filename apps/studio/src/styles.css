@@ -14,7 +14,7 @@
   --border-soft: #303033;
   --text: #f0eff2;
   --text-secondary: #b7b5bf;
-  --muted: #85838e;
+  --muted: #a09ea9;
   --canvas: #1a1a1d;
   --page-canvas: #e3e3e3;
   --page-dot: #c9c9cf;
@@ -41,7 +41,7 @@ html[data-theme="light"] {
   --border-soft: #eeedf1;
   --text: #26232e;
   --text-secondary: #605d6a;
-  --muted: #928d9c;
+  --muted: #656073;
   --canvas: #e8e7ec;
   --dot: #cccad4;
   --accent: #0058CA;
@@ -959,7 +959,7 @@ button svg {
 }
 
 .inspector-tabs {
-  height: 52px;
+  height: 40px;
   display: flex;
   align-items: center;
   gap: 22px;
@@ -969,9 +969,9 @@ button svg {
 }
 
 .inspector-tabs>button:not(.ui-icon-button) {
-  height: 52px;
+  height: 40px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   position: relative
 }
 
@@ -1446,9 +1446,7 @@ button svg {
 .fp-check { color: var(--accent) }
 .fp-empty { padding: 24px; text-align: center; color: var(--muted); font-size: 12px }
 .fp-foot { padding: 6px 12px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--border) }
-.cmp-props { display: grid; gap: 6px }
-.cmp-prop { display: grid; grid-template-columns: 84px 1fr; gap: 8px; align-items: center; font-size: 12px; color: var(--text-secondary) }
-.cmp-prop select, .vp-row input { height: 28px; border: 0; border-radius: 6px; background: var(--field); color: var(--text); padding: 0 8px; font-size: 12px; min-width: 0; width: 100% }
+.vp-row input { height: 28px; border: 0; border-radius: 6px; background: var(--field); color: var(--text); padding: 0 8px; font-size: 12px; min-width: 0; width: 100% }
 .vp-list { display: grid; gap: 6px }
 .vp-props { display: grid; gap: 10px }
 .vp-prop { display: grid; gap: 6px; padding: 8px; border-radius: 8px; background: var(--field) }
@@ -1492,7 +1490,7 @@ button svg {
 .selection-name-input:focus { outline: 0; border-color: var(--accent); background: var(--field) }
 .cmp-split { display: inline-flex; align-items: center; gap: 0 }
 .cmp-props { display: grid; gap: 8px }
-.cmp-prop2 { display: grid; grid-template-columns: 84px 1fr; gap: 8px; align-items: center; font-size: 12px; color: var(--text-secondary) }
+.cmp-prop2 { display: grid; grid-template-columns: 104px 1fr; gap: 8px; align-items: center; font-size: 12px; color: var(--text-secondary) }
 .cmp-prop2 > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .cmp-ctl { display: flex; align-items: center; gap: 6px; min-width: 0 }
 .cmp-ctl select { flex: 1; min-width: 0; height: 28px; border: 0; border-radius: 6px; background: var(--field); color: var(--text); padding: 0 8px; font-size: 12px }
@@ -2800,6 +2798,7 @@ select.vw-text { cursor: pointer }
 .hf-check input, .home-bulk input { accent-color: var(--accent); margin: 0; width: 14px; height: 14px; cursor: pointer }
 .home-bulk { display: flex; align-items: center; gap: 14px; height: 32px; margin: -4px 0 12px; font-size: 12.5px; color: var(--text-secondary) }
 .home-bulk label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer }
+.home-bulk .home-sort { order: 1; margin-left: auto; height: 28px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel); color: var(--text); padding: 0 8px; font-size: 12px }
 .home-link.danger { color: var(--danger) }
 
 .lib-box { display: grid; gap: 8px; padding: 0 0 12px; margin-bottom: 8px; border-bottom: 1px solid var(--border-soft, var(--border)) }
@@ -3166,6 +3165,8 @@ select:not([multiple]):not([size]):not(.vpk-lib select):hover { background-color
 
 
 .cmp-ctl .var-btn { position: static; transform: none; opacity: 0; flex: none }
+.match-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--accent) }
+.match-dot.manual { background: var(--muted) }
 .cmp-prop2:hover .var-btn, .cmp-ctl .var-btn:focus-visible { opacity: 1 }
 .lg-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px }
 .lg-ico { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 6px; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); cursor: pointer }

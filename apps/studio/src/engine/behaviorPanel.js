@@ -68,6 +68,8 @@ function frameHtml(templates, esc, custom) {
     </select>`, esc);
     return section('Template and binding', templateRow + note('Choosing a template builds its parts on this frame. Layers it already has are kept.', esc), esc) + customHtml(custom, esc);
 }
+/** How a collection was chosen, as a dot with its name in the title: the control keeps the row's width for the choice. */
+const matchDot = r => r.collectionId === null ? '' : `<span class="match-dot${r.matched ? '' : ' manual'}" role="img" aria-label="${r.matched ? 'Auto-matched' : 'Picked manually'}" title="${r.matched ? 'Auto-matched' : 'Picked manually'}"></span>`;
 function masterHtml(panel, esc, findings, code, autoFix = null, expanded = false, custom) {
     const templateRow = row('Template', `<select data-bp="template" aria-label="Template">
         <option value="">None</option>${panel.templates.map(t => `<option value="${esc(t.id)}" ${t.id === panel.templateId ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}
@@ -75,18 +77,16 @@ function masterHtml(panel, esc, findings, code, autoFix = null, expanded = false
     if (!panel.templateId) return section('Template and binding', templateRow + empty('Choose a template to bind this component.'), esc) + customHtml(custom, esc);
     // The collections the icon slots need, first: the same binding slots as the dimensions, so picking one picks the other.
     const needs = (panel.needs ?? []).map(r => {
-        const badge = r.collectionId === null ? '' : `<span class="badge">${r.matched ? 'Auto-matched' : 'Picked manually'}</span>`;
         const control = `<select data-bp="collection" data-bp-prop="${esc(r.dimension)}" aria-label="${esc(r.dimension)} collection">
             <option value="">None</option>${r.options.map(o => `<option value="${esc(o.id)}" ${o.id === r.collectionId ? 'selected' : ''}` + `>${esc(o.name)}</option>`).join('')}
-        </select>${badge}`;
+        </select>${matchDot(r)}`;
         const unmatched = r.collectionId === null ? empty(`No "${r.collection}" collection matched. Pick one.`) : '';
         return row(r.label, control, esc, r.dimension) + unmatched;
     }).join('');
     const collections = panel.rows.map(r => {
-        const badge = r.collectionId === null ? '' : `<span class="badge">${r.matched ? 'Auto-matched' : 'Picked manually'}</span>`;
         const control = `<select data-bp="collection" data-bp-prop="${esc(r.prop)}" aria-label="${esc(r.prop)} collection">
             <option value="">None</option>${r.options.map(o => `<option value="${esc(o.id)}" ${o.id === r.collectionId ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}
-        </select>${badge}`;
+        </select>${matchDot(r)}`;
         const unmatched = r.collectionId === null ? empty(`No "${esc(r.collection)}" collection matched. Pick one.`) : '';
         return row(r.collection, control, esc, r.prop) + unmatched;
     }).join('');

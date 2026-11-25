@@ -2,15 +2,6 @@
 // and fills panels, inspector and dialogs imperatively, so these components render once
 // and never re-render.
 
-const RailIcon = ({ children, viewBox = '0 0 24 24', strokeWidth = 1.5 }) => (
-    <svg width="18" height="18" viewBox={viewBox} fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">{children}</svg>
-);
-
-// Same grid, size and stroke as the other rail icons.
-const VariablesIcon = () => (
-    <RailIcon><circle cx="7.5" cy="7.5" r="3.5" /><circle cx="16.5" cy="7.5" r="3.5" /><circle cx="7.5" cy="16.5" r="3.5" /><circle cx="16.5" cy="16.5" r="3.5" /></RailIcon>
-);
-
 // The desktop app is the Tauri window (window.__TAURI__ is injected before the studio mounts); the web build is unchanged.
 const desktopApp = typeof window !== 'undefined' && !!window.__TAURI__;
 
@@ -20,12 +11,10 @@ export function Topbar({ user }) {
             <div className="brand-section">
                 <button className="brand" id="main-menu" aria-label="Midas menu" title="Midas menu">
                     <svg width="23" height="23" viewBox="0 0 32 32"><path d="M4 28V6h6.5L16 17.5 21.5 6H28v22h-5.5V15.5L18 26h-4l-4.5-10.5V28Z" fill="currentColor" /></svg>
-                    <span>midas</span><span className="brand-chevron"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg></span>
+                    <span>midas</span><span className="brand-chevron" data-icon="chevronDown"></span>
                 </button>
                 <div className="top-divider"></div>
-                <button className="ui-icon-button" id="go-home" title="All files" aria-label="All files">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11l8-7 8 7" /><path d="M6 10v9h12v-9" /></svg>
-                </button>
+                <button className="ui-icon-button" id="go-home" title="All files" aria-label="All files" data-icon="house"></button>
                 <button className="ui-icon-button" id="toggle-left" title="Toggle layers panel" aria-label="Toggle layers panel" data-icon="panel"></button>
             </div>
             <div className="file-breadcrumb">
@@ -37,7 +26,7 @@ export function Topbar({ user }) {
             <div className="top-actions">
                 {desktopApp && <span className="save-indicator" id="save-indicator"><i></i> Saved</span>}
                 <button className="avatar" id="profile" title={user?.name || 'Account'}>{(user?.name || user?.email || 'M').trim().charAt(0).toUpperCase()}</button>
-                <button className="share-button play-button" id="play" aria-label="Play" title="Play (Alt+Enter)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"></path></svg></button>
+                <button className="share-button play-button" id="play" aria-label="Play" title="Play (Alt+Enter)" data-icon="play"></button>
                 <button className="share-button" id="share" title="Save a portable Midas file">Export <span data-icon="arrowUpRight"></span></button>
             </div>
         </header>
@@ -47,16 +36,10 @@ export function Topbar({ user }) {
 export function LeftRail() {
     return (
         <nav className="left-rail" aria-label="Sidebar">
-            <button className="rail-btn active" data-rail="design" title="Design" aria-label="Design">
-                <RailIcon><path d="m12 3 10 6-10 6L2 9ZM2 14l10 6 10-6" /></RailIcon>
-            </button>
-            <button className="rail-btn" data-rail="assets" title="Components" aria-label="Components">
-                <RailIcon><path d="m12 2 4 4-4 4-4-4ZM18 8l4 4-4 4-4-4ZM6 8l4 4-4 4-4-4ZM12 14l4 4-4 4-4-4Z" /></RailIcon>
-            </button>
-            <button className="rail-btn" data-rail="variables" title="Variables" aria-label="Variables"><VariablesIcon /></button>
-            <button className="rail-btn" data-rail="plugins" title="Plugins" aria-label="Plugins">
-                <RailIcon><path d="M9 3v3.2a1.8 1.8 0 0 1-1.8 1.8H4v4h1.6a1.9 1.9 0 1 1 0 3.8H4V19a2 2 0 0 0 2 2h3.2v-1.6a1.9 1.9 0 1 1 3.8 0V21H16a2 2 0 0 0 2-2v-3.2h1.6a1.9 1.9 0 1 0 0-3.8H18V8a2 2 0 0 0-2-2h-1.2V4.4a1.9 1.9 0 1 0-3.8 0V3Z" /></RailIcon>
-            </button>
+            <button className="rail-btn active" data-rail="design" title="Design" aria-label="Design" data-icon="layers"></button>
+            <button className="rail-btn" data-rail="assets" title="Components" aria-label="Components" data-icon="component"></button>
+            <button className="rail-btn" data-rail="variables" title="Variables" aria-label="Variables" data-icon="variable"></button>
+            <button className="rail-btn" data-rail="plugins" title="Plugins" aria-label="Plugins" data-icon="puzzle"></button>
         </nav>
     );
 }
@@ -68,7 +51,7 @@ export function LeftPanel() {
                 <div className="lh-text">
                     <div className="lh-row">
                         <span id="left-heading-title" title="Double-click to rename">Design file</span>
-                        <button className="lh-chev" id="left-heading-menu" title="File options" aria-label="File options" aria-haspopup="menu"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg></button>
+                        <button className="lh-chev" id="left-heading-menu" title="File options" aria-label="File options" aria-haspopup="menu" data-icon="chevronDown"></button>
                     </div>
                     <small id="left-heading-folder"></small>
                 </div>
