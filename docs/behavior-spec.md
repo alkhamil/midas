@@ -97,6 +97,8 @@ A component with a Size variable that holds an instance in a slot, where that ne
 
 2026-11-26 (Dialog): closeOnEsc built (`dismissKey`, Play and export); the export's dismiss state now exists on the typed path too (it was missing there). Builder-core 2916 tests, 0 failing; studio: the same 7 known failures. Browser parity not run (sign-in needed).
 
+2026-11-26 (Dialog, follow-up): the Footer gap is the `footerBox` frame's (the slot's box, hugging its buttons). The close icon is the title's font size per Size (12, 14, 14, 16, 20). Builder-core 2917 tests, 0 failing. Browser parity still open.
+
 2026-11-19 (Spin rings): Type has seven values now (dots, arc, and five rings from SpinThatShit). Loaders 06 to 12 mapped (`ringScaleTwo`, `squares`, `dotSlide`, `orbit`, `bars`, `bounce`, `bounceAlt`); 07 to 11 are approximations, not checked in a browser. Travel of 09 to 11 is a Size-keyed role (`barTravel`, `halfTravel`, `boxSize`). Builder-core 2733 tests, 0 failing.
 
 2026-11-19 (Read only): read only is an inert state with its own tokens, not the disabled attribute; only the value text stays `fg`. Builder-core 2719 lulus; studio: the 7 known failures. Canvas and Play match (probe). Statistic browser parity passes.

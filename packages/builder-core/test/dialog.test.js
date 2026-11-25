@@ -64,3 +64,10 @@ test('Escape dismisses the dialog while closeOnEsc is on: the export listens for
     assert.match(jsx, /document\.addEventListener\('keydown', onKey\)/);
     assert.match(jsx, /if \(e\.key === 'Escape' && closeOnEsc && !dismissed\) \{ setDismissed\(true\); onClose\?\.\(\); \}/);
 });
+
+test('the close icon is the title font size at each Size step', () => {
+    const fontPx = role => ({ 'icon-sm': 12, 'icon-md': 14, 'icon-lg': 16, 'icon-xl': 20 })[role];
+    const titleFontPx = { xs: 12, sm: 14, md: 14, lg: 16, xl: 20 };
+    for (const mode of ['xs', 'sm', 'md', 'lg', 'xl']) assert.equal(fontPx(dialog.tokenRoles.closeSize[mode]), titleFontPx[mode], mode);
+    assert.equal(dialog.tokenRoles.titleTypography.md, 'text-base-strong', 'the md title is 14px');
+});

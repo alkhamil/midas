@@ -69,7 +69,8 @@ export const DIALOG = {
         gap: roleLadder(['gap-xs', 'gap-sm', 'gap', 'gap-lg', 'gap-xl']),
         radius: roleLadder(['radius-xs', 'radius-sm', 'radius', 'radius-lg', 'radius-xl']),
         iconSize: roleLadder(['icon-xs', 'icon-sm', 'icon-md', 'icon-lg', 'icon-xl']),
-        closeSize: spaceLadder([10, 12, 12, 14, 16]),
+        // The close is as big as the title's font size at each step (title: 12, 14, 14, 16, 20), so it reads as part of the title line.
+        closeSize: roleLadder(['icon-sm', 'icon-md', 'icon-md', 'icon-lg', 'icon-xl']),
         titleTypography: roleLadder(['text-sm-strong', 'text-base-strong', 'text-base-strong', 'text-lg-strong', 'text-xl-strong']),
         bodyTypography: roleLadder(['text-xs', 'text-sm', 'text-sm', 'text-base', 'text-lg']),
     },
