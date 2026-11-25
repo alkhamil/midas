@@ -48,6 +48,13 @@ Struktur editor sudah benar dan sejalan dengan Figma: rail kiri 48px, panel kiri
 | 2026-11-25 | Semua SVG inline di `midas.js` dengan stroke 1.3, 1.4, 1.5, atau 1.6 diubah ke 1.75 (49 tempat). Ikon di `play.js` dan ikon komponen (`ICON_SET`) tidak disentuh | `midas.js` | Berat garis sama di seluruh editor |
 | 2026-11-25 | Daftar file di Home punya urutan: "Last edited" (default) atau "Name". Pilihannya ada di bar di atas daftar. Urutan tidak berlaku di "Recents" | `midas.js` (`lib.sort`, `bulkBar`, `renderHome`), `styles.css` (`.home-sort`) | Mudah mencari file |
 
+| 2026-11-25 | Home: tampilan daftar (list) dengan tombol grid/list di bar atas daftar. Baris berisi nama dan "Edited ..."; klik membuka file seperti kartu | `midas.js` (`lib.layout`, `fileRow`, `bulkBar`), `styles.css` (`.home-seg`, `.hf.row`), `uiIcons.js` (`viewGrid`, `viewList`) | Pilihan tampilan untuk daftar file panjang. Terverifikasi di browser |
+| 2026-11-25 | Tab panel kanan: jarak antar tab 22px ke 16px dan padding 17px ke 16px. Tombol tema di kanan sebelumnya keluar dari panel | `styles.css` (`.inspector-tabs`) | Ikon tema terpotong. Sekarang muat (dicek: tombol berakhir 13px sebelum tepi panel) |
+| 2026-11-25 | Panel kanan di layar ≤ 1180px: 248px ke 264px | `styles.css` (media query) | Judul section dan kontrol tidak terpotong di lebar sempit |
+| 2026-11-25 | Kartu file di Home: thumbnail yang belum ada (file yang belum pernah dibuka dari editor) sekarang ikon halaman, bukan huruf besar. Thumbnail tetap dibuat saat keluar dari editor | `midas.js` (`fileCard`), `styles.css` (`.hf-empty`, `.lib-card .hf-thumb span`) | Kartu terlihat seperti file, bukan huruf inisial |
+| 2026-11-25 | Behavior: lebar label `.cmp-prop2` 104px ke 84px dan label boleh turun baris. Nama collection ("Button Variant") tampil penuh | `styles.css` | Sebelumnya "Button V..." ambigu: dua collection berbeda terlihat sama |
+| 2026-11-25 | `.small-label` 9px ke 11px | `styles.css` | Teks terlalu kecil |
+| 2026-11-25 | Fill (Design): padding input hex 8px ke 4px, lebar field opacity 56px ke 46px | `styles.css` (`.fr-hex-in`, `.fr-op-in`) | Nilai hex terpotong di panel sempit. Belum dilihat dengan picker terbuka |
 Panel Design: struktur sudah dikelompokkan (Properties, Position, Auto layout, Appearance) dengan judul section yang sama. Belum ada perubahan struktur. Perlu tinjauan Anda sebelum diubah.
 Light mode: diperiksa di Behavior, Design, dan Home. Tidak ada elemen yang hilang atau tidak terbaca.
 
@@ -57,7 +64,7 @@ Tes: `apps/studio`, 362 tes, 355 lulus, 7 gagal. Ketujuh kegagalan sama dengan s
 
 1. [x] Konsolidasi `.cmp-props` dan `.cmp-prop2` menjadi satu definisi, dan lebar label dibuat cukup untuk teks terpanjang.
 2. [x] Tab panel kanan: tinggi 40px, teks 12px, indikator bawah seperti tab Figma.
-3. [ ] Panel Design (belum, lihat catatan di log): kelompokkan section (Position, Layout, Appearance) dengan jarak yang sama.
+3. [ ] Panel Design: belum diubah strukturnya, menunggu tinjauan.: kelompokkan section (Position, Layout, Appearance) dengan jarak yang sama.
 4. Panel Prototype: aksi per interaksi sudah berbentuk kartu. Periksa jarak dan tombol tambah.
-5. [~] Home: urutan file sudah ada. Bagian "Terbaru" dan tampilan daftar (list) belum dibuat.
+5. [x] Home: urutan dan tampilan grid/list sudah ada. Bagian "Terbaru" terpisah belum dibuat (Recents sudah berisi daftar terbaru).
 6. [x] Verifikasi: screenshot setiap state yang diubah (Design, Behavior, Prototype, Home) di browser pane, lalu jalankan `npm test` di `apps/studio` dan `packages/builder-core`.

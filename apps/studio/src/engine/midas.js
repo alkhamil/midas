@@ -3772,7 +3772,7 @@ document.addEventListener('change', e => {
 });
 
 // ===== home / file library =====
-const lib = { index: [], folders: [], folder: null, fileId: null, view: 'recent', search: '', open: false, sel: new Set(), sort: 'edited' };
+const lib = { index: [], folders: [], folder: null, fileId: null, view: 'recent', search: '', open: false, sel: new Set(), sort: 'edited', layout: 'grid' };
 const TEMPLATES = [
     { id: 'blank', name: 'Design file', note: 'Start from an empty canvas' },
     { id: 'phone', name: 'Mobile app', frame: ['iPhone 16', 393, 852], note: 'iPhone 16 frame' },
@@ -4328,6 +4328,10 @@ function ensureHome() {
             bulkDelete();
         else if (t.closest('[data-hf-bulk-recent]'))
             bulkHideRecent();
+        else if ((el = t.closest('[data-home-layout]'))) {
+            lib.layout = el.dataset.homeLayout;
+            renderHome();
+        }
         else if ((el = t.closest('[data-home-view]'))) {
             lib.view = el.dataset.homeView;
             if (lib.view === 'all')
@@ -4805,12 +4809,14 @@ function bulkBar() {
     if (!shown.length)
         return '';
     const n = shown.filter(m => lib.sel.has(m.id)).length;
-    const sortBox = `<select class="home-sort" data-home-sort aria-label="Sort files"><option value="edited" ${lib.sort === 'edited' ? 'selected' : ''}>Last edited</option><option value="name" ${lib.sort === 'name' ? 'selected' : ''}>Name</option></select>`;
+    const sortBox = `<div class="home-tools"><div class="home-seg" role="group" aria-label="View">${[["grid", "viewGrid", "Grid view"], ["list", "viewList", "List view"]].map(([v, ic, label]) => `<button class="home-seg-btn${lib.layout === v ? " on" : ""}" data-home-layout="${v}" aria-pressed="${lib.layout === v}" title="${label}" aria-label="${label}">${icon(ic, 16)}</button>`).join("")}</div><select class="home-sort" data-home-sort aria-label="Sort files"><option value="edited" ${lib.sort === 'edited' ? 'selected' : ''}>Last edited</option><option value="name" ${lib.sort === 'name' ? 'selected' : ''}>Name</option></select></div>`;
     return `<div class="home-bulk">${sortBox}<label><input type="checkbox" data-hf-all ${n === shown.length ? 'checked' : ''} data-partial="${n > 0 && n < shown.length}" aria-label="Select all files"><span>${n ? `${n} selected` : 'Select all'}</span></label>${n ? (lib.view === 'recent' ? '<button class="home-link danger" data-hf-bulk-recent>Remove from recent</button>' : `<button class="home-link danger" data-hf-bulk-delete>Delete${lib.view === 'trash' ? ' permanently' : ''}</button>`) : ''}</div>`;
 }
 function fileCard(m) {
-    const initial = esc((m.name || '?').trim()[0]?.toUpperCase() || '?');
-    return `<div class="hf ${m.trashed ? 'trashed' : ''} ${m.id === lib.fileId && !m.trashed ? 'current' : ''}" data-hf="${m.id}" tabindex="0" draggable="${m.trashed ? 'false' : 'true'}"><label class="hf-check ${lib.sel.has(m.id) ? 'on' : ''}" title="Select file"><input type="checkbox" data-hf-check="${m.id}" ${lib.sel.has(m.id) ? 'checked' : ''} aria-label="Select ${esc(m.name)}"></label><div class="hf-thumb">${m.thumb ? `<img src="${m.thumb}" alt="">` : `<span>${initial}</span>`}</div><div class="hf-meta"><div class="hf-text"><div class="hf-name" title="${esc(m.name)}">${esc(m.name)}</div><div class="hf-sub">${m.trashed ? 'Deleted ' + timeAgo(m.trashed) : 'Edited ' + timeAgo(m.updated)}</div></div>${m.starred ? `<span class="hf-star" title="In the sidebar">${homeIcon('star')}</span>` : ''}</div></div>`;
+    return `<div class="hf ${m.trashed ? 'trashed' : ''} ${m.id === lib.fileId && !m.trashed ? 'current' : ''}" data-hf="${m.id}" tabindex="0" draggable="${m.trashed ? 'false' : 'true'}"><label class="hf-check ${lib.sel.has(m.id) ? 'on' : ''}" title="Select file"><input type="checkbox" data-hf-check="${m.id}" ${lib.sel.has(m.id) ? 'checked' : ''} aria-label="Select ${esc(m.name)}"></label><div class="hf-thumb">${m.thumb ? `<img src="${m.thumb}" alt="">` : `<span class="hf-empty">${icon('page', 32)}</span>`}</div><div class="hf-meta"><div class="hf-text"><div class="hf-name" title="${esc(m.name)}">${esc(m.name)}</div><div class="hf-sub">${m.trashed ? 'Deleted ' + timeAgo(m.trashed) : 'Edited ' + timeAgo(m.updated)}</div></div>${m.starred ? `<span class="hf-star" title="In the sidebar">${homeIcon('star')}</span>` : ''}</div></div>`;
+}
+function fileRow(m) {
+    return `<div class="hf row ${m.id === lib.fileId ? 'current' : ''}" data-hf="${m.id}" tabindex="0" draggable="true"><label class="hf-check ${lib.sel.has(m.id) ? 'on' : ''}" title="Select file"><input type="checkbox" data-hf-check="${m.id}" ${lib.sel.has(m.id) ? 'checked' : ''} aria-label="Select ${esc(m.name)}"></label><span class="hf-name" title="${esc(m.name)}">${esc(m.name)}</span><span class="hf-sub">Edited ${timeAgo(m.updated)}</span></div>`;
 }
 function folderCard(f) {
     const files = lib.index.filter(m => !m.trashed && !libFileIds().has(m.id) && fileFolder(m) === f.id).length, subs = lib.folders.filter(x => (x.parent || null) === f.id).length;
@@ -4845,7 +4851,7 @@ function renderHome() {
         const head = inAll ? `<div class="home-row"><nav class="home-crumbs" aria-label="Folder path"><button data-home-folder="" data-drop-folder="" class="${lib.folder ? '' : 'cur'}">All files</button>${folderPath(lib.folder).map(f => `<span>&rsaquo;</span><button data-home-folder="${f.id}" data-drop-folder="${f.id}" class="${f.id === lib.folder ? 'cur' : ''}">${esc(f.name)}</button>`).join('')}</nav><button class="home-link" data-home-newfolder>+ New folder</button></div>` : '<h2>Recently viewed</h2>';
         const folderGrid = subfolders.length ? `<div class="home-grid home-folders">${subfolders.map(folderCard).join('')}</div>` : '';
         const create = lib.view === 'recent' && !q ? `<div class="home-create"><button class="hc" data-home-new="blank"><span class="hc-ico plus">+</span><b>Design file</b><small>Blank canvas</small></button><button class="hc" data-home-new="phone"><span class="hc-ico">${homeIcon('templates')}</span><b>Mobile app</b><small>iPhone 16 frame</small></button><button class="hc" data-home-import><span class="hc-ico">${homeIcon('all')}</span><b>Import file</b><small>.midas or Figma .fig file</small></button></div>` : '';
-        main = `${create}${head}${folderGrid}${bulkBar()}${list.length ? `<div class="home-grid">${list.map(fileCard).join('')}</div>` : subfolders.length ? '' : `<div class="home-empty">${q ? 'No files match your search.' : inAll && lib.folder ? 'This folder is empty. Drag files here, or use Move file in a file\'s right-click menu.' : 'No files yet. Create a design file to get started.'}</div>`}`;
+        main = `${create}${head}${folderGrid}${bulkBar()}${list.length ? `<div class="home-grid ${lib.layout}">${list.map(lib.layout === 'list' ? fileRow : fileCard).join('')}</div>` : subfolders.length ? '' : `<div class="home-empty">${q ? 'No files match your search.' : inAll && lib.folder ? 'This folder is empty. Drag files here, or use Move file in a file\'s right-click menu.' : 'No files yet. Create a design file to get started.'}</div>`}`;
     }
     home.innerHTML = `<aside class="home-side"><div class="home-brand"><svg width="22" height="22" viewBox="0 0 32 32"><path d="M4 28V6h6.5L16 17.5 21.5 6H28v22h-5.5V15.5L18 26h-4l-4.5-10.5V28Z" fill="currentColor"/></svg><span>midas</span></div><div class="home-ws" data-home-account tabindex="0" role="button" title="Account"><span class="home-avatar">${esc((getSignedInUser()?.name || 'M').trim().charAt(0).toUpperCase())}</span><div><b>${esc(getSignedInUser()?.name ? `${getSignedInUser().name}'s workspace` : 'Workspace')}</b><small>${esc(getSignedInUser()?.email || 'Saved on the Midas server')}</small></div></div><button class="home-new" data-home-new="blank">+ New design file</button><nav>${nav.map(([id, l]) => `<button class="${lib.view === id ? 'on' : ''}" data-home-view="${id}" ${id === 'all' ? 'data-drop-folder=""' : ''}>${homeIcon(id)}<span>${l}</span>${id === 'trash' && trash.length ? `<em>${trash.length}</em>` : ''}</button>`).join('')}</nav><div class="home-star-head">Starred</div><div class="home-stars">${lib.index.filter(m => !m.trashed && m.starred).sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(m => `<button class="home-star ${m.id === lib.fileId ? 'cur' : ''}" data-star-file="${m.id}" title="${esc(m.name)}">${homeIcon('star')}<span>${esc(m.name)}</span></button>`).join('') || '<p class="home-star-empty">Right-click a file and choose Add to sidebar.</p>'}</div></aside><main class="home-main"><header class="home-top"><input class="home-search" data-home-search placeholder="Search files" value="${esc(lib.search)}" aria-label="Search files" spellcheck="false">${lib.fileId && live.some(m => m.id === lib.fileId) ? '<button class="home-link" data-home-back>Back to editor ↩</button>' : ''}</header><div class="home-scroll">${main}</div></main>`;
     home.querySelectorAll('[data-partial="true"]').forEach(b => { b.indeterminate = true; });
