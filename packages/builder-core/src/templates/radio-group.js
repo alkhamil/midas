@@ -5,7 +5,7 @@ import { DEFAULT_SIZE_MODE, SIZE_MODES, roleLadder } from './size-modes.js';
 // Radio Group (antd Radio.Group): a row or a column of Radio instances. The group has no look of its own: its root holds one frame (the options) that
 // lays the Radio instances out, and the Direction prop writes that frame's layout (horizontal, the antd default, or vertical). Size is the one variable
 // dimension: it sets the gap between the options; the Radios follow their own Size. The options are instances, so the selection is
-// each Radio's own `checked` state; a group that owns a single value and disables its options is not built yet.
+// each Radio is exclusive in the options frame: picking one in Play or on the canvas clears the others. A group with a value prop of its own and data options is not built.
 
 /** @type {TemplateSchema} */
 export const RADIO_GROUP = {

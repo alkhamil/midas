@@ -62,7 +62,8 @@ export const RADIO = {
         disabled: { prop: 'disabled', tokens: { 'box-bg': 'box-bg-disabled', 'box-border': 'box-border-disabled', fg: 'fg-disabled', 'dot-fg': 'dot-fg-disabled' } },
     },
     // A click selects the radio; it does not unselect it.
-    toggle: { prop: 'checked', once: true },
+    // Exclusive within a box slot (a Radio Group's options): one option is selected at a time; a loose Radio is independent.
+    toggle: { prop: 'checked', once: true, exclusive: true },
     // Motion (antd, timings and easings only): the ring recolours over 0.2s (ease); the dot scales in
     // from 0 over 0.3s (motionEaseInOutCirc). No click wave: the generic wave targets the host box,
     // while this host is the label row, so it would ripple the row, not the circle. Play and the

@@ -45,3 +45,22 @@ test('the export draws the options frame with the gap token, and takes the direc
     assert.match(files['RadioGroup.css'], /\.antd-radio-group-options \{\s*gap: var\(--antd-radio-group-gap\)/);
     assert.match(files['RadioGroup.tsx'], /direction = "horizontal"/);
 });
+
+// Selection in the options frame: a Radio there is exclusive (Play marks it, the canvas clears the others); a loose Radio is not.
+import { toDomTree } from '../src/prototype/dom-tree.js';
+
+/** The DOM node carrying a toggle (a data-toggle attribute), found below a root. */
+const toggleRootOf = node => (node.attrs?.['data-toggle'] ? node : (node.children ?? []).map(toggleRootOf).find(Boolean));
+
+test('a Radio in the options frame is exclusive in Play; a Radio standing alone is not', () => {
+    const radio = TEMPLATES.get('radio');
+    const radioModel = modelFor(radio);
+    const [inst] = instanceFor(radioModel, { checked: false });
+    const master = [radioModel.frame, ...radioModel.created];
+    const row = { id: 'row', type: 'frame', name: 'Row', parentId: null, x: 0, y: 0, w: 300, h: 80, fills: [], layout: 'horizontal' };
+    const loose = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [...master, row, { ...inst, parentId: row.id }] }], variables: radioModel.variables }, row.id);
+    assert.equal(toggleRootOf(loose.root).attrs['data-toggle-exclusive'], undefined, 'a loose Radio has no group');
+    const box = { id: 'options-box', type: 'frame', name: 'Options', parentId: row.id, propBind: { slot: 'items' }, fills: [], layout: 'horizontal' };
+    const boxed = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [...master, row, box, { ...inst, parentId: box.id }] }], variables: radioModel.variables }, row.id);
+    assert.equal(toggleRootOf(boxed.root).attrs['data-toggle-exclusive'], true);
+});

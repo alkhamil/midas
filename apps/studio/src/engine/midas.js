@@ -11503,7 +11503,9 @@ function setInstanceValueTo(inst, prop, value) {
         inst.behavior = next; doc.touch(inst); reason = syncInstance(inst);
         const template = templateOfInstance(inst);
         // An exclusive toggle (a tab's Active) turns the same prop off on the other items of its box, in this one undo step.
-        const siblings = doc.children(inst.parentId).filter(c => c.sourceId === inst.sourceId);
+        // Only the items of a box slot (a Tabs' tabs, a Radio Group's options) select among each other; a loose instance stands alone.
+        const inBox = doc.get(inst.parentId)?.propBind?.slot !== undefined;
+        const siblings = inBox ? doc.children(inst.parentId).filter(c => c.sourceId === inst.sourceId) : [];
         for (const sib of siblingsToDeselect(template, prop, value, siblings, inst)) { sib.behavior = setInstanceValue(sib, componentById(sib.sourceId), prop, false); doc.touch(sib); syncInstance(sib); }
         if (template) syncSeparators(inst, template);
     });

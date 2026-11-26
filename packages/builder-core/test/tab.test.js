@@ -24,13 +24,13 @@ test('the Tabs bar selects one of its tabs, the first when none is, and holds on
     assert.deepEqual(validateTemplateSchema(tabs), []);
 });
 
-test('Play: a selected tab says aria-selected true; its root carries the exclusive toggle', () => {
+test('Play: a selected tab says aria-selected true; a loose tab is not exclusive', () => {
     const model = modelFor(tab);
     const nodes = instanceFor(model, { active: true });
     const { root } = toDomTree({ pages: [{ id: 'p', name: 'S', nodes: [model.frame, ...model.created, ...nodes] }], variables: model.variables }, nodes[0].id);
     assert.equal(root.attrs['role'], 'tab');
     assert.equal(root.attrs['data-toggle'], 'data-active');
-    assert.equal(root.attrs['data-toggle-exclusive'], true);
+    assert.equal(root.attrs['data-toggle-exclusive'], undefined, 'a loose tab is not in a box');
     assert.equal(root.attrs['aria-selected'], 'true');
     assert.equal(root.attrs['aria-checked'], undefined);
 });

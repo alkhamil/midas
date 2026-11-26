@@ -55,7 +55,7 @@ Referensi struktur: `D:\antd-ref\components\<nama>` (read-only).
 | 5d | Tabs (`antd-tabs` + `antd-tab`, P1) | 🟡 Kode, template, unit test (2026-11-26). Klik tab di Play memilih satu dan mematikan yang lain (toggle `exclusive`). Tambah tab lewat Plus (seperti Breadcrumb), browser lulus (`tabs.browser.test.mjs`). Belum: isi panel per tab (menunggu data Prototype), posisi tab, tutup tab, ink bar animasi. |
 | 5b | Progress (Tier 0) | ⛔ Diblokir: butuh lebar dalam persen dari parent (bar), belum ada di model sizing node. Perlu keputusan. |
 | A | Pagination, Breadcrumb, Table Toolbar | 🟡 Kode, template, unit test, conformance (2026-11-23). Browser parity lulus (`navigation-toolbar.browser.test.mjs`). Pagination menampilkan halaman sebagai teks (tanpa daftar tombol halaman). Breadcrumb tiga item tetap dengan separator statis "/". Table Toolbar: Filters menunggu Select. |
-| A (ditunda) | Radio Group | ⏸ Ditunda sampai Fase 2 (Prototype) selesai. Kode ada, tetapi belum ada state pilihan tunggal dan opsi dari data. Rencana: prop `options` (daftar) dan `value`, dengan sync instance dan single-select di Play dan export. Browser parity belum dibuat. |
+| A | Radio Group | 🟡 Satu nilai dari Radio eksklusif di kotak opsi (2026-11-26, keputusan user). Klik di Play dan pilihan di canvas mengosongkan yang lain. Browser lulus (`radio-group.browser.test.mjs`). Belum: prop `options` dan `value` berbasis data, tombol Plus, export state pilihan. |
 | 5+ | Select, Dialog, Tabs, Table, dll. | ❌ Belum ada template. Daftar lengkap dan urutan ada di `docs/specs/web-components.md` (P1 dulu). |
 
 Per component, selesai kalau:
