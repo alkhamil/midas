@@ -102,10 +102,10 @@ const icon = doc => doc.nodes.find(n => n.id === defaultIconOf([{ nodes: doc.nod
 test('the run builds a master for every registered template, in dependency order, each with its demo instance', () => {
     const doc = fresh();
     const { counts, plan } = run(doc);
-    assert.deepEqual(plan.order.map(t => t.id), ['button', 'input', 'formitem', 'icon-button', 'checkbox', 'switch', 'radio', 'inputnumber', 'antd-badge', 'antd-tag', 'antd-divider', 'antd-avatar', 'antd-text', 'antd-title', 'antd-paragraph', 'antd-link', 'antd-alert', 'antd-card', 'antd-dialog', 'antd-spin', 'antd-empty', 'antd-search', 'antd-statistic', 'antd-list-item', 'list', 'antd-radio-group', 'antd-pagination', 'antd-breadcrumb-item', 'antd-breadcrumb', 'table-toolbar', 'antd-skeleton']);
-    assert.equal(counts.created, 31);
+    assert.deepEqual(plan.order.map(t => t.id), ['button', 'input', 'formitem', 'icon-button', 'checkbox', 'switch', 'radio', 'inputnumber', 'antd-badge', 'antd-tag', 'antd-divider', 'antd-avatar', 'antd-text', 'antd-title', 'antd-paragraph', 'antd-link', 'antd-alert', 'antd-card', 'antd-dialog', 'antd-spin', 'antd-empty', 'antd-search', 'antd-statistic', 'antd-list-item', 'list', 'antd-radio-group', 'antd-pagination', 'antd-breadcrumb-item', 'antd-breadcrumb', 'antd-tab', 'antd-tabs', 'table-toolbar', 'antd-skeleton']);
+    assert.equal(counts.created, 33);
     const masters = doc.nodes.filter(n => n.component && n.behavior?.templateId);
-    assert.deepEqual(masters.map(m => m.behavior.templateId), ['button', 'input', 'formitem', 'icon-button', 'checkbox', 'switch', 'radio', 'inputnumber', 'antd-badge', 'antd-tag', 'antd-divider', 'antd-avatar', 'antd-text', 'antd-title', 'antd-paragraph', 'antd-link', 'antd-alert', 'antd-card', 'antd-dialog', 'antd-spin', 'antd-empty', 'antd-search', 'antd-statistic', 'antd-list-item', 'list', 'antd-radio-group', 'antd-pagination', 'antd-breadcrumb-item', 'antd-breadcrumb', 'table-toolbar', 'antd-skeleton']);
+    assert.deepEqual(masters.map(m => m.behavior.templateId), ['button', 'input', 'formitem', 'icon-button', 'checkbox', 'switch', 'radio', 'inputnumber', 'antd-badge', 'antd-tag', 'antd-divider', 'antd-avatar', 'antd-text', 'antd-title', 'antd-paragraph', 'antd-link', 'antd-alert', 'antd-card', 'antd-dialog', 'antd-spin', 'antd-empty', 'antd-search', 'antd-statistic', 'antd-list-item', 'list', 'antd-radio-group', 'antd-pagination', 'antd-breadcrumb-item', 'antd-breadcrumb', 'antd-tab', 'antd-tabs', 'table-toolbar', 'antd-skeleton']);
     for (const template of BUILT_IN_TEMPLATES.values()) {
         const master = masters.find(m => m.behavior.templateId === template.id);
         assert.ok(doc.nodes.some(n => n.isInstance && n.sourceId === master.id), `${template.id} has a demo instance`);
@@ -148,7 +148,7 @@ test('a second run adds nothing: no variable, no master, no node', () => {
     assert.equal(again.counts.icons, 0);
     assert.equal(again.counts.iconsPresent, 20);
     assert.equal(again.counts.created, 0);
-    assert.equal(again.counts.present, 31);
+    assert.equal(again.counts.present, 33);
     assert.equal(firstDifference(before, doc), null, 'the document is what it was');
 });
 

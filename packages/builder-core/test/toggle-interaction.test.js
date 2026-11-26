@@ -17,8 +17,8 @@ test('the three controls declare their toggle', () => {
     assert.deepEqual(checkbox.toggle, { prop: 'checked', clears: 'indeterminate' });
     assert.deepEqual(radio.toggle, { prop: 'checked', once: true });
     assert.deepEqual(sw.toggle, { prop: 'checked' });
-    assert.deepEqual(toggleOf(checkbox), { attr: 'data-checked', clearsAttr: 'data-indeterminate', once: false });
-    assert.deepEqual(toggleOf(radio), { attr: 'data-checked', clearsAttr: undefined, once: true });
+    assert.deepEqual(toggleOf(checkbox), { attr: 'data-checked', clearsAttr: 'data-indeterminate', once: false, exclusive: false, aria: 'checked' });
+    assert.deepEqual(toggleOf(radio), { attr: 'data-checked', clearsAttr: undefined, once: true, exclusive: false, aria: 'checked' });
     assert.equal(toggleOf({ ...checkbox, toggle: undefined }), null);
 });
 

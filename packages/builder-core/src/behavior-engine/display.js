@@ -125,12 +125,12 @@ export function dismissKeyOf(template) {
  * A template's click toggle: the root attribute of the state prop a click turns on (and off), the attribute of the state it clears, and whether the click
  * only turns it on. Null when the template declares none. Play reads it from data attributes on the root.
  * @param {any} template
- * @returns {{ attr: string, clearsAttr: string | undefined, once: boolean } | null}
+ * @returns {{ attr: string, clearsAttr: string | undefined, once: boolean, exclusive: boolean, aria: 'checked' | 'selected' } | null}
  */
 export function toggleOf(template) {
     if (!template.toggle) return null;
     const attrs = stateAttributesOf(template);
-    return { attr: attrs.find(a => a.prop === template.toggle.prop)?.attr, clearsAttr: attrs.find(a => a.prop === template.toggle.clears)?.attr, once: template.toggle.once === true };
+    return { attr: attrs.find(a => a.prop === template.toggle.prop)?.attr, clearsAttr: attrs.find(a => a.prop === template.toggle.clears)?.attr, once: template.toggle.once === true, exclusive: template.toggle.exclusive === true, aria: template.toggle.aria ?? 'checked' };
 }
 
 /**

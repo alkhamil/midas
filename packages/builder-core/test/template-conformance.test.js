@@ -37,6 +37,8 @@ const MODELS = {
     'antd-pagination': generated('antd-pagination'),
     'antd-breadcrumb-item': generated('antd-breadcrumb-item'),
     'antd-breadcrumb': generated('antd-breadcrumb'),
+    'antd-tab': generated('antd-tab'),
+    'antd-tabs': generated('antd-tabs'),
     'table-toolbar': generated('table-toolbar'),
     'antd-avatar': generated('antd-avatar'),
     'antd-text': generated('antd-text'),

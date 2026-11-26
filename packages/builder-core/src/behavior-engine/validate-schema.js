@@ -458,7 +458,7 @@ const RESERVED_WORDS = new Set(['await', 'break', 'case', 'catch', 'class', 'con
 /** The props every generated component has besides its own: `children` is the single slot's, the rest pass through to the root. */
 const GENERATED_PROPS = ['children', 'className', 'style', 'ref', 'key'];
 /** The fields of a content slot definition. They are the names and settings of Figma's slot property, so the generator can write them into it. */
-const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'onlyAccepts', 'showEmpty', 'required', 'fillCounter', 'layout', 'fill', 'shownWhen', 'parent', 'seed', 'holds', 'box', 'separator', 'start', 'between', 'overflow', 'current'];
+const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'onlyAccepts', 'showEmpty', 'required', 'fillCounter', 'layout', 'fill', 'shownWhen', 'parent', 'seed', 'holds', 'box', 'separator', 'start', 'between', 'overflow', 'current', 'selected'];
 
 /**
  * Problems in the content slots a template declares (`slots`): a frame of the component that instances fill with their own layers. A slot's id
@@ -569,6 +569,8 @@ function slotProblems(schema, templateIds, schemas) {
         }
         // Truncation over the box: a boolean prop hides the items between the first and the last, behind an ellipsis layer (an anatomy text).
         if (slot.current !== undefined && !isName(slot.current)) out.push(`${tag} current must name a boolean prop of its items`);
+        // Selection: one of the items is selected (its exclusive toggle prop), the first when none is. Not with `current`, which keeps the last item.
+        if (slot.selected !== undefined && (!isName(slot.selected) || slot.current !== undefined)) out.push(`${tag} selected must name a boolean prop of its items, and is not used with current`);
         if (slot.overflow !== undefined) {
             const o = slot.overflow;
             if (!isPlainObject(o) || !isName(o.prop) || !isName(o.layer) || typeof o.text !== 'string') out.push(`${tag} overflow must name a prop, a layer and a text`);
@@ -810,6 +812,8 @@ function toggleProblems(schema) {
         if (!(props[name]?.source === 'literal' && props[name]?.type === 'boolean' && attrs.some(a => a.prop === name))) out.push(`toggle ${key} "${name}" is not a boolean prop that a state with an attribute follows`);
     }
     if (schema.toggle.once !== undefined && typeof schema.toggle.once !== 'boolean') out.push('toggle once must be true or false');
+    if (schema.toggle.exclusive !== undefined && typeof schema.toggle.exclusive !== 'boolean') out.push('toggle exclusive must be true or false');
+    if (schema.toggle.aria !== undefined && !['checked', 'selected'].includes(schema.toggle.aria)) out.push('toggle aria must be checked or selected');
     return out;
 }
 

@@ -563,7 +563,7 @@ function componentSource(template, name, problems, partWidthOf = part => part.ar
         // A local interaction state is the root's own: written from the local, absent while false, so the stylesheet can follow it.
         ...toggleStatesOf(template).map(state => `${localAttrOf(state)}={${state} || undefined}`),
         // A toggle control says its state to assistive technology: true, false, or mixed while the state it clears holds.
-        ...(template.toggle ? [`aria-checked={${template.toggle.clears ? `${template.toggle.clears} ? "mixed" : ` : ''}${template.toggle.prop} ? "true" : "false"}`] : []),
+        ...(template.toggle ? [`aria-${template.toggle.aria ?? 'checked'}={${template.toggle.clears ? `${template.toggle.clears} ? "mixed" : ` : ''}${template.toggle.prop} ? "true" : "false"}`] : []),
         ...fieldWritersOf(template).filter(w => w.field === 'layout').map(w => `data-${w.prop}={${w.prop}}`),
         ...fieldWritersOf(template).filter(w => w.field === 'imageFill').map(w => `data-${w.prop}={${w.prop} ? "" : undefined}`),
         ...imageFitPropsOf(template).flatMap(prop => [`data-${prop}-fit={${prop}Fit}`, `data-${prop}-scale={${prop}Scale}`, `data-${prop}-rotate={${prop}Rotate}`, `data-${prop}-filter={${prop}Filter}`, `data-${prop}-video={${prop}Video}`, `data-${prop}-crop={${prop}Crop ? "" : undefined}`]),

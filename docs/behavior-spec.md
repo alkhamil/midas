@@ -95,6 +95,8 @@ A component with a Size variable that holds an instance in a slot, where that ne
 
 ## Status
 
+2026-11-26 (Tabs): `antd-tabs` and `antd-tab` added; a toggle may be `exclusive` (one selected among siblings, Play and canvas), and a slot's `selected` keeps the first item selected. Builder-core 2975 tests, 0 failing; studio: the same 7 known failures. Browser parity not run.
+
 2026-11-26 (Dialog): closeOnEsc built (`dismissKey`, Play and export); the export's dismiss state now exists on the typed path too (it was missing there). Builder-core 2916 tests, 0 failing; studio: the same 7 known failures. Browser parity not run (sign-in needed).
 
 2026-11-26 (Dialog, follow-up): the Footer gap is the `footerBox` frame's (the slot's box, hugging its buttons). The close icon is the title's font size per Size (12, 14, 14, 16, 20). Builder-core 2917 tests, 0 failing. Browser parity still open.

@@ -23,9 +23,18 @@ export function applyToggle(root) {
     const clearsAttr = root.getAttribute('data-toggle-clears');
     const next = nextToggle({ checked: root.hasAttribute(attr), indeterminate: clearsAttr ? root.hasAttribute(clearsAttr) : false }, { once: root.hasAttribute('data-toggle-once'), clears: clearsAttr !== null });
     const write = (name, on) => (on ? root.setAttribute(name, '') : root.removeAttribute(name));
+    const aria = `aria-${root.getAttribute('data-toggle-aria') ?? 'checked'}`;
     write(attr, next.checked);
     if (clearsAttr) write(clearsAttr, next.indeterminate);
-    root.setAttribute('aria-checked', next.indeterminate ? 'mixed' : String(next.checked));
+    root.setAttribute(aria, next.indeterminate ? 'mixed' : String(next.checked));
+    // An exclusive toggle (a tab in its box) turns the state off on its siblings in the same box when it turns on.
+    if (next.checked && root.hasAttribute('data-toggle-exclusive')) {
+        for (const sib of root.parentElement?.children ?? []) {
+            if (sib === root || !sib.hasAttribute(attr)) continue;
+            sib.removeAttribute(attr);
+            sib.setAttribute(aria, 'false');
+        }
+    }
     const align = `${attr}-align`;
     if (root.hasAttribute(align)) {
         const side = next.checked ? 'end' : 'start';

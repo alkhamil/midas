@@ -101,7 +101,7 @@ const FUNCTIONS = [
     // What a commit runs after an edit: the component sync (changed({ commit: true }) -> syncComponents).
     'rolledBackForBehavior', 'syncComponents', 'detachOrphans', 'syncInstanceStructure', 'labelIdsOfComponents', 'ownedVarsOf', 'ownedFieldsOf', 'ownedTemplateOf', 'propControlled', 'iconLayerOf',
     'pageTree', 'instanceTree', 'constrainInstanceLayers', 'nodeMode', 'varValue', 'varItem', 'cpropById',
-    'seedSlot', 'seedBoxes', 'syncSeparators', 'syncBetween', 'boxLayerKeyOf', 'makeSeparator', 'ellipsisLayer', 'applyManagedTextBindings', 'managedTextLayersOf', 'templateMasterOf', 'templateOfInstance', 'slotLayerOf', 'writeBound', 'pictureTarget', 'fillsOfPicker', 'chooseFillImage', 'noteNaturalSize', 'recordNaturalSizes',
+    'seedSlot', 'seedBoxes', 'syncSeparators', 'syncBetween', 'syncSelected', 'boxLayerKeyOf', 'makeSeparator', 'ellipsisLayer', 'applyManagedTextBindings', 'managedTextLayersOf', 'templateMasterOf', 'templateOfInstance', 'slotLayerOf', 'writeBound', 'pictureTarget', 'fillsOfPicker', 'chooseFillImage', 'noteNaturalSize', 'recordNaturalSizes',
     'bindType', 'exportSVG', 'needsRasterFill', 'isRichGradient', 'getEffects',
 ];
 

@@ -29,6 +29,8 @@ import { RADIO_GROUP } from '../templates/radio-group.js';
 import { PAGINATION } from '../templates/pagination.js';
 import { BREADCRUMB } from '../templates/breadcrumb.js';
 import { BREADCRUMB_ITEM } from '../templates/breadcrumb-item.js';
+import { TAB } from '../templates/tab.js';
+import { TABS } from '../templates/tabs.js';
 import { TABLE_TOOLBAR } from '../templates/table-toolbar.js';
 
 /**
@@ -51,7 +53,7 @@ export function createTemplateRegistry(schemas) {
 }
 
 /** The templates the engine ships. */
-export const BUILT_IN_TEMPLATES = createTemplateRegistry([BUTTON, INPUT, FORM_ITEM, LIST, ICON_BUTTON, CHECKBOX, SWITCH, RADIO, INPUTNUMBER, BADGE, TAG, DIVIDER, AVATAR, TEXT, TITLE, PARAGRAPH, LINK, ALERT, CARD, DIALOG, SPIN, EMPTY, SEARCH, STATISTIC, LIST_ITEM, RADIO_GROUP, PAGINATION, BREADCRUMB_ITEM, BREADCRUMB, TABLE_TOOLBAR, SKELETON]);
+export const BUILT_IN_TEMPLATES = createTemplateRegistry([BUTTON, INPUT, FORM_ITEM, LIST, ICON_BUTTON, CHECKBOX, SWITCH, RADIO, INPUTNUMBER, BADGE, TAG, DIVIDER, AVATAR, TEXT, TITLE, PARAGRAPH, LINK, ALERT, CARD, DIALOG, SPIN, EMPTY, SEARCH, STATISTIC, LIST_ITEM, RADIO_GROUP, PAGINATION, BREADCRUMB_ITEM, BREADCRUMB, TAB, TABS, TABLE_TOOLBAR, SKELETON]);
 
 /**
  * The registry every engine call reads: the built-in templates and the Custom templates of the open document (see custom-templates.js, which fills it).
