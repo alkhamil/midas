@@ -5,7 +5,7 @@ import { conditionHolds } from './display.js';
 import { boxesOf, iconDefOn, iconDefsOf, slotsOfValue } from './anatomy.js';
 
 /**
- * @typedef {{ id: string, name: string, kind: 'icon' | 'text' | 'instance' | 'content' | 'image', prop?: string, accepts?: string[], addable?: boolean }} SlotEntry
+ * @typedef {{ id: string, name: string, kind: 'icon' | 'text' | 'instance' | 'content' | 'image', prop?: string, accepts?: string[], addable?: boolean, addTemplate?: string, min?: number }} SlotEntry
  * `kind`: `icon` and `instance` hold only instances (an icon slot's glyph, a Link, a Button, an Icon Button); `content` holds anything and is managed in the Design tab;
  * `image` is a frame drawn as a picture (a Card's cover): the image prop `prop` holds the picture, edited in both tabs by one control. `text` is a managed text layer whose text the prop `prop` backs. `prop` also names the icon prop of an `icon` entry.
  */
@@ -81,9 +81,11 @@ export function slotListOf(template, values) {
         // A slot in a container comes after the container's own layers (a Card's Extra after its Title), as Play and the export draw it.
         const lastIn = id => Math.max(anatomyRank(id), ...template.anatomy.filter(s => s.parent === id).map(s => anatomyRank(s.id)));
         const rank = box !== undefined ? anatomyRank(box) + 0.5 : slot.parent !== undefined ? lastIn(slot.parent) + 0.5 : template.anatomy.length + 1;
-        // A box that holds one kind of instance, and starts with one (a List of List Items): the Plus row adds an instance of that kind.
-        const addable = holds === 'instance' && slot.onlyAccepts === true && slot.accepts?.length === 1 && !!slot.seed?.length;
-        found.push({ rank, entry: { id: slot.id, name: slot.name, kind: holds, ...(imageProp ? { prop: imageProp } : {}), ...(slot.accepts ? { accepts: slot.accepts } : {}), ...(addable ? { addable: true } : {}) } });
+        // A box of instances that starts with its seed (a List of List Items, a Radio Group of Radios): the Plus row adds the seed's template, and the
+        // minus stops at the slot's min. The box may take more kinds than the seed (a List takes its Divider), which the rows do not list.
+        const addable = holds === 'instance' && slot.onlyAccepts === true && !!slot.seed?.length && box !== undefined;
+        const addTemplate = addable ? slot.seed[0].template : undefined;
+        found.push({ rank, entry: { id: slot.id, name: slot.name, kind: holds, ...(imageProp ? { prop: imageProp } : {}), ...(slot.accepts ? { accepts: slot.accepts } : {}), ...(addable ? { addable: true, addTemplate, min: slot.min ?? 0 } : {}) } });
     }
     // A stable sort keeps the declared order within a rank.
     return found.map((f, i) => ({ ...f, i })).sort((a, b) => a.rank - b.rank || a.i - b.i).map(f => f.entry);

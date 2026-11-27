@@ -10224,7 +10224,7 @@ function behaviorTabHtml(n) {
     // An addable slot lists its instances (the ones of the one template it accepts), each row with its own remove.
     for (const e of panel.slots ?? []) if (e.addable) {
         const layer = slotLayerOf(n, e.id);
-        e.items = layer ? doc.children(layer.id).filter(c => componentById(c.sourceId)?.behavior?.templateId === e.accepts[0]).map((c, i) => ({ id: c.id, name: `${e.name} ${i + 1}`, ...itemTextOf(c) })) : [];
+        e.items = layer ? doc.children(layer.id).filter(c => componentById(c.sourceId)?.behavior?.templateId === e.addTemplate).map((c, i) => ({ id: c.id, name: `${e.name} ${i + 1}`, ...itemTextOf(c) })) : [];
     }
     const props = template ? resolveProps(template, n.behavior?.props ?? {}) : null;
     // A state left selected on another template (Hover on a Button) is Default here: the template may not declare it.
@@ -10631,7 +10631,10 @@ function onBehaviorClick(e) {
     const slotRemove = e.target.closest?.('[data-bp-action="slot-remove"]');
     if (slotRemove) {
         const owner = activeNode(), template = owner && templateOfInstance(owner), item = doc.get(slotRemove.dataset.bpNode);
-        if (item && template) {
+        // The box keeps at least its slot's min of the seed's instances: the minus stops there (the row hides it too).
+        const def = template?.slots?.find(s => s.id === slotRemove.dataset.bpSlot), layer = def && slotLayerOf(owner, def.id);
+        const count = layer ? doc.children(layer.id).filter(c => componentById(c.sourceId)?.behavior?.templateId === def.seed?.[0]?.template).length : 0;
+        if (item && template && count > (def?.min ?? 0)) {
             transaction('Remove instance', () => { doc.remove([item.id]); syncSeparators(owner, template); });
             renderInspector();
         }

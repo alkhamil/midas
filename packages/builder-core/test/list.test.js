@@ -10,10 +10,12 @@ test('List is valid and registered', () => {
     assert.ok(TEMPLATES.get('list'));
 });
 
-test('the Items box holds List Items only, and a new List starts with one', () => {
+test('the Items box holds List Items and the Divider (its preferred separator), and a new List starts with two', () => {
     const items = LIST.slots.find(s => s.id === 'items');
     assert.equal(items.holds, 'instance');
-    assert.deepEqual(items.accepts, ['antd-list-item']);
+    assert.deepEqual(items.accepts, ['antd-list-item', 'antd-divider']);
+    assert.equal(items.start, 2);
+    assert.equal(items.min, 2);
     assert.equal(items.onlyAccepts, true);
     assert.equal(items.box, 'listBox');
     assert.equal(items.seed.length, 1);
@@ -22,7 +24,7 @@ test('the Items box holds List Items only, and a new List starts with one', () =
 });
 
 test('Separator is a boolean prop that puts a Divider between the items', () => {
-    assert.deepEqual(LIST.props.separator, { source: 'literal', type: 'boolean', default: false });
+    assert.deepEqual(LIST.props.separator, { source: 'literal', type: 'boolean', default: true });
     const items = LIST.slots.find(s => s.id === 'items');
     assert.deepEqual(items.separator, { template: 'antd-divider', prop: 'separator', follow: { size: 'size' } }, 'the Dividers follow the List Size');
 });

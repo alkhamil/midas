@@ -110,7 +110,7 @@ function addableRows(e, esc) {
     const items = e.items ?? [];
     const head = row(e.name, `<div class="cmp-ctl"><span class="small-label">${items.length}</span><button class="ui-icon-button small" data-bp-action="slot-add" data-bp-slot="${esc(e.id)}" title="Add ${esc(e.name)}" aria-label="Add ${esc(e.name)}">+</button></div>`, esc, e.id);
     // Each row edits its instance's label in place (the item's own prop, its node named by data-bp-node), then removes it.
-    const rows = items.map(item => row(item.name, `${item.prop ? `<input class="cmp-input" type="text" data-bp="value" data-bp-kind="literal" data-bp-type="string" data-bp-prop="${esc(item.prop)}" data-bp-node="${esc(item.id)}" value="${esc(item.text)}" aria-label="Text of ${esc(item.name)}">` : ''}<button class="ui-icon-button small" data-bp-action="slot-remove" data-bp-slot="${esc(e.id)}" data-bp-node="${esc(item.id)}" title="Remove ${esc(item.name)}" aria-label="Remove ${esc(item.name)}">−</button>`, esc, item.id)).join('');
+    const rows = items.map(item => row(item.name, `${item.prop ? `<input class="cmp-input" type="text" data-bp="value" data-bp-kind="literal" data-bp-type="string" data-bp-prop="${esc(item.prop)}" data-bp-node="${esc(item.id)}" value="${esc(item.text)}" aria-label="Text of ${esc(item.name)}">` : ''}${items.length > (e.min ?? 0) ? `<button class="ui-icon-button small" data-bp-action="slot-remove" data-bp-slot="${esc(e.id)}" data-bp-node="${esc(item.id)}" title="Remove ${esc(item.name)}" aria-label="Remove ${esc(item.name)}">−</button>` : ''}`, esc, item.id)).join('');
     return head + rows;
 }
 

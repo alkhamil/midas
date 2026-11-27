@@ -22,13 +22,14 @@ export const LIST = {
     rootWidth: 343,
     props: {
         size: { source: 'variable', collection: 'Size', modes: SIZE_MODES, defaultMode: DEFAULT_SIZE_MODE, standard: true },
-        separator: { source: 'literal', type: 'boolean', default: false },
+        separator: { source: 'literal', type: 'boolean', default: true },
         disabled: { source: 'literal', type: 'boolean', default: false },
     },
     slots: [
-        // The List Items. Only List Items go in (accepts and onlyAccepts); a new List starts with one, and the Plus row adds the same kind.
+        // The List Items. Only List Items and the Divider (a preferred instance: the separator) go in (accepts and onlyAccepts). A new List starts with
+        // two List Items, never fewer than two, and the Plus row adds a List Item.
         {
-            id: 'items', name: 'List Item', description: 'The List Item rows of the list', holds: 'instance', accepts: ['antd-list-item'], onlyAccepts: true, min: 0, showEmpty: true,
+            id: 'items', name: 'List Item', description: 'The List Item rows of the list', holds: 'instance', accepts: ['antd-list-item', 'antd-divider'], onlyAccepts: true, min: 2, start: 2, showEmpty: true,
             layout: 'vertical', box: 'listBox', seed: [{ template: 'antd-list-item', props: { title: 'List item' }, follow: { size: 'size' } }],
             // The Divider the Separator prop puts between two items: one per pair, kept in step with the items.
             separator: { template: 'antd-divider', prop: 'separator', follow: { size: 'size' } },

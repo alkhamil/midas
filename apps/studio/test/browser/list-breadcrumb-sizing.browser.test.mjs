@@ -43,8 +43,8 @@ test('a List set to xl gives its items and Dividers xl, and a Breadcrumb icon se
     await page.locator('[data-bp-prop="size"]').first().selectOption({ label: 'xl' });
     await settle(page, 6);
     const list = await boxRows(page, listId);
-    assert.deepEqual(list.map(r => r.template), ['antd-list-item', 'antd-divider', 'antd-list-item'], 'two items and a Divider');
-    assert.deepEqual(list.map(r => r.size), ['xl', 'xl', 'xl'], 'the items and the Divider are xl');
+    assert.deepEqual(list.map(r => r.template), ['antd-list-item', 'antd-divider', 'antd-list-item', 'antd-divider', 'antd-list-item'], 'three items and their Dividers');
+    assert.deepEqual(list.map(r => r.size), ['xl', 'xl', 'xl', 'xl', 'xl'], 'the items and the Dividers are xl');
 
     // Breadcrumb: an icon separator, square at the xl line height, then Truncated over three items.
     const crumbId = await createFromPanel(page, 'antd-breadcrumb');

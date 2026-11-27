@@ -18,13 +18,15 @@ test('Radio Group is registered, valid, and takes Size from the variable collect
     assert.equal(group.props.direction.source, 'literal');
 });
 
-test('the options are Radio instances only, held in the options frame; the group starts with none', () => {
+test('the options are Radio instances only, held in the options frame; a new group starts with two Radios', () => {
     const items = group.slots.find(s => s.id === 'items');
-    assert.equal(items.holds, 'content', 'a box slot holds content; accepts and onlyAccepts restrict it to Radios');
+    assert.equal(items.holds, 'instance');
     assert.deepEqual(items.accepts, ['radio']);
     assert.equal(items.onlyAccepts, true);
     assert.equal(items.box, 'options', 'the options frame is the slot box, so the Radios sit in it');
-    assert.equal(items.seed, undefined, 'a box slot is not seeded');
+    assert.equal(items.start, 2);
+    assert.equal(items.min, 2);
+    assert.equal(items.seed[0].template, 'radio');
 });
 
 test('Direction writes the options frame layout; horizontal is the default, as antd', () => {

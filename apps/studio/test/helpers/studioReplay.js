@@ -116,6 +116,11 @@ export function studioReplay(extra = {}) {
         ...core, e: core.escapeAttr, f: core.svgNumber, doc, uid: (() => { let n = 0; return () => `u${++n}`; })(), toast: message => toasts.push(String(message)),
         BEHAVIOR_TEMPLATES: core.TEMPLATES, naturalSizeCache: new Map(), invalidate: () => {}, DESIGN_SYSTEM_PAGE: core.DESIGN_SYSTEM_PAGE, lazyPages: new Map(),
         paintOf: color => [{ type: 'solid', color, opacity: 1, visible: true }],
+        // A copy of a master placed in a box (syncSeparators' Divider). The replay keeps its place and its source, and is not marked an instance: the
+        // backstop checks an instance's managed layers, which this copy does not make (the studio's instantiate does).
+        // The Divider's Size follow (its variable modes) is not part of the replay's place and count: a no-op here.
+        setFollowedModes: () => {},
+        instantiate: (masterId, _at, parent) => doc.add({ id: `i-${Math.random().toString(36).slice(2)}`, name: 'Divider', type: 'frame', sourceId: masterId, parentId: parent.id, w: 100, h: 1, visible: true, fills: [], layoutSizingH: 'hug', layoutSizingV: 'hug' }),
         node: (type, props) => ({ id: `n-${Math.random().toString(36).slice(2)}`, name: type, type, x: 0, y: 0, w: 100, h: 100, rotation: 0, visible: true, locked: false, fills: [], ...props }),
         hugText: () => {}, layoutText: () => ({ height: 0 }), ensureGlobalIndexes: () => {},
         // The document-wide indexes midas.js keeps (components, instances, pages, children), read live from the pages.

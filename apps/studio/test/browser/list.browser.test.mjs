@@ -6,7 +6,7 @@ import { mkdirSync } from 'node:fs';
 import { ARTIFACTS, ensureDevServers, openImportedFile, launchBrowser, settle } from './harness.mjs';
 import { createFromPanel, isolatedStage } from './parity-helpers.mjs';
 
-test('List starts with one List Item, Plus adds one, Separator puts a Divider between them, and the minus removes an item with its Divider', async t => {
+test('List starts with two List Items and a Divider, Plus adds one with its Divider, Separator toggles the Dividers, and the minus removes an item with its Divider', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
     mkdirSync(ARTIFACTS, { recursive: true });
@@ -22,21 +22,24 @@ test('List starts with one List Item, Plus adds one, Separator puts a Divider be
         const box = doc.descendants(id).find(n => n.propBind?.slot === 'items');
         return doc.children(box.id).map(c => doc.get(c.sourceId)?.behavior?.templateId);
     }, id);
-    assert.deepEqual(await rows(), ['antd-list-item'], 'a new List starts with one List Item');
+    assert.deepEqual(await rows(), ['antd-list-item', 'antd-divider', 'antd-list-item'], 'a new List starts with two List Items, and the Separator (on) puts a Divider between them');
 
     await page.evaluate(id => window.midas.select([id]), id);
     await page.locator('#inspector-tab-behavior').click();
     await page.locator('[data-bp-action="slot-add"]').click();
     await settle(page, 4);
-    assert.deepEqual(await rows(), ['antd-list-item', 'antd-list-item'], 'Plus adds a List Item');
+    assert.deepEqual(await rows(), ['antd-list-item', 'antd-divider', 'antd-list-item', 'antd-divider', 'antd-list-item'], 'Plus adds a List Item and its Divider');
 
     await page.locator('[data-bp-prop="separator"]').first().click({ force: true });
     await settle(page, 6);
-    assert.deepEqual(await rows(), ['antd-list-item', 'antd-divider', 'antd-list-item'], 'Separator puts one Divider between each pair');
+    assert.deepEqual(await rows(), ['antd-list-item', 'antd-list-item', 'antd-list-item'], 'Separator off removes the Dividers');
+    await page.locator('[data-bp-prop="separator"]').first().click({ force: true });
+    await settle(page, 6);
+    assert.deepEqual(await rows(), ['antd-list-item', 'antd-divider', 'antd-list-item', 'antd-divider', 'antd-list-item'], 'Separator on puts one Divider between each pair');
 
     await page.locator('[data-bp-action="slot-add"]').click();
     await settle(page, 4);
-    assert.deepEqual(await rows(), ['antd-list-item', 'antd-divider', 'antd-list-item', 'antd-divider', 'antd-list-item'], 'the Divider follows the new item');
+    assert.deepEqual(await rows(), ['antd-list-item', 'antd-divider', 'antd-list-item', 'antd-divider', 'antd-list-item', 'antd-divider', 'antd-list-item'], 'the Divider follows the new item');
 
     // Play: the List with its Dividers, at its own place in the Design System page, for the review.
     await page.evaluate(id => window.midas.select([id]), id);
@@ -47,24 +50,26 @@ test('List starts with one List Item, Plus adds one, Separator puts a Divider be
     await listInPlay.scrollIntoViewIfNeeded();
     await settle(page, 4);
     await listInPlay.screenshot({ path: `${ARTIFACTS}/list-play-separator.png` });
-    await page.keyboard.press('Escape');
+    await page.locator('[aria-label="Close (Esc)"]').click();
     await settle(page, 4);
 
-    // The minus of the middle item removes it and its Divider: two items, one Divider between them.
+    // The minus of the second item removes it: three items, a Divider between each pair.
+    await page.evaluate(id => window.midas.select([id]), id);
+    await page.locator('#inspector-tab-behavior').click();
     await page.locator('[data-bp-action="slot-remove"]').nth(1).click();
     await settle(page, 4);
-    assert.deepEqual(await rows(), ['antd-list-item', 'antd-divider', 'antd-list-item'], 'the minus takes the item and the Divider that follows the rest');
+    assert.deepEqual(await rows(), ['antd-list-item', 'antd-divider', 'antd-list-item', 'antd-divider', 'antd-list-item'], 'the minus takes the item; the Dividers follow the rest');
 
     // The canvas does not delete an item: Delete on a List Item is refused, and the item stays.
     const itemId = await page.evaluate(id => window.midas.doc.children(window.midas.doc.descendants(id).find(n => n.propBind?.slot === 'items').id).find(c => c.sourceId)?.id, id);
     await page.evaluate(itemId => window.midas.select([itemId]), itemId);
     await page.keyboard.press('Delete');
     await settle(page, 4);
-    assert.deepEqual(await rows(), ['antd-list-item', 'antd-divider', 'antd-list-item'], 'Delete on the canvas leaves the item');
+    assert.deepEqual(await rows(), ['antd-list-item', 'antd-divider', 'antd-list-item', 'antd-divider', 'antd-list-item'], 'Delete on the canvas leaves the item');
 
     await page.evaluate(id => window.midas.select([id]), id);
     await page.locator('#inspector-tab-behavior').click();
     await page.locator('[data-bp-prop="separator"]').first().click({ force: true });
     await settle(page, 6);
-    assert.deepEqual(await rows(), ['antd-list-item', 'antd-list-item'], 'Separator off takes the Dividers away');
+    assert.deepEqual(await rows(), ['antd-list-item', 'antd-list-item', 'antd-list-item'], 'Separator off takes the Dividers away');
 });

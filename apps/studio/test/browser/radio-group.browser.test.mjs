@@ -17,12 +17,11 @@ test('Radio Group: picking one Radio clears the other on the canvas and in Play'
     await page.evaluate(id => window.midas.select([id]), groupId);
     await settle(page, 4);
 
-    // Two Radios into the options frame, from the Radio master of the Design System page.
+    // A new group starts with two Radios in the options frame (its seed); the test picks those two.
     const [first, second] = await page.evaluate(groupId => {
         const doc = window.midas.doc;
         const master = doc.data.pages.flatMap(p => p.nodes).find(n => n.component && n.behavior?.templateId === 'radio');
         const box = doc.descendants(groupId).find(n => n.propBind?.slot === 'items');
-        [0, 1].forEach(() => window.midas.instantiate(master.id, null, box));
         return doc.children(box.id).filter(c => c.sourceId === master.id).map(c => c.id);
     }, groupId);
     await settle(page, 6);

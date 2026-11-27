@@ -25,11 +25,11 @@ export const RADIO_GROUP = {
         direction: { source: 'literal', type: 'enum', options: ['horizontal', 'vertical'], labels: { horizontal: 'Horizontal', vertical: 'Vertical' }, default: 'horizontal', node: { key: 'options', field: 'layout' } },
     },
     slots: [
-        // The Radio instances the designer puts in the options frame. Only Radios are meant to go in (accepts and onlyAccepts: the Design tab and
-        // Diagnostics enforce it). A box slot starts empty: a seed is not made for a box, so the group starts with no options.
+        // The Radio instances in the options frame. Only Radios go in (accepts and onlyAccepts). A new group starts with two Radios, never fewer
+        // than two, and the Plus row adds one.
         {
-            id: 'items', name: 'Options', description: 'The Radio buttons of the group', holds: 'content', accepts: ['radio'], onlyAccepts: true, min: 0, showEmpty: true,
-            layout: 'horizontal', box: 'options',
+            id: 'items', name: 'Options', description: 'The Radio buttons of the group', holds: 'instance', accepts: ['radio'], onlyAccepts: true, min: 2, start: 2, showEmpty: true,
+            layout: 'horizontal', box: 'options', seed: [{ template: 'radio', props: { label: 'Radio' }, follow: { size: 'size' } }],
         },
     ],
     tokens: { fromSize: ['gap'] },
