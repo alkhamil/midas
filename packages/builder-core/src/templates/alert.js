@@ -54,7 +54,7 @@ export const ALERT = {
     rootLayout: 'horizontal',
     rootAlign: 'center',
     rootPrimaryAlign: 'start',
-    // 400 on the canvas; the Alert fills the width its container gives it (the `fills` prop below), so the number only holds a free-standing alert.
+    // 400 on the canvas, a raw value: the designer sets the width (Fixed, Hug or Fill) on the canvas, and the node owns it.
     rootWidth: 400,
     props: {
         type: { source: 'variable', collection: 'Type', modes: TYPES, defaultMode: 'info' },
@@ -71,9 +71,6 @@ export const ALERT = {
         action: { source: 'literal', type: 'boolean', default: false },
         closable: { source: 'literal', type: 'boolean', default: false },
         closeIcon: { source: 'literal', type: 'iconComponent', default: null, visibleIf: { prop: 'closable', is: true }, remembered: true },
-        // The alert fills the width it is given by default; off, it hugs its content. A banner always fills (the derived prop below writes the sizing).
-        fillWidth: { source: 'literal', type: 'boolean', default: true, visibleIf: { prop: 'banner', is: false } },
-        fills: { source: 'literal', type: 'boolean', default: true, derived: { when: { any: [{ prop: 'fillWidth', is: true }, { prop: 'banner', is: true }] } }, node: { key: 'root', field: 'widthSizing', values: { true: 'fill', false: 'hug' } } },
         // A banner draws no radius and no border (the marker state below), and always shows its icon.
         banner: { source: 'literal', type: 'boolean', default: false },
     },

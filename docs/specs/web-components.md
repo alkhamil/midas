@@ -190,7 +190,7 @@ Props: `label`, `icon`, `active`, `badge`, `disabled`, `level`. Events: `onClick
 Props: `title`, `breadcrumbs`, `actions` (slot), `userMenu` (slot). Events: `onMenuToggle`.
 
 ### Tabs (P1)
-Props: `items[{key,label,icon,badge,disabled}]`, `activeKey`, `variant` (underline, pill), `size`. Events: `onChange(key)`.
+Props: `items[{key,label,icon,badge,disabled}]`, `activeKey`, `variant` (underline), `size`. Events: `onChange(key)`.
 
 ### Breadcrumbs (P1)
 Props: `items[{label,href}]`, `separator`, `maxItems`. Events: `onNavigate`.

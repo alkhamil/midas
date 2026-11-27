@@ -11,7 +11,7 @@ import { modelFor, instanceFor } from './helpers/box-template.js';
 const tab = TEMPLATES.get('antd-tab'), tabs = TEMPLATES.get('antd-tabs');
 
 test('a Tab is a selectable item: an exclusive once toggle on its active prop, aria-selected, and role tab', () => {
-    assert.deepEqual(tab.toggle, { prop: 'active', once: true, exclusive: true, aria: 'selected' });
+    assert.deepEqual(tab.toggle, { prop: 'active', once: true, exclusive: true, aria: 'selected', slide: 'indicator' });
     assert.equal(tab.element.attrs.role, 'tab');
     assert.deepEqual(validateTemplateSchema(tab), []);
 });

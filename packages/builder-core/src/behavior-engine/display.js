@@ -130,7 +130,7 @@ export function dismissKeyOf(template) {
 export function toggleOf(template) {
     if (!template.toggle) return null;
     const attrs = stateAttributesOf(template);
-    return { attr: attrs.find(a => a.prop === template.toggle.prop)?.attr, clearsAttr: attrs.find(a => a.prop === template.toggle.clears)?.attr, once: template.toggle.once === true, exclusive: template.toggle.exclusive === true, aria: template.toggle.aria ?? 'checked' };
+    return { attr: attrs.find(a => a.prop === template.toggle.prop)?.attr, clearsAttr: attrs.find(a => a.prop === template.toggle.clears)?.attr, once: template.toggle.once === true, exclusive: template.toggle.exclusive === true, aria: template.toggle.aria ?? 'checked', ...(template.toggle.slide !== undefined ? { slide: template.toggle.slide } : {}) };
 }
 
 /**

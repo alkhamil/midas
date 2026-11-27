@@ -104,6 +104,22 @@ export function iconSlotTargets(template, slot) {
 }
 
 /**
+ * The colour token an icon takes: the token the template's persistent states give that colour token while they are on (a Tab's Active recolours its
+ * label, so its icon follows), else the colour token itself. Disabled is handled by the caller (its own token).
+ * @param {import('../templates/schema.js').TemplateSchema} template
+ * @param {Record<string, unknown>} props the resolved props of the instance
+ * @param {string} colour the template's icon colour token
+ */
+export function iconColourTokenOf(template, props, colour) {
+    let token = colour;
+    for (const def of Object.values(template.persistentStates ?? {})) {
+        const next = def.tokens?.[colour];
+        if (next !== undefined && props?.[def.prop] === true) token = next;
+    }
+    return token;
+}
+
+/**
  * The collections one template's icon slots need, as { prop, dimension, collection, variables, role }: for each icon def
  * whose show prop declares `requires`, the required dimensions with the icon variables in them (from the def's tokens).
  * Driven entirely by schema data; no component names.

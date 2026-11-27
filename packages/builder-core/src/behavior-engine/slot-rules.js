@@ -68,8 +68,10 @@ const restrictsByTemplate = (/** @type {any} */ prop) => !!(prop?.onlyAccepts &&
  * @returns {boolean}
  */
 export function slotAccepts(prop, candidate) {
+    // The slot's own settings decide first: Only allow preferred instances, with the instances listed. A template's list is the default that seeds them.
+    if (restrictsByPreferred(prop)) return candidate.ids.some(id => prop?.preferred?.includes(id));
     if (restrictsByTemplate(prop)) return candidate.templates.some(t => prop?.accepts?.includes(t));
-    return !restrictsByPreferred(prop) || candidate.ids.some(id => prop?.preferred?.includes(id));
+    return true;
 }
 
 /**
@@ -78,8 +80,8 @@ export function slotAccepts(prop, candidate) {
  * @returns {string}
  */
 export function slotRefusal(prop) {
-    if (restrictsByTemplate(prop)) return `one of the templates slot "${prop.name}" accepts (${prop.accepts.join(', ')})`;
-    return `one of the preferred instances of slot "${prop.name}"`;
+    if (restrictsByPreferred(prop)) return `one of the preferred instances of slot "${prop.name}"`;
+    return `one of the templates slot "${prop.name}" accepts (${prop.accepts.join(', ')})`;
 }
 
 /**

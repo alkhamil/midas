@@ -32,12 +32,15 @@ test('the text kind shows a title and three lines, the paragraph the lines only,
     assert.ok(!text.some(k => ['buttonBlock', 'inputBlock', 'imageBlock', 'nodeBlock'].includes(k)));
 });
 
-test('each block kind shows its own block only', () => {
-    for (const [type, block] of [['button', 'buttonBlock'], ['input', 'inputBlock'], ['image', 'imageBlock'], ['node', 'nodeBlock']]) {
+test('each block kind shows its own block only, and no text container', () => {
+    for (const [type, block] of [['button', 'buttonBlock'], ['input', 'inputBlock'], ['image', 'imageBlock'], ['node', 'nodeBlock'], ['avatar', 'avatar']]) {
         const layers = layersOf({ type });
-        assert.ok(layers.includes(block), `${type} shows ${block}`);
+        assert.ok(!layers.includes('content'), `${type} has no text container`);
         assert.ok(!TEXT_LAYERS.some(k => layers.includes(k)), `${type} shows no text lines`);
+        if (block !== 'avatar') assert.ok(layers.includes(block), `${type} shows ${block}`);
     }
+    assert.ok(layersOf({ type: 'text' }).includes('content'));
+    assert.ok(layersOf({ type: 'paragraph' }).includes('content'));
 });
 
 test('Shape shows only for Button, Avatar Shape only for Avatar and Text, and the glyph of Image and Node is its own', () => {
@@ -54,7 +57,7 @@ test('the avatar is shown for the Avatar kind, and beside the text when Avatar i
 });
 
 test('Active pulses the shown blocks (Play reads the loop condition); the blocks are the anatomy and the avatar', () => {
-    const looped = [...skeleton.anatomy, ...skeleton.parts].filter(p => p.loop).map(p => p.id);
-    assert.deepEqual(looped, ['title', 'row1', 'row2', 'row3', 'buttonBlock', 'inputBlock', 'imageBlock', 'nodeBlock', 'avatar']);
+    const looped = skeleton.anatomy.filter(p => p.loop).map(p => p.id);
+    assert.deepEqual(looped, ['avatar', 'title', 'row1', 'row2', 'row3', 'buttonBlock', 'inputBlock', 'imageBlock', 'nodeBlock']);
     assert.deepEqual(skeleton.anatomy.find(a => a.id === 'row1').loop.when, { prop: 'active', is: true });
 });

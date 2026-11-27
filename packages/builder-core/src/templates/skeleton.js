@@ -26,8 +26,10 @@ export const SKELETON = {
     // A non-interactive placeholder: no disabled state, so no disabled attribute, rule or guard.
     element: { tag: 'div', attrs: {}, blockClickProps: [] },
     anatomy: [
+        // The avatar: a round or square block beside the text, first in the row (it shows for the avatar kind and for text with an avatar).
+        { id: 'avatar', kind: 'frame', layout: 'none', managed: true, shownWhen: { any: [TYPE('avatar'), { all: [TYPE('text'), { prop: 'avatar', is: true }] }] }, loop: ACTIVE_PULSE },
         // The text kinds: a column of a title bar and three lines (the paragraph has the lines only).
-        { id: 'content', kind: 'frame', layout: 'vertical', primaryAlign: 'start', counterAlign: 'start', fill: true },
+        { id: 'content', kind: 'frame', layout: 'vertical', primaryAlign: 'start', counterAlign: 'start', fill: true, managed: true, shownWhen: TEXTUAL },
         { id: 'title', kind: 'frame', parent: 'content', layout: 'none', fill: true, managed: true, shownWhen: { all: [TYPE('text'), { prop: 'title', is: true }] }, loop: ACTIVE_PULSE },
         { id: 'row1', kind: 'frame', parent: 'content', layout: 'none', fill: true, managed: true, shownWhen: TEXTUAL, loop: ACTIVE_PULSE },
         { id: 'row2', kind: 'frame', parent: 'content', layout: 'none', fill: true, managed: true, shownWhen: TEXTUAL, loop: ACTIVE_PULSE },
@@ -49,6 +51,8 @@ export const SKELETON = {
     rootLayout: 'horizontal',
     rootAlign: 'start',
     rootPrimaryAlign: 'start',
+    // A fixed width the designer sets by hand (a raw value on the canvas): the blocks fill it.
+    rootWidth: 200,
     props: {
         type: { source: 'literal', type: 'enum', default: 'text', options: ['text', 'paragraph', 'avatar', 'button', 'input', 'image', 'node'], labels: { text: 'Text', paragraph: 'Paragraph', avatar: 'Avatar', button: 'Button', input: 'Input', image: 'Image', node: 'Node' } },
         size: { source: 'variable', collection: 'Size', modes: SIZE_MODES, defaultMode: DEFAULT_SIZE_MODE, standard: true },
@@ -65,12 +69,12 @@ export const SKELETON = {
         active: { source: 'literal', type: 'boolean', default: true, requires: ['size'] },
     },
     tokens: {
-        fromSize: ['fill', 'iconColour', 'avatarSize', 'titleHeight', 'rowHeight', 'gap', 'radiusSmall', 'blockWidth', 'buttonHeight', 'buttonWidth', 'inputWidth', 'boxSize', 'iconSize'],
+        fromSize: ['fill', 'iconColour', 'avatarSize', 'titleHeight', 'rowHeight', 'gap', 'radiusSmall', 'buttonHeight', 'buttonWidth', 'inputWidth', 'boxSize', 'iconSize'],
         fromShape: ['shapeRadius'],
         fromAvatarShape: ['avatarRadius'],
     },
     tokenKinds: {
-        fill: 'color', iconColour: 'color', avatarSize: 'length', titleHeight: 'length', rowHeight: 'length', gap: 'length', radiusSmall: 'length', blockWidth: 'length',
+        fill: 'color', iconColour: 'color', avatarSize: 'length', titleHeight: 'length', rowHeight: 'length', gap: 'length', radiusSmall: 'length',
         buttonHeight: 'length', buttonWidth: 'length', inputWidth: 'length', boxSize: 'length', iconSize: 'length', shapeRadius: 'length', avatarRadius: 'length',
     },
     tokenRoles: {
@@ -83,8 +87,6 @@ export const SKELETON = {
         rowHeight: roleLadder(['space-12', 'space-12', 'space-16', 'space-16', 'space-20']),
         gap: roleLadder(['gap-xs', 'gap-sm', 'gap', 'gap-lg', 'gap-xl']),
         radiusSmall: 'radius-sm',
-        // The root's width: its blocks fill it, and a hugging root would leave a block with no content no width (antd's block is 100% here, a fixed 200).
-        blockWidth: 'space-200',
         // antd's small, default and large buttons are 24, 32 and 40 high, 56 to 72 wide; an input is 200 wide (antd's default).
         buttonHeight: roleLadder(['space-24', 'space-24', 'space-32', 'space-40', 'space-40']),
         buttonWidth: roleLadder(['space-56', 'space-56', 'space-64', 'space-72', 'space-72']),
@@ -100,13 +102,9 @@ export const SKELETON = {
     persistentStates: {},
     previewStates: {},
     statePseudo: {},
-    parts: [
-        // The avatar: a round or square block beside the text (its own part, at the root). Shown for the avatar kind and for the text kind with an avatar.
-        { id: 'avatar', kind: 'frame', shownWhen: { any: [TYPE('avatar'), { all: [TYPE('text'), { prop: 'avatar', is: true }] }] }, loop: ACTIVE_PULSE },
-    ],
+    parts: [],
     playOnly: [],
     display: {
-        root: { width: 'blockWidth' },
         content: { gap: 'gap' },
         title: { fill: 'fill', radius: 'radiusSmall', height: 'titleHeight' },
         row1: { fill: 'fill', radius: 'radiusSmall', height: 'rowHeight' },

@@ -61,7 +61,6 @@ test('a Tabs starts with its first tab selected, and a click in Play selects ano
     await page.locator('.play-overlay [role="tablist"] [role="tab"]').nth(1).dispatchEvent('click');
     await settle(page, 4);
     assert.deepEqual(await playState(), [{ selected: 'false', active: false }, { selected: 'true', active: true }, { selected: 'false', active: false }], 'a click selects the second tab and deselects the first');
-    console.log('PROBE', await page.evaluate(() => { const r = e => { const b = e.getBoundingClientRect(); return [Math.round(b.x), Math.round(b.y), Math.round(b.width), Math.round(b.height)]; }; const tl = document.querySelector('.play-overlay [role="tablist"]'); let a = tl, chain = []; while (a && a !== document.body) { chain.push(`${a.className || a.tagName}:${r(a).join(',')}:${getComputedStyle(a).overflow}`); a = a.parentElement; } return chain.slice(0, 12); }));
     await page.locator('.play-overlay [role="tablist"]').first().screenshot({ path: `${ARTIFACTS}/tabs-play.png` });
     assert.deepEqual(errors, [], 'no page errors');
 });

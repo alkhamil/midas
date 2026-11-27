@@ -58,14 +58,20 @@ export function applyToggle(root) {
 export function flipToggle(root) {
     // Element.children is an HTMLCollection, which has no map: copy it into an array first.
     const kids = Array.from(root.children ?? []);
+    // A slide (a Tabs' ink bar): the element that moved from the sibling the click turns off, read before the flip.
+    const slideClass = root.getAttribute('data-toggle-slide'), toggleAttr = root.getAttribute('data-toggle');
+    const leaving = slideClass && root.parentElement ? Array.from(root.parentElement.children ?? []).find(s => s !== root && s.hasAttribute?.(toggleAttr)) : undefined;
     // Play scales its stage (a fit mode is a CSS scale), so a client rect is in screen px while the animation is in the element's own px: divide by the scale,
     // read as the root's client width over its layout width.
     const rootRect = root.getBoundingClientRect?.();
     const k = rootRect?.width > 0 && root.offsetWidth > 0 ? rootRect.width / root.offsetWidth : 1;
     const rectOf = el => { const r = el.getBoundingClientRect?.(); return { left: (r?.left ?? 0) / k, width: (r?.width ?? 0) / k }; };
     const before = new Map(kids.map(el => [el, rectOf(el)]));
+    const leavingEl = leaving?.querySelector?.(`.${slideClass}`);
+    const slideFrom = leavingEl ? rectOf(leavingEl) : undefined;
     if (!applyToggle(root)) return false;
     if (root.ownerDocument?.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return true;
+    glideSlide(root, slideClass, slideFrom, rectOf);
     const anchoredEnd = root.style.justifyContent === 'flex-end';
     for (const [el, from] of before) {
         // The end layout, measured with the child's own transition suspended so a width still easing back from the press does not count.
@@ -83,4 +89,23 @@ export function flipToggle(root) {
         el.animate([first, last], { duration: 200, easing: 'ease-in-out' });
     }
     return true;
+}
+
+/**
+ * The slide of a Tabs' ink bar: the bar of the tab the click turned on glides from the place and width of the bar it left (`from`, in the element's own px),
+ * so one bar seems to move between the tabs. Nothing moves when the bar was not found or did not move.
+ */
+function glideSlide(root, slideClass, from, rectOf) {
+    if (!slideClass || !from || !root.hasAttribute(root.getAttribute('data-toggle') ?? '')) return;
+    const el = root.querySelector?.(`.${slideClass}`);
+    if (!el || typeof el.animate !== 'function') return;
+    const held = el.style?.transition;
+    if (el.style) el.style.transition = 'none';
+    const to = rectOf(el);
+    if (el.style) el.style.transition = held ?? '';
+    const dx = from.left - to.left, dw = to.width - from.width;
+    if (dx === 0 && dw === 0) return;
+    const first = dw !== 0 ? { transform: `translateX(${dx}px)`, width: `${from.width}px` } : { transform: `translateX(${dx}px)` };
+    const last = dw !== 0 ? { transform: 'translateX(0px)', width: `${to.width}px` } : { transform: 'translateX(0px)' };
+    el.animate([first, last], { duration: 200, easing: 'ease-in-out' });
 }

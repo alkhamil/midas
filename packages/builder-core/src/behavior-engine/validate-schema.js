@@ -458,7 +458,7 @@ const RESERVED_WORDS = new Set(['await', 'break', 'case', 'catch', 'class', 'con
 /** The props every generated component has besides its own: `children` is the single slot's, the rest pass through to the root. */
 const GENERATED_PROPS = ['children', 'className', 'style', 'ref', 'key'];
 /** The fields of a content slot definition. They are the names and settings of Figma's slot property, so the generator can write them into it. */
-const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'onlyAccepts', 'showEmpty', 'required', 'fillCounter', 'layout', 'fill', 'shownWhen', 'parent', 'seed', 'holds', 'box', 'separator', 'start', 'between', 'overflow', 'current', 'selected'];
+const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'onlyAccepts', 'showEmpty', 'required', 'fillCounter', 'layout', 'fill', 'shownWhen', 'parent', 'seed', 'holds', 'box', 'separator', 'start', 'between', 'overflow', 'current', 'selected', 'propagate'];
 
 /**
  * Problems in the content slots a template declares (`slots`): a frame of the component that instances fill with their own layers. A slot's id
@@ -468,6 +468,24 @@ const SLOT_FIELDS = ['id', 'name', 'description', 'min', 'max', 'accepts', 'only
  * @param {Set<string>} [templateIds] the templates a slot may accept, when they are known
  * @returns {string[]}
  */
+/**
+ * The problems of a slot's `propagate` map (owner prop -> item prop): each key is a prop of this template and each value a prop of the item template,
+ * the two with the same type. A value is checked only when the item template's schema is known (`schemas`).
+ */
+function propagateProblems(slot, props, schemas, tag) {
+    const map = slot.propagate;
+    if (map === undefined) return [];
+    if (!isPlainObject(map)) return [`${tag} propagate must be an object`];
+    const child = schemas?.get(slot.seed?.[0]?.template ?? slot.accepts?.[0]);
+    const out = [];
+    for (const [ownerProp, itemProp] of Object.entries(map)) {
+        if (!props?.[ownerProp]) { out.push(`${tag} propagates "${ownerProp}", which is not a prop of this template`); continue; }
+        if (child && !child.props?.[itemProp]) out.push(`${tag} propagate names "${itemProp}", which is not a prop of the item template`);
+        else if (child && child.props[itemProp].type !== props[ownerProp].type) out.push(`${tag} propagate pairs "${ownerProp}" with "${itemProp}", which have different types`);
+    }
+    return out;
+}
+
 /**
  * The problems of a separator's `follow` map: each key is a variable prop of the separator template and each value a variable prop of this template, and
  * the two name the same Size modes (matched by name). A key is checked only when the separator's schema is known (`schemas`).
@@ -551,6 +569,7 @@ function slotProblems(schema, templateIds, schemas) {
             else if (!(props[sep.prop]?.source === 'literal' && props[sep.prop]?.type === 'boolean')) out.push(`${tag} separator names "${sep.prop}", which is not a boolean prop`);
             else if (slot.box === undefined) out.push(`${tag} separator needs a box: the Dividers sit between its instances`);
             out.push(...separatorFollowProblems(slot, props, schemas, tag));
+            out.push(...propagateProblems(slot, props, schemas, tag));
         }
         // The items a box starts with: a whole number of seeds (a seed is one item, so the box makes `start` of them).
         if (slot.start !== undefined && !(Number.isInteger(slot.start) && slot.start >= 1)) out.push(`${tag} start must be a whole number, 1 or more`);
@@ -806,6 +825,8 @@ function toggleProblems(schema) {
     const props = isPlainObject(schema.props) ? schema.props : {};
     const attrs = stateAttributesOf(schema);
     const out = [];
+    // A slide names the anatomy frame whose bar glides between the items (a Tabs' ink bar).
+    if (schema.toggle.slide !== undefined && !(typeof schema.toggle.slide === 'string' && schema.anatomy.some(a => a.id === schema.toggle.slide && a.kind === 'frame'))) out.push(`toggle slide "${schema.toggle.slide}" is not a frame of the anatomy`);
     for (const key of ['prop', 'clears']) {
         const name = schema.toggle[key];
         if (key === 'clears' && name === undefined) continue;

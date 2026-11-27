@@ -19,7 +19,7 @@ const ROLES = { alertSuccess: 'icon-success', alertInfo: 'icon-info', alertWarni
 test('Alert is registered with the props it declares, the Type modes and a Button action slot', () => {
     assert.ok(alert, 'Alert is in the registry');
     assert.equal(alert.primarySlot, 'label');
-    assert.deepEqual(Object.keys(alert.props).sort(), ['action', 'banner', 'closable', 'closeIcon', 'description', 'descriptionText', 'fillWidth', 'fills', 'icon', 'iconShown', 'label', 'showIcon', 'size', 'type', 'variant']);
+    assert.deepEqual(Object.keys(alert.props).sort(), ['action', 'banner', 'closable', 'closeIcon', 'description', 'descriptionText', 'icon', 'iconShown', 'label', 'showIcon', 'size', 'type', 'variant']);
     assert.deepEqual(alert.props.type.modes, ['success', 'info', 'warning', 'error']);
     assert.equal(alert.props.type.defaultMode, 'info');
     assert.equal(alert.props.showIcon.default, true);
@@ -83,14 +83,12 @@ test('the master holds no Action layer at the sample props (action off)', () => 
     assert.equal(layers({ action: false }).includes('Action'), false);
 });
 
-test('banner fills the width of the root and draws no radius and no border; showIcon is on by default with it', async () => {
+test('the width is the node owns it (no prop writes its sizing); a banner draws no radius and no border; showIcon is on by default with it', async () => {
     const { literalFields } = await import('../src/behavior-engine/display.js');
     const { resolveProps } = await import('../src/behavior-engine/instance-props.js');
     const sizing = props => literalFields(alert, resolveProps(alert, props)).find(w => w.key === 'root' && w.field === 'widthSizing')?.value;
-    assert.equal(sizing({ banner: true }), 'fill');
-    assert.equal(sizing({ banner: false }), 'fill', 'an Alert fills its container by default');
-    assert.equal(sizing({ banner: false, fillWidth: false }), 'hug');
-    assert.equal(sizing({ banner: true, fillWidth: false }), 'fill', 'a banner always fills');
+    assert.equal(sizing({ banner: true }), undefined, 'no prop writes the width sizing');
+    assert.equal(sizing({ banner: false }), undefined, 'no prop writes the width sizing');
     assert.equal(resolveProps(alert, { banner: true }).showIcon, true);
     assert.equal(alert.persistentStates.banner.marker, true);
     assert.deepEqual(alert.persistentStates.banner.tokens, { radius: 'radiusNone', borderWidth: 'borderWidthNone' });

@@ -52,11 +52,11 @@ Referensi struktur: `D:\antd-ref\components\<nama>` (read-only).
 | 4 | Spin, Empty, Search Field | ✅ Kode, test unit, dan browser lulus (2026-11-19). |
 | 5a | Statistic (Tier 0) | ✅ Kode, template, unit test, conformance. Browser lulus (`spin-empty-search.browser.test.mjs`, 2026-11-24). Size xs sampai xl. |
 | 5c | Skeleton (`antd-skeleton`) | 🟡 Satu komponen; Type memilih Text, Paragraph, Avatar, Button, Input, Image, Node. Shape, Avatar Shape, Block, glyph hanya muncul untuk tipe yang punya. Active aktif default. Builder-core 2936 lulus. Browser parity belum; avatar belum punya jarak ke teks. |
-| 5d | Tabs (`antd-tabs` + `antd-tab`, P1) | 🟡 Kode, template, unit test (2026-11-26). Klik tab di Play memilih satu dan mematikan yang lain (toggle `exclusive`). Tambah tab lewat Plus (seperti Breadcrumb), browser lulus (`tabs.browser.test.mjs`). Belum: isi panel per tab (menunggu data Prototype), posisi tab, tutup tab, ink bar animasi. |
+| 5d | Tabs (`antd-tabs` + `antd-tab`, P1) | 🟡 Kode, template, unit test (2026-11-26). Klik tab di Play memilih satu dan mematikan yang lain (toggle `exclusive`). Tambah tab lewat Plus (seperti Breadcrumb), seleksi browser lulus (`tabs.browser.test.mjs`), parity canvas dan Play lulus (`tabs-parity.browser.test.mjs`). Belum: isi panel per tab (menunggu data Prototype), posisi tab, tab kartu, tab bisa diseret. Tutup tab sudah ada (Play, lewat Closable). |
 | 5b | Progress (Tier 0) | ⛔ Diblokir: butuh lebar dalam persen dari parent (bar), belum ada di model sizing node. Perlu keputusan. |
 | A | Pagination, Breadcrumb, Table Toolbar | 🟡 Kode, template, unit test, conformance (2026-11-23). Browser parity lulus (`navigation-toolbar.browser.test.mjs`). Pagination menampilkan halaman sebagai teks (tanpa daftar tombol halaman). Breadcrumb tiga item tetap dengan separator statis "/". Table Toolbar: Filters menunggu Select. |
 | A | Radio Group | 🟡 Satu nilai dari Radio eksklusif di kotak opsi (2026-11-26, keputusan user). Klik di Play dan pilihan di canvas mengosongkan yang lain. Browser lulus (`radio-group.browser.test.mjs`). Belum: prop `options` dan `value` berbasis data, tombol Plus, export state pilihan. |
-| 5+ | Select, Dialog, Tabs, Table, dll. | ❌ Belum ada template. Daftar lengkap dan urutan ada di `docs/specs/web-components.md` (P1 dulu). |
+| 5+ | Select, Table, dll. | ❌ Belum ada template. Dialog ada (`antd-dialog`, parity lulus 2026-11-26). Daftar lengkap dan urutan ada di `docs/specs/web-components.md` (P1 dulu). |
 
 Per component, selesai kalau:
 - [ ] Schema JSON (collections, persistent props, slots, features)
@@ -86,7 +86,7 @@ Prototype (`docs/prototype-spec.md`):
 - [ ] Interaksi template Modal: menunggu template Dialog (Fase 1, batch C). Input dan Alert: Play dicek di browser (`alert.browser.test.mjs`, `input-live.browser.test.mjs`).
 
 Fidelity Play:
-- [ ] Grid layout di Play. Belum dikerjakan: grid bukan tipe layout di model dokumen (hanya horizontal, vertical, dan none). Butuh keputusan desain dan perubahan canvas, engine, dan Play, bukan perbaikan Play saja.
+- [ ] Grid layout di Play — **ditunda (2026-11-26)**. Desain tetap CSS grid 12 kolom (keputusan 2026-11-25), tapi belum dibangun: grid bukan tipe layout di model dokumen (hanya horizontal, vertical, dan none), dan butuh perubahan canvas, engine, Play, dan codegen. Dikerjakan hanya kalau ada kasus pakai yang butuh reflow kolom (form, dashboard) yang tidak tercapai dengan nested auto layout.
 - [x] Mask di auto layout: mask rect dan ellipse menjadi clip-path pada layer di atasnya, dengan posisi tersimpan (`prototype-fidelity.test.js`). Mask bentuk lain atau pada layer yang dirotasi masih dilaporkan, tidak digambar.
 - [x] Motion (Play dan codegen saja, bukan canvas): sudah untuk Button, Input, Checkbox, Radio, Switch, Divider
 - [x] Audit stroke overlay: `stroke-area.browser.test.mjs` membandingkan canvas dan Play untuk setiap alignment, bentuk, paint, dash, dan per-side.

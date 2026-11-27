@@ -182,3 +182,24 @@ test('a scaled stage: the glide is in the handle\'s own px, not the screen\'s', 
     assert.equal(flipToggle(root), true);
     assert.deepEqual(calls[0], [{ transform: 'translateX(-18px)', width: '22px' }, { transform: 'translateX(0px)', width: '18px' }]);
 });
+
+test('a Tabs ink bar glides from the bar it left to the one the click turned on, in its own px', () => {
+    const calls = [];
+    const bar = (left, width, log) => ({ style: {}, getBoundingClientRect: () => ({ left, width }), animate: (frames, opts) => log.push([frames, opts]) });
+    const oldBar = bar(100, 40, []);
+    const newBar = bar(200, 60, calls);
+    const sibling = { ...fake({ 'data-active': '' }), querySelector: sel => (sel === '.antd-tab-indicator' ? oldBar : null) };
+    const root = { ...fake({ 'data-toggle': 'data-active', 'data-toggle-slide': 'antd-tab-indicator', 'data-toggle-once': '', 'data-toggle-exclusive': '', 'data-toggle-aria': 'selected', 'aria-selected': 'false' }),
+        children: [], parentElement: { children: [sibling, null] }, querySelector: sel => (sel === '.antd-tab-indicator' ? newBar : null) };
+    root.parentElement.children[1] = root;
+    assert.equal(flipToggle(root), true);
+    assert.ok(root.has('data-active'), 'the click turns this tab on');
+    assert.deepEqual(calls, [[[{ transform: 'translateX(-100px)', width: '40px' }, { transform: 'translateX(0px)', width: '60px' }], { duration: 200, easing: 'ease-in-out' }]]);
+});
+
+test('a slide with no bar to leave, or no move, animates nothing', () => {
+    const still = { style: {}, getBoundingClientRect: () => ({ left: 10, width: 40 }), animate: () => { throw new Error('no animation expected'); } };
+    const root = { ...fake({ 'data-toggle': 'data-active', 'data-toggle-slide': 'antd-tab-indicator', 'data-toggle-once': '' }), children: [], parentElement: { children: [], }, querySelector: () => still };
+    root.parentElement.children.push(root);
+    assert.equal(flipToggle(root), true);
+});

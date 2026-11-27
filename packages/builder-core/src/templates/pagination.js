@@ -91,8 +91,6 @@ export const PAGINATION = {
         position: { source: 'literal', type: 'enum', options: ['start', 'mid', 'end'], labels: { start: 'Start', mid: 'Mid', end: 'End' }, control: 'segmented', default: 'start' },
         // Show rows per page: the Selection item is a layer while on, and none while off.
         showRowsPerPage: { source: 'literal', type: 'boolean', default: true },
-        // Derived (never in the panel): the row fills its width while the Selection item is on, and hugs its content while it is off.
-        fillWidth: { source: 'literal', type: 'boolean', default: true, derived: { when: { prop: 'showRowsPerPage', is: true } }, node: { key: 'root', field: 'widthSizing', values: { true: 'fill', false: 'hug' } } },
         rowsText: { source: 'literal', type: 'string', default: 'Showing 1-10 of 100 results', node: { key: 'rowsText', field: 'text' }, visibleIf: { prop: 'showRowsPerPage', is: true }, remembered: true },
         // The icons: the role glyph until the designer picks another (as Icon Button's icon does).
         selectIcon: { source: 'literal', type: 'iconComponent', default: null },

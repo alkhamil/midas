@@ -99,7 +99,7 @@ const FUNCTIONS = [
     'textSlotLayersOf', 'applyIconSlotBindings', 'setIconVars', 'iconVariableId', 'iconOfSlot', 'setSlotIcon', 'placeIconInSlot', 'defaultIconId', 'roleIconIds', 'setInstanceValueTo', 'instanceModeNamesOf', 'applyTypeGlyph', 'onPage', 'componentById',
     'instancesOf', 'pageOfNode', 'varStore', 'varColl', 'isAutoLayout', 'repairBoundStroke', 'rootSpec', 'designSystemSummary', 'remeasureText',
     // What a commit runs after an edit: the component sync (changed({ commit: true }) -> syncComponents).
-    'rolledBackForBehavior', 'syncComponents', 'detachOrphans', 'syncInstanceStructure', 'labelIdsOfComponents', 'ownedVarsOf', 'ownedFieldsOf', 'ownedTemplateOf', 'propControlled', 'iconLayerOf',
+    'rolledBackForBehavior', 'syncComponents', 'detachOrphans', 'syncInstanceStructure', 'syncPropagated', 'cpropOf', 'seedSlotPreferred', 'labelIdsOfComponents', 'ownedVarsOf', 'ownedFieldsOf', 'ownedTemplateOf', 'propControlled', 'iconLayerOf',
     'pageTree', 'instanceTree', 'constrainInstanceLayers', 'nodeMode', 'varValue', 'varItem', 'cpropById',
     'seedSlot', 'seedBoxes', 'syncSeparators', 'syncBetween', 'syncSelected', 'boxLayerKeyOf', 'makeSeparator', 'ellipsisLayer', 'applyManagedTextBindings', 'managedTextLayersOf', 'templateMasterOf', 'templateOfInstance', 'slotLayerOf', 'writeBound', 'pictureTarget', 'fillsOfPicker', 'chooseFillImage', 'noteNaturalSize', 'recordNaturalSizes',
     'bindType', 'exportSVG', 'needsRasterFill', 'isRichGradient', 'getEffects',
