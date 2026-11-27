@@ -33,6 +33,14 @@ test('turning an exclusive item on turns the others off and sets their aria-sele
     assert.equal(c.hasAttribute('data-active'), false);
 });
 
+test('an exclusive item deselects only the siblings of its own master (as the canvas does)', () => {
+    const tab = (group, on) => el({ 'data-toggle': 'data-active', 'data-toggle-once': '', 'data-toggle-exclusive': '', 'data-toggle-group': group, 'data-toggle-aria': 'selected', ...(on ? { 'data-active': '' } : {}) });
+    const [a, b, c] = box(tab('tabs-master', true), tab('tabs-master', false), tab('other-master', true));
+    assert.equal(applyToggle(b), true);
+    assert.equal(a.hasAttribute('data-active'), false, 'the same master is deselected');
+    assert.equal(c.hasAttribute('data-active'), true, 'an item of another master keeps its selection');
+});
+
 test('a non-exclusive toggle leaves its siblings alone', () => {
     const plain = on => el({ 'data-toggle': 'data-checked', 'data-toggle-once': '', ...(on ? { 'data-checked': '' } : {}) });
     const [a, b] = box(plain(true), plain(false));

@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { ARTIFACTS, ensureDevServers, openImportedFile, shotNode } from './harness.mjs';
-import { PAD, createFromPanel, isolatedStage, playTree } from './parity-helpers.mjs';
+import { PAD, isolatedStage, playTree } from './parity-helpers.mjs';
+import { settle } from './harness.mjs';
 
 /** The pixel at the centre of a screenshot, as [r, g, b]. */
 async function centreOf(browser, file) {
@@ -23,6 +24,33 @@ async function centreOf(browser, file) {
 
 const isRed = ([r, g, b]) => r > 200 && g < 60 && b < 60;
 
+/**
+ * The Avatar alone, with no Generate Design System: a frame the Avatar template builds and makes a component, then Auto Fix on that one master.
+ * Auto Fix adds the master's missing layers first (no confirm), then makes its variables (a confirm, then a result). Returns the instance's id.
+ */
+async function avatarAlone(page) {
+    const master = await page.evaluate(() => { const n = window.midas.createAtCenter('frame', { name: 'Avatar', w: 40, h: 40 }); window.midas.select([n.id]); return n.id; });
+    await page.locator('#inspector-tab-behavior').click();
+    await page.locator('[data-bp="frame-template"]').selectOption('antd-avatar');
+    await page.keyboard.press('Control+Alt+k');
+    await settle(page, 4);
+    for (let run = 0; run < 3; run++) {
+        await page.evaluate(id => window.midas.select([id]), master);
+        await page.locator('#inspector-tab-behavior').click();
+        // Auto Fix is shown only while something is fixable: once nothing is left, the loop ends.
+        if (!(await page.locator('[data-bp-action="auto-fix"]').count())) break;
+        await page.locator('[data-bp-action="auto-fix"]').click();
+        await settle(page, 4);
+        for (let step = 0; step < 2; step++) {
+            const dialog = page.locator('.mc-btn.primary');
+            if (await dialog.count()) { await dialog.first().click(); await settle(page, 4); }
+        }
+    }
+    await page.evaluate(id => window.midas.instantiate(id), master);
+    await settle(page, 4);
+    return page.evaluate(id => window.midas.doc.data.pages.flatMap(p => p.nodes).find(n => n.isInstance && n.sourceId === id)?.id, master);
+}
+
 test('Avatar picture: the canvas and Play draw the chosen image in the box', async t => {
     const stop = await ensureDevServers();
     t.after(stop);
@@ -30,7 +58,7 @@ test('Avatar picture: the canvas and Play draw the chosen image in the box', asy
     const browser = await chromium.launch({ channel: 'chrome' });
     t.after(() => browser.close());
     const { page, errors } = await openImportedFile(browser, isolatedStage({ name: 'avatar.midas' }), { dpr: 1 });
-    const id = await createFromPanel(page, 'antd-avatar');
+    const id = await avatarAlone(page);
     await page.locator('#inspector-tab-behavior').click();
     // A red square, made in the page: the picture the user would upload.
     const png = await page.evaluate(() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#ff0000'; g.fillRect(0, 0, 64, 64); return c.toDataURL('image/png').split(',')[1]; });

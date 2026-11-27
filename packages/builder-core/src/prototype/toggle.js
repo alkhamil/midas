@@ -1,5 +1,6 @@
 // The step a click takes on a toggle control (pure). The state is what the root's attributes say now; the options are the template's `toggle` (see toggleOf).
 // Play applies the result to the root's attributes; nothing here touches a DOM or a document.
+import { exclusiveRivals } from '../behavior-engine/selection.js';
 
 /**
  * @param {{ checked: boolean, indeterminate: boolean }} state the state before the click
@@ -29,10 +30,11 @@ export function applyToggle(root) {
     root.setAttribute(aria, next.indeterminate ? 'mixed' : String(next.checked));
     // An exclusive toggle (a tab in its box) turns the state off on its siblings in the same box when it turns on.
     if (next.checked && root.hasAttribute('data-toggle-exclusive')) {
-        for (const sib of root.parentElement?.children ?? []) {
-            if (sib === root || !sib.hasAttribute(attr)) continue;
-            sib.removeAttribute(attr);
-            sib.setAttribute(aria, 'false');
+        // The same rule as the canvas (selection.js): only the items of the same master (data-toggle-group) select among each other.
+        const items = Array.from(root.parentElement?.children ?? [], node => ({ node, group: node.getAttribute('data-toggle-group'), on: node.hasAttribute(attr) }));
+        for (const { node } of exclusiveRivals({ node: root, group: root.getAttribute('data-toggle-group') }, items)) {
+            node.removeAttribute(attr);
+            node.setAttribute(aria, 'false');
         }
     }
     const align = `${attr}-align`;

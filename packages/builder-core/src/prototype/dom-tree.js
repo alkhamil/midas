@@ -14,6 +14,7 @@ import { cssVarOf } from '../behavior-engine/tokens.js';
 import { emptySlotFloor, slotHolderLayout } from '../behavior-engine/content-slots.js';
 import { glyphFillRuleAttr, glyphPathD } from '../behavior-engine/glyphs.js';
 import { resolveMode } from '../behavior-engine/modes.js';
+import { isBoxSlot } from '../behavior-engine/selection.js';
 import { resolveProps } from '../behavior-engine/instance-props.js';
 import { previewOf } from '../behavior-engine/preview.js';
 import { overrideStyleOf } from './node-overrides.js';
@@ -330,7 +331,7 @@ function renderTemplate(n, template, parent, scope) {
     for (const { attr, prop } of stateAttributesOf(template)) if (props[prop] === true) attrs[attr] = true;
     // A toggle control: the root says what a click changes (Play needs no template for it) and its aria-checked.
     const toggle = toggleOf(template);
-    if (toggle) Object.assign(attrs, { 'data-toggle': toggle.attr, ...(toggle.slide ? { 'data-toggle-slide': `${template.id}-${toggle.slide}` } : {}), ...(toggle.clearsAttr ? { 'data-toggle-clears': toggle.clearsAttr } : {}), ...(toggle.once ? { 'data-toggle-once': true } : {}), ...(toggle.exclusive && scope.byId.get(n.parentId)?.propBind?.slot !== undefined ? { 'data-toggle-exclusive': true } : {}), 'data-toggle-aria': toggle.aria, [`aria-${toggle.aria}`]: ariaCheckedOf(template, props) });
+    if (toggle) Object.assign(attrs, { 'data-toggle': toggle.attr, ...(toggle.slide ? { 'data-toggle-slide': `${template.id}-${toggle.slide}` } : {}), ...(toggle.clearsAttr ? { 'data-toggle-clears': toggle.clearsAttr } : {}), ...(toggle.once ? { 'data-toggle-once': true } : {}), ...(toggle.exclusive && isBoxSlot(scope.byId.get(n.parentId)) ? { 'data-toggle-exclusive': true, 'data-toggle-group': n.sourceId } : {}),'data-toggle-aria': toggle.aria, [`aria-${toggle.aria}`]: ariaCheckedOf(template, props) });
     // A template with pressable glyphs marks its root, so a click finds the control it acts on (see press.js).
     if (template.press?.length || (template.slots ?? []).some(s => s.overflow)) attrs['data-press-root'] = '';
     // A dismiss key the prop turns on: Play dismisses this root on that key (see dismissByKey).

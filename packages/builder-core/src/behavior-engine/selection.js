@@ -1,18 +1,26 @@
 // Selection among the items of a box (a Tabs' tabs). A template's exclusive toggle prop (`toggle.exclusive`) selects one item: turning it on turns
-// the prop off on the siblings that hold it on. Pure: the studio writes the result.
+// the prop off on the rivals in the same group (the same master), within one box. Pure: the caller maps its own nodes or elements to items.
+
+/** Whether a box slot holds the parent's children: only its items select among each other; a loose instance stands alone. */
+export function isBoxSlot(parent) {
+    return parent?.propBind?.slot !== undefined;
+}
+
+/** Whether a prop write is the template's exclusive toggle turned on. */
+export function turnsExclusiveOn(template, prop, value) {
+    return value === true && template?.toggle?.exclusive === true && template.toggle.prop === prop;
+}
 
 /**
- * The sibling items to turn their selection prop off, when `instance` is set to `value`: only for the template's exclusive toggle prop, turned on.
- * @param {any} template
- * @param {string} prop the prop being written
- * @param {unknown} value what it is set to
- * @param {{ id: string, behavior?: { props?: Record<string, unknown> } }[]} siblings the items of the same box
- * @param {{ id: string }} instance the item being written
- * @returns {typeof siblings} the siblings (not the instance) that are selected now
+ * The rivals of `self` in a box: the items of its group that are on. Each item is `{ node, group, on }`; `self` is `{ node, group }`, and the
+ * rivals are compared by `node`, so `self` may be a fresh object.
+ * @template T
+ * @param {{ node: unknown, group: unknown }} self
+ * @param {{ node: T, group: unknown, on: boolean }[]} items the items of the same box
+ * @returns {{ node: T, group: unknown, on: boolean }[]}
  */
-export function siblingsToDeselect(template, prop, value, siblings, instance) {
-    if (value !== true || template?.toggle?.exclusive !== true || template.toggle.prop !== prop) return [];
-    return siblings.filter(s => s.id !== instance.id && s.behavior?.props?.[prop] === true);
+export function exclusiveRivals(self, items) {
+    return items.filter(i => i.node !== self.node && i.group === self.group && i.on);
 }
 
 /**

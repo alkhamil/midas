@@ -196,3 +196,22 @@ export function iconSlotBindings({ fg, fgDisabled, size, disabled, names, layers
         missing,
     };
 }
+
+/**
+ * How a part that holds the icon tokens itself (a spinner's arc) takes its colour: a fill arc (an ellipse with no stroke width) by its first fill,
+ * any other part by its stroke.
+ * @param {{ type: string, strokeWidth?: number }} layer
+ * @returns {{ fillIndexes: number[], stroke: boolean }}
+ */
+export function partColourTargets(layer) {
+    const filled = layer.type === 'ellipse' && !(layer.strokeWidth > 0);
+    return { fillIndexes: filled ? [0] : [], stroke: !filled };
+}
+
+/**
+ * The sizing an icon instance needs to fill its slot on both axes, or null when it already does.
+ * @param {{ layoutSizingH?: string, layoutSizingV?: string }} icon
+ */
+export function iconFillSizing(icon) {
+    return icon.layoutSizingH !== 'fill' || icon.layoutSizingV !== 'fill' ? { layoutSizingH: 'fill', layoutSizingV: 'fill' } : null;
+}

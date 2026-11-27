@@ -16,10 +16,9 @@ const body = name => {
 
 test('applyLiteralFields gives the text layers of a multiline control their min and max height from their own line height, after the bindings', () => {
     const fields = body('applyLiteralFields');
-    assert.ok(fields.includes('rowsBounds(template, props,'), 'the rows bounds are written');
+    assert.ok(fields.includes('multilineLayerBounds(template, props, layer)'), 'the rows bounds are written (the engine reads the line height)');
     assert.ok(fields.includes('template.control?.multiline'), 'only for a template with a multiline control');
     assert.ok(fields.includes('layer.minH = minH') && fields.includes('layer.maxH = maxH'), 'min and max height of the value and placeholder layers');
-    assert.ok(fields.includes('bounds?.minH'), 'a kind without rows clears them');
     const sync = body('syncInstance');
     assert.ok(sync.indexOf('applyManagedTextBindings(') < sync.indexOf('applyLiteralFields('), 'the layers are bound (their line height is a px) before the box is measured from them');
 });

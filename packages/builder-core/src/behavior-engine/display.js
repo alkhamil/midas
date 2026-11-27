@@ -211,6 +211,19 @@ export function rowsBounds(template, props, { lineHeight }) {
     return { minH: box(Number(min)), maxH: max === null ? null : box(Number(max)) };
 }
 
+/**
+ * The min and max height of a multiline control's text layer, from its own line height: a ratio below 4 is measured at the font size.
+ * @param {any} template
+ * @param {Record<string, unknown>} props the resolved props
+ * @param {{ lineHeight: number, fontSize: number }} layer
+ * @returns {{ minH: number | undefined, maxH: number | undefined }}
+ */
+export function multilineLayerBounds(template, props, layer) {
+    const lineHeight = layer.lineHeight < 4 ? layer.lineHeight * layer.fontSize : layer.lineHeight;
+    const bounds = rowsBounds(template, props, { lineHeight });
+    return { minH: bounds?.minH, maxH: bounds?.maxH ?? undefined };
+}
+
 const kebabOf = name => name.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`);
 
 /**

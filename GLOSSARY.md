@@ -1,14 +1,18 @@
 # Glossary
 
-**Template**: a built-in, data-only description of a React component contract (Ant Design-structured): its anatomy, props, tokens, states and events. Lives in the template registry. Holds no engine logic.
+**Template**: a data-only description of a React component contract (Ant Design-structured): its anatomy, props, tokens, states and events. Built-in templates ship with the engine; Custom templates live in the document (`behavior.templates`, ids `custom-<slug>`). Holds no engine logic.
 
-**Schema**: the typed definition of a template. Validated at startup; an invalid schema throws.
+**Schema**: the typed definition of a template. A built-in schema is validated at startup; a Custom one when its file opens. An invalid schema throws (built-in) or fails the open (Custom).
 
 **Anatomy**: the named parts (slots) that make up a template's rendered structure, e.g. `iconStart`, `label`, `iconEnd` for Button.
 
 **Slot**: one named position in the anatomy. A slot has a type (text, icon, ...) and may be optional.
 
-**Managed slot**: a slot Behavior inserts or removes on each instance from its props (e.g. `iconStart` from `hasIcon` and `iconPlacement`). Its layer is marked "managed by Behavior".
+**Managed slot**: an anatomy slot Behavior inserts or removes on each instance from its props (e.g. `iconStart` from `hasIcon` and `iconPlacement`; Input's value text from its `value` prop). Its layer is marked "managed by Behavior".
+
+**Icon slot**: a managed slot whose layer is an icon instance (Button's `iconStart`, `iconEnd`).
+
+**Content slot**: a component property of type slot: a frame an instance fills with another component (e.g. Card's cover). Not an icon slot.
 
 **Master**: the main component on the canvas. It holds only the binding (template and collections), never per-instance prop values.
 
